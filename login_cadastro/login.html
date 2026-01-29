@@ -3,38 +3,151 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login e Cadastro</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-    <link rel="stylesheet" href="styles_login.css"> <!-- Inclui o arquivo CSS -->
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.14.7/dist/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <title>Login - Xixi Barato</title>
+    <meta content="Faça login na sua conta Xixi Barato e encontre as melhores ofertas de fraldas." name="description">
+
+    <!-- Favicons -->
+    <link href="../assets/img/favicon.png" rel="icon">
+    <link href="../assets/img/apple-touch-icon.png" rel="apple-touch-icon">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Raleway:300,300i,400,400i,500,500i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet">
+
+    <!-- Vendor CSS Files -->
+    <link href="../assets/vendor/aos/aos.css" rel="stylesheet">
+    <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
+    <link href="../assets/vendor/boxicons/css/boxicons.min.css" rel="stylesheet">
+    <link href="../assets/vendor/remixicon/remixicon.css" rel="stylesheet">
+
+    <!-- Template Main CSS File -->
+    <link href="../assets/css/style.css" rel="stylesheet">
+
+    <style>
+        .login-section {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding-top: 100px;
+        }
+        .login-form {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 40px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+        }
+        .login-form h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #222;
+            font-weight: 700;
+        }
+        .login-form .form-control {
+            padding: 12px 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .login-form .form-control:focus {
+            border-color: #3498db;
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+        }
+        .login-form .btn-primary {
+            background: #3498db;
+            border: none;
+            padding: 12px;
+            border-radius: 50px;
+            font-weight: 600;
+            width: 100%;
+        }
+        .login-form .btn-primary:hover {
+            background: #2383c4;
+        }
+        .login-form .btn-link {
+            color: #3498db;
+        }
+        .login-form .btn-link:hover {
+            color: #2383c4;
+        }
+    </style>
 </head>
 <body>
-    <form class="container mx-auto login-form">
-        <div class="form-group">
-            <label for="exampleInputEmail1">Email</label>
-            <input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="Email">
-            <small id="emailHelp" class="form-text text-muted">Por favor digite seu email de contato</small>
+    <!-- ======= Header ======= -->
+    <header id="header" class="fixed-top d-flex align-items-center">
+        <div class="container d-flex align-items-center justify-content-between">
+            <div class="logo">
+                <h1><a href="../index.html">Xixi Barato</a></h1>
+            </div>
+            <nav id="navbar" class="navbar">
+                <ul>
+                    <li><a class="nav-link" href="../index.html">Início</a></li>
+                    <li><a class="nav-link" href="../index.html#about">Sobre nós</a></li>
+                    <li><a class="nav-link" href="../index.html#contact">Contato</a></li>
+                    <li><a class="nav-link" href="cadastro.html">Cadastrar</a></li>
+                    <li><a class="getstarted active" href="login.html">Entrar</a></li>
+                </ul>
+                <i class="bi bi-list mobile-nav-toggle"></i>
+            </nav>
         </div>
-        <div class="form-group">
-            <label for="exampleInputPassword1">Senha</label>
-            <input type="password" class="form-control" id="exampleInputPassword1" placeholder="Senha">
+    </header>
+
+    <main id="main">
+        <section class="login-section">
+            <div class="container">
+                <div class="login-form" data-aos="fade-up">
+                    <h2><i class="bi bi-person-circle"></i> Entrar</h2>
+                    <form>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" placeholder="Digite seu email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="senha" class="form-label">Senha</label>
+                            <input type="password" class="form-control" id="senha" placeholder="Digite sua senha" required>
+                        </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="lembrar">
+                            <label class="form-check-label" for="lembrar">Lembrar de mim</label>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Entrar</button>
+                        <div class="text-center mt-3">
+                            <a href="#" class="btn-link">Esqueceu sua senha?</a>
+                        </div>
+                        <hr>
+                        <div class="text-center">
+                            <p class="mb-2">Ainda não tem conta?</p>
+                            <a href="cadastro.html" class="btn btn-outline-primary" style="border-radius: 50px;">Cadastre-se</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ======= Footer ======= -->
+    <footer id="footer">
+        <div class="container">
+            <div class="row d-flex align-items-center">
+                <div class="col-lg-6 text-center text-lg-start">
+                    <p class="mb-0">&copy; 2024 Xixi Barato. Todos os direitos reservados.</p>
+                </div>
+                <div class="col-lg-6">
+                    <nav class="footer-links text-lg-end text-center pt-2 pt-lg-0">
+                        <a href="../index.html">Início</a>
+                        <a href="../index.html#about">Sobre</a>
+                        <a href="../index.html#contact">Contato</a>
+                    </nav>
+                </div>
+            </div>
         </div>
-        <div class="form-group form-check">
-            <input type="checkbox" class="form-check-input" id="exampleCheck1">
-            <label class="form-check-label" for="exampleCheck1">Lembrar de mim</label>
-        </div>
-        <button type="submit" class="btn btn-primary btn-block">Entrar</button>
-        <br>
-        <button type="button" class="btn btn-link btn-block" onclick="redirectToSignup()">Quero me cadastrar</button>
-    </form>
-    
-    <script>
-        // Função JavaScript que redireciona para a página de cadastro
-        function redirectToSignup() {
-            window.location.href = "/login_cadastro/cadastro.html"; // Substitua pelo URL da sua página de cadastro
-        }
-    </script>
+    </footer>
+
+    <!-- Vendor JS Files -->
+    <script src="../assets/vendor/aos/aos.js"></script>
+    <script src="../assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Template Main JS File -->
+    <script src="../assets/js/main.js"></script>
 </body>
 </html>

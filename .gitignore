@@ -1,0 +1,27 @@
+# Logs
+*.log
+firebase-debug.log
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependencies (if added later)
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Firebase
+.firebase/
+firebase-debug.log
+.firebaserc

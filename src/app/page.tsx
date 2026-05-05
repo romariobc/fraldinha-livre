@@ -2,8 +2,58 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import WaveDivider from '@/components/WaveDivider'
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion'
 
 const BRANDS = ['Pampers', 'Huggies', 'MamyPoko', 'Turma da Mônica', 'Cremer']
+
+const FAQ_ITEMS = [
+  {
+    question: 'Quais tamanhos de fraldas vocês oferecem?',
+    answer: 'Oferecemos fraldas do tamanho RN (recém-nascido) ao XXG, das principais marcas do mercado. O catálogo é atualizado constantemente pelos nossos fornecedores parceiros.',
+  },
+  {
+    question: 'Como funciona a entrega?',
+    answer: 'A entrega é realizada diretamente pelo fornecedor que aceitou seu pedido. O prazo e método são informados no momento da confirmação, antes do pagamento.',
+  },
+  {
+    question: 'As fraldas são originais e de qualidade garantida?',
+    answer: 'Sim! Todos os fornecedores passam por um processo de verificação antes de entrar na plataforma. Só trabalhamos com produtos originais e com nota fiscal.',
+  },
+  {
+    question: 'Posso cancelar ou alterar um pedido?',
+    answer: 'Você pode cancelar o pedido antes do pagamento a qualquer momento. Após o pagamento, entre em contato — avaliamos caso a caso com o fornecedor.',
+  },
+  {
+    question: 'Como é feito o pagamento?',
+    answer: 'Aceitamos cartão de crédito, PIX e boleto via Mercado Pago. O pagamento é processado com total segurança e repassado ao fornecedor após confirmação da entrega.',
+  },
+]
+
+function FaqAccordion() {
+  return (
+    <Accordion defaultValue={['item-0']} className="flex flex-col gap-2.5">
+      {FAQ_ITEMS.map((item, i) => (
+        <AccordionItem
+          key={i}
+          value={`item-${i}`}
+          className="bg-white rounded-xl border-none shadow-sm overflow-hidden"
+        >
+          <AccordionTrigger className="px-6 py-4 font-display font-bold text-sm text-brand-text text-left hover:text-primary-dark hover:no-underline">
+            {item.question}
+          </AccordionTrigger>
+          <AccordionContent className="px-6 pb-4 text-sm text-brand-muted leading-relaxed">
+            {item.answer}
+          </AccordionContent>
+        </AccordionItem>
+      ))}
+    </Accordion>
+  )
+}
 
 export default function Home() {
   return (
@@ -280,6 +330,146 @@ export default function Home() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <WaveDivider bgTop="#F0F8FD" bgBottom="#2A9FD4" path="M0,20 C360,70 1080,0 1440,40 L1440,70 L0,70 Z" />
+
+      {/* ── STATS ── */}
+      <section className="bg-primary-dark py-14">
+        <div className="container-fl">
+          <div className="grid grid-cols-2 gap-8 text-center lg:grid-cols-4">
+            {[
+              { num: '2.4k+', label: 'Famílias atendidas' },
+              { num: 'R$87', label: 'Economia média/mês' },
+              { num: '120+', label: 'Fornecedores parceiros' },
+              { num: '98%', label: 'Satisfação dos clientes' },
+            ].map((stat) => (
+              <div key={stat.label}>
+                <p className="font-display font-black text-white leading-none"
+                   style={{ fontSize: 'clamp(32px, 5vw, 48px)' }}>
+                  {stat.num}
+                </p>
+                <p className="text-sm text-white/70 mt-2">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <WaveDivider bgTop="#2A9FD4" bgBottom="#ffffff" path="M0,55 C360,0 1080,70 1440,20 L1440,70 L0,70 Z" />
+
+      {/* ── TESTIMONIALS ── */}
+      <section id="depoimentos" className="bg-white py-20">
+        <div className="container-fl">
+          <div className="text-center mb-14">
+            <p className="text-[11px] font-bold uppercase tracking-[2px] text-primary-dark mb-2">
+              Depoimentos
+            </p>
+            <h2 className="font-display font-black text-brand-text"
+                style={{ fontSize: 'clamp(24px, 3vw, 40px)' }}>
+              O que as famílias dizem
+            </h2>
+            <p className="text-brand-muted text-sm mt-2">
+              Mais de 2.400 famílias já economizaram com a Fraldinha Livre.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[
+              { letter: 'A', name: 'Ana Lima', role: 'Mamãe do Miguel, 8 meses', color: 'bg-primary', text: '"Economizei quase R$100 no mês! O fornecedor confirmou rápido e as fraldas chegaram em dois dias. Recomendo muito."' },
+              { letter: 'R', name: 'Rafael Mendes', role: 'Papai da Sofia, 4 meses', color: 'bg-accent', text: '"Super prático! Fiz o pedido pelo site e em menos de 1 hora recebi a confirmação do fornecedor. Processo todo transparente."' },
+              { letter: 'C', name: 'Carla Santos', role: 'Mamãe do Pedro, 1 ano', color: 'bg-primary-dark', text: '"A plataforma é linda e muito fácil de usar. O melhor é saber que estou pagando justo — sem atravessadores escondidos."' },
+            ].map((t) => (
+              <div key={t.name} className="bg-brand-bg rounded-card p-6">
+                <p className="text-accent tracking-widest mb-3">★★★★★</p>
+                <p className="text-sm text-brand-muted leading-relaxed mb-5">{t.text}</p>
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full ${t.color} text-white flex items-center justify-center font-display font-extrabold text-sm flex-shrink-0`}>
+                    {t.letter}
+                  </div>
+                  <div>
+                    <p className="font-display font-extrabold text-sm text-brand-text">{t.name}</p>
+                    <p className="text-[11px] text-brand-muted">{t.role}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <WaveDivider bgTop="#ffffff" bgBottom="#F0F8FD" />
+
+      {/* ── FAQ ── */}
+      <section id="faq" className="bg-brand-bg py-20">
+        <div className="container-fl">
+          <div className="flex flex-col gap-16 lg:grid lg:grid-cols-[1fr_1.4fr] lg:items-start lg:gap-20">
+
+            {/* Sticky card */}
+            <div className="bg-white rounded-[28px] p-10 flex flex-col items-center text-center gap-4 lg:sticky lg:top-24">
+              <span className="text-5xl">🍼</span>
+              <p className="font-display font-extrabold text-lg text-primary-dark">
+                Ainda tem dúvidas?
+              </p>
+              <p className="text-sm text-brand-muted leading-relaxed">
+                Fale com a nossa equipe pelo WhatsApp ou deixe sua mensagem — respondemos em até 2 horas.
+              </p>
+              <Link
+                href="#"
+                className="mt-2 inline-flex items-center justify-center px-6 py-3 rounded-full bg-primary text-white font-display font-bold text-sm hover:bg-primary-dark transition-colors"
+              >
+                💬 Falar no WhatsApp
+              </Link>
+            </div>
+
+            {/* Accordion */}
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[2px] text-primary-dark mb-2">
+                FAQ
+              </p>
+              <h2 className="font-display font-black text-brand-text mb-8"
+                  style={{ fontSize: 'clamp(24px, 3vw, 40px)' }}>
+                Perguntas<br />frequentes
+              </h2>
+
+              <FaqAccordion />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <WaveDivider bgTop="#F0F8FD" bgBottom="#2A9FD4" path="M0,20 C480,70 960,0 1440,50 L1440,70 L0,70 Z" />
+
+      {/* ── CTA ── */}
+      <section className="bg-primary-dark py-20 text-center relative overflow-hidden">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
+          style={{ background: 'radial-gradient(circle at center, rgba(255,255,255,0.05) 0%, transparent 60%)' }}
+        />
+        <div className="container-fl relative">
+          <h2 className="font-display font-black text-white mb-3"
+              style={{ fontSize: 'clamp(24px, 4vw, 40px)' }}>
+            Pronto para economizar<br />nas fraldas do seu bebê? 🍼
+          </h2>
+          <p className="text-white/75 text-base mb-10">
+            Crie sua conta grátis e faça seu primeiro pedido hoje mesmo.
+          </p>
+          <div className="flex flex-col gap-3 items-center sm:flex-row sm:justify-center">
+            <Link
+              href="/cadastro"
+              className="inline-flex items-center justify-center px-8 py-3.5 rounded-full bg-white text-primary-dark font-display font-extrabold text-base hover:bg-primary-light transition-colors"
+            >
+              ✨ Criar conta grátis
+            </Link>
+            <Link
+              href="/login"
+              className="inline-flex items-center justify-center px-8 py-3.5 rounded-full border-2 border-white/50 text-white font-display font-bold text-base hover:border-white hover:bg-white/10 transition-colors"
+            >
+              Já tenho conta
+            </Link>
           </div>
         </div>
       </section>

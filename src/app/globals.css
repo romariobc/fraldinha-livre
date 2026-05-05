@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    @apply font-body text-brand-text bg-brand-bg overflow-x-hidden;
+  }
+  img {
+    @apply max-w-full;
+  }
+}
+
+@layer utilities {
+  .container-fl {
+    @apply w-full px-4 mx-auto sm:px-8 lg:px-20 lg:max-w-[1200px] xl:max-w-[1320px];
+  }
+}

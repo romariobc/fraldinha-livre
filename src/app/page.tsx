@@ -140,6 +140,149 @@ export default function Home() {
       </section>
 
       <WaveDivider bgTop="#ffffff" bgBottom="#ffffff" path="M0,0 C480,70 960,0 1440,55 L1440,70 L0,70 Z" />
+
+      {/* ── HOW IT WORKS ── */}
+      <section id="sobre" className="bg-white py-20">
+        <div className="container-fl">
+          <div className="flex flex-col gap-16 lg:grid lg:grid-cols-2 lg:items-center lg:gap-20">
+
+            {/* Steps */}
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[2px] text-primary-dark mb-2">
+                Como funciona
+              </p>
+              <h2 className="font-display font-black text-brand-text leading-[1.15] mb-4"
+                  style={{ fontSize: 'clamp(24px, 3vw, 40px)' }}>
+                Simples, rápido<br />e econômico 💛
+              </h2>
+              <p className="text-brand-muted text-sm leading-relaxed mb-10 max-w-[500px]">
+                Do pedido à entrega, cuidamos de tudo para que você foque no que importa — o seu bebê.
+              </p>
+
+              <div className="flex flex-col gap-7">
+                {[
+                  {
+                    n: '1',
+                    title: 'Escolha seus produtos',
+                    desc: 'Navegue pelo catálogo e adicione ao carrinho as fraldas na quantidade e tamanho que precisar.',
+                  },
+                  {
+                    n: '2',
+                    title: 'Fornecedores competem por você',
+                    desc: 'Seu pedido vai para nossa rede de fornecedores. Eles confirmam ou fazem ofertas — você escolhe a melhor.',
+                  },
+                  {
+                    n: '3',
+                    title: 'Pague com segurança',
+                    desc: 'Checkout integrado com Mercado Pago. Pagamento protegido, entrega garantida.',
+                  },
+                  {
+                    n: '4',
+                    title: 'Receba em casa',
+                    desc: 'O fornecedor cuida da entrega diretamente até você. Acompanhe tudo pela sua área de cliente.',
+                  },
+                ].map((step) => (
+                  <div key={step.n} className="flex gap-4 items-start">
+                    <div className="w-10 h-10 rounded-full bg-primary-light text-primary-dark flex items-center justify-center font-display font-black text-lg flex-shrink-0">
+                      {step.n}
+                    </div>
+                    <div>
+                      <p className="font-display font-extrabold text-brand-text mb-1">{step.title}</p>
+                      <p className="text-sm text-brand-muted leading-relaxed">{step.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Visual card */}
+            <div className="bg-primary-light rounded-[28px] p-10 flex flex-col items-center text-center gap-4">
+              <span className="text-6xl animate-float inline-block">🍼</span>
+              <p className="font-display font-extrabold text-lg text-primary-dark">
+                Sua cegonha de fraldas<br />está a caminho!
+              </p>
+              <p className="text-sm text-brand-muted leading-relaxed">
+                Conectamos famílias a fornecedores confiáveis em todo o Brasil, com entrega rápida e preço justo.
+              </p>
+              <Link
+                href="/cadastro"
+                className="mt-2 inline-flex items-center justify-center px-6 py-3 rounded-full bg-primary text-white font-display font-bold text-sm hover:bg-primary-dark transition-colors"
+              >
+                Fazer meu primeiro pedido
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <WaveDivider bgTop="#ffffff" bgBottom="#F0F8FD" path="M0,55 C480,0 960,70 1440,25 L1440,70 L0,70 Z" />
+
+      {/* ── PRODUCTS ── */}
+      <section id="produtos" className="bg-brand-bg py-20">
+        <div className="container-fl">
+          <div className="flex flex-col gap-4 mb-12 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[2px] text-primary-dark mb-2">
+                Catálogo
+              </p>
+              <h2 className="font-display font-black text-brand-text"
+                  style={{ fontSize: 'clamp(24px, 3vw, 40px)' }}>
+                Produtos em destaque
+              </h2>
+            </div>
+            <Link
+              href="/#produtos"
+              className="inline-flex items-center px-5 py-2 rounded-full border-2 border-primary text-primary-dark font-display font-bold text-sm hover:bg-primary-light transition-colors self-start sm:self-auto"
+            >
+              Ver todos →
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+            {[
+              { brand: 'Pampers', name: 'Supersec Pants', size: 'Tam. P · 28 un.', price: 16, badge: 'Mais vendido', badgeColor: 'bg-accent' },
+              { brand: 'Huggies', name: 'Supreme Care', size: 'Tam. M · 32 un.', price: 29, badge: null, badgeColor: '' },
+              { brand: 'MamyPoko', name: 'Pants Premium', size: 'Tam. G · 30 un.', price: 39, badge: 'Oferta', badgeColor: 'bg-primary-dark' },
+              { brand: 'Fraldinha Livre', name: 'Kit Inicial Bebê', size: 'P + M + G · 3 pcts', price: 49, badge: null, badgeColor: '' },
+            ].map((product) => (
+              <div
+                key={product.name}
+                className="bg-white rounded-card shadow-card overflow-hidden hover:-translate-y-1.5 hover:shadow-card-hover transition-all cursor-pointer"
+              >
+                <div className="aspect-square bg-primary-light flex items-center justify-center text-4xl sm:text-5xl relative">
+                  🧷
+                  {product.badge && (
+                    <span className={`absolute top-2.5 left-2.5 ${product.badgeColor} text-white text-[10px] font-bold rounded-full px-2.5 py-0.5`}>
+                      {product.badge}
+                    </span>
+                  )}
+                </div>
+                <div className="p-3.5 sm:p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-primary-dark mb-0.5">
+                    {product.brand}
+                  </p>
+                  <p className="font-display font-extrabold text-sm text-brand-text mb-0.5">
+                    {product.name}
+                  </p>
+                  <p className="text-[11px] text-brand-muted mb-3">{product.size}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="font-display font-black text-base sm:text-lg text-brand-text">
+                      R$&nbsp;{product.price}
+                      <span className="text-[11px] font-medium text-brand-muted font-body"> / pct</span>
+                    </p>
+                    <button
+                      className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-lg hover:bg-primary-dark hover:scale-110 transition-all"
+                      aria-label={`Adicionar ${product.name} ao carrinho`}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
     </>
   )
 }

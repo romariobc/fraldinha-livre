@@ -91,9 +91,9 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="border-t border-white/8 pt-6 flex flex-col gap-3 items-center text-center sm:flex-row sm:justify-between sm:text-left">
+        <div className="border-t border-white/10 pt-6 flex flex-col gap-3 items-center text-center sm:flex-row sm:justify-between sm:text-left">
           <span className="text-xs">
-            © 2024 Fraldinha Livre. Todos os direitos reservados.
+            © 2026 Fraldinha Livre. Todos os direitos reservados.
           </span>
           <div className="flex items-center gap-1.5">
             {PAYMENT_METHODS.map((method) => (

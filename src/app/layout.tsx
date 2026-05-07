@@ -4,6 +4,7 @@ import { Nunito, Inter } from 'next/font/google'
 import './globals.css'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import { Toaster } from 'sonner'
 
 const nunito = Nunito({
   subsets: ['latin'],
@@ -38,6 +39,7 @@ export default function RootLayout({
         <Header />
         <main>{children}</main>
         <Footer />
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   )

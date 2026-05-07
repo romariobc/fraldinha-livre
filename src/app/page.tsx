@@ -85,30 +85,65 @@ export default function Home() {
             {/* Visual */}
             <div className="flex justify-center">
               <div className="relative w-full max-w-[420px] lg:max-w-[500px]">
-                {/* Hero photo */}
-                <div className="aspect-[4/5] rounded-[28px] overflow-hidden bg-primary-light relative">
-                  <Image
-                    src="/assets/img/hero1.jpg"
-                    alt="Bebê feliz com fraldinha"
-                    fill
-                    className="object-cover object-center"
-                    priority
-                  />
+
+                {/* Card principal */}
+                <div className="aspect-[4/5] rounded-[28px] bg-gradient-to-br from-primary to-primary-dark flex flex-col items-center justify-center gap-6 p-10 overflow-hidden relative">
+                  {/* Blobs decorativos */}
+                  <div aria-hidden="true" className="absolute -top-10 -left-10 w-48 h-48 rounded-full bg-white/10" />
+                  <div aria-hidden="true" className="absolute -bottom-12 -right-12 w-64 h-64 rounded-full bg-white/8" />
+                  <div aria-hidden="true" className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full bg-white/5" />
+
+                  {/* Logo animada */}
+                  <div className="relative z-10 animate-float">
+                    <Image
+                      src="/assets/img/Logo_simples_sem_fundo.png"
+                      alt=""
+                      width={120}
+                      height={120}
+                      className="h-28 w-auto drop-shadow-xl"
+                      priority
+                    />
+                  </div>
+
+                  {/* Mini cards de produto */}
+                  <div className="relative z-10 flex flex-col gap-3 w-full">
+                    {[
+                      { marca: 'Pampers', tam: 'Tam. M · 32 un.', preco: 'R$ 29' },
+                      { marca: 'Huggies', tam: 'Tam. G · 28 un.', preco: 'R$ 34' },
+                      { marca: 'MamyPoko', tam: 'Tam. P · 36 un.', preco: 'R$ 22' },
+                    ].map((item, i) => (
+                      <div
+                        key={item.marca}
+                        className="flex items-center justify-between bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5"
+                        style={{ opacity: 1 - i * 0.15 }}
+                      >
+                        <div>
+                          <p className="font-display font-extrabold text-white text-sm leading-none">{item.marca}</p>
+                          <p className="text-white/65 text-[11px] mt-0.5">{item.tam}</p>
+                        </div>
+                        <span className="font-display font-black text-white text-base">{item.preco}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                {/* Bubble top */}
-                <div className="absolute -top-6 -right-4 sm:-right-8 bg-white rounded-2xl px-4 py-3 shadow-card flex items-center gap-2.5 whitespace-nowrap">
-                  <span className="text-2xl">🛒</span>
+                {/* Bubble top — pedido confirmado */}
+                <div className="absolute -top-5 -right-4 sm:-right-8 bg-white rounded-2xl px-4 py-3 shadow-card flex items-center gap-2.5 whitespace-nowrap z-20">
+                  <Image
+                    src="/assets/img/Logo_simples_sem_fundo.png"
+                    alt=""
+                    width={28}
+                    height={28}
+                    className="h-7 w-auto"
+                  />
                   <div>
-                    <p className="font-display font-extrabold text-sm text-brand-text leading-none">
-                      Pedido confirmado!
-                    </p>
+                    <p className="font-display font-extrabold text-sm text-brand-text leading-none">Pedido confirmado!</p>
                     <p className="text-[11px] text-brand-muted mt-0.5">Chegando em 24–48h</p>
                   </div>
                 </div>
 
-                {/* Bubble bottom */}
-                <div className="absolute -bottom-6 -left-4 sm:-left-7 bg-accent text-white rounded-2xl px-4 py-3 shadow-lg shadow-accent/25">
+                {/* Bubble bottom — economia */}
+                <div className="absolute -bottom-5 -left-4 sm:-left-7 bg-accent text-white rounded-2xl px-4 py-3 shadow-lg shadow-accent/25 z-20">
                   <p className="text-[11px] opacity-90">Economia média</p>
                   <p className="font-display font-black text-xl leading-none">R$ 87/mês</p>
                 </div>

@@ -86,13 +86,12 @@ export default function Home() {
             <div className="flex justify-center">
               <div className="relative w-full max-w-[420px] lg:max-w-[500px]">
                 {/* Hero photo */}
-                <div className="aspect-[4/5] rounded-[28px] overflow-hidden bg-primary-light">
+                <div className="aspect-[4/5] rounded-[28px] overflow-hidden bg-primary-light relative">
                   <Image
                     src="/assets/img/hero1.jpg"
                     alt="Bebê feliz com fraldinha"
-                    width={500}
-                    height={625}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover object-center"
                     priority
                   />
                 </div>

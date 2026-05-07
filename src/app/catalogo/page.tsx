@@ -32,13 +32,13 @@ function useFilters(): [ProductFilters, (key: keyof ProductFilters, value: strin
         params.delete(paramKey)
       }
       params.delete('page')
-      router.push(`/catalogo?${params.toString()}`)
+      router.replace(`/catalogo?${params.toString()}`)
     },
     [router, searchParams]
   )
 
   const clearFilters = useCallback(() => {
-    router.push('/catalogo')
+    router.replace('/catalogo')
   }, [router])
 
   return [filters, updateFilter, clearFilters]
@@ -148,6 +148,7 @@ function CatalogoContent() {
 
       {/* Modal de oferta */}
       <OfferModal
+        key={selectedProduct?.id ?? ''}
         product={selectedProduct}
         onClose={() => setSelectedProduct(null)}
       />

@@ -16,16 +16,16 @@ interface OfferModalProps {
   onClose: () => void
 }
 
-const SIZE_OPTIONS = ['P', 'M', 'G', 'GG'] as const
-type ModalSize = (typeof SIZE_OPTIONS)[number]
+const SIZE_OPTIONS = ['RN', 'P', 'M', 'G', 'GG', 'XXG'] as const
+type ModalSize = typeof SIZE_OPTIONS[number]
 
 export default function OfferModal({ product, onClose }: OfferModalProps) {
   const [quantity, setQuantity] = useState('1')
-  const initialSize: ModalSize =
-    product?.size && (SIZE_OPTIONS as readonly string[]).includes(product.size)
-      ? (product.size as ModalSize)
+  const [size, setSize] = useState<ModalSize>(
+    (SIZE_OPTIONS as readonly string[]).includes(product?.size ?? '')
+      ? (product?.size as ModalSize)
       : 'M'
-  const [size, setSize] = useState<ModalSize>(initialSize)
+  )
   const [cep, setCep] = useState('')
   const [notes, setNotes] = useState('')
 

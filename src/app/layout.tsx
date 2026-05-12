@@ -2,8 +2,6 @@
 import type { Metadata } from 'next'
 import { Nunito, Inter } from 'next/font/google'
 import './globals.css'
-import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import { Toaster } from 'sonner'
 
 const nunito = Nunito({
@@ -36,9 +34,7 @@ export default function RootLayout({
         <link href="/assets/img/apple-touch-icon.png" rel="apple-touch-icon" />
       </head>
       <body>
-        <Header />
-        <main>{children}</main>
-        <Footer />
+        {children}
         <Toaster position="top-right" richColors />
       </body>
     </html>

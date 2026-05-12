@@ -13,7 +13,7 @@ const NAV_LINKS = [
   { href: '/#produtos', label: 'Produtos' },
   { href: '/#depoimentos', label: 'Depoimentos' },
   { href: '/#faq',      label: 'FAQ' },
-  { href: '/#contato',  label: 'Contato' },
+  { href: '/contato',   label: 'Contato' },
 ]
 
 export default function Header() {

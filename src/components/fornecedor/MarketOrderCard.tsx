@@ -14,8 +14,10 @@ export default function MarketOrderCard({
 }: MarketOrderCardProps) {
   return (
     <div
-      className={`bg-white rounded-card shadow-card p-4 flex flex-col gap-3 ${
-        order.offeredByMe ? 'bg-primary-light border-2 border-primary/30' : 'border border-slate-100'
+      className={`rounded-card shadow-card p-4 flex flex-col gap-3 ${
+        order.offeredByMe
+          ? 'bg-primary-light border-2 border-primary/30'
+          : 'bg-white border border-slate-100'
       }`}
     >
       {/* Cabeçalho */}
@@ -66,12 +68,16 @@ export default function MarketOrderCard({
       ) : (
         <div className="flex gap-2">
           <button
+            type="button"
+            aria-label="Enviar oferta para este pedido"
             onClick={() => onEnviarOferta(order)}
             className="flex-1 bg-accent text-white font-display font-bold text-xs py-2 rounded-xl hover:bg-accent-dark transition-colors"
           >
             ✏️ Enviar oferta
           </button>
           <button
+            type="button"
+            aria-label="Não vou concorrer nesta cotação"
             onClick={() => onDecline(order.id)}
             className="flex-none w-28 bg-slate-100 text-brand-muted font-bold text-xs py-2 rounded-xl hover:bg-slate-200 transition-colors"
           >

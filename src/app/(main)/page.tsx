@@ -9,13 +9,14 @@ const BRANDS = [
   'Cremer', 'Babysec', 'Pom Pom', 'Mili', 'Softcair', 'Up & Go',
 ]
 
-function CloudBrand({ name }: { name: string }) {
+function CloudBrand({ name, delay = 0 }: { name: string; delay?: number }) {
   return (
     <div
-      className="relative"
+      className="relative cloud-float"
       style={{
         paddingTop: 28,
         filter: 'drop-shadow(0 6px 16px rgba(30,120,170,0.22))',
+        animationDelay: `${delay}s`,
       }}
     >
       {/* Bumps — z-0 para ficarem atrás do corpo */}
@@ -211,11 +212,11 @@ export default function Home() {
           style={{ background: 'radial-gradient(circle, #FFE566 0%, #FFD000 55%, rgba(255,208,0,0) 100%)' }}
         />
 
-        {/* Nuvenzinhas decorativas de fundo */}
-        <DecoCloud className="top-3  left-[5%]  scale-90  opacity-70" />
-        <DecoCloud className="top-8  left-[42%] scale-75  opacity-50" />
-        <DecoCloud className="bottom-2 right-[8%] scale-110 opacity-60" />
-        <DecoCloud className="bottom-4 left-[22%] scale-75  opacity-40" />
+        {/* Nuvenzinhas decorativas de fundo — cada uma com delay próprio */}
+        <DecoCloud className="top-3   left-[5%]  scale-90  opacity-70 cloud-float [animation-delay:0.3s]" />
+        <DecoCloud className="top-8   left-[42%] scale-75  opacity-50 cloud-float [animation-delay:1.7s] [animation-duration:6s]" />
+        <DecoCloud className="bottom-2 right-[8%] scale-110 opacity-60 cloud-float [animation-delay:0.9s] [animation-duration:5.5s]" />
+        <DecoCloud className="bottom-4 left-[22%] scale-75  opacity-40 cloud-float [animation-delay:2.4s]" />
 
         <div className="container-fl relative z-10">
           <p className="text-center text-[11px] font-bold uppercase tracking-[2px] text-white/80 drop-shadow mb-10">
@@ -224,8 +225,8 @@ export default function Home() {
 
           {/* Nuvens de marca — 2 linhas flutuantes */}
           <div className="flex flex-wrap items-end justify-center gap-x-6 gap-y-4 sm:gap-x-10 sm:gap-y-6">
-            {BRANDS.map((brand) => (
-              <CloudBrand key={brand} name={brand} />
+            {BRANDS.map((brand, i) => (
+              <CloudBrand key={brand} name={brand} delay={i * 0.45} />
             ))}
           </div>
         </div>

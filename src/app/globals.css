@@ -96,4 +96,18 @@
   .container-fl {
     @apply w-full px-4 mx-auto sm:px-8 lg:px-20 lg:max-w-[1200px] xl:max-w-[1320px];
   }
+
+  /* Flutuação suave para as nuvens — movimento curto e lento */
+  .cloud-float {
+    animation: cloud-float 5s ease-in-out infinite;
+  }
+}
+
+@keyframes cloud-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
 }

@@ -18,12 +18,12 @@ function CloudBrand({ name }: { name: string }) {
         filter: 'drop-shadow(0 6px 16px rgba(30,120,170,0.22))',
       }}
     >
-      {/* Bumps — overlapping circles that form the cloud top */}
-      <div className="absolute bg-white rounded-full" style={{ width: 36, height: 36, top: 4,  left: 14 }} />
-      <div className="absolute bg-white rounded-full" style={{ width: 50, height: 50, top: 0,  left: 36 }} />
-      <div className="absolute bg-white rounded-full" style={{ width: 30, height: 30, top: 10, right: 12 }} />
-      {/* Body */}
-      <div className="bg-white rounded-[28px] px-7 py-3 min-w-[110px] flex items-center justify-center">
+      {/* Bumps — z-0 para ficarem atrás do corpo */}
+      <div className="absolute z-0 bg-white rounded-full" style={{ width: 36, height: 36, top: 4,  left: 14 }} />
+      <div className="absolute z-0 bg-white rounded-full" style={{ width: 50, height: 50, top: 0,  left: 36 }} />
+      <div className="absolute z-0 bg-white rounded-full" style={{ width: 30, height: 30, top: 10, right: 12 }} />
+      {/* Body — relative z-[1] para aparecer acima dos bumps */}
+      <div className="relative z-[1] bg-white rounded-[28px] px-7 py-3 min-w-[110px] flex items-center justify-center">
         <span className="font-display font-extrabold text-sm text-brand-text whitespace-nowrap">
           {name}
         </span>
@@ -201,13 +201,13 @@ export default function Home() {
 
       {/* ── BRANDS — sky with floating clouds ── */}
       <section
-        className="relative overflow-hidden py-16"
+        className="relative overflow-hidden py-16 -mt-px"
         style={{ background: 'linear-gradient(180deg, #3BAED4 0%, #6DCAEA 45%, #B3E4F8 100%)' }}
       >
-        {/* Sol decorativo */}
+        {/* Sol decorativo — dentro dos limites da section para não ser cortado */}
         <div
           aria-hidden="true"
-          className="absolute -top-12 right-10 w-36 h-36 rounded-full"
+          className="absolute top-6 right-8 w-32 h-32 rounded-full"
           style={{ background: 'radial-gradient(circle, #FFE566 0%, #FFD000 55%, rgba(255,208,0,0) 100%)' }}
         />
 

@@ -4,21 +4,34 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Menu, X, ShoppingBag } from 'lucide-react'
+import { toast } from 'sonner'
 
 const NAV_LINKS = [
   { href: '/',             label: 'Início' },
   { href: '/catalogo',     label: 'Catálogo' },
   { href: '/#sobre',       label: 'Sobre Nós' },
-  { href: '/#produtos',    label: 'Produtos' },
   { href: '/#depoimentos', label: 'Depoimentos' },
   { href: '/#faq',         label: 'FAQ' },
-  { href: '/minha-conta',  label: 'Minha Conta' },
   { href: '/contato',      label: 'Contato' },
 ]
 
+/** Mock: troque por verificação real de sessão quando o auth estiver pronto */
+const IS_LOGGED_IN = false
+
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const router = useRouter()
+
+  function handleCartClick() {
+    if (IS_LOGGED_IN) {
+      router.push('/minha-conta')
+    } else {
+      toast.info('Faça login para acessar sua conta.')
+      router.push('/login')
+    }
+  }
 
   return (
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-primary/10">
@@ -59,7 +72,16 @@ export default function Header() {
           </nav>
 
           {/* Desktop actions */}
-          <div className="hidden lg:flex items-center gap-2.5">
+          <div className="hidden lg:flex items-center gap-3">
+            {/* Ícone de carrinho / minha conta */}
+            <button
+              onClick={handleCartClick}
+              aria-label="Minha conta"
+              className="relative p-2 rounded-full text-brand-muted hover:text-primary-dark hover:bg-primary-light transition-colors"
+            >
+              <ShoppingBag size={22} />
+            </button>
+
             <Link
               href="/login"
               className="px-5 py-2 rounded-full border-2 border-primary text-primary-dark font-display font-bold text-sm hover:bg-primary-light transition-colors"
@@ -74,15 +96,24 @@ export default function Header() {
             </Link>
           </div>
 
-          {/* Mobile hamburger */}
-          <button
-            className="lg:hidden p-2 text-brand-text"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
-            aria-expanded={menuOpen}
-          >
-            {menuOpen ? <X size={22} /> : <Menu size={22} />}
-          </button>
+          {/* Mobile: carrinho + hamburger */}
+          <div className="lg:hidden flex items-center gap-1">
+            <button
+              onClick={handleCartClick}
+              aria-label="Minha conta"
+              className="p-2 text-brand-muted hover:text-primary-dark transition-colors"
+            >
+              <ShoppingBag size={22} />
+            </button>
+            <button
+              className="p-2 text-brand-text"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+              aria-expanded={menuOpen}
+            >
+              {menuOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          </div>
         </div>
       </div>
 

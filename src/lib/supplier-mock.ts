@@ -86,7 +86,15 @@ export function timeAgo(iso: string): string {
 
 export function maskCnpj(cnpj: string): string {
   // '12.456.789/0001-00' → '***.456.789/0001-**'
-  return cnpj.replace(/^(\d{2})\.(\d{3}\.\d{3}\/\d{4})-(\d{2})$/, (_, _a, mid, _c) => `***.${mid}-**`)
+  const masked = cnpj.replace(
+    /^(\d{2})\.(\d{3}\.\d{3}\/\d{4})-(\d{2})$/,
+    (_, _a, mid, _c) => `***.${mid}-**`
+  )
+  // Fallback for unformatted input: mask first 3 and last 2 characters
+  if (masked === cnpj) {
+    return cnpj.slice(0, 3).replace(/./g, '*') + cnpj.slice(3, -2) + '**'
+  }
+  return masked
 }
 
 // ─── Mock data ────────────────────────────────────────────────────────────────

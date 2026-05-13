@@ -4,7 +4,51 @@ import Link from 'next/link'
 import WaveDivider from '@/components/WaveDivider'
 import FaqAccordion from '@/components/FaqAccordion'
 
-const BRANDS = ['Pampers', 'Huggies', 'MamyPoko', 'Turma da Mônica', 'Cremer']
+const BRANDS = [
+  'Pampers', 'Huggies', 'MamyPoko', 'Turma da Mônica',
+  'Cremer', 'Babysec', 'Pom Pom', 'Mili', 'Softcair', 'Up & Go',
+]
+
+function CloudBrand({ name }: { name: string }) {
+  return (
+    <div
+      className="relative"
+      style={{
+        paddingTop: 28,
+        filter: 'drop-shadow(0 6px 16px rgba(30,120,170,0.22))',
+      }}
+    >
+      {/* Bumps — overlapping circles that form the cloud top */}
+      <div className="absolute bg-white rounded-full" style={{ width: 36, height: 36, top: 4,  left: 14 }} />
+      <div className="absolute bg-white rounded-full" style={{ width: 50, height: 50, top: 0,  left: 36 }} />
+      <div className="absolute bg-white rounded-full" style={{ width: 30, height: 30, top: 10, right: 12 }} />
+      {/* Body */}
+      <div className="bg-white rounded-[28px] px-7 py-3 min-w-[110px] flex items-center justify-center">
+        <span className="font-display font-extrabold text-sm text-brand-text whitespace-nowrap">
+          {name}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+/** Nuvenzinha decorativa de fundo (sem texto) */
+function DecoCloud({ className }: { className?: string }) {
+  return (
+    <div
+      className={`absolute pointer-events-none ${className ?? ''}`}
+      style={{ filter: 'drop-shadow(0 2px 6px rgba(30,120,170,0.1))' }}
+      aria-hidden="true"
+    >
+      <div className="relative" style={{ paddingTop: 18 }}>
+        <div className="absolute bg-white/50 rounded-full" style={{ width: 22, height: 22, top: 3,  left: 8  }} />
+        <div className="absolute bg-white/50 rounded-full" style={{ width: 32, height: 32, top: 0,  left: 22 }} />
+        <div className="absolute bg-white/50 rounded-full" style={{ width: 18, height: 18, top: 7,  right: 8  }} />
+        <div className="bg-white/50 rounded-[18px] px-5 py-2 w-24" />
+      </div>
+    </div>
+  )
+}
 
 export default function Home() {
   return (
@@ -153,28 +197,41 @@ export default function Home() {
         </div>
       </section>
 
-      <WaveDivider bgTop="#E8F6FD" bgBottom="#ffffff" />
+      <WaveDivider bgTop="#E8F6FD" bgBottom="#3BAED4" />
 
-      {/* ── BRANDS ── */}
-      <section className="bg-white py-12">
-        <div className="container-fl">
-          <p className="text-center text-[11px] font-bold uppercase tracking-[1.5px] text-brand-muted mb-6">
+      {/* ── BRANDS — sky with floating clouds ── */}
+      <section
+        className="relative overflow-hidden py-16"
+        style={{ background: 'linear-gradient(180deg, #3BAED4 0%, #6DCAEA 45%, #B3E4F8 100%)' }}
+      >
+        {/* Sol decorativo */}
+        <div
+          aria-hidden="true"
+          className="absolute -top-12 right-10 w-36 h-36 rounded-full"
+          style={{ background: 'radial-gradient(circle, #FFE566 0%, #FFD000 55%, rgba(255,208,0,0) 100%)' }}
+        />
+
+        {/* Nuvenzinhas decorativas de fundo */}
+        <DecoCloud className="top-3  left-[5%]  scale-90  opacity-70" />
+        <DecoCloud className="top-8  left-[42%] scale-75  opacity-50" />
+        <DecoCloud className="bottom-2 right-[8%] scale-110 opacity-60" />
+        <DecoCloud className="bottom-4 left-[22%] scale-75  opacity-40" />
+
+        <div className="container-fl relative z-10">
+          <p className="text-center text-[11px] font-bold uppercase tracking-[2px] text-white/80 drop-shadow mb-10">
             Fraldas das marcas que você já conhece e confia
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-6">
+
+          {/* Nuvens de marca — 2 linhas flutuantes */}
+          <div className="flex flex-wrap items-end justify-center gap-x-6 gap-y-4 sm:gap-x-10 sm:gap-y-6">
             {BRANDS.map((brand) => (
-              <span
-                key={brand}
-                className="bg-brand-bg rounded-full px-5 py-2 font-display font-extrabold text-sm text-brand-muted"
-              >
-                {brand}
-              </span>
+              <CloudBrand key={brand} name={brand} />
             ))}
           </div>
         </div>
       </section>
 
-      <WaveDivider bgTop="#ffffff" bgBottom="#ffffff" path="M0,0 C480,70 960,0 1440,55 L1440,70 L0,70 Z" />
+      <WaveDivider bgTop="#B3E4F8" bgBottom="#ffffff" path="M0,0 C480,70 960,0 1440,55 L1440,70 L0,70 Z" />
 
       {/* ── HOW IT WORKS ── */}
       <section id="sobre" className="bg-white py-20">

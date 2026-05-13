@@ -18,7 +18,7 @@ export default function PedidosTab({ orders, onNovoPedido, onVerOfertas }: Pedid
     <div className="flex flex-col gap-4">
       <button
         onClick={onNovoPedido}
-        className="w-full flex items-center justify-center gap-2 bg-accent text-white font-display font-bold text-sm py-3 rounded-xl hover:bg-accent-dark transition-colors shadow-sm"
+        className="w-full lg:w-auto lg:self-end flex items-center justify-center gap-2 bg-accent text-white font-display font-bold text-sm py-3 px-6 rounded-xl hover:bg-accent-dark transition-colors shadow-sm"
       >
         ＋ Novo Pedido de Cotação
       </button>
@@ -30,7 +30,7 @@ export default function PedidosTab({ orders, onNovoPedido, onVerOfertas }: Pedid
           <p className="text-xs mt-1">Clique em &quot;Novo Pedido&quot; para começar.</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {active.map((order) => (
             <OrderCard
               key={order.id}

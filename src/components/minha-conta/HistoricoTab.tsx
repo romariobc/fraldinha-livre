@@ -23,7 +23,7 @@ export default function HistoricoTab({ orders }: HistoricoTabProps) {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {done.map((order) => (
         <OrderCard key={order.id} order={order} mode="historico" />
       ))}

@@ -45,7 +45,7 @@ export default function PerfilTab({ user }: PerfilTabProps) {
   ].join(' · ')
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 max-w-2xl mx-auto w-full">
       <div className="bg-white rounded-card shadow-card p-6">
         {/* Avatar + nome */}
         <div className="flex items-center gap-4 mb-5">

@@ -47,7 +47,8 @@ export default function OfertasTab({ orders, onAceitarOferta }: OfertasTabProps)
             <div className="h-px flex-1 bg-slate-200" />
           </div>
 
-          {/* Cards de oferta — primeiro card (melhor preço) tem borda azul */}
+          {/* Cards de oferta — grid 1 col mobile / 2 col lg+ para comparação lado a lado */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {order.offers?.map((offer, i) => (
             <div
               key={offer.id}
@@ -87,6 +88,7 @@ export default function OfertasTab({ orders, onAceitarOferta }: OfertasTabProps)
               </div>
             </div>
           ))}
+          </div>
         </div>
       ))}
     </div>

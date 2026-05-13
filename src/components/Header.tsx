@@ -4,7 +4,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, User } from 'lucide-react'
+import { IS_LOGGED_IN } from '@/lib/auth-mock'
+import { MOCK_USER } from '@/lib/profile-mock'
 
 const NAV_LINKS = [
   { href: '/',          label: 'Início' },
@@ -59,18 +61,34 @@ export default function Header() {
 
           {/* Desktop actions */}
           <div className="hidden lg:flex items-center gap-2.5">
-            <Link
-              href="/login"
-              className="px-5 py-2 rounded-full border-2 border-primary text-primary-dark font-display font-bold text-sm hover:bg-primary-light transition-colors"
-            >
-              Entrar
-            </Link>
-            <Link
-              href="/cadastro"
-              className="px-5 py-2 rounded-full bg-accent text-white font-display font-bold text-sm hover:bg-accent-dark transition-all hover:-translate-y-px shadow-sm hover:shadow-accent/30"
-            >
-              Criar conta grátis
-            </Link>
+            {IS_LOGGED_IN ? (
+              <Link
+                href="/perfil"
+                className="flex items-center gap-2.5 px-4 py-2 rounded-full border-2 border-primary hover:bg-primary-light transition-colors group"
+              >
+                <div className="w-7 h-7 rounded-full bg-primary-dark flex items-center justify-center">
+                  <span className="font-display font-black text-xs text-white select-none">
+                    {MOCK_USER.avatarInitials}
+                  </span>
+                </div>
+                <span className="text-sm font-semibold text-primary-dark">{MOCK_USER.name.split(' ')[0]}</span>
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="px-5 py-2 rounded-full border-2 border-primary text-primary-dark font-display font-bold text-sm hover:bg-primary-light transition-colors"
+                >
+                  Entrar
+                </Link>
+                <Link
+                  href="/cadastro"
+                  className="px-5 py-2 rounded-full bg-accent text-white font-display font-bold text-sm hover:bg-accent-dark transition-all hover:-translate-y-px shadow-sm hover:shadow-accent/30"
+                >
+                  Criar conta grátis
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile hamburger */}
@@ -104,20 +122,33 @@ export default function Header() {
             ))}
           </div>
           <div className="flex gap-2 pt-3 mt-2 border-t border-primary/10">
-            <Link
-              href="/login"
-              className="flex-1 text-center py-2.5 rounded-full border-2 border-primary text-primary-dark font-display font-bold text-sm hover:bg-primary-light transition-colors"
-              onClick={() => setMenuOpen(false)}
-            >
-              Entrar
-            </Link>
-            <Link
-              href="/cadastro"
-              className="flex-1 text-center py-2.5 rounded-full bg-accent text-white font-display font-bold text-sm hover:bg-accent-dark transition-colors"
-              onClick={() => setMenuOpen(false)}
-            >
-              Criar conta
-            </Link>
+            {IS_LOGGED_IN ? (
+              <Link
+                href="/perfil"
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-full border-2 border-primary text-primary-dark font-display font-bold text-sm hover:bg-primary-light transition-colors"
+                onClick={() => setMenuOpen(false)}
+              >
+                <User size={15} />
+                Meu Perfil
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="flex-1 text-center py-2.5 rounded-full border-2 border-primary text-primary-dark font-display font-bold text-sm hover:bg-primary-light transition-colors"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Entrar
+                </Link>
+                <Link
+                  href="/cadastro"
+                  className="flex-1 text-center py-2.5 rounded-full bg-accent text-white font-display font-bold text-sm hover:bg-accent-dark transition-colors"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Criar conta
+                </Link>
+              </>
+            )}
           </div>
         </nav>
       )}

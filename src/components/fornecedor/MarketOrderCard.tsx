@@ -46,7 +46,7 @@ export default function MarketOrderCard({
           <MapPin size={11} className="flex-shrink-0" />
           {order.buyerCity}, {order.buyerState}
         </span>
-        <span>{timeAgo(order.createdAt)}</span>
+        <span suppressHydrationWarning>{timeAgo(order.createdAt)}</span>
       </div>
 
       {/* Contagem de ofertas */}

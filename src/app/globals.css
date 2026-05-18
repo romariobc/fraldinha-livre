@@ -101,6 +101,11 @@
   .cloud-float {
     animation: cloud-float 5s ease-in-out infinite;
   }
+
+  .slide-out {
+    animation: slide-out 300ms ease-out forwards;
+    pointer-events: none;
+  }
 }
 
 @keyframes cloud-float {
@@ -110,4 +115,9 @@
   50% {
     transform: translateY(-7px);
   }
+}
+
+@keyframes slide-out {
+  0%   { opacity: 1; transform: translateX(0); max-height: 300px; }
+  100% { opacity: 0; transform: translateX(40px); max-height: 0; overflow: hidden; }
 }

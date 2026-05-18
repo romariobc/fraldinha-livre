@@ -30,6 +30,20 @@ page.tsx (controller)
 - Cards não têm lógica de negócio; recebem tudo via props
 - Modais são controlados pelo `page.tsx` via `open` + `onOpenChange`
 
+### Exceção: domínios com React Context
+
+Os domínios `/mercado` e `/fornecedor/painel` usam `MarketContext` em vez de `useState` local no `page.tsx` para dados de negócio. O contexto é provido por `<MarketProvider>` no layout raiz e consumido via `useMarket()`.
+
+```tsx
+// ✅ CORRETO para esses domínios — dados vêm do contexto
+const { marketOrders, handleEnviarOferta } = useMarket()
+
+// ❌ ERRADO — não duplicar estado que já está no contexto
+const [marketOrders, setMarketOrders] = useState(MOCK_MARKET_ORDERS)
+```
+
+`page.tsx` nesses domínios ainda gerencia estado de UI local (tab ativa, scope de geo, modal aberto), mas não estado de negócio. Consulte `Skill(domain-mercado)` ou `Skill(domain-fornecedor)` para detalhes.
+
 ---
 
 ## `@base-ui/react` — quirks críticos

@@ -15,6 +15,7 @@ Você está terminantemente proibido de modificar os arquivos abaixo sem seguir 
 
 ```
 src/lib/                          ← tipos e mocks compartilhados entre domínios
+src/contexts/                     ← estado global (MarketContext usado por /mercado e /fornecedor/painel)
 src/components/ui/                ← primitivos base-ui/shadcn usados em tudo
 src/components/Header.tsx
 src/components/Footer.tsx

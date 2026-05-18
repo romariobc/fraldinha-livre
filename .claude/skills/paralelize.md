@@ -23,6 +23,7 @@ Arquivos usados por múltiplos domínios. Se dois agentes tocarem qualquer um de
 
 ```
 src/lib/                          ← mocks de dados compartilhados entre domínios
+src/contexts/                     ← estado global (MarketContext usado por /mercado e /fornecedor/painel)
 src/components/ui/                ← primitivos base-ui/shadcn usados em tudo
 src/components/Header.tsx
 src/components/Footer.tsx
@@ -38,11 +39,12 @@ src/app/globals.css
 Cada domínio é completamente isolado. Múltiplos agentes podem trabalhar simultaneamente nesses diretórios sem conflito.
 
 ```
-src/components/fornecedor/   +   src/app/(main)/fornecedor/    → Agente Fornecedor
-src/components/minha-conta/  +   src/app/(main)/minha-conta/   → Agente Comprador
-src/components/catalogo/     +   src/app/(main)/catalogo/      → Agente Catálogo
-src/app/(main)/contato/                                         → Agente Contato
-src/app/(main)/login/        +   src/app/(main)/cadastro/      → Agente Auth (futuro)
+src/components/fornecedor/   +   src/app/(main)/fornecedor/painel/   → Agente Fornecedor
+src/components/mercado/      +   src/app/(main)/mercado/             → Agente Mercado
+src/components/minha-conta/  +   src/app/(main)/minha-conta/         → Agente Comprador
+src/components/catalogo/     +   src/app/(main)/catalogo/            → Agente Catálogo
+src/app/(main)/contato/                                               → Agente Contato
+src/app/(main)/login/        +   src/app/(main)/cadastro/            → Agente Auth (futuro)
 ```
 
 ---

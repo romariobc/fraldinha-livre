@@ -40,6 +40,16 @@ Todos os dados são mock em `src/lib/`. Não há backend. Mutações vivem no `u
 | *(useState local)* | POST | `/api/comprador/cotacoes` — criar nova cotação |
 | *(useState local)* | POST | `/api/comprador/cotacoes/:id/aceitar` |
 
+### Mercado Global (`src/contexts/market-context.tsx` + `src/lib/supplier-mock.ts`)
+
+> O estado do mercado vive em `MarketContext`. Os handlers já têm `TODO: fetch(...)` inline com a assinatura correta.
+
+| Dado atual | Método | Endpoint futuro |
+|---|---|---|
+| `MOCK_MARKET_ORDERS` | GET | `/api/mercado/pedidos?scope=<neighborhood\|radius\|city\|national>` |
+| `handleEnviarOferta` | POST | `/api/mercado/pedidos/:id/oferta` `{ price, deliveryType, note? }` |
+| `handleDeclineMercado` | POST | `/api/mercado/pedidos/:id/declinar` |
+
 ### Catálogo (`src/lib/products.ts`)
 
 | Dado atual | Método | Endpoint futuro |
@@ -129,6 +139,18 @@ Execute nesta ordem ao migrar um domínio de mock para API real:
 5. **Remover import do mock** (ou manter como fallback com flag `USE_MOCK=true`)
 
 6. **Verificar tratamento de erros:** rede, timeout (status 0), 401 (redirecionar para login), 500 (mostrar banner de erro)
+
+---
+
+## Nota sobre MarketContext na migração
+
+`MarketContext` (`src/contexts/market-context.tsx`) é o ponto central de migração para `/mercado` e `/fornecedor/painel`. Ao conectar o backend:
+
+1. Substituir os `TODO: fetch(...)` já presentes nos handlers do contexto
+2. Adicionar `loading` e `error` state no provider
+3. **Não** mover a lógica de volta para `page.tsx` — o contexto permanece como camada de dados
+
+`src/contexts/` é **Zona de Risco** — invoke `Skill(risk-zone-protocol)` antes de modificar.
 
 ---
 

@@ -13,10 +13,11 @@ before taking any action:
 | Working in | Invoke |
 |---|---|
 | `src/components/fornecedor/` or `src/app/(main)/fornecedor/` | `Skill(domain-fornecedor)` |
+| `src/components/mercado/` or `src/app/(main)/mercado/` | `Skill(domain-mercado)` |
 | `src/components/minha-conta/` or `src/app/(main)/minha-conta/` | `Skill(domain-comprador)` |
 | `src/components/catalogo/` or `src/app/(main)/catalogo/` | `Skill(domain-catalogo)` |
 | Any UI component or layout work | `Skill(ui-system)` |
 | Dispatching parallel sub-agents | `Skill(paralelize)` |
 | Migrating mocks to real API calls | `Skill(api-contract)` |
-| Modifying any file in `src/lib/`, `src/components/ui/`, `tailwind.config.ts`, or shared layout | `Skill(risk-zone-protocol)` |
+| Modifying any file in `src/lib/`, `src/components/ui/`, `src/contexts/`, `tailwind.config.ts`, or shared layout | `Skill(risk-zone-protocol)` |
 <!-- END:domain-skills -->

@@ -1,6 +1,7 @@
 // src/components/fornecedor/OfertaCard.tsx
 import { MapPin } from 'lucide-react'
 import { SupplierOffer, OfferStatus, formatPrice, formatDate } from '@/lib/supplier-mock'
+import { formatDeliveryType } from '@/lib/market-utils'
 
 interface OfertaCardProps {
   offer: SupplierOffer
@@ -70,7 +71,7 @@ export default function OfertaCard({ offer }: OfertaCardProps) {
           {formatPrice(offer.price)}
         </span>
         <span className="text-xs text-brand-muted">
-          {offer.deliveryDays} dia{offer.deliveryDays !== 1 ? 's' : ''} úteis · {formatDate(offer.createdAt)}
+          {formatDeliveryType(offer.deliveryType)} · {formatDate(offer.createdAt)}
         </span>
       </div>
 

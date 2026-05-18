@@ -24,7 +24,7 @@ export function geoMatch(order: MarketOrder, supplier: MockSupplier, scope: GeoS
 
 export function formatDeliveryType(dt: DeliveryType): string {
   if (dt.kind === 'delivery') return `⚡ Delivery local (até ${dt.maxHours}h)`
-  if (dt.kind === 'days') return `${dt.count} dia${dt.count !== 1 ? 's' : ''} útil${dt.count !== 1 ? 'eis' : ''}`
+  if (dt.kind === 'days') return dt.count === 1 ? `1 dia útil` : `${dt.count} dias úteis`
   return 'A combinar'
 }
 

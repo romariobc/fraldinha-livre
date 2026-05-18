@@ -73,7 +73,6 @@ export default function Header() {
 
           {/* Desktop actions */}
           <div className="hidden lg:flex items-center gap-3">
-            {/* Ícone de carrinho / minha conta */}
             <button
               onClick={handleCartClick}
               aria-label="Minha conta"

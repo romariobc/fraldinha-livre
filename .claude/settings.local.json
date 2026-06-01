@@ -6,7 +6,24 @@
       "Bash(git commit:*)",
       "Bash(git remote add:*)",
       "Bash(git branch:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Read(//e/ROMARIO PC/fraldinha-livre-api/src/lib/**)",
+      "Read(//e/ROMARIO PC/fraldinha-livre-api/src/**)",
+      "Bash(ls \"E:\\\\ROMARIO PC\\\\fraldinha-livre-api\\\\src\" 2>/dev/null || echo \"NOT FOUND\")",
+      "Bash(ls \"E:\\\\ROMARIO PC\\\\fraldinha-livre-api\\\\src\\\\routes\" 2>/dev/null)",
+      "Read(//e/ROMARIO PC/fraldinha-livre-api/**)",
+      "Read(//e/ROMARIO PC/fraldinha-livre-api/prisma/**)",
+      "Bash(mkdir -p \"E:\\\\ROMARIO PC\\\\fraldinha-livre-api\\\\src\\\\routes\\\\comprador\")",
+      "Bash(mkdir -p \"E:\\\\ROMARIO PC\\\\fraldinha-livre-api\\\\src\\\\routes\\\\fornecedor\")",
+      "Bash(ls '/mnt/e/ROMARIO PC/fraldinha-livre-api/src/lib/' 2>/dev/null || echo \"DIR_NOT_FOUND\")",
+      "Bash(mkdir -p \"E:/ROMARIO PC/fraldinha-livre-api/azure-function-timer\" 2>/dev/null; ls \"E:/ROMARIO PC/fraldinha-livre-api/azure-function-timer/\" 2>/dev/null && echo \"OK\" || echo \"DIR CREATED\")",
+      "Bash(mkdir -p '/mnt/e/ROMARIO PC/fraldinha-livre-api/src/lib/')",
+      "Read(//mnt/e/ROMARIO PC/fraldinha-livre-api/src/**)",
+      "Bash(node -e \"const {z} = require\\('E:/ROMARIO PC/fraldinha-livre-api/node_modules/zod'\\); const s = z.string\\(\\).safeParse\\(1\\); if\\(!s.success\\) console.log\\(JSON.stringify\\(Object.keys\\(s.error\\)\\)\\)\")",
+      "Bash(node -e \"const z = require\\('zod'\\); console.log\\(z.version\\)\")",
+      "Bash(npx prisma *)",
+      "PowerShell(docker run --name fraldinha-db -e POSTGRES_PASSWORD=password -e POSTGRES_DB=fraldinha_livre -p 5432:5432 -d postgres:16)",
+      "PowerShell(\\(Get-Content \"E:\\\\ROMARIO PC\\\\fraldinha-livre-api\\\\.env\"\\) -replace 'localhost:5432', '127.0.0.1:5432' | Set-Content \"E:\\\\ROMARIO PC\\\\fraldinha-livre-api\\\\.env\")"
     ]
   }
 }

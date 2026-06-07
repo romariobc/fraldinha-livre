@@ -1,0 +1,53 @@
+<section id="more-services" class="more-services">
+      <div class="container">
+
+        <div class="section-title" data-aos="fade-up">
+          <h2>Dicas importantes</h2>
+          <p>Selecionamos alguns artigos interessantes para ajudar a escolher a melhor fraldinha para seu bebê.  </p>
+        </div>
+
+
+        <div class="row mt-4">
+          <div class="col-md-6 d-flex align-items-stretch">
+            <div class="card" style='background-image: url("assets/img/artc1_duvida.png");' data-aos="fade-up" data-aos-delay="100">
+              <div class="card-body">
+                <h5 class="card-title"><a href="/inner-page-artic1.html">Fralda descartável vs fralda de pano </a></h5>
+                <p class="card-text">Nesse artigo, abordamos as vantagens e desvantagens das fraldas descartáveis e de pano. Nele também 
+                  discutimos questões como custo, praticidade, impacto ambiental e conforto para auxiliar as mães na escolha da fralda mais adequada ao seu bebê.</p>
+                <div class="read-more"><a href="/inner-page-artic1.html"><i class="bi bi-arrow-right"></i> Ir para Artigo</a></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 d-flex align-items-stretch mt-4 mt-md-0">
+            <div class="card" style='background-image: url("assets/img/bumbum_bebe.jpg");' data-aos="fade-up" data-aos-delay="200">
+              <div class="card-body">
+                <h5 class="card-title"><a href="/inner-page-artic2.html"> Quer manter a pele do bebê saudável? </a></h5>
+                <p class="card-text"> A pele delicada dos bebês está propensa a irritações, mas com as informações e cuidados adequados, 
+                  você pode prevenir e tratar as assaduras de forma eficaz. Neste artigo mostramos algumas dicas para ajudar a prevenir as assaduras no seu bebê.  </p>
+                <div class="read-more"><a href="inner-page-artic2.html"><i class="bi bi-arrow-right"></i> Ir para Artigo</a></div>
+              </div>
+            </div>
+
+          </div>
+          <div class="col-md-6 d-flex align-items-stretch mt-4">
+            <div class="card" style='background-image: url("assets/img/flores_algodao.jpg");' data-aos="fade-up" data-aos-delay="100">
+              <div class="card-body">
+                <h5 class="card-title"><a href="/inner-page-artic3.html">Afinal, de que as fraldas são feitas? Como escolher a melhor opção para o seu bebê</a></h5>
+                <p class="card-text">Descubra neste artigo, como escolher entre os os diferentes tipos de materiais utilizados em fraldas e garantir o conforto e o bem-estar do seu pequeno tesouro.   </p>
+                <div class="read-more"><a href="/inner-page-artic3.html"><i class="bi bi-arrow-right"></i> Ir para Artigo</a></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6 d-flex align-items-stretch mt-4">
+            <div class="card" style='background-image: url("assets/img/fralda_nao.jpg");' data-aos="fade-up" data-aos-delay="200">
+              <div class="card-body">
+                <h5 class="card-title"><a href="/inner-page-artic4.html">Quando e como iniciar o processo de desfralde?  </a></h5>
+                <p class="card-text">O desfralde é uma etapa importante na vida do seu filho, e requer cuidado, paciência e compreensão. Neste artigo, vamos discutir quando é o momento certo para iniciar o desfralde.</p>
+                <div class="read-more"><a href="/inner-page-artic4.html"><i class="bi bi-arrow-right"></i> Ir para Artigo</a></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section><!-- End More Services Section -->

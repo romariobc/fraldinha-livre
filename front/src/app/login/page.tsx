@@ -1,12 +1,18 @@
 // src/app/login/page.tsx
 import Image from 'next/image'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { IS_LOGGED_IN } from '@/lib/auth-mock'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 
 export default function LoginPage() {
+  if (IS_LOGGED_IN) {
+    redirect('/perfil')
+  }
+
   return (
     <div className="min-h-screen grid md:grid-cols-2">
 

@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useMarket } from '@/contexts/market-context'
 import { useAuth } from '@/contexts/auth-context'
-import { MOCK_SUPPLIER } from '@/lib/supplier-mock'
 import PedidosDiretosTab from '@/components/fornecedor/PedidosDiretosTab'
 import OfertasMercadoTab from '@/components/fornecedor/OfertasMercadoTab'
 import LogisticaTab      from '@/components/fornecedor/LogisticaTab'
@@ -16,6 +15,10 @@ type TabKey = 'diretos' | 'ofertas' | 'logistica'
 export default function FornecedorPainelPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
+
+  // Hooks SEMPRE devem ser chamados na mesma ordem, antes de qualquer early return
+  const [activeTab, setActiveTab] = useState<TabKey>('diretos')
+  const { directOrders, offers, handleConfirmarDireto, handleRecusarDireto } = useMarket()
 
   // Guarda client-side: redireciona deslogado para /login?redirect=/fornecedor/painel
   // (endurecimento SSR com session cookie fica para deploy/006 — D-010)
@@ -32,8 +35,6 @@ export default function FornecedorPainelPage() {
   if (!user) {
     return null // Redirecionar em progresso
   }
-  const [activeTab, setActiveTab] = useState<TabKey>('diretos')
-  const { directOrders, offers, handleConfirmarDireto, handleRecusarDireto } = useMarket()
 
   const pendingDirectCount  = directOrders.filter((o) => o.status === 'aguardando').length
   const pendingOffersCount  = offers.filter((o) => o.status === 'enviada').length

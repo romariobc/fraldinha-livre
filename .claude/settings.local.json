@@ -26,7 +26,8 @@
       "PowerShell(\\(Get-Content \"E:\\\\ROMARIO PC\\\\fraldinha-livre-api\\\\.env\"\\) -replace 'localhost:5432', '127.0.0.1:5432' | Set-Content \"E:\\\\ROMARIO PC\\\\fraldinha-livre-api\\\\.env\")",
       "PowerShell(git -C $wt add chatsessions/2026-07-02-sessao-01-analise-review-decisoes.md)",
       "PowerShell(git -C $wt log --oneline -1)",
-      "PowerShell($wt = \"E:\\\\Labdev\\\\Projetos\\\\fraldinha-livre\\\\.claude\\\\worktrees\\\\eloquent-montalcini-2dff41\")"
+      "PowerShell($wt = \"E:\\\\Labdev\\\\Projetos\\\\fraldinha-livre\\\\.claude\\\\worktrees\\\\eloquent-montalcini-2dff41\")",
+      "Bash(npm run *)"
     ]
   }
 }

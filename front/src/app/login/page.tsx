@@ -3,8 +3,8 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Suspense, useState } from 'react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,15 +13,35 @@ import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/auth-context'
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginPageSkeleton />}>
+      <LoginPageContent />
+    </Suspense>
+  )
+}
+
+function LoginPageSkeleton() {
+  return (
+    <div className="min-h-screen grid md:grid-cols-2">
+      <aside className="hidden md:flex flex-col items-center justify-center gap-6 bg-primary-dark px-16 py-20 text-center relative overflow-hidden">
+        <div className="animate-pulse">Carregando...</div>
+      </aside>
+      <div className="flex flex-col justify-center px-6 py-12 bg-white sm:px-12 lg:px-16">
+        <div className="animate-pulse">Carregando...</div>
+      </div>
+    </div>
+  )
+}
+
+function LoginPageContent() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { signInGoogle, user } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
 
   // Se ja logado, redireciona
   if (user) {
-    const redirect = searchParams.get('redirect') || '/'
-    router.push(redirect)
+    const redirect = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirect') : null
+    router.push(redirect || '/')
     return null
   }
 

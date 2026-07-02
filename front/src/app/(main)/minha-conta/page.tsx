@@ -19,6 +19,11 @@ export default function MinhaContaPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
 
+  // Hooks SEMPRE devem ser chamados na mesma ordem, antes de qualquer early return
+  const [activeTab, setActiveTab]   = useState<TabKey>('pedidos')
+  const [orders, setOrders]         = useState<Order[]>(INITIAL_ORDERS)
+  const [modalOpen, setModalOpen]   = useState(false)
+
   // Guarda client-side: redireciona deslogado para /login?redirect=/minha-conta
   // (endurecimento SSR com session cookie fica para deploy/006 — D-010)
   useEffect(() => {
@@ -34,9 +39,6 @@ export default function MinhaContaPage() {
   if (!user) {
     return null // Redirecionar em progresso
   }
-  const [activeTab, setActiveTab]   = useState<TabKey>('pedidos')
-  const [orders, setOrders]         = useState<Order[]>(INITIAL_ORDERS)
-  const [modalOpen, setModalOpen]   = useState(false)
 
   // Número total de ofertas pendentes para o badge
   const pendingOffersCount = orders

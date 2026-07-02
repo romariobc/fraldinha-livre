@@ -160,3 +160,34 @@ H-002 (gating) → H-005 (auth Google) → H-004 (compra direta) → H-003 (bugs
 
 1. Aprovar a spec da 005a (`spec-auth-google.md`).
 2. Autorizar o disparo do H-002 (1o da fila, pronto, independe da spec 005a).
+
+---
+
+## Atualizacao 5 (mesma data) — Spec 005a aprovada; H-002 executado, REVISADO e APROVADO
+
+- Spec `spec-auth-google.md` (005a) **APROVADA** pelo cliente.
+- H-002 disparado no Haiku, retornou com commit `61396e0`. **Revisao independente da sessao-mae: APROVADO.**
+
+### Revisao do H-002 (evidencia propria, nao so o relatorio)
+
+- Diff toca apenas 5 arquivos (feature-flags.ts novo + mercado/page, ProductCard, PedidosTab, OfertasTab). Confirmado via `git show --name-only`.
+- Gating com **dupla protecao**: guarda no handler (`if (!LEILAO_ATIVO) return` / `onClick` condicional) + `disabled` + `aria-disabled` + badge "Em breve". Acao nao dispara.
+- `/mercado`: early-return "Em breve" APOS os hooks (Rules of Hooks ok) + CTA volta ao catalogo. Reversibilidade confirmada no relatorio (flag=true restaura tabela; devolvida a false).
+- **Loja intacta:** PedidosDiretosTab e LogisticaTab fora do diff. OfertasMercadoTab e read-only (sem acao), corretamente nao gateado. Unico caminho de acao de leilao (MarketTable→InlineOfferForm) so existe em /mercado, agora gateado.
+- 6 arquivos mortos deletados; grep 0 referencias vivas; arvore limpa; build passa.
+- Bugs de leilao preservados (Melhor preco por indice, product.price em reais) — corretamente NAO corrigidos (Fase 2 / H-004).
+
+**Divida tecnica anotada:** lint preexistente `MarketTable.tsx:34` (setState em useEffect) — arquivo NAO tocado pelo H-002 (verificado no diff), componente de leilao ja gateado. Registrado nas notas da feature 008. Falha de redacao da sessao-mae: o criterio "lint passa" foi impreciso (havia erro preexistente fora do escopo). Nao invalida o H-002.
+
+Feature 013 marcada **done**. H-002 marcado APROVADO no plans/README.
+
+### Fila de execucao apos esta atualizacao
+
+- 013 (H-002): **done/aprovado**.
+- 005a (H-005): spec aprovada, prompt pronto — **PROXIMO a disparar** (aguarda go do cliente).
+- 014 (H-004): pronto, apos H-005.
+- H-003 (bugs da loja): a redigir. Nota: o bug do Header IS_LOGGED_IN sera resolvido pela 005a.
+
+### Pendencia unica para a proxima interacao
+
+Autorizar o disparo do H-005 (auth Google 005a). Sem outras decisoes pendentes.

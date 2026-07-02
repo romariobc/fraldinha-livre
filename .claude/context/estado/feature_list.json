@@ -71,7 +71,7 @@
       "fase": 2,
       "status": "todo",
       "criterio_aceite": "Pedido de cotacao tem prazo; fornecedores concorrem em tempo real; 'Nao concorro' persiste no servidor; flag LEILAO_ATIVO ligada reativa todos os pontos de contato da 013 sem regressao na loja",
-      "notas": "Depende de 006 e 013. Incluir correcao dos 4 bugs de negocio do review 2026-07-02: parsePriceToCents (milhar pt-BR), 'Melhor preco' por indice, modalidades de entrega derivadas do escopo de visualizacao, aceite de oferta sem vinculo com fornecedor"
+      "notas": "Depende de 006 e 013. Incluir correcao dos 4 bugs de negocio do review 2026-07-02: parsePriceToCents (milhar pt-BR), 'Melhor preco' por indice, modalidades de entrega derivadas do escopo de visualizacao, aceite de oferta sem vinculo com fornecedor. Tambem: lint preexistente MarketTable.tsx:34 (setState em efeito) + infinite scroll pode estagnar (achados do review)"
     },
     {
       "id": "009",
@@ -109,9 +109,9 @@
       "id": "013",
       "titulo": "Gating do leilao — pontos de contato visiveis porem inativos + limpeza de codigo morto",
       "fase": 1,
-      "status": "todo",
+      "status": "done",
       "criterio_aceite": "Flag central unica (LEILAO_ATIVO=false) desativa TODAS as interacoes de leilao mantendo-as visiveis com estado 'Em breve'; /mercado exibe pagina 'Em breve' (nao 404); nenhum clique dispara acao de leilao; ligar a flag restaura o comportamento atual; codigo morto do design antigo removido",
-      "notas": "Spec: .claude/docs/design/specs/spec-plataforma-gating-leilao.md (aguardando aprovacao). Pontos mapeados: ProductCard 'Pedir oferta' + OfferModal (catalogo); botao 'Novo Pedido de Cotacao' + tab/badge Ofertas + aceite (minha-conta); tab Ofertas de Mercado + contador + link 'Ver Mercado' (painel); pagina /mercado inteira"
+      "notas": "H-002 executado (commit 61396e0) e APROVADO na revisao da sessao-mae em 2026-07-02. Flag em front/src/lib/feature-flags.ts. CTAs com dupla protecao (handler + disabled). Loja (Diretos/Logistica) intacta. 6 arquivos mortos removidos. Divida tecnica anotada: lint preexistente em MarketTable.tsx:34 (setState em efeito) — arquivo de leilao, corrigir na 008"
     },
     {
       "id": "014",

@@ -14,9 +14,13 @@
 
 **Atualizacao (mesma data):** Estrategia em DUAS FASES definida (D-007): Fase 1 = MARKETPLACE (loja validada; leilao visivel porem inativo via flag central), Fase 2 = MERCADO (leilao reverso plugando os pontos gateados). D-008: prompts Haiku com testes obrigatorios + loop de 3 tentativas antes do relatorio. D-003 superada por D-007. feature_list.json reorganizado com campo 'fase' + features 013 (gating) e 014 (compra direta, BLOQUEADA por D-009). Spec do gating escrita (specs/spec-plataforma-gating-leilao.md, rascunho). Descoberta: catalogo nao tem fluxo de compra direta — so 'Pedir oferta' (leilao).
 
-**Proximo passo:** H-001 APROVADO (commit 027edaf). Spec da compra direta (014) APROVADA. Auth promovido na fila (D-010/D-011): confirmadas as creds Google em front/.env.local; stack = NextAuth v5 + Google. Ordem de execucao vigente: H-002 (gating) → H-005 (auth Google 005a) → H-004 (compra direta) → H-003 (bugs loja) → 006 backend. 005 dividida em 005a (Google, fase 1) e 005b (credenciais, blocked por 006). Specs/prompts H-005 e H-004 escritos e realinhados. Aguardando: (1) aprovacao da spec-auth-google.md; (2) autorizacao de disparo do H-002 (1o da fila, independe da spec 005a).
+**Progresso de execucao (2026-07-02):** H-001 APROVADO (027edaf). H-002/feature 013 (gating do leilao + codigo morto) executado no Haiku (commit 61396e0), REVISADO e APROVADO pela sessao-mae — feature 013 = done. Specs 013, 005a e 014 todas aprovadas.
 
-**Decisoes pendentes de ADR:** nenhuma. Costura de role da 005a e temporaria (stub) ate o 006 — divida tecnica ja documentada em D-011.
+**Proximo passo:** Disparar o H-005 (auth Google 005a) — spec aprovada, prompt pronto, e o proximo da fila (D-011: 013 done → 005a → 014 → H-003 bugs loja → 006 backend). Aguardando apenas a autorizacao de disparo do cliente. H-004 (014) pronto para depois do H-005.
+
+**Divida tecnica registrada:** lint preexistente MarketTable.tsx:34 (setState em efeito) — na fila da feature 008 (Fase 2, arquivo de leilao ja gateado).
+
+**Decisoes pendentes de ADR:** nenhuma. Costura de role da 005a e stub ate o 006 (D-011).
 
 **Decisoes registradas (2026-07-02 apos H-001):** D-009 DECIDIDA: Modelo A (multi-vendedor, cada produto vinculado a fornecedor com preco proprio). Spec do gating (feature 013) APROVADA.
 

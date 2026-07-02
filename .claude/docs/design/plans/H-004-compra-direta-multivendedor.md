@@ -1,6 +1,6 @@
 # H-004 — Compra direta no catalogo, loja multi-vendedor (feature 014)
 
-**Executor:** sessao Haiku | **Autor:** sessao-mae (2026-07-02) | **Status:** redigido — executar SOMENTE apos H-002 aprovado
+**Executor:** sessao Haiku | **Autor:** sessao-mae (2026-07-02) | **Status:** redigido — executar SOMENTE apos H-005 aprovado (ordem D-011: H-002 → H-005 → H-004)
 **Spec:** `.claude/docs/design/specs/spec-catalogo-compra-direta.md` (APROVADA 2026-07-02, com nota de implementacao) — LEIA A SPEC INTEIRA ANTES DE COMECAR. Em conflito entre prompt e spec, a spec vence; pare e relate.
 
 ## Objetivo
@@ -13,7 +13,7 @@ confirmacao que cria pedido compra-direta visivel para comprador e fornecedor (m
 
 - App Next.js 16 App Router + React 19 + TypeScript + Tailwind em `front/` (comandos dentro de `front/`).
 - AGENTS.md exige: leia `node_modules/next/dist/docs/` antes de codar e invoque os skills de dominio (`domain-catalogo`, `domain-comprador`, `domain-fornecedor`, `ui-system`; `risk-zone-protocol` para `src/lib/`).
-- Pre-requisito: H-002 ja aplicado (flag `LEILAO_ATIVO` existe; "Pedir oferta" ja esta inativo).
+- Pre-requisitos: H-002 (flag `LEILAO_ATIVO`; "Pedir oferta" inativo) e H-005 (sessao real via `useSession()`; `auth-mock.ts` JA foi deletado) aplicados.
 - O gating do leilao NAO pode regredir.
 
 ## Tarefas (nesta ordem)
@@ -25,7 +25,7 @@ confirmacao que cria pedido compra-direta visivel para comprador e fornecedor (m
 5. **Contexto de pedidos** — criar `front/src/contexts/orders-context.tsx` (`OrdersProvider` + `useOrders`), padrao identico ao `market-context.tsx`: seed `INITIAL_ORDERS`, expoe `orders`, `createDirectOrder(...)`, `handleAceitarOferta`, `handleNovoPedido`. Registrar o provider no layout `front/src/app/(main)/layout.tsx` (junto ao MarketProvider existente). Migrar `front/src/app/(main)/minha-conta/page.tsx` do `useState` local para `useOrders()` sem mudanca visual.
 6. **Tipos de pedido** — em `front/src/lib/account-mock.ts`: `Order` ganha `supplierId?: string` e `supplierName?: string` (preenchidos em compra-direta e em oferta aceita futura).
 7. **Modal de compra** — criar `front/src/components/catalogo/BuyModal.tsx` (usar `Dialog` de ui/): produto + fornecedor, quantidade (inteiro, min 1 — bloquear 0/negativo/fracionado/NaN), endereco no MESMO padrao do NovoPedidoModal (endereco do cadastro OU outro endereco) POREM com validacao completa: com "outro endereco", so habilitar confirmacao com logradouro, numero, CEP, cidade e UF preenchidos (NAO usar cast `as Address` sem validacao — bug conhecido). Exibir total = quantidade x priceInCents via formatPrice e a frase "Frete a combinar com o fornecedor". Confirmar → `createDirectOrder` (tipo compra-direta, status 'aguardando', price = total, supplierId/Name do produto) → toast de sucesso.
-8. **Guarda de login** — "Comprar" sem login redireciona `/login?redirect=/catalogo` (mesma guarda atual do ProductCard, importando o flag de `@/lib/auth-mock`, NUNCA flag local).
+8. **Guarda de login** — "Comprar" sem login redireciona `/login?redirect=/catalogo` usando `useSession()` (a H-005 ja removeu o `auth-mock`; NUNCA recriar flag local nem reimportar auth-mock).
 9. **Painel do fornecedor** — pedidos compra-direta criados para produtos de `sup-001` devem aparecer em Pedidos Diretos. Como `PedidosDiretosTab` le do `market-context` (`directOrders`), faca o `createDirectOrder` do orders-context tambem inserir o pedido correspondente no market-context OU exponha um callback de integracao simples — escolha a menor ponte possivel SEM duplicar fonte de verdade visual; se as duas estruturas `DirectOrder` vs `Order` divergirem demais, implemente um adaptador puro em `front/src/lib/order-adapters.ts` e documente no relatorio.
 10. **Commit unico** (pt-BR): `feat(catalogo): compra direta multi-vendedor com fornecedor por produto e precos em centavos (feature 014)`
 

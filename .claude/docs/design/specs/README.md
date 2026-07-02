@@ -41,4 +41,5 @@ Arquivos de codigo, decisoes (D-NNN), outros specs.
 | Spec | Feature | Status |
 |---|---|---|
 | [spec-plataforma-gating-leilao.md](spec-plataforma-gating-leilao.md) | 013 — leilao visivel porem inativo (Fase 1) | APROVADA (2026-07-02) |
+| [spec-auth-google.md](spec-auth-google.md) | 005a — login Google NextAuth v5 (Fase 1) | rascunho — aguardando aprovacao |
 | [spec-catalogo-compra-direta.md](spec-catalogo-compra-direta.md) | 014 — compra direta multi-vendedor (Fase 1) | APROVADA (2026-07-02) |

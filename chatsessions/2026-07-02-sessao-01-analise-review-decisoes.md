@@ -124,3 +124,39 @@ Verificacao independente da sessao-mae (nao apenas o relatorio do executor):
 - H-002 (gating 013): PRONTO, aguardando autorizacao de disparo do cliente.
 - Spec 014 (compra direta Modelo A): rascunho aguardando aprovacao do cliente.
 - H-003 (bugs da loja): a redigir apos H-002.
+
+---
+
+## Atualizacao 4 (mesma data) — Auth promovido; sequencia hibrida (D-010/D-011)
+
+Cliente reflitiu sobre a fila: tem as chaves Google no `front/.env.local` e via o login como
+implementacao simples. Verificacao da sessao-mae confirmou: `.env.local` tem GOOGLE_CLIENT_ID,
+GOOGLE_CLIENT_SECRET, NEXTAUTH_SECRET, NEXTAUTH_URL preenchidos; ZERO codigo de auth no front
+(sem next-auth no package.json, sem src/app/api, botao Google decorativo, form action="#").
+
+Reflexao entregue: "login pronto" != "fundacao da loja pronta". Tres pilares — identidade (Google
+entrega), autorizacao/role (Google NAO entrega), persistencia (mock ate 006). Google login e
+autocontido (nao precisa do 006) mas so acende a identidade.
+
+**Cliente aprovou a Decisao 1 (hibrido).** Registrado:
+- **D-010:** stack = NextAuth v5 + Google (confirmado pelas creds); Firebase Auth fora.
+- **D-011:** ordem H-002 (gating) → 005a (auth Google, substitui IS_LOGGED_IN por useSession,
+  protege rotas; role = fluxo real com armazenamento STUB ate 006) → H-004 (compra direta sobre
+  sessao real). Depois 006 backend (traz role/persistencia + 005b credenciais).
+
+### O que foi produzido nesta atualizacao
+
+- feature_list.json: 005 dividida em 005a (Google, fase 1, todo) e 005b (credenciais, blocked por 006).
+- Nova spec: `specs/spec-auth-google.md` (005a, rascunho aguardando aprovacao) — RN-01..RN-08,
+  Tarefa 0 de compatibilidade NextAuth v5 x Next 16/React 19, costura de role documentada.
+- Novo prompt: `plans/H-005-auth-google.md` (executa apos H-002; aguarda aprovacao da spec).
+- H-004 realinhado: agora executa apos H-005; guarda de login via useSession (auth-mock ja deletado).
+
+### Fila de execucao vigente (D-011)
+
+H-002 (gating) → H-005 (auth Google) → H-004 (compra direta) → H-003 (bugs da loja restantes) → 006 backend.
+
+### Pendencias para a proxima interacao
+
+1. Aprovar a spec da 005a (`spec-auth-google.md`).
+2. Autorizar o disparo do H-002 (1o da fila, pronto, independe da spec 005a).

@@ -78,3 +78,33 @@ Constatacao: o catalogo atual so tem o CTA "Pedir oferta" (leilao). Nao existe f
 
 - Spec do gating do leilao (feature 013) **APROVADA** pelo cliente → H-002 liberado para redacao/execucao.
 - Disparo do H-001 em sessao Haiku **AUTORIZADO** pelo cliente.
+- Spec da compra direta (feature 014, Modelo A) **APROVADA** pelo cliente.
+
+## D-010 — Stack de autenticacao: NextAuth v5 + Google (2026-07-02) — VIGENTE
+
+Confirmado por fato: `front/.env.local` ja contem `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
+`NEXTAUTH_SECRET` e `NEXTAUTH_URL` preenchidos. A stack de auth e **NextAuth v5 (Auth.js) com
+provider Google**. Firebase Auth/Identity Platform fica **fora** (nao ha motivo para trocar dado
+que as credenciais NextAuth ja existem). Hospedagem futura em Cloud Run (D-001). O login por
+e-mail/senha (CredentialsProvider) depende do backend 006 e fica na fatia 005b.
+
+Risco a verificar na implementacao: compatibilidade NextAuth v5 com Next 16 + React 19 (pacote e
+nome das env vars — v5 prefere `AUTH_SECRET`/`AUTH_URL`). Se nao houver versao estavel compativel,
+parar e relatar (nao fazer downgrade do Next).
+
+## D-011 — Sequencia hibrida: gating → auth Google → compra direta (2026-07-02) — VIGENTE
+
+O login Google e autocontido (nao depende do backend 006), mas "login pronto" NAO e "fundacao da
+loja pronta". A fundacao tem tres pilares: identidade (Google entrega), autorizacao/role (Google
+NAO entrega) e persistencia (mock ate 006). Para nao construir o fluxo de compra sobre um login
+falso, a ordem de execucao passa a ser:
+
+1. **H-002** — gating do leilao (feature 013), independente de auth.
+2. **005a** — auth Google (fatia identidade): NextAuth v5 + Google, substitui `IS_LOGGED_IN` por
+   `useSession()` em todo lugar (corrige na raiz o bug de flag duplicada do Header), protege rotas
+   privadas. **Costura de role temporaria:** apos o login Google, a escolha comprador/fornecedor e
+   um FLUXO REAL (onboarding) com ARMAZENAMENTO STUB (na sessao, nao em banco) — reseta quando o
+   006 chegar. Documentada como divida tecnica, nunca apresentada como definitiva.
+3. **H-004** — compra direta (feature 014), agora sobre sessao real.
+
+Depois: 006 backend (traz role/persistencia + login por credenciais 005b) → 011 pagamento → 007.

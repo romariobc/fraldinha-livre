@@ -34,12 +34,20 @@
       "notas": "Criterio atualizado em 2026-07-02 (D-003/D-007): design de 5 tabs foi substituido por 3 tabs + /mercado. Perfil e Historico do fornecedor voltam na 007. Codigo morto do design antigo sai na 013. Tab Ofertas de Mercado e /mercado serao gateados na 013 (leilao = fase 2)"
     },
     {
-      "id": "005",
-      "titulo": "Autenticacao real (JWT / session)",
+      "id": "005a",
+      "titulo": "Autenticacao Google (NextAuth v5) — fatia identidade, backend-independente",
       "fase": 1,
       "status": "todo",
-      "criterio_aceite": "Login/logout funcionando; rotas privadas protegidas; IS_LOGGED_IN substituido por auth real",
-      "notas": "Hoje IS_LOGGED_IN = false em auth-mock.ts E duplicado hardcoded no Header.tsx (bug do review — unificar). Infra de auth: Google Cloud (D-001)"
+      "criterio_aceite": "Login/logout Google real; useSession() como unica fonte de sessao; IS_LOGGED_IN removido (auth-mock.ts + duplicata do Header); /minha-conta e /fornecedor protegidas; onboarding de papel funcional (armazenamento stub ate 006)",
+      "notas": "D-010 (stack NextAuth+Google, creds em front/.env.local) e D-011 (sequencia hibrida). Spec: specs/spec-auth-google.md. Executa apos H-002. Costura de role temporaria documentada como divida tecnica"
+    },
+    {
+      "id": "005b",
+      "titulo": "Autenticacao por credenciais (email/senha) + persistencia de papel/perfil",
+      "fase": 1,
+      "status": "blocked",
+      "criterio_aceite": "Login email/senha via backend; papel e perfil persistidos (fim da costura stub da 005a)",
+      "notas": "BLOQUEADA por 006 (backend). Form de email/senha ja existe na UI, visivel porem inativo ate aqui. CredentialsProvider do integration-guide"
     },
     {
       "id": "006",

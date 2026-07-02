@@ -46,6 +46,9 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | Prompt | Tema | Fase | Status |
 |---|---|---|---|
 | H-001 | Limpeza docs/infra (Google Cloud, caminhos, README) | — | APROVADO (commit 027edaf, revisado 2026-07-02) |
-| H-002 | Gating do leilao (feature 013) + codigo morto | 1 | pronto — aguardando autorizacao de disparo |
-| H-003 | Bugs da loja (catalogo ?page, busca 'todos', Header flag, hydration mocks) | 1 | a redigir |
-| H-004 | Compra direta multi-vendedor (feature 014) | 1 | redigido — executar apos H-002 aprovado |
+| H-002 | Gating do leilao (feature 013) + codigo morto | 1 | pronto — aguardando autorizacao de disparo (1o da fila) |
+| H-005 | Auth Google NextAuth v5 (feature 005a) | 1 | redigido — executar apos H-002; aguarda aprovacao da spec |
+| H-004 | Compra direta multi-vendedor (feature 014) | 1 | redigido — executar apos H-005 |
+| H-003 | Bugs da loja (catalogo ?page, busca 'todos', hydration mocks) | 1 | a redigir (Header flag ja resolvido pela 005a) |
+
+**Ordem de execucao (D-011):** H-002 → H-005 → H-004 → H-003 → 006 backend.

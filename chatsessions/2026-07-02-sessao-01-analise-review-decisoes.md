@@ -268,6 +268,35 @@ problema antes de qualquer codigo errado.
 **Correcao:** `.env.local` reescrito no front do worktree (7 chaves, gitignored confirmado). H-005
 re-disparado com instrucao explicita de trabalhar sempre no front do worktree.
 
+---
+
+## Atualizacao 9 (mesma data) — H-005 executado, revisado (2 rodadas), CODIGO APROVADO
+
+H-005 entregou (commits c5a3a4f + f3d1886). Revisao independente da sessao-mae encontrou 3 pontos:
+1. **IMPORTANTE (RN-06):** onboarding nunca acionado no login — login/page redirecionava para
+   redirect||'/' sem olhar o papel; papel ficava null para sempre (a persistencia que motivou a
+   escolha do Firebase ficava desconectada).
+2. router.push durante o render (anti-padrao) + window.location.search em vez de useSearchParams.
+3. firebase.ts initializeApp sem guarda getApps() (quebra no HMR do dev).
+
+Haiku reenviado (SendMessage) com as 3 correcoes; retornou commit **7f0f3c5**. Verificacao final da
+sessao-mae: as 3 corrigidas — useEffect roteia por papel (null→/onboarding, fornecedor→painel,
+comprador→redirect||/minha-conta); useSearchParams correto; getApps().length?getApp():initializeApp.
+lint/build ok (so baseline), gating intacto, arvore limpa.
+
+**CODIGO APROVADO.** feature 005a marcada `in_progress` (NAO done): falta a validacao humana do
+login Google no navegador (npm run dev do WORKTREE) — o Haiku e headless e nao completa o popup
+OAuth. Fluxo a validar: login → (1o acesso sem papel) → /onboarding → grava users/{uid} → rotea →
+relogar mantem papel.
+
+Nota: .claude/settings.local.json entrou nos commits do Haiku (entradas de allowlist auto-geradas,
+inofensivas).
+
+### Pendencia para a proxima interacao
+
+Cliente validar o login no navegador (npm run dev do worktree). Confirmado → 005a vira done e
+dispara-se o H-004 (compra direta, que assenta sobre a sessao real).
+
 **Licao (persistida em memoria [[worktree-env-local-gotcha]]):** arquivos gitignored (.env.local)
 devem ser criados no front do WORKTREE ativo, nao no repo principal — worktrees nao compartilham
 arquivos ignorados. Idem para o `npm run dev` de validacao: rodar no front do worktree, que tem o

@@ -16,7 +16,9 @@
 
 **Progresso de execucao (2026-07-02):** H-001 APROVADO (027edaf). H-002/feature 013 (gating do leilao + codigo morto) executado no Haiku (commit 61396e0), REVISADO e APROVADO pela sessao-mae — feature 013 = done. Specs 013, 005a e 014 todas aprovadas.
 
-**Proximo passo:** Auth = **Firebase Authentication** (D-010 revisada). Firebase PROVISIONADO em 2026-07-02 (conta romariobc@gmail.com, projeto fraldinha-livre): app web + config em front/.env.local; Firestore em southamerica-east1 com regra users/{uid} ativa; Google Sign-In configurado; infra commitada (4bd4dba). Falta so o cliente confirmar o toggle do provedor Google no console (Firebase Auth > Sign-in method) e entao disparar o H-005. Fila D-011: 013 done → 005a (Firebase) → 014 → H-003 → 006.
+**Progresso:** Auth = Firebase (D-010 revisada). Firebase provisionado (projeto fraldinha-livre, Firestore SP, regra users/{uid}, Google Sign-In). H-005 executado e revisado em 2 rodadas — CODIGO APROVADO (commits c5a3a4f, f3d1886, 7f0f3c5). feature 005a = in_progress: falta so a validacao HUMANA do login Google no navegador (npm run dev do WORKTREE front) — Haiku headless nao completa o popup OAuth.
+
+**Proximo passo:** Cliente valida o login no navegador (fluxo: Entrar com Google → 1o acesso vai para /onboarding → escolhe comprador/fornecedor → grava no Firestore → rotea → relogar mantem papel). Confirmado → marcar 005a done e disparar o H-004 (compra direta, sobre sessao real). Rodar SEMPRE do front do worktree ([[worktree-env-local-gotcha]]). Fila D-011: 013 done → 005a (quase) → 014 → H-003 → 006.
 
 **Divida tecnica registrada:** lint preexistente MarketTable.tsx:34 (setState em efeito) — na fila da feature 008 (Fase 2, arquivo de leilao ja gateado).
 

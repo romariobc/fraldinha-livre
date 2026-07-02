@@ -2,6 +2,26 @@
 
 ## Ultima sessao
 
+**Data:** 2026-07-02
+**O que foi feito:** Sessao de analise + code-review completo do front/src (sem alteracao de codigo).
+- Review de recall alto: 10 achados confirmados (4 de dinheiro/logica de negocio, 5 de correcao geral, 1 de codigo morto) — relatorio entregue no chat
+- Top-3: parsePriceToCents quebra com separador de milhar pt-BR (market-utils.ts:4); selo "Melhor preco" por indice e nao por preco (OfertasTab.tsx:52); endereco alternativo sem validacao de cidade/UF (NovoPedidoModal.tsx:83)
+- Divergencias de governanca detectadas: .claude/docs/design/specs/ e plans/ NAO existem (spec-driven exige); feature 004 marcada done mas painel tem 3 tabs (criterio pede 5); conflito de infra entre plan-session01.md (Azure) e memoria persistente (Google Cloud); historico git com ~15 commits identicos "refactor: remove public/ raiz"
+
+**Estado atual:** Frontend avancado, sem backend. Branch de trabalho identico ao main (diff vazio).
+
+**Decisoes registradas (mesma sessao):** D-001 infra Google Cloud definitiva (excluir mencoes a alternativas); D-002 specs em .claude/docs/design/specs/ com backup no harness; D-004 historico git mantido; D-005 caminho canonico E:\Labdev\Projetos\fraldinha-livre (front/ back/ app/); D-006 papeis (sessao-mae documenta/revisa, Haiku codifica via prompts em plans/). Ver .claude/docs/decisoes.md. Criados: decisoes.md, design/specs/README.md (template), design/plans/H-001-limpeza-docs-infra.md, chatsessions/2026-07-02-sessao-01.
+
+**Atualizacao (mesma data):** Estrategia em DUAS FASES definida (D-007): Fase 1 = MARKETPLACE (loja validada; leilao visivel porem inativo via flag central), Fase 2 = MERCADO (leilao reverso plugando os pontos gateados). D-008: prompts Haiku com testes obrigatorios + loop de 3 tentativas antes do relatorio. D-003 superada por D-007. feature_list.json reorganizado com campo 'fase' + features 013 (gating) e 014 (compra direta, BLOQUEADA por D-009). Spec do gating escrita (specs/spec-plataforma-gating-leilao.md, rascunho). Descoberta: catalogo nao tem fluxo de compra direta — so 'Pedir oferta' (leilao).
+
+**Proximo passo:** (1) Romario decidir D-009 (modelo da compra direta: multi-vendedor vs preco de referencia); (2) Romario aprovar a spec do gating; (3) disparar H-001 em sessao Haiku e revisar aqui; (4) apos aprovacao da spec, sessao-mae redige H-002 (gating + codigo morto).
+
+**Decisoes pendentes de ADR:** D-009 (modelo da compra direta no catalogo). Spec do gating aguardando aprovacao.
+
+---
+
+## Sessoes anteriores
+
 **Data:** 2026-06-22
 **O que foi feito:** Bootstrap cirurgico do harness dev_flow_create_harness.
 - context/estado/feature_list.json criado — features 001-004 marcadas como done, 005-012 como todo

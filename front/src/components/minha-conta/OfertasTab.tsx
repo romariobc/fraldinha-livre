@@ -1,6 +1,7 @@
 // src/components/minha-conta/OfertasTab.tsx
 import { Tag } from 'lucide-react'
 import { Order, Offer } from '@/lib/account-mock'
+import { LEILAO_ATIVO } from '@/lib/feature-flags'
 
 interface OfertasTabProps {
   orders: Order[]
@@ -76,11 +77,19 @@ export default function OfertasTab({ orders, onAceitarOferta }: OfertasTabProps)
                   {formatPrice(offer.price)}
                 </p>
                 <button
-                  onClick={() => onAceitarOferta(order.id, offer)}
+                  onClick={() => {
+                    if (LEILAO_ATIVO) onAceitarOferta(order.id, offer)
+                  }}
+                  disabled={!LEILAO_ATIVO}
+                  aria-disabled={!LEILAO_ATIVO}
                   className={`text-xs font-bold px-4 py-2 rounded-xl transition-colors ${
-                    i === 0
-                      ? 'bg-accent text-white hover:bg-accent-dark'
-                      : 'bg-slate-100 text-brand-muted hover:bg-primary-light hover:text-primary-dark'
+                    LEILAO_ATIVO
+                      ? i === 0
+                        ? 'bg-accent text-white hover:bg-accent-dark'
+                        : 'bg-slate-100 text-brand-muted hover:bg-primary-light hover:text-primary-dark'
+                      : i === 0
+                      ? 'bg-accent text-white opacity-50 cursor-not-allowed'
+                      : 'bg-slate-100 text-brand-muted opacity-50 cursor-not-allowed'
                   }`}
                 >
                   ✓ Aceitar

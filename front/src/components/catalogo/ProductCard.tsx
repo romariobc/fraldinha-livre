@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { Product, Badge } from '@/lib/products'
+import { LEILAO_ATIVO } from '@/lib/feature-flags'
 
 const BADGE_STYLES: Record<Badge, string> = {
   'Mais vendido': 'bg-primary-dark text-white',
@@ -19,6 +20,7 @@ export default function ProductCard({ product, onRequestOffer, isLoggedIn }: Pro
   const router = useRouter()
 
   function handleOffer() {
+    if (!LEILAO_ATIVO) return
     if (!isLoggedIn) {
       router.push('/login?redirect=/catalogo')
       return
@@ -57,13 +59,26 @@ export default function ProductCard({ product, onRequestOffer, isLoggedIn }: Pro
             R$&nbsp;{product.price.toFixed(2).replace('.', ',')}
             <span className="text-[11px] font-medium text-brand-muted font-body"> / pct</span>
           </p>
-          <button
-            onClick={handleOffer}
-            aria-label={`Pedir oferta de ${product.name}`}
-            className="w-full py-2 rounded-full bg-accent text-white font-display font-bold text-sm hover:bg-accent-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 transition-colors"
-          >
-            Pedir oferta →
-          </button>
+          <div className="relative">
+            <button
+              onClick={handleOffer}
+              disabled={!LEILAO_ATIVO}
+              aria-disabled={!LEILAO_ATIVO}
+              aria-label={`Pedir oferta de ${product.name}`}
+              className={`w-full py-2 rounded-full font-display font-bold text-sm transition-colors ${
+                LEILAO_ATIVO
+                  ? 'bg-accent text-white hover:bg-accent-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2'
+                  : 'bg-accent text-white opacity-50 cursor-not-allowed'
+              }`}
+            >
+              Pedir oferta →
+            </button>
+            {!LEILAO_ATIVO && (
+              <span className="absolute top-0.5 right-0.5 text-[10px] font-bold bg-brand-muted text-white px-1.5 py-0.5 rounded-full">
+                Em breve
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>

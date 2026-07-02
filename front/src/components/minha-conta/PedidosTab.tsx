@@ -1,6 +1,7 @@
 // src/components/minha-conta/PedidosTab.tsx
 import { ShoppingCart } from 'lucide-react'
 import { Order } from '@/lib/account-mock'
+import { LEILAO_ATIVO } from '@/lib/feature-flags'
 import OrderCard from './OrderCard'
 
 interface PedidosTabProps {
@@ -16,12 +17,25 @@ export default function PedidosTab({ orders, onNovoPedido, onVerOfertas }: Pedid
 
   return (
     <div className="flex flex-col gap-4">
-      <button
-        onClick={onNovoPedido}
-        className="w-full lg:w-auto lg:self-end flex items-center justify-center gap-2 bg-accent text-white font-display font-bold text-sm py-3 px-6 rounded-xl hover:bg-accent-dark transition-colors shadow-sm"
-      >
-        ＋ Novo Pedido de Cotação
-      </button>
+      <div className="relative w-full lg:w-auto lg:self-end">
+        <button
+          onClick={onNovoPedido}
+          disabled={!LEILAO_ATIVO}
+          aria-disabled={!LEILAO_ATIVO}
+          className={`w-full lg:w-auto flex items-center justify-center gap-2 font-display font-bold text-sm py-3 px-6 rounded-xl transition-colors shadow-sm ${
+            LEILAO_ATIVO
+              ? 'bg-accent text-white hover:bg-accent-dark'
+              : 'bg-accent text-white opacity-50 cursor-not-allowed'
+          }`}
+        >
+          ＋ Novo Pedido de Cotação
+        </button>
+        {!LEILAO_ATIVO && (
+          <span className="absolute top-0.5 right-0.5 text-[10px] font-bold bg-brand-muted text-white px-1.5 py-0.5 rounded-full">
+            Em breve
+          </span>
+        )}
+      </div>
 
       {active.length === 0 ? (
         <div className="text-center py-12 text-brand-muted">

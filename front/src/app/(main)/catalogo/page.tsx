@@ -4,7 +4,7 @@
 import { useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { PRODUCTS, filterProducts, Product, ProductFilters } from '@/lib/products'
-import { IS_LOGGED_IN } from '@/lib/auth-mock'
+import { useAuth } from '@/contexts/auth-context'
 import ProductCard from '@/components/catalogo/ProductCard'
 import CatalogFilters from '@/components/catalogo/CatalogFilters'
 import Pagination from '@/components/catalogo/Pagination'
@@ -49,6 +49,7 @@ function CatalogoContent() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user } = useAuth()
 
   const { items, total, totalPages } = filterProducts(PRODUCTS, filters)
 
@@ -128,7 +129,7 @@ function CatalogoContent() {
                       <ProductCard
                         key={product.id}
                         product={product}
-                        isLoggedIn={IS_LOGGED_IN}
+                        isLoggedIn={user !== null}
                         onRequestOffer={setSelectedProduct}
                       />
                     ))}

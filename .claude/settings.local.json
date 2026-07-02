@@ -23,7 +23,10 @@
       "Bash(node -e \"const z = require\\('zod'\\); console.log\\(z.version\\)\")",
       "Bash(npx prisma *)",
       "PowerShell(docker run --name fraldinha-db -e POSTGRES_PASSWORD=password -e POSTGRES_DB=fraldinha_livre -p 5432:5432 -d postgres:16)",
-      "PowerShell(\\(Get-Content \"E:\\\\ROMARIO PC\\\\fraldinha-livre-api\\\\.env\"\\) -replace 'localhost:5432', '127.0.0.1:5432' | Set-Content \"E:\\\\ROMARIO PC\\\\fraldinha-livre-api\\\\.env\")"
+      "PowerShell(\\(Get-Content \"E:\\\\ROMARIO PC\\\\fraldinha-livre-api\\\\.env\"\\) -replace 'localhost:5432', '127.0.0.1:5432' | Set-Content \"E:\\\\ROMARIO PC\\\\fraldinha-livre-api\\\\.env\")",
+      "PowerShell(git -C $wt add chatsessions/2026-07-02-sessao-01-analise-review-decisoes.md)",
+      "PowerShell(git -C $wt log --oneline -1)",
+      "PowerShell($wt = \"E:\\\\Labdev\\\\Projetos\\\\fraldinha-livre\\\\.claude\\\\worktrees\\\\eloquent-montalcini-2dff41\")"
     ]
   }
 }

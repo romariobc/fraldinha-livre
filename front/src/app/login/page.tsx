@@ -1,12 +1,42 @@
 // src/app/login/page.tsx
+'use client'
+
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useState } from 'react'
+import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/contexts/auth-context'
 
 export default function LoginPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { signInGoogle, user } = useAuth()
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Se ja logado, redireciona
+  if (user) {
+    const redirect = searchParams.get('redirect') || '/'
+    router.push(redirect)
+    return null
+  }
+
+  async function handleGoogleSignIn() {
+    try {
+      setIsLoading(true)
+      await signInGoogle()
+      // onAuthStateChanged dispara automaticamente apos o login
+    } catch (error) {
+      console.error('Erro ao fazer login com Google:', error)
+      toast.error('Erro ao fazer login com Google')
+    } finally {
+      setIsLoading(false)
+    }
+  }
   return (
     <div className="min-h-screen grid md:grid-cols-2">
 
@@ -76,7 +106,7 @@ export default function LoginPage() {
           </Link>
         </p>
 
-        <form className="flex flex-col gap-5" action="#" method="post">
+        <form className="flex flex-col gap-5" onSubmit={(e) => e.preventDefault()}>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="email" className="text-sm font-semibold text-brand-text">
               E-mail
@@ -86,8 +116,12 @@ export default function LoginPage() {
               type="email"
               placeholder="seu@email.com"
               autoComplete="email"
-              className="border-2 border-slate-200 rounded-xl bg-slate-50 focus-visible:border-primary focus-visible:ring-0 text-brand-text placeholder:text-slate-400"
+              disabled
+              className="border-2 border-slate-200 rounded-xl bg-slate-50 focus-visible:border-primary focus-visible:ring-0 text-brand-text placeholder:text-slate-400 opacity-50 cursor-not-allowed"
             />
+            <p className="text-xs text-brand-muted">
+              Disponível em breve (feature 005b)
+            </p>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -99,39 +133,43 @@ export default function LoginPage() {
               type="password"
               placeholder="••••••••"
               autoComplete="current-password"
-              className="border-2 border-slate-200 rounded-xl bg-slate-50 focus-visible:border-primary focus-visible:ring-0 text-brand-text"
+              disabled
+              className="border-2 border-slate-200 rounded-xl bg-slate-50 focus-visible:border-primary focus-visible:ring-0 text-brand-text opacity-50 cursor-not-allowed"
             />
           </div>
 
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
-              <Checkbox id="remember" className="border-slate-300" />
-              <Label htmlFor="remember" className="text-sm text-brand-muted cursor-pointer">
+              <Checkbox id="remember" className="border-slate-300" disabled />
+              <Label htmlFor="remember" className="text-sm text-brand-muted cursor-not-allowed opacity-50">
                 Lembrar de mim
               </Label>
             </div>
-            <Link href="#" className="text-sm font-semibold text-primary-dark hover:underline">
+            <Link href="#" className="text-sm font-semibold text-primary-dark hover:underline opacity-50">
               Esqueci minha senha
             </Link>
           </div>
 
           <Button
-            type="submit"
-            className="w-full rounded-xl py-6 bg-primary hover:bg-primary-dark font-display font-bold text-base text-white transition-colors"
+            type="button"
+            disabled
+            className="w-full rounded-xl py-6 bg-primary hover:bg-primary-dark font-display font-bold text-base text-white transition-colors opacity-50 cursor-not-allowed"
           >
             Entrar na conta →
           </Button>
 
           <div className="flex items-center gap-3 text-xs text-brand-muted">
             <span className="flex-1 h-px bg-slate-200" />
-            ou continue com
+            ou entre com
             <span className="flex-1 h-px bg-slate-200" />
           </div>
 
           <Button
             type="button"
+            onClick={handleGoogleSignIn}
+            disabled={isLoading}
             variant="outline"
-            className="w-full rounded-xl py-6 border-2 border-slate-200 text-brand-muted font-semibold text-sm gap-2 hover:bg-slate-50"
+            className="w-full rounded-xl py-6 border-2 border-slate-200 text-brand-muted font-semibold text-sm gap-2 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
               <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
@@ -139,7 +177,7 @@ export default function LoginPage() {
               <path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.55 0 9s.348 2.825.957 4.039l3.007-2.332z"/>
               <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/>
             </svg>
-            Entrar com Google
+            {isLoading ? 'Entrando...' : 'Entrar com Google'}
           </Button>
         </form>
       </div>

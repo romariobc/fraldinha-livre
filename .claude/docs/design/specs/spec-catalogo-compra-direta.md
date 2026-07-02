@@ -1,6 +1,15 @@
 # Spec — Compra direta no catalogo (loja multi-vendedor, Modelo A)
 
-**Dominio:** catalogo + comprador + fornecedor | **Feature relacionada:** 014 | **Status:** rascunho (aguardando aprovacao do cliente)
+**Dominio:** catalogo + comprador + fornecedor | **Feature relacionada:** 014 | **Status:** APROVADA (cliente, 2026-07-02)
+
+> **Nota de implementacao da sessao-mae (decisao de arquitetura, pos-aprovacao):** para o pedido
+> criado no catalogo aparecer em /minha-conta e no painel do fornecedor (paginas distintas) sobre
+> dados mock, sera criado um contexto compartilhado `OrdersProvider` em
+> `front/src/contexts/orders-context.tsx`, seguindo o mesmo padrao do `market-context.tsx`
+> existente (seed = INITIAL_ORDERS de account-mock; expoe orders, createDirectOrder e os
+> handlers atuais de minha-conta). A pagina /minha-conta migra seu estado local para esse
+> contexto. Isso substitui a hipotese "sem estado global novo" da secao Fluxos — nao ha forma
+> mais simples correta entre paginas.
 
 ## Contexto
 

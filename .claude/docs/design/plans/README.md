@@ -47,5 +47,5 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 |---|---|---|---|
 | H-001 | Limpeza docs/infra (Google Cloud, caminhos, README) | — | APROVADO (commit 027edaf, revisado 2026-07-02) |
 | H-002 | Gating do leilao (feature 013) + codigo morto | 1 | pronto — aguardando autorizacao de disparo |
-| H-003+ | Bugs da loja (catalogo ?page, busca 'todos', Header flag, hydration mocks) | 1 | a redigir |
-| H-004 | Compra direta multi-vendedor (feature 014) | 1 | aguardando aprovacao da spec |
+| H-003 | Bugs da loja (catalogo ?page, busca 'todos', Header flag, hydration mocks) | 1 | a redigir |
+| H-004 | Compra direta multi-vendedor (feature 014) | 1 | redigido — executar apos H-002 aprovado |

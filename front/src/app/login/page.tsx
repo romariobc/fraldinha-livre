@@ -3,8 +3,8 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -35,15 +35,28 @@ function LoginPageSkeleton() {
 
 function LoginPageContent() {
   const router = useRouter()
-  const { signInGoogle, user } = useAuth()
+  const searchParams = useSearchParams()
+  const { signInGoogle, user, role, loading } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
 
-  // Se ja logado, redireciona
-  if (user) {
-    const redirect = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('redirect') : null
-    router.push(redirect || '/')
-    return null
-  }
+  // Roteamento pos-login (RN-06): quando o auth resolveu (loading=false) e ha usuario,
+  // decide o destino pelo papel ja carregado do Firestore.
+  // - sem papel (role === null) => onboarding (primeiro acesso escolhe comprador/fornecedor)
+  // - comprador => o redirect recebido (?redirect) ou /minha-conta
+  // - fornecedor => /fornecedor/painel
+  // Efeito (nao no render) para evitar "Cannot update a component while rendering".
+  useEffect(() => {
+    if (loading || !user) return
+    if (role === null) {
+      router.push('/onboarding')
+    } else if (role === 'fornecedor') {
+      router.push('/fornecedor/painel')
+    } else {
+      // comprador
+      const redirect = searchParams.get('redirect')
+      router.push(redirect || '/minha-conta')
+    }
+  }, [loading, user, role, router, searchParams])
 
   async function handleGoogleSignIn() {
     try {

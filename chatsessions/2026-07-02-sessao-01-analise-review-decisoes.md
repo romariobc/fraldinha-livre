@@ -191,3 +191,39 @@ Feature 013 marcada **done**. H-002 marcado APROVADO no plans/README.
 ### Pendencia unica para a proxima interacao
 
 Autorizar o disparo do H-005 (auth Google 005a). Sem outras decisoes pendentes.
+
+---
+
+## Atualizacao 6 (mesma data) — Trade-off de auth; D-010 revisada para Firebase
+
+Cliente pediu o trade-off "Google Auth via console (NextAuth) vs via Firebase" antes de disparar o
+H-005. Sessao-mae entregou a analise (eixos: alinhamento D-001, creds prontas, protecao de rota SSR
+no Next 16, papel/persistencia, app mobile futuro, maturidade, custo) e recomendou Firebase.
+
+**Cliente escolheu: Firebase Authentication.** D-010 REVISADA:
+- Auth = Firebase Auth (provider Google); NextAuth descartado; creds NextAuth do .env.local ficam obsoletas.
+- Papel do usuario PERSISTIDO em Firestore (`users/{uid}`) desde a Fase 1 — dissolve a costura stub.
+- Protecao de rota na Fase 1 = guarda client-side (decisao de arquitetura da sessao-mae; SSR com
+  session cookie/Admin SDK fica para deploy/006, comentado no codigo).
+- 005b (email/senha) passa a ser Firebase email/password — nao depende mais do 006.
+
+### Reescritas nesta atualizacao
+
+- decisoes.md: D-010 reescrita (Firebase) + D-011 passo 2 ajustado (useAuth/onAuthStateChanged, papel em Firestore).
+- Renomeados: spec-auth-google.md → **spec-auth-firebase.md**; H-005-auth-google.md → **H-005-auth-firebase.md** (conteudo reescrito para Firebase; versoes NextAuth removidas via git rm).
+- feature_list: 005a (Firebase + papel no Firestore) e 005b (email/senha via Firebase, destravada do 006).
+- H-004 ajustado: guarda de login via `useAuth()` do Firebase (nao mais useSession).
+
+### Pre-requisitos Firebase que o CLIENTE deve prover antes do disparo do H-005
+
+1. Projeto Firebase. 2. Google sign-in habilitado no Firebase Auth. 3. Config web em
+`front/.env.local` (`NEXT_PUBLIC_FIREBASE_*`). 4. Firestore (Native) + regra para `users/{uid}`.
+5. `localhost` nos dominios autorizados. (Service account Admin SDK so quando endurecer SSR.)
+
+O H-005 tem Tarefa 0 que PARA e lista se algo faltar. Sessao-mae ofereceu ajudar a provisionar
+(inclusive via MCP Firebase) se o cliente quiser.
+
+### Pendencia para a proxima interacao
+
+Cliente confirmar/prover os 5 pre-requisitos Firebase (ou pedir ajuda para provisionar) → entao
+disparar o H-005.

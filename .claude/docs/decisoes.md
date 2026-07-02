@@ -80,17 +80,33 @@ Constatacao: o catalogo atual so tem o CTA "Pedir oferta" (leilao). Nao existe f
 - Disparo do H-001 em sessao Haiku **AUTORIZADO** pelo cliente.
 - Spec da compra direta (feature 014, Modelo A) **APROVADA** pelo cliente.
 
-## D-010 — Stack de autenticacao: NextAuth v5 + Google (2026-07-02) — VIGENTE
+## D-010 — Stack de autenticacao: Firebase Authentication (Google) (2026-07-02, REVISADA) — VIGENTE
 
-Confirmado por fato: `front/.env.local` ja contem `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
-`NEXTAUTH_SECRET` e `NEXTAUTH_URL` preenchidos. A stack de auth e **NextAuth v5 (Auth.js) com
-provider Google**. Firebase Auth/Identity Platform fica **fora** (nao ha motivo para trocar dado
-que as credenciais NextAuth ja existem). Hospedagem futura em Cloud Run (D-001). O login por
-e-mail/senha (CredentialsProvider) depende do backend 006 e fica na fatia 005b.
+Versao original (superada): NextAuth v5 + OAuth do console, com creds ja em `front/.env.local`.
+**Revisada por decisao do cliente (2026-07-02): Firebase Authentication com provider Google.**
 
-Risco a verificar na implementacao: compatibilidade NextAuth v5 com Next 16 + React 19 (pacote e
-nome das env vars — v5 prefere `AUTH_SECRET`/`AUTH_URL`). Se nao houver versao estavel compativel,
-parar e relatar (nao fazer downgrade do Next).
+Motivos: alinhamento total com D-001 (Firebase = Google Cloud); identidade unica para web + app
+mobile futuro (D-005); e **persistencia do papel no Firestore desde a Fase 1** — dissolve a costura
+stub que a versao NextAuth exigia.
+
+Consequencias:
+- Auth: Firebase Auth, provider Google (habilitar no console Firebase).
+- Config web do Firebase em `front/.env.local` (`NEXT_PUBLIC_FIREBASE_*`). As chaves NextAuth
+  (`GOOGLE_CLIENT_ID/SECRET`, `NEXTAUTH_*`) ficam **obsoletas** — remover.
+- Papel/perfil persistidos em **Firestore** (colecao `users/{uid}`), com regra de seguranca:
+  usuario autenticado le/escreve so o proprio doc.
+- **Protecao de rotas na Fase 1: guarda client-side** (`onAuthStateChanged` / hook `useAuth`).
+  Endurecimento SSR (session cookie via Firebase Admin SDK) fica para o deploy/006 — decisao
+  consciente: na Fase 1 os dados sao mock, sem risco. Documentar no codigo.
+- Login por e-mail/senha (005b) passa a ser Firebase Auth (email/password provider) — **nao depende
+  mais do backend 006**.
+
+Pre-requisitos que o CLIENTE deve prover antes do disparo (o Haiku nao clica no console): projeto
+Firebase; Google sign-in habilitado no Firebase Auth; config web no `.env.local`; Firestore em modo
+Native + regra para `users/{uid}`. Service account do Admin SDK so quando for endurecer SSR.
+
+Compatibilidade: Firebase JS SDK v10+ e estavel com Next 16 + React 19 (SDK client, componentes
+`'use client'`) — sem aposta de beta, sem downgrade do Next.
 
 ## D-011 — Sequencia hibrida: gating → auth Google → compra direta (2026-07-02) — VIGENTE
 
@@ -100,11 +116,11 @@ NAO entrega) e persistencia (mock ate 006). Para nao construir o fluxo de compra
 falso, a ordem de execucao passa a ser:
 
 1. **H-002** — gating do leilao (feature 013), independente de auth.
-2. **005a** — auth Google (fatia identidade): NextAuth v5 + Google, substitui `IS_LOGGED_IN` por
-   `useSession()` em todo lugar (corrige na raiz o bug de flag duplicada do Header), protege rotas
-   privadas. **Costura de role temporaria:** apos o login Google, a escolha comprador/fornecedor e
-   um FLUXO REAL (onboarding) com ARMAZENAMENTO STUB (na sessao, nao em banco) — reseta quando o
-   006 chegar. Documentada como divida tecnica, nunca apresentada como definitiva.
+2. **005a** — auth Google (fatia identidade): **Firebase Auth (Google)** (D-010 revisada),
+   substitui `IS_LOGGED_IN` por um hook/contexto de auth (`onAuthStateChanged`) em todo lugar
+   (corrige na raiz o bug de flag duplicada do Header), protege rotas privadas (guarda client-side).
+   **Papel do usuario PERSISTIDO em Firestore** (`users/{uid}`): apos o login, se nao houver papel,
+   onboarding pergunta comprador/fornecedor e grava no Firestore — persistencia REAL, nao mais stub.
 3. **H-004** — compra direta (feature 014), agora sobre sessao real.
 
 Depois: 006 backend (traz role/persistencia + login por credenciais 005b) → 011 pagamento → 007.

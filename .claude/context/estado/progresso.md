@@ -14,7 +14,7 @@
 
 **Atualizacao (mesma data):** Estrategia em DUAS FASES definida (D-007): Fase 1 = MARKETPLACE (loja validada; leilao visivel porem inativo via flag central), Fase 2 = MERCADO (leilao reverso plugando os pontos gateados). D-008: prompts Haiku com testes obrigatorios + loop de 3 tentativas antes do relatorio. D-003 superada por D-007. feature_list.json reorganizado com campo 'fase' + features 013 (gating) e 014 (compra direta, BLOQUEADA por D-009). Spec do gating escrita (specs/spec-plataforma-gating-leilao.md, rascunho). Descoberta: catalogo nao tem fluxo de compra direta — so 'Pedir oferta' (leilao).
 
-**Proximo passo:** (1) Sessao-mae redige H-002 (spec do gating jah aprovada, implementacao do gating + remocao de codigo morto).
+**Proximo passo:** H-001 executado pelo Haiku e APROVADO na revisao da sessao-mae (commit 027edaf). H-002 (gating, feature 013) redigido e pronto — aguardando autorizacao de disparo do cliente. Spec da compra direta (014, Modelo A) em rascunho aguardando aprovacao. Depois: H-003 (bugs da loja).
 
 **Decisoes registradas (2026-07-02 apos H-001):** D-009 DECIDIDA: Modelo A (multi-vendedor, cada produto vinculado a fornecedor com preco proprio). Spec do gating (feature 013) APROVADA.
 

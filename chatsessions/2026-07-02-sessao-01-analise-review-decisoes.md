@@ -95,3 +95,32 @@ IS_LOGGED_IN, hydration dos mocks) ficam na Fase 1.
 | 4 | H-003 (bugs da loja: catalogo ?page, busca 'todos', Header flag, hydration) | spec curta a escrever |
 | 5 | Fase 1 grande: 005 auth → 006 backend loja → 014 compra direta → 011 pagamento → 007 catalogo fornecedor | specs por feature |
 | 6 | Fase 2: 008 leilao (+ 4 bugs de negocio) → 009 → 010 → 012 | fase 1 validada |
+
+---
+
+## Atualizacao 3 (mesma data) — Aprovacoes, H-001 executado e REVISADO/APROVADO
+
+Aprovacoes do cliente: **D-009 = Modelo A** (multi-vendedor); **spec do gating (013) APROVADA**;
+**disparo do H-001 AUTORIZADO**. Sessao-mae redigiu H-002 (gating) e a spec da compra direta
+(spec-catalogo-compra-direta.md, rascunho aguardando aprovacao). Governanca commitada em `b42cc8b`.
+
+### Revisao da entrega Haiku — H-001: **APROVADO** (commit `027edaf`)
+
+Verificacao independente da sessao-mae (nao apenas o relatorio do executor):
+
+- README.md novo em pt-BR com as 5 secoes, fiel ao produto e a D-001/D-007 — conferido por leitura.
+- integration-guide.md: caminho novo (`E:\Labdev\Projetos\fraldinha-livre\front\.env.local`) e aviso de infra no topo — conferido.
+- plan-session01.md (Azure) deletado — conferido no diff do commit.
+- Grep vercel/azure: 0 ocorrencias em README/AGENTS/CLAUDE/.claude\context/front/src. Restam apenas em `decisoes.md` (registro da propria decisao) e no texto do prompt H-001 — ambos intencionais da sessao-mae.
+- Commit unico, mensagem pt-BR conforme especificado, trailer correto.
+
+**Desvios anotados (aceitos, com feedback para prompts futuros):**
+1. Haiku editou `progresso.md` alem da remocao de mencoes (reescreveu proximo passo e a secao historica de 2026-06-22). Justificavel pela tarefa 4 do prompt e conteudo correto, mas prompts futuros devem declarar explicitamente TODOS os arquivos que podem mudar.
+2. O criterio "0 ocorrencias em .claude/docs/" era impreciso (conflitava com decisoes.md, que registra a propria decisao) — falha de redacao da sessao-mae, nao do executor. Corrigir a redacao de criterios nos proximos prompts.
+
+### Estado da fila apos esta atualizacao
+
+- H-001: APROVADO.
+- H-002 (gating 013): PRONTO, aguardando autorizacao de disparo do cliente.
+- Spec 014 (compra direta Modelo A): rascunho aguardando aprovacao do cliente.
+- H-003 (bugs da loja): a redigir apos H-002.

@@ -252,3 +252,23 @@ mas o Haiku (e a sessao-mae) nao conseguem ler esse estado. Cliente deve dar uma
 ### Pendencia para a proxima interacao
 
 Cliente confirmar o toggle Google no console → disparar o H-005 (auth Firebase 005a).
+
+---
+
+## Atualizacao 8 (mesma data) — H-005 disparado, parou na Tarefa 0 (env no front errado), corrigido e re-disparado
+
+Cliente confirmou "google ativado". H-005 disparado. **Haiku parou corretamente na Tarefa 0**: o
+`front/.env.local` nao existia no worktree. Causa (erro da sessao-mae): existem DOIS `front/` — o do
+repo principal (`E:\Labdev\Projetos\fraldinha-livre\front`) e o do worktree
+(`...\.claude\worktrees\eloquent-montalcini-2dff41\front`). A sessao-mae escreveu o `.env.local` no
+front do REPO PRINCIPAL; como `.env.local` e gitignored, NAO e compartilhado com o worktree (onde o
+codigo e o Haiku realmente rodam). Bom sinal: a disciplina D-008 (Tarefa 0 para e relata) pegou o
+problema antes de qualquer codigo errado.
+
+**Correcao:** `.env.local` reescrito no front do worktree (7 chaves, gitignored confirmado). H-005
+re-disparado com instrucao explicita de trabalhar sempre no front do worktree.
+
+**Licao (persistida em memoria [[worktree-env-local-gotcha]]):** arquivos gitignored (.env.local)
+devem ser criados no front do WORKTREE ativo, nao no repo principal — worktrees nao compartilham
+arquivos ignorados. Idem para o `npm run dev` de validacao: rodar no front do worktree, que tem o
+codigo do branch.

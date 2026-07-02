@@ -16,7 +16,7 @@
 
 **Progresso de execucao (2026-07-02):** H-001 APROVADO (027edaf). H-002/feature 013 (gating do leilao + codigo morto) executado no Haiku (commit 61396e0), REVISADO e APROVADO pela sessao-mae — feature 013 = done. Specs 013, 005a e 014 todas aprovadas.
 
-**Proximo passo:** Auth definido como **Firebase Authentication** (D-010 revisada apos trade-off; cliente escolheu Firebase sobre NextAuth). Spec e prompt reescritos: specs/spec-auth-firebase.md + plans/H-005-auth-firebase.md. Papel do usuario persiste em Firestore (nao mais stub). Antes de disparar o H-005, o cliente precisa prover os pre-requisitos Firebase (projeto, Google sign-in habilitado, config web em front/.env.local NEXT_PUBLIC_FIREBASE_*, Firestore + regra users/{uid}, localhost autorizado). Fila D-011: 013 done → 005a (Firebase) → 014 → H-003 → 006.
+**Proximo passo:** Auth = **Firebase Authentication** (D-010 revisada). Firebase PROVISIONADO em 2026-07-02 (conta romariobc@gmail.com, projeto fraldinha-livre): app web + config em front/.env.local; Firestore em southamerica-east1 com regra users/{uid} ativa; Google Sign-In configurado; infra commitada (4bd4dba). Falta so o cliente confirmar o toggle do provedor Google no console (Firebase Auth > Sign-in method) e entao disparar o H-005. Fila D-011: 013 done → 005a (Firebase) → 014 → H-003 → 006.
 
 **Divida tecnica registrada:** lint preexistente MarketTable.tsx:34 (setState em efeito) — na fila da feature 008 (Fase 2, arquivo de leilao ja gateado).
 

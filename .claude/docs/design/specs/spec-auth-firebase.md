@@ -1,6 +1,13 @@
 # Spec — Autenticacao Firebase (login Google), fatia identidade
 
-**Dominio:** auth | **Feature relacionada:** 005a | **Status:** APROVADA na estrategia (Firebase, D-010 revisada) — detalhes desta spec aguardando validacao
+**Dominio:** auth | **Feature relacionada:** 005a | **Status:** APROVADA; pre-requisitos Firebase PROVISIONADOS (2026-07-02) — pronta para o H-005
+
+> **Provisionamento (2026-07-02, conta romariobc@gmail.com, projeto `fraldinha-livre`):** app web
+> registrado; config em `front/.env.local` (`NEXT_PUBLIC_FIREBASE_*`); Firestore `(default)` em
+> `southamerica-east1` com regra `users/{uid}` ativa; Google Sign-In configurado via `firebase init`
+> (brand "Fraldinha Livre", support romariobc@gmail.com). `localhost` autorizado por padrao. Config
+> de infra versionada (firebase.json, .firebaserc, firestore.rules) no commit 4bd4dba. Falta apenas
+> o cliente confirmar no console que o provedor Google esta com o toggle "Ativado".
 
 ## Contexto
 

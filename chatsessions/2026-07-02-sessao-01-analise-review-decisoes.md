@@ -227,3 +227,28 @@ O H-005 tem Tarefa 0 que PARA e lista se algo faltar. Sessao-mae ofereceu ajudar
 
 Cliente confirmar/prover os 5 pre-requisitos Firebase (ou pedir ajuda para provisionar) → entao
 disparar o H-005.
+
+---
+
+## Atualizacao 7 (mesma data) — Firebase provisionado via conector
+
+Cliente pediu para usar a conta **romariobc@gmail.com** (nao a comercial.romario.costa). Guiado:
+`firebase login:add` (browser, feito pelo cliente) + `firebase login:use romariobc@gmail.com`
+(rodado pela sessao-mae, nao-interativo). Conector Firebase passou a refletir a conta nova.
+
+A conta ja tinha um projeto **`fraldinha-livre`** (projectNumber 870655271908). Provisionado via
+conector (sem console manual, exceto o toggle final):
+- App web "Fraldinha Livre Web" registrado; config web escrita em `front/.env.local` (`NEXT_PUBLIC_FIREBASE_*`); chaves NextAuth obsoletas removidas.
+- `firebase init` com firestore + auth googleSignIn: Firestore `(default)` em **southamerica-east1** (SP, permanente), regra `users/{uid}` (dono le/escreve) deployada e ATIVA (confirmada no servidor). Google Sign-In configurado (brand "Fraldinha Livre", support romariobc@gmail.com).
+- Arquivos de infra (firebase.json, .firebaserc com default=fraldinha-livre, firestore.rules, firestore.indexes.json) commitados em `4bd4dba`.
+
+Higiene pendente (opcional): o OAuth client NextAuth antigo (GOOGLE_CLIENT_ID/SECRET) ficou orfao — cliente pode revogar no GCP console.
+
+### Unico ponto nao verificavel programaticamente
+
+Se o provedor Google esta com toggle "Ativado" em Firebase Auth > Sign-in method. O init configurou,
+mas o Haiku (e a sessao-mae) nao conseguem ler esse estado. Cliente deve dar uma conferida de 30s.
+
+### Pendencia para a proxima interacao
+
+Cliente confirmar o toggle Google no console → disparar o H-005 (auth Firebase 005a).

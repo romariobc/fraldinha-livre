@@ -54,7 +54,7 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | H-007 | Area do cliente real: perfil Firestore + travas de seguranca (feature 007a) | 1 | CODIGO APROVADO (af54380 + fix fc01a82) via D-012; regra Firestore deployada; aguarda validacao humana |
 | H-008 | Footer condicional + correcao de links + paginas 'Em construcao' (feature 015) | 1 | APROVADO (f87b84f) via D-012 — branch verde |
 | H-009 | Fix mascaras/limite de CPF e telefone no perfil (feature 007a) | 1 | APROVADO (65d2e43) via D-012 — cap+mascara verificados por leitura; lint 0 |
-| H-003 | Bugs da loja (catalogo ?page, busca 'todos', hydration, esqueci-senha, EmConstrucao) | 1 | PRONTO para disparo |
+| H-003 | Bugs da loja (catalogo ?page, busca 'todos', hydration, esqueci-senha, EmConstrucao) | 1 | APROVADO (b6c4e6c) via D-012 — lint 0, build ok |
 
 **Ordem de execucao (D-011):** H-002 → H-005 → [H-006 limpeza para main] → H-004 → H-003 → 006 backend.
 

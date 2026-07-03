@@ -101,7 +101,7 @@ export default function MercadoPage() {
 
       {/* Table */}
       <section className="py-5">
-        <MarketTable scope={scope} onExpandScope={() => setScope({ type: 'national' })} />
+        <MarketTable key={JSON.stringify(scope)} scope={scope} onExpandScope={() => setScope({ type: 'national' })} />
       </section>
     </div>
   )

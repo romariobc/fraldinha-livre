@@ -18,7 +18,9 @@
 
 **Progresso:** Auth = Firebase (D-010 revisada). Firebase provisionado (projeto fraldinha-livre, Firestore SP, regra users/{uid}, Google Sign-In). H-005 executado e revisado em 2 rodadas — CODIGO APROVADO (commits c5a3a4f, f3d1886, 7f0f3c5). feature 005a = in_progress: falta so a validacao HUMANA do login Google no navegador (npm run dev do WORKTREE front) — Haiku headless nao completa o popup OAuth.
 
-**Proximo passo:** Cliente valida o login no navegador (fluxo: Entrar com Google → 1o acesso vai para /onboarding → escolhe comprador/fornecedor → grava no Firestore → rotea → relogar mantem papel). Confirmado → marcar 005a done e disparar o H-004 (compra direta, sobre sessao real). Rodar SEMPRE do front do worktree ([[worktree-env-local-gotcha]]). Fila D-011: 013 done → 005a (quase) → 014 → H-003 → 006.
+**Marco:** feature 005a DONE — login Google via Firebase validado pelo cliente no navegador em 2026-07-02 (login → onboarding → comprador → /minha-conta; relogin manteve o papel). Primeiro auth real + primeiro backend vivo (Firestore) do projeto. Features done: 001-004, 013, 005a.
+
+**Proximo passo:** Disparar o H-004 (feature 014 — compra direta multi-vendedor, sobre a sessao real). Spec e prompt ja aprovados/escritos. Aguardando o go do cliente para o disparo. Fila D-011 restante: 014 (H-004) → H-003 (bugs loja) → 006 backend → 005b. Rodar dev SEMPRE do front do worktree ([[worktree-env-local-gotcha]])."
 
 **Divida tecnica registrada:** lint preexistente MarketTable.tsx:34 (setState em efeito) — na fila da feature 008 (Fase 2, arquivo de leilao ja gateado).
 

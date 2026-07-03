@@ -297,6 +297,24 @@ inofensivas).
 Cliente validar o login no navegador (npm run dev do worktree). Confirmado → 005a vira done e
 dispara-se o H-004 (compra direta, que assenta sobre a sessao real).
 
+---
+
+## Atualizacao 10 (mesma data) — 005a VALIDADA e DONE
+
+Cliente validou no navegador (porta 3001, 3000 ocupada): login Google OK; 1o acesso foi ao
+onboarding, escolheu comprador, roteou para /minha-conta; logout + relogin reconheceu o papel sem
+repetir onboarding. Todos os criterios de aceite da 005a cumpridos.
+
+**feature 005a = DONE.** Marco: primeiro auth real + primeiro backend vivo (Firestore) do projeto.
+Features done ate aqui: 001-004, 013, 005a.
+
+Fila D-011 restante: 014 (H-004, compra direta multi-vendedor sobre sessao real) → H-003 (bugs loja)
+→ 006 backend → 005b (email/senha). H-004 spec+prompt ja aprovados/escritos.
+
+### Pendencia para a proxima interacao
+
+Go do cliente para disparar o H-004.
+
 **Licao (persistida em memoria [[worktree-env-local-gotcha]]):** arquivos gitignored (.env.local)
 devem ser criados no front do WORKTREE ativo, nao no repo principal — worktrees nao compartilham
 arquivos ignorados. Idem para o `npm run dev` de validacao: rodar no front do worktree, que tem o

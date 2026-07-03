@@ -37,9 +37,9 @@
       "id": "005a",
       "titulo": "Autenticacao Google via Firebase — fatia identidade + papel no Firestore",
       "fase": 1,
-      "status": "in_progress",
+      "status": "done",
       "criterio_aceite": "Login/logout Google via Firebase; useAuth() como unica fonte; IS_LOGGED_IN removido (auth-mock.ts + duplicata do Header); /minha-conta e /fornecedor protegidas (guarda client-side); papel persistido em Firestore users/{uid} (relogar mantem o papel)",
-      "notas": "H-005 executado (commits c5a3a4f, f3d1886) + fix (7f0f3c5) apos revisao da sessao-mae. CODIGO APROVADO na revisao. FALTA validacao humana do login Google no navegador (npm run dev do worktree) — o Haiku e headless e nao completa o popup OAuth. So marcar done depois do cliente confirmar: login → onboarding (1o acesso) → grava papel no Firestore → rotea → relogar mantem papel. Firebase provisionado (projeto fraldinha-livre, Firestore SP)"
+      "notas": "H-005 executado (c5a3a4f, f3d1886, 7f0f3c5), revisado em 2 rodadas e VALIDADO pelo cliente no navegador em 2026-07-02: login Google OK, 1o acesso foi ao onboarding, escolheu comprador, roteou para /minha-conta; logout + relogin reconheceu o papel sem repetir onboarding. Firebase provisionado (projeto fraldinha-livre, Firestore SP). Endurecimento SSR e login email/senha (005b) ficam para depois"
     },
     {
       "id": "005b",

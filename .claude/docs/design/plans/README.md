@@ -47,7 +47,7 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 |---|---|---|---|
 | H-001 | Limpeza docs/infra (Google Cloud, caminhos, README) | — | APROVADO (commit 027edaf, revisado 2026-07-02) |
 | H-002 | Gating do leilao (feature 013) + codigo morto | 1 | APROVADO (commit 61396e0, revisado 2026-07-02) |
-| H-005 | Auth Google via Firebase (feature 005a) | 1 | CODIGO APROVADO (commits c5a3a4f, f3d1886, 7f0f3c5) — aguardando validacao humana do login no navegador |
+| H-005 | Auth Google via Firebase (feature 005a) | 1 | DONE — validado pelo cliente no navegador (2026-07-02) |
 | H-004 | Compra direta multi-vendedor (feature 014) | 1 | redigido — executar apos H-005 |
 | H-003 | Bugs da loja (catalogo ?page, busca 'todos', hydration mocks) | 1 | a redigir (Header flag ja resolvido pela 005a) |
 

@@ -125,9 +125,9 @@
       "id": "015",
       "titulo": "UX: footer condicional na home + correcao de links + paginas 'Em construcao'",
       "fase": 1,
-      "status": "todo",
+      "status": "done",
       "criterio_aceite": "Footer completo so na home, recolhido/expansivel nas demais; todos os links do Footer resolvem para rota real ou pagina 'Em construcao'; rotas /privacidade, /termos, /como-funciona existem; lint EXIT 0, build ok",
-      "notas": "Feedback UX do cliente 2026-07-03 (caminho feliz rapido, detalhes depois). Spec: specs/spec-ux-footer-e-links.md. Prompt: H-008. Conteudo real das paginas em construcao fica como pendencia (licoes-e-diretrizes.md)"
+      "notas": "H-008 executado (f87b84f) e APROVADO via D-012 (lint EXIT 0, build com 3 rotas novas, footer condicional verificado por leitura). Feedback UX do cliente 2026-07-03. Follow-ups menores documentados em licoes-e-diretrizes: 'Esqueci senha' aponta para /como-funciona (corrigir no 005b); EmConstrucao com cores genericas (alinhar aos tokens de marca). Conteudo real das paginas em construcao segue pendente"
     },
     {
       "id": "014",

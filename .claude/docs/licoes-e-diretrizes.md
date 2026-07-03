@@ -103,3 +103,7 @@ Firestore; endurecimento SSR do auth adiado para deploy/006.
   2026-07-03: "criar rapido o caminho feliz, detalhes depois"). Nao sao criticas ao sistema.
 - **Landing "destaques" com precos hardcoded em reais** (`app/(main)/page.tsx` ~l.363, `product.price`
   em dados locais) — inconsistente com o catalogo em centavos; cosmetico, alinhar quando revisar a landing.
+- **Link "Esqueci minha senha"** (`login/page.tsx`) aponta para `/como-funciona` (H-008 tirou o
+  `href="#"`) — semanticamente errado; corrigir quando o reset de senha existir (005b email/senha).
+- **`EmConstrucao.tsx` com cores genericas** (blue-600/gray) em vez dos tokens de marca
+  (primary/brand-text/brand-muted) — alinhar ao design system numa passada de UI.

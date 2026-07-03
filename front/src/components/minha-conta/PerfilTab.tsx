@@ -9,11 +9,6 @@ import { Separator } from '@/components/ui/separator'
 import { useAuth, type UserProfile } from '@/contexts/auth-context'
 import { isValidCPF, isProfileComplete } from '@/lib/utils'
 
-function formatCPF(cpf: string): string {
-  const digits = cpf.replace(/\D/g, '')
-  if (digits.length !== 11) return cpf
-  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
-}
 
 function maskCpfDisplay(cpf?: string): string {
   if (!cpf) return 'Não informado'
@@ -34,6 +29,26 @@ function formatPhone(phone: string): string {
     return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
   }
   return phone
+}
+
+function maskCPF(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 11)
+  if (digits.length === 0) return ''
+  if (digits.length <= 3) return digits
+  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`
+  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
+}
+
+function maskPhoneBR(value: string): string {
+  const digits = value.replace(/\D/g, '').slice(0, 11)
+  if (digits.length === 0) return ''
+  if (digits.length <= 2) return digits
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+  // 8-10 dígitos: (00) 0000-0000
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+  // 11 dígitos: (00) 00000-0000
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
 }
 
 type ProfileAddress = NonNullable<UserProfile['address']>
@@ -117,13 +132,25 @@ export default function PerfilTab({ returnTo }: { returnTo?: string }) {
     const newErrors: Record<string, string> = {}
 
     // Validar CPF
-    if (editData.cpf && !isValidCPF(editData.cpf)) {
-      newErrors.cpf = 'CPF inválido'
+    if (!editData.cpf?.trim()) {
+      newErrors.cpf = 'CPF é obrigatório'
+    } else {
+      const cpfDigits = editData.cpf.replace(/\D/g, '')
+      if (cpfDigits.length !== 11) {
+        newErrors.cpf = 'CPF deve ter 11 dígitos'
+      } else if (!isValidCPF(editData.cpf)) {
+        newErrors.cpf = 'CPF inválido'
+      }
     }
 
     // Validar campos obrigatórios do perfil
     if (!editData.phone?.trim()) {
       newErrors.phone = 'Telefone é obrigatório'
+    } else {
+      const phoneDigits = editData.phone.replace(/\D/g, '')
+      if (![10, 11].includes(phoneDigits.length)) {
+        newErrors.phone = 'Telefone deve ter DDD + número (10 ou 11 dígitos)'
+      }
     }
 
     if (!editData.address?.logradouro?.trim()) {
@@ -266,10 +293,12 @@ export default function PerfilTab({ returnTo }: { returnTo?: string }) {
           <label className="block text-sm font-semibold text-brand-text mb-2">CPF</label>
           <input
             type="text"
+            inputMode="numeric"
+            maxLength={14}
             value={editData.cpf || ''}
             onChange={(e) => {
-              const formatted = formatCPF(e.target.value)
-              setEditData({ ...editData, cpf: formatted })
+              const masked = maskCPF(e.target.value)
+              setEditData({ ...editData, cpf: masked })
               if (errors.cpf) setErrors({ ...errors, cpf: '' })
             }}
             placeholder="000.000.000-00"
@@ -285,9 +314,12 @@ export default function PerfilTab({ returnTo }: { returnTo?: string }) {
           <label className="block text-sm font-semibold text-brand-text mb-2">Telefone</label>
           <input
             type="tel"
+            inputMode="numeric"
+            maxLength={15}
             value={editData.phone || ''}
             onChange={(e) => {
-              setEditData({ ...editData, phone: e.target.value })
+              const masked = maskPhoneBR(e.target.value)
+              setEditData({ ...editData, phone: masked })
               if (errors.phone) setErrors({ ...errors, phone: '' })
             }}
             placeholder="(11) 99999-9999"

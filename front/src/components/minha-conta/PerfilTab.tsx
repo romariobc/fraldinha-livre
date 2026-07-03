@@ -36,8 +36,10 @@ function formatPhone(phone: string): string {
   return phone
 }
 
-function getOrEmptyAddress(addr: any) {
-  return addr || {
+type ProfileAddress = NonNullable<UserProfile['address']>
+
+function getOrEmptyAddress(addr: UserProfile['address']): ProfileAddress {
+  return addr ?? {
     logradouro: '',
     numero: '',
     complemento: '',

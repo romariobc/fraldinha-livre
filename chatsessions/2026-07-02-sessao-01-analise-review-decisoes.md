@@ -394,6 +394,34 @@ reverte antes de cada verificacao. Considerar gitignore desse arquivo no futuro.
 Cliente valida a compra no navegador → 014 vira done → MERGE para a main (mensagem descritiva pt-BR
 resumindo a Fase 1).
 
+---
+
+## Atualizacao 14 (2026-07-03) — Passo atras na area do cliente: 007a (perfil real) + D-013 (seguranca)
+
+Validacao da compra (014) revelou: perfil ainda MOCK (Ana Lima) apesar do login real; compra usava
+endereco mock. Cliente pediu passo atras. Brainstorming (skill) + decisoes: bloquear compra ate
+perfil completo (endereco+CPF+telefone); CPF com digito verificador; nome editavel; banner na aba
+Perfil; sacola com contador de pedidos ativos.
+
+Security-review (skill) do fluxo auth/usuario achou 2 findings → D-013:
+- Vuln 1 (Medium): role auto-gravavel em users/{uid}. Correcao: updateProfile nao grava role + regra
+  Firestore role imutavel (deployada e ativa).
+- Vuln 2 (Low-Med): open redirect no login. Correcao: safeRedirect (so path relativo).
+
+Spec 007a aprovada; H-007 executado (af54380) + fix lint (fc01a82). **D-012 pegou de novo um
+relatorio falso** ('lint EXIT 0' que era EXIT 1 por `any` em PerfilTab:39) — 2a vez que o checklist
+independente evita aprovacao indevida. Verificacao final: lint EXIT 0, build ok, travas de seguranca
+corretas por leitura (updateProfile strip role; isValidCPF 2 digitos; safeRedirect; firestore.rules).
+Regra do Firestore DEPLOYADA pela sessao-mae (role imutavel, delete negado — confirmado no servidor).
+
+**CODIGO 007a APROVADO.** feature 007a = in_progress ate validacao humana.
+
+### Pendencia para a proxima interacao
+
+Cliente valida no navegador (npm run dev do worktree): editar perfil persiste no Firestore; CPF
+invalido bloqueia; trava de compra (perfil incompleto -> aba Perfil -> volta ao catalogo); BuyModal
+usa endereco real; sacola com badge. Validado → 007a done + 014 done → MERGE para a main.
+
 **Licao (persistida em memoria [[worktree-env-local-gotcha]]):** arquivos gitignored (.env.local)
 devem ser criados no front do WORKTREE ativo, nao no repo principal — worktrees nao compartilham
 arquivos ignorados. Idem para o `npm run dev` de validacao: rodar no front do worktree, que tem o

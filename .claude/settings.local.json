@@ -35,7 +35,13 @@
       "Bash(grep -v \"// \")",
       "Bash(echo \"LINT_EXIT=$?\")",
       "PowerShell($wt=\"E:\\\\Labdev\\\\Projetos\\\\fraldinha-livre\\\\.claude\\\\worktrees\\\\eloquent-montalcini-2dff41\"; Write-Host '=== SHOW --STAT ==='; git -C $wt show --stat 5f84450 --format='%h %s'; Write-Host '=== GREP alert/confirm ==='; git -C $wt grep -nE \"\\\\balert\\\\\\(|\\\\bconfirm\\\\\\(\" -- front/src 2>&1; Write-Host '\\(0=limpo\\)'; git -C $wt checkout -- .claude/settings.local.json; Write-Host '=== STATUS ==='; git -C $wt status --short; cd \"$wt\\\\front\"; Write-Host '=== BUILD ==='; npm run build 2>&1 | Select-String -Pattern 'Compiled|Failed|Error|error' | Select-Object -First 5; Write-Host '=== LINT ==='; npm run lint 2>&1 | Select-Object -Last 3; Write-Host \"LINT EXIT: $LASTEXITCODE\")",
-      "PowerShell(git -C $wt add .claude)"
+      "PowerShell(git -C $wt add .claude)",
+      "PowerShell($wt=\"E:\\\\Labdev\\\\Projetos\\\\fraldinha-livre\\\\.claude\\\\worktrees\\\\eloquent-montalcini-2dff41\"; Write-Host '=== SHOW --STAT ==='; git -C $wt show --stat af54380 --format='%h %s' | Select-Object -First 20; git -C $wt checkout -- .claude/settings.local.json 2>$null; Write-Host '=== STATUS ==='; git -C $wt status --short; cd \"$wt\\\\front\"; Write-Host '=== LINT ==='; npm run lint 2>&1 | Select-Object -Last 4; Write-Host \"LINT EXIT: $LASTEXITCODE\"; Write-Host '=== BUILD ==='; npm run build 2>&1 | Select-String -Pattern 'Compiled|Failed|Error' | Select-Object -First 4)",
+      "PowerShell($wt=\"E:\\\\Labdev\\\\Projetos\\\\fraldinha-livre\\\\.claude\\\\worktrees\\\\eloquent-montalcini-2dff41\"; Write-Host '=== SHOW --STAT ==='; git -C $wt show --stat fc01a82 --format='%h %s'; git -C $wt checkout -- .claude/settings.local.json 2>$null; Write-Host '=== STATUS ==='; git -C $wt status --short; cd \"$wt\\\\front\"; Write-Host '=== LINT \\(exit real\\) ==='; npm run lint 2>&1 | Select-Object -Last 3; Write-Host \"LINT EXIT: $LASTEXITCODE\")",
+      "mcp__plugin_firebase_firebase__firebase_deploy",
+      "mcp__plugin_firebase_firebase__firebase_get_security_rules",
+      "PowerShell(git -C $wt add .claude chatsessions)",
+      "PowerShell(git -C $wt log --oneline -3)"
     ]
   }
 }

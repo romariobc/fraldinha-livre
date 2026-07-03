@@ -46,6 +46,13 @@ reusavel por outros produtos**, consumido pelo marketplace via API. Gate: so evo
 depois do marketplace (front+back) 100% pronto e TESTADO (seguranca, usabilidade, stress, e2e). Ate
 la, o leilao segue visivel-porem-inativo (013). Ver D-014.
 
+## 3.2 Ferramenta de spec-driven: Spec Kit parado para piloto (D-015)
+
+O GitHub Spec Kit (instalado untracked na main) fica **parado**: nao adotamos no meio da Fase 1
+(nossa governanca bespoke — decisoes/specs/plans/D-012 — funciona e ele so a espelha). Piloto
+planejado no backend 006 ou no microservico de leilao (greenfield), reconfigurando para `--ai claude`.
+Ganho principal do Spec Kit e escalabilidade (padrao agnostico) + aprendizado. Ver D-015.
+
 ## 4. O que se pretende fazer (proximos passos)
 
 Ordem D-011: **H-006** (limpeza p/ main) → **H-004 / 014** (compra direta multi-vendedor) →

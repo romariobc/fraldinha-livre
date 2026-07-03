@@ -149,6 +149,32 @@ Decisao de negocio do cliente (2026-07-03), refinando a D-007:
 do marketplace (006), desenhar o ponto de integracao com o leilao como uma dependencia externa (API),
 nao como codigo interno. Relacionado a D-007 (que fica refinada por esta).
 
+## D-015 — GitHub Spec Kit: manter parado, pilotar no back/leilao (2026-07-03) — VIGENTE
+
+Analise do Spec Kit (0.12.3, instalado untracked na main) nos 4 eixos: produtividade (empate, com
+custo de troca contra), assertividade (empate; nosso D-012 e sob medida e comprovado), escalabilidade
+(Spec Kit ganha — padrao agnostico, relevante para D-014 multi-produto), usabilidade (leve vantagem
++ valor de aprendizado para o Romario). Constatacoes: a constitution instalada esta EM BRANCO
+(placeholders) e o install esta wired para **Copilot** (`ai: copilot`), nao Claude.
+
+**Decisao do cliente (2026-07-03): manter parado; pilotar no backend (006) ou no microservico de
+leilao (D-014); NAO adotar no meio da Fase 1 do marketplace.**
+
+**How to apply:**
+- Nao migrar a governanca atual (decisoes/specs/plans/D-012) para o Spec Kit agora — ela funciona e
+  o Spec Kit apenas a espelha. Continuar no fluxo bespoke ate o fim do marketplace.
+- Quando iniciar o back 006 ou o leilao (produto novo, greenfield): reinstalar/reconfigurar o Spec
+  Kit com `--ai claude`, preencher a constitution com D-001..D-015, e testar de verdade (comandos
+  /specify /plan /tasks /analyze). So entao decidir adocao plena.
+- O leilao (D-014) e provavelmente um repo/microservico separado — o piloto do Spec Kit vai la, nao
+  na main do marketplace.
+- Os arquivos do Spec Kit na main (`.specify/`, `.github/agents+prompts/speckit.*`) ficam parados;
+  nao bloqueiam o merge do nosso branch (nao colidem com paths do branch).
+
+**Limpeza relacionada:** `front/src/app/api/auth/[...nextauth]/route.ts` e
+`front/src/providers/NextAuthProvider.tsx` sao restos MORTOS do NextAuth (abordagem abandonada na
+D-010 -> Firebase); serao DELETADOS da main (nao tem relacao com Spec Kit nem com o branch).
+
 ## Aprovacoes registradas em 2026-07-02
 
 - Spec do gating do leilao (feature 013) **APROVADA** pelo cliente → H-002 liberado para redacao/execucao.

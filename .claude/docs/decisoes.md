@@ -97,6 +97,26 @@ Complementa D-006 (papeis) e D-008 (testes do Haiku). O D-008 e o auto-teste do 
 a verificacao independente do revisor — os dois sao necessarios porque o executor pode relatar algo
 que o commit nao contem.
 
+## D-013 — Endurecimento do modelo de auth (role imutavel + sanitizacao de redirect) (2026-07-03) — VIGENTE
+
+Security-review do fluxo de auth/usuario (2026-07-03) achou 2 questoes, incorporadas a spec da
+feature 007a (area do cliente):
+
+1. **role auto-gravavel (Medium):** a regra do Firestore permitia o usuario escrever o proprio doc
+   `users/{uid}` inteiro, inclusive `role` — auto-escalonamento quando o backend gatear dados reais
+   por papel. Correcao: `updateProfile` no cliente NUNCA grava `role`; regra do Firestore torna
+   `role` imutavel apos definido (`allow update ... request.resource.data.role == resource.data.role`;
+   `allow delete: if false`). Ver RN-03/RN-04 da spec-area-cliente-perfil.
+2. **open redirect (Low-Medium):** `redirect` pos-login ia direto para `router.push` sem validar
+   ser caminho relativo do site. Correcao: util unico `safeRedirect` (so aceita path iniciando com
+   `/`, nao `//`, sem `:`), usado no login e na trava de compra. Ver RN-07.
+
+**Why:** e o momento certo — a feature 007a mexe justamente nas escritas de `users/{uid}` e cria a
+trava de compra que tambem redireciona. Fechar o modelo de auth antes do backend 006 evita retrabalho.
+
+**How to apply:** ambas as correcoes sao criterio de aceite da 007a. Regra do Firestore versionada
+em `firestore.rules` + deploy.
+
 ## Aprovacoes registradas em 2026-07-02
 
 - Spec do gating do leilao (feature 013) **APROVADA** pelo cliente → H-002 liberado para redacao/execucao.

@@ -33,7 +33,9 @@
       "PowerShell($wt=\"E:\\\\Labdev\\\\Projetos\\\\fraldinha-livre\\\\.claude\\\\worktrees\\\\eloquent-montalcini-2dff41\")",
       "PowerShell($wt=\"E:\\\\Labdev\\\\Projetos\\\\fraldinha-livre\\\\.claude\\\\worktrees\\\\eloquent-montalcini-2dff41\"; git -C $wt checkout -- .claude/settings.local.json; Write-Host '=== STATUS pos-limpeza ==='; git -C $wt status --short; Write-Host '\\(vazio = limpo\\)'; cd \"$wt\\\\front\"; Write-Host '=== BUILD \\(rotas\\) ==='; npm run build 2>&1 | Select-String -Pattern 'perfil|Compiled|Failed|error|/minha-conta|/mercado|/onboarding' ; Write-Host '=== LINT ==='; npm run lint 2>&1 | Select-Object -Last 8; Write-Host \"LINT EXIT: $LASTEXITCODE\")",
       "Bash(grep -v \"// \")",
-      "Bash(echo \"LINT_EXIT=$?\")"
+      "Bash(echo \"LINT_EXIT=$?\")",
+      "PowerShell($wt=\"E:\\\\Labdev\\\\Projetos\\\\fraldinha-livre\\\\.claude\\\\worktrees\\\\eloquent-montalcini-2dff41\"; Write-Host '=== SHOW --STAT ==='; git -C $wt show --stat 5f84450 --format='%h %s'; Write-Host '=== GREP alert/confirm ==='; git -C $wt grep -nE \"\\\\balert\\\\\\(|\\\\bconfirm\\\\\\(\" -- front/src 2>&1; Write-Host '\\(0=limpo\\)'; git -C $wt checkout -- .claude/settings.local.json; Write-Host '=== STATUS ==='; git -C $wt status --short; cd \"$wt\\\\front\"; Write-Host '=== BUILD ==='; npm run build 2>&1 | Select-String -Pattern 'Compiled|Failed|Error|error' | Select-Object -First 5; Write-Host '=== LINT ==='; npm run lint 2>&1 | Select-Object -Last 3; Write-Host \"LINT EXIT: $LASTEXITCODE\")",
+      "PowerShell(git -C $wt add .claude)"
     ]
   }
 }

@@ -27,7 +27,12 @@
       "PowerShell(git -C $wt add chatsessions/2026-07-02-sessao-01-analise-review-decisoes.md)",
       "PowerShell(git -C $wt log --oneline -1)",
       "PowerShell($wt = \"E:\\\\Labdev\\\\Projetos\\\\fraldinha-livre\\\\.claude\\\\worktrees\\\\eloquent-montalcini-2dff41\")",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "PowerShell(git -C $wt show --stat 1355e51 --format='%h %s')",
+      "PowerShell(git -C $wt status --short)",
+      "PowerShell($wt=\"E:\\\\Labdev\\\\Projetos\\\\fraldinha-livre\\\\.claude\\\\worktrees\\\\eloquent-montalcini-2dff41\")",
+      "PowerShell($wt=\"E:\\\\Labdev\\\\Projetos\\\\fraldinha-livre\\\\.claude\\\\worktrees\\\\eloquent-montalcini-2dff41\"; git -C $wt checkout -- .claude/settings.local.json; Write-Host '=== STATUS pos-limpeza ==='; git -C $wt status --short; Write-Host '\\(vazio = limpo\\)'; cd \"$wt\\\\front\"; Write-Host '=== BUILD \\(rotas\\) ==='; npm run build 2>&1 | Select-String -Pattern 'perfil|Compiled|Failed|error|/minha-conta|/mercado|/onboarding' ; Write-Host '=== LINT ==='; npm run lint 2>&1 | Select-Object -Last 8; Write-Host \"LINT EXIT: $LASTEXITCODE\")",
+      "Bash(grep -v \"// \")"
     ]
   }
 }

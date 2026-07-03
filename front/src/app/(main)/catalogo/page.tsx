@@ -4,11 +4,16 @@
 import { useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { PRODUCTS, filterProducts, Product, ProductFilters } from '@/lib/products'
+import { STORE_SUPPLIERS } from '@/lib/suppliers'
 import { useAuth } from '@/contexts/auth-context'
+import { useOrders } from '@/contexts/orders-context'
+import { useMarket } from '@/contexts/market-context'
+import { Address } from '@/lib/account-mock'
 import ProductCard from '@/components/catalogo/ProductCard'
 import CatalogFilters from '@/components/catalogo/CatalogFilters'
 import Pagination from '@/components/catalogo/Pagination'
 import OfferModal from '@/components/catalogo/OfferModal'
+import BuyModal from '@/components/catalogo/BuyModal'
 
 function useFilters(): [ProductFilters, (key: keyof ProductFilters, value: string) => void, () => void] {
   const router = useRouter()
@@ -46,10 +51,14 @@ function useFilters(): [ProductFilters, (key: keyof ProductFilters, value: strin
 
 function CatalogoContent() {
   const [filters, updateFilter, clearFilters] = useFilters()
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [selectedProductForOffer, setSelectedProductForOffer] = useState<Product | null>(null)
+  const [selectedProductForBuy, setSelectedProductForBuy] = useState<Product | null>(null)
+  const [buyModalOpen, setBuyModalOpen] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
+  const { createDirectOrder } = useOrders()
+  const { addDirectOrder } = useMarket()
 
   const { items, total, totalPages } = filterProducts(PRODUCTS, filters)
 
@@ -60,6 +69,51 @@ function CatalogoContent() {
     const params = new URLSearchParams(searchParams.toString())
     params.set('page', String(page))
     router.push(`/catalogo?${params.toString()}`)
+  }
+
+  function handleBuy(product: Product) {
+    setSelectedProductForBuy(product)
+    setBuyModalOpen(true)
+  }
+
+  function handleBuyConfirm(quantity: number, deliveryAddress: Address) {
+    if (!selectedProductForBuy) return
+
+    const totalPrice = selectedProductForBuy.priceInCents * quantity
+    const supplier = STORE_SUPPLIERS.find((s) => s.id === selectedProductForBuy.supplierId)
+    const supplierName = supplier?.name || 'Fornecedor desconhecido'
+
+    // Criar pedido em orders-context
+    const orderId = createDirectOrder(
+      selectedProductForBuy.name,
+      quantity,
+      deliveryAddress,
+      totalPrice,
+      selectedProductForBuy.supplierId,
+      supplierName
+    )
+
+    // Converter e inserir no market-context APENAS se o produto pertencer a sup-001
+    if (selectedProductForBuy.supplierId === 'sup-001') {
+      const directOrder = {
+        id: orderId,
+        product: selectedProductForBuy.name,
+        quantity,
+        unit: 'un' as const,
+        price: totalPrice,
+        buyerCity: deliveryAddress.cidade,
+        buyerState: deliveryAddress.estado,
+        createdAt: new Date().toISOString(),
+        status: 'aguardando' as const,
+      }
+      addDirectOrder(directOrder)
+    }
+
+    setBuyModalOpen(false)
+    setSelectedProductForBuy(null)
+
+    // Toast de sucesso
+    alert('Pedido criado com sucesso!')
   }
 
   return (
@@ -130,7 +184,8 @@ function CatalogoContent() {
                         key={product.id}
                         product={product}
                         isLoggedIn={user !== null}
-                        onRequestOffer={setSelectedProduct}
+                        onRequestOffer={setSelectedProductForOffer}
+                        onBuy={handleBuy}
                       />
                     ))}
                   </div>
@@ -149,9 +204,17 @@ function CatalogoContent() {
 
       {/* Modal de oferta */}
       <OfferModal
-        key={selectedProduct?.id ?? ''}
-        product={selectedProduct}
-        onClose={() => setSelectedProduct(null)}
+        key={selectedProductForOffer?.id ?? ''}
+        product={selectedProductForOffer}
+        onClose={() => setSelectedProductForOffer(null)}
+      />
+
+      {/* Modal de compra */}
+      <BuyModal
+        product={selectedProductForBuy}
+        open={buyModalOpen}
+        onClose={() => setBuyModalOpen(false)}
+        onConfirm={handleBuyConfirm}
       />
     </>
   )

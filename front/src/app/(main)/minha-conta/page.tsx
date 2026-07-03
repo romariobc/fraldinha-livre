@@ -5,8 +5,9 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { MOCK_USER, INITIAL_ORDERS, Order, Offer } from '@/lib/account-mock'
+import { MOCK_USER, Order, Offer } from '@/lib/account-mock'
 import { useAuth } from '@/contexts/auth-context'
+import { useOrders } from '@/contexts/orders-context'
 import PedidosTab from '@/components/minha-conta/PedidosTab'
 import OfertasTab from '@/components/minha-conta/OfertasTab'
 import HistoricoTab from '@/components/minha-conta/HistoricoTab'
@@ -18,10 +19,10 @@ type TabKey = 'pedidos' | 'ofertas' | 'historico' | 'perfil'
 export default function MinhaContaPage() {
   const router = useRouter()
   const { user, loading } = useAuth()
+  const { orders, handleNovoPedido, handleAceitarOferta } = useOrders()
 
   // Hooks SEMPRE devem ser chamados na mesma ordem, antes de qualquer early return
   const [activeTab, setActiveTab]   = useState<TabKey>('pedidos')
-  const [orders, setOrders]         = useState<Order[]>(INITIAL_ORDERS)
   const [modalOpen, setModalOpen]   = useState(false)
 
   // Guarda client-side: redireciona deslogado para /login?redirect=/minha-conta
@@ -45,28 +46,19 @@ export default function MinhaContaPage() {
     .filter((o) => o.status === 'ofertas-recebidas')
     .reduce((sum, o) => sum + (o.offers?.length ?? 0), 0)
 
-  function handleNovoPedido(partial: Omit<Order, 'id' | 'createdAt'>) {
-    const newOrder: Order = {
-      ...partial,
-      id: `ord-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    }
-    setOrders((prev) => [newOrder, ...prev])
+  function handleNovoPedidoWrapper(partial: Omit<Order, 'id' | 'createdAt'>) {
+    handleNovoPedido(partial.product, partial.quantity, partial.deliveryAddress)
     toast.success('Pedido criado! Fornecedores serão notificados em breve.')
     setActiveTab('pedidos')
   }
 
-  function handleAceitarOferta(orderId: string, offer: Offer) {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId ? { ...o, status: 'aceito' as const, price: offer.price } : o
-      )
-    )
+  function handleAceitarOfertaWrapper(orderId: string, offer: Offer) {
+    handleAceitarOferta(orderId, offer)
     toast.success(`Oferta da ${offer.supplier} aceita! Seu pedido está confirmado.`)
     setActiveTab('pedidos')
   }
 
-  function handleVerOfertas(_orderId: string) {
+  function handleVerOfertas() {
     setActiveTab('ofertas')
   }
 
@@ -171,7 +163,7 @@ export default function MinhaContaPage() {
               </TabsContent>
 
               <TabsContent value="ofertas">
-                <OfertasTab orders={orders} onAceitarOferta={handleAceitarOferta} />
+                <OfertasTab orders={orders} onAceitarOferta={handleAceitarOfertaWrapper} />
               </TabsContent>
 
               <TabsContent value="historico">
@@ -191,7 +183,7 @@ export default function MinhaContaPage() {
         open={modalOpen}
         onOpenChange={setModalOpen}
         user={MOCK_USER}
-        onSubmit={handleNovoPedido}
+        onSubmit={handleNovoPedidoWrapper}
       />
     </>
   )

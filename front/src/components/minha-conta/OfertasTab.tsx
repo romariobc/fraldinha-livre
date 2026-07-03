@@ -2,6 +2,7 @@
 import { Tag } from 'lucide-react'
 import { Order, Offer } from '@/lib/account-mock'
 import { LEILAO_ATIVO } from '@/lib/feature-flags'
+import { formatPrice } from '@/lib/utils'
 
 interface OfertasTabProps {
   orders: Order[]
@@ -14,10 +15,6 @@ function StarRating({ rating }: { rating: number }) {
       {'★'.repeat(rating)}{'☆'.repeat(5 - rating)}
     </span>
   )
-}
-
-function formatPrice(cents: number): string {
-  return `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`
 }
 
 export default function OfertasTab({ orders, onAceitarOferta }: OfertasTabProps) {

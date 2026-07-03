@@ -87,7 +87,7 @@ export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn
             <button
               onClick={handleBuy}
               aria-label={`Comprar ${product.name}`}
-              className="w-full py-2 rounded-full font-display font-bold text-sm transition-colors bg-primary-dark text-white hover:bg-primary-darker focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-dark focus-visible:ring-offset-2"
+              className="w-full py-2 rounded-full font-display font-bold text-sm transition-colors bg-primary-dark text-white hover:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-dark focus-visible:ring-offset-2"
             >
               Comprar
             </button>

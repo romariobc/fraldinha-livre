@@ -224,7 +224,7 @@ export default function BuyModal({ product, open, onClose, onConfirm }: BuyModal
             <button
               onClick={handleConfirm}
               disabled={isConfirmDisabled}
-              className="flex-1 py-2 px-4 bg-primary-dark text-white rounded-lg font-semibold text-sm hover:bg-primary-darker disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 py-2 px-4 bg-primary-dark text-white rounded-lg font-semibold text-sm hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Confirmar
             </button>

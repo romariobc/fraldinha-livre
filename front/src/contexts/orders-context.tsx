@@ -5,7 +5,7 @@ import { Order, Offer, Address, INITIAL_ORDERS } from '@/lib/account-mock'
 
 interface OrdersContextType {
   orders: Order[]
-  createDirectOrder: (product: string, quantity: number, deliveryAddress: Address, price: number, supplierId?: string, supplierName?: string) => string
+  createDirectOrder: (product: string, quantity: number, deliveryAddress: Address, price: number, supplierId?: string, supplierName?: string) => Order
   handleAceitarOferta: (orderId: string, offer: Offer) => void
   handleNovoPedido: (product: string, quantity: number, deliveryAddress: Address) => string
 }
@@ -22,10 +22,9 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     price: number,
     supplierId?: string,
     supplierName?: string
-  ): string => {
-    const newOrderId = `ord-${String(orders.length + 1).padStart(3, '0')}`
+  ): Order => {
     const newOrder: Order = {
-      id: newOrderId,
+      id: `ord-${Date.now()}`,
       type: 'compra-direta',
       product,
       quantity,
@@ -38,7 +37,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       supplierName,
     }
     setOrders([...orders, newOrder])
-    return newOrderId
+    return newOrder
   }
 
   const handleAceitarOferta = (orderId: string, offer: Offer) => {
@@ -58,7 +57,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   }
 
   const handleNovoPedido = (product: string, quantity: number, deliveryAddress: Address): string => {
-    const newOrderId = `ord-${String(orders.length + 1).padStart(3, '0')}`
+    const newOrderId = `ord-${Date.now()}`
     const newOrder: Order = {
       id: newOrderId,
       type: 'cotacao',

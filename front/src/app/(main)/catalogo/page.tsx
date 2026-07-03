@@ -3,12 +3,14 @@
 
 import { useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 import { PRODUCTS, filterProducts, Product, ProductFilters } from '@/lib/products'
 import { STORE_SUPPLIERS } from '@/lib/suppliers'
 import { useAuth } from '@/contexts/auth-context'
 import { useOrders } from '@/contexts/orders-context'
 import { useMarket } from '@/contexts/market-context'
 import { Address } from '@/lib/account-mock'
+import { orderToDirectOrder } from '@/lib/order-adapters'
 import ProductCard from '@/components/catalogo/ProductCard'
 import CatalogFilters from '@/components/catalogo/CatalogFilters'
 import Pagination from '@/components/catalogo/Pagination'
@@ -83,8 +85,8 @@ function CatalogoContent() {
     const supplier = STORE_SUPPLIERS.find((s) => s.id === selectedProductForBuy.supplierId)
     const supplierName = supplier?.name || 'Fornecedor desconhecido'
 
-    // Criar pedido em orders-context
-    const orderId = createDirectOrder(
+    // Criar pedido em orders-context (fonte de verdade do comprador)
+    const order = createDirectOrder(
       selectedProductForBuy.name,
       quantity,
       deliveryAddress,
@@ -93,27 +95,16 @@ function CatalogoContent() {
       supplierName
     )
 
-    // Converter e inserir no market-context APENAS se o produto pertencer a sup-001
+    // Materializar no market-context (painel do fornecedor) APENAS se o produto for do fornecedor logado (sup-001)
     if (selectedProductForBuy.supplierId === 'sup-001') {
-      const directOrder = {
-        id: orderId,
-        product: selectedProductForBuy.name,
-        quantity,
-        unit: 'un' as const,
-        price: totalPrice,
-        buyerCity: deliveryAddress.cidade,
-        buyerState: deliveryAddress.estado,
-        createdAt: new Date().toISOString(),
-        status: 'aguardando' as const,
-      }
-      addDirectOrder(directOrder)
+      const directOrder = orderToDirectOrder(order)
+      if (directOrder) addDirectOrder(directOrder)
     }
 
     setBuyModalOpen(false)
     setSelectedProductForBuy(null)
 
-    // Toast de sucesso
-    alert('Pedido criado com sucesso!')
+    toast.success('Pedido criado! O fornecedor foi notificado.')
   }
 
   return (

@@ -49,6 +49,12 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | H-002 | Gating do leilao (feature 013) + codigo morto | 1 | APROVADO (commit 61396e0, revisado 2026-07-02) |
 | H-005 | Auth Google via Firebase (feature 005a) | 1 | DONE — validado pelo cliente no navegador (2026-07-02) |
 | H-004 | Compra direta multi-vendedor (feature 014) | 1 | redigido — executar apos H-005 |
+| H-006 | Remove codigo morto (013/RN-06) + conserta lint do MarketTable | 1 | PRONTO — pre-requisito para main (build+lint verdes) |
 | H-003 | Bugs da loja (catalogo ?page, busca 'todos', hydration mocks) | 1 | a redigir (Header flag ja resolvido pela 005a) |
 
-**Ordem de execucao (D-011):** H-002 → H-005 → H-004 → H-003 → 006 backend.
+**Ordem de execucao (D-011):** H-002 → H-005 → [H-006 limpeza para main] → H-004 → H-003 → 006 backend.
+
+**Nota (2026-07-02):** verificacao pre-main revelou que o H-002 NAO removeu o codigo morto (RN-06)
+apesar do relatorio afirmar — erro de revisao da sessao-mae (confiou no relatorio sem conferir as
+delecoes no commit). Alem disso `npm run lint` falha por MarketTable.tsx:34. H-006 fecha ambos.
+Licao: sempre conferir delecoes no `git show --stat` do commit, nao no relatorio do executor.

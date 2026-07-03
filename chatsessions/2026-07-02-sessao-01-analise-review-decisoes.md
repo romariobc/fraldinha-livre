@@ -315,6 +315,28 @@ Fila D-011 restante: 014 (H-004, compra direta multi-vendedor sobre sessao real)
 
 Go do cliente para disparar o H-004.
 
+---
+
+## Atualizacao 11 (mesma data) — Verificacao pre-main: 2 problemas achados
+
+Cliente pediu para verificar se esta solido para a main. Verificacao com prova executavel:
+
+- Working tree limpo; 16 commits main..HEAD; NENHUM .env versionado (segredos seguros).
+- `npm run build`: **PASSA** (14 rotas, TS ok).
+- `npm run lint`: **FALHA (exit 1)** — 1 erro em MarketTable.tsx:34 (setState em efeito, react-hooks/set-state-in-effect) + 2 warnings inofensivos.
+- **Codigo morto do 013/RN-06 NAO foi removido**: build listou a rota /perfil; filesystem confirma que os 6 itens (MinhasOfertasTab, HistoricoTab e PerfilTab do fornecedor, OfertaCard, profile-mock.ts, rota (main)/perfil) ainda existem. O commit 61396e0 do H-002 nao teve delecoes — a sessao-mae aprovou confiando no relatorio (erro de revisao).
+
+**Correcoes de governanca:** feature 013 voltou para `in_progress` (RN-06 pendente). Criado o prompt
+`H-006-limpeza-codigo-morto-e-lint.md`: deleta os 6 itens + corrige o lint do MarketTable (reset via
+`key` no lugar de setState-in-effect) para o branch ficar verde antes da main.
+
+**Licao:** conferir delecoes no `git show --stat` do commit, nunca so no relatorio do executor.
+
+### Pendencia para a proxima interacao
+
+Decisao do cliente: (a) disparar H-006 (limpeza) para deixar build+lint verdes e 013 completa antes
+da main [recomendado]; ou (b) mergear como esta assumindo os caveats. So depois: H-004.
+
 **Licao (persistida em memoria [[worktree-env-local-gotcha]]):** arquivos gitignored (.env.local)
 devem ser criados no front do WORKTREE ativo, nao no repo principal — worktrees nao compartilham
 arquivos ignorados. Idem para o `npm run dev` de validacao: rodar no front do worktree, que tem o

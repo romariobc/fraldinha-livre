@@ -109,9 +109,9 @@
       "id": "013",
       "titulo": "Gating do leilao — pontos de contato visiveis porem inativos + limpeza de codigo morto",
       "fase": 1,
-      "status": "done",
+      "status": "in_progress",
       "criterio_aceite": "Flag central unica (LEILAO_ATIVO=false) desativa TODAS as interacoes de leilao mantendo-as visiveis com estado 'Em breve'; /mercado exibe pagina 'Em breve' (nao 404); nenhum clique dispara acao de leilao; ligar a flag restaura o comportamento atual; codigo morto do design antigo removido",
-      "notas": "H-002 executado (commit 61396e0) e APROVADO na revisao da sessao-mae em 2026-07-02. Flag em front/src/lib/feature-flags.ts. CTAs com dupla protecao (handler + disabled). Loja (Diretos/Logistica) intacta. 6 arquivos mortos removidos. Divida tecnica anotada: lint preexistente em MarketTable.tsx:34 (setState em efeito) — arquivo de leilao, corrigir na 008"
+      "notas": "GATING ok e validado (commit 61396e0): flag em feature-flags.ts, CTAs com dupla protecao, loja intacta, reversibilidade ok. PORÉM a remocao de codigo morto (RN-06) NAO foi feita — o commit 61396e0 nao teve nenhuma delecao (erro de revisao da sessao-mae, que confiou no relatorio). Ainda existem: MinhasOfertasTab, HistoricoTab e PerfilTab (fornecedor), OfertaCard, lib/profile-mock.ts e a rota (main)/perfil. Fechar via H-006 antes da main. Alem disso, npm run lint falha por MarketTable.tsx:34 (setState em efeito) — corrigir no H-006 tambem"
     },
     {
       "id": "014",

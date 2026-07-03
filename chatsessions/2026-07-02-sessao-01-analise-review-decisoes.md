@@ -441,6 +441,33 @@ usa endereco real; sacola com badge. Validado → 007a done + 014 done → MERGE
 H-009 (fix CPF/telefone) executa → reviso D-012 → cliente revalida os campos → 007a done de novo →
 retomar decisao do MERGE para a main.
 
+---
+
+## Atualizacao 16 (2026-07-03) — H-009 aprovado; merge BLOQUEADO por arvore suja da main; PAUSA
+
+- H-009 (fix mascaras/limite CPF-telefone) executado (65d2e43), revisado D-012 (mascaras com cap
+  .slice(0,11) e sem e.target.value cru verificados por leitura; lint EXIT 0) e APROVADO. 007a done.
+- **9 features da Fase 1 done; branch verde (7f775e4); 34 commits a frente da main.**
+- Cliente escolheu Opcao A (merge) + pausa. Ao finalizar via finishing-a-development-branch:
+  main e ancestral de HEAD (merge seria limpo), MAS a arvore de trabalho da MAIN (repo principal)
+  esta SUJA com trabalho NAO relacionado ao branch: delecoes nao commitadas + untracked do GitHub
+  Spec Kit (.specify/, .github/agents+prompts/speckit.*) + untracked front/src/app/api/ e
+  front/src/providers/. Nenhum colide com o nosso branch. **Sessao-mae NAO mergeou** — nao clobberar
+  trabalho desconhecido do cliente na main. Reportado ao cliente.
+- Ha outro worktree: blissful-lamport-ccb562 (em 4ac0f1f) — pode ser origem de parte do conteudo solto.
+
+### Estado para retomar (proxima sessao)
+
+1. Cliente decide o destino do conteudo solto na main (Spec Kit + api/ + providers/): commitar/
+   stashar/mover/remover. (Provavelmente Spec Kit e uma ferramenta que o cliente instalou; api/ e
+   providers/ investigar — talvez de outra sessao/worktree.)
+2. Com a main limpa: `git -C E:\Labdev\Projetos\fraldinha-livre merge --no-ff Romir/eloquent-montalcini-2dff41`
+   (mensagem descritiva pt-BR da Fase 1). E fast-forward-able, sem conflito.
+3. Depois do merge: Fase 1 do marketplace na main. Proximo: back do marketplace (006) — e so entao,
+   apos marketplace testado (seguranca/usabilidade/stress), o microservico de leilao (D-014).
+
+Branch seguro; nada perdido pela pausa.
+
 **Licao (persistida em memoria [[worktree-env-local-gotcha]]):** arquivos gitignored (.env.local)
 devem ser criados no front do WORKTREE ativo, nao no repo principal — worktrees nao compartilham
 arquivos ignorados. Idem para o `npm run dev` de validacao: rodar no front do worktree, que tem o

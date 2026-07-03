@@ -50,7 +50,7 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | H-002 | Gating do leilao (feature 013) + codigo morto | 1 | APROVADO (commit 61396e0, revisado 2026-07-02) |
 | H-005 | Auth Google via Firebase (feature 005a) | 1 | DONE — validado pelo cliente no navegador (2026-07-02) |
 | H-004 | Compra direta multi-vendedor (feature 014) | 1 | redigido — executar apos H-005 |
-| H-006 | Remove codigo morto (013/RN-06) + conserta lint do MarketTable | 1 | PRONTO — pre-requisito para main (build+lint verdes) |
+| H-006 | Remove codigo morto (013/RN-06) + conserta lint do MarketTable | 1 | APROVADO (commit 1355e51) via D-012 — branch verde (build+lint) |
 | H-003 | Bugs da loja (catalogo ?page, busca 'todos', hydration mocks) | 1 | a redigir (Header flag ja resolvido pela 005a) |
 
 **Ordem de execucao (D-011):** H-002 → H-005 → [H-006 limpeza para main] → H-004 → H-003 → 006 backend.

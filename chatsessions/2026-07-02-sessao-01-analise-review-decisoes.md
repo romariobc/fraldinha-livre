@@ -337,6 +337,35 @@ Cliente pediu para verificar se esta solido para a main. Verificacao com prova e
 Decisao do cliente: (a) disparar H-006 (limpeza) para deixar build+lint verdes e 013 completa antes
 da main [recomendado]; ou (b) mergear como esta assumindo os caveats. So depois: H-004.
 
+---
+
+## Atualizacao 12 (mesma data) — H-006 APROVADO via D-012; branch VERDE; addendum atendido
+
+Cliente: Decisao A (H-006) + addendum (pre-flight checklist antes de aprovar + documentar richamente).
+
+**Governanca criada (addendum):** `review-checklist.md` (pre-flight obrigatorio), D-012 (formaliza),
+`licoes-e-diretrizes.md` (doc vivo tematico), memoria `revisao-pre-flight-checklist`. Commit de692c5.
+
+**H-006 executado (commit 1355e51) e APROVADO — revisao pelo D-012 com evidencia propria:**
+- `git show --stat 1355e51`: 6 arquivos deletados (delete mode), 881 delecoes; so os 2 arquivos
+  autorizados modificados (mercado/page +key, MarketTable -useEffect).
+- Working tree: revertido settings.local.json (ruido de allowlist auto-gerado) → limpo.
+- `npm run build`: passa; rota /perfil NAO aparece mais.
+- `npm run lint`: EXIT 0 (0 erros; 2 warnings preexistentes _orderId/_c).
+- Grep: 0 referencias vivas aos deletados. MarketTable: reset via key (JSON.stringify(scope)) no pai;
+  useEffect de reset removido; infinite-scroll intacto; sem regressao de gating/auth.
+
+**feature 013 = done (de verdade).** Branch VERDE e solido para a main. Features done: 001-004, 013, 005a.
+
+O checklist D-012 JA provou valor: foi a `npm run build` (rota /perfil) que expos o miss do H-002, e
+esta revisao do H-006 seguiu o checklist ponto a ponto.
+
+### Pendencia para a proxima interacao
+
+Sequenciamento (cliente decide): (a) ir para a main AGORA (Fase 1 parcial: auth + gating + catalogo
+navegavel, sem fluxo de compra ativo); ou (b) H-004 (compra direta) ANTES da main, para a main ja ter
+loja que vende. H-004 spec+prompt prontos.
+
 **Licao (persistida em memoria [[worktree-env-local-gotcha]]):** arquivos gitignored (.env.local)
 devem ser criados no front do WORKTREE ativo, nao no repo principal — worktrees nao compartilham
 arquivos ignorados. Idem para o `npm run dev` de validacao: rodar no front do worktree, que tem o

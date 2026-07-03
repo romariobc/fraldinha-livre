@@ -20,7 +20,9 @@
 
 **Marco:** feature 005a DONE — login Google via Firebase validado pelo cliente no navegador em 2026-07-02 (login → onboarding → comprador → /minha-conta; relogin manteve o papel). Primeiro auth real + primeiro backend vivo (Firestore) do projeto. Features done: 001-004, 013, 005a.
 
-**Proximo passo:** Disparar o H-004 (feature 014 — compra direta multi-vendedor, sobre a sessao real). Spec e prompt ja aprovados/escritos. Aguardando o go do cliente para o disparo. Fila D-011 restante: 014 (H-004) → H-003 (bugs loja) → 006 backend → 005b. Rodar dev SEMPRE do front do worktree ([[worktree-env-local-gotcha]])."
+**Estado do branch:** VERDE e solido para a main — build passa, lint exit 0, tree limpo, sem segredos. Features done: 001-004, 013 (gating + codigo morto via H-006/commit 1355e51, aprovado por D-012), 005a (auth Firebase validado). Instituido o review-checklist.md (D-012) apos o miss do H-002; ja provou valor. Docs: decisoes.md (D-001..D-012), review-checklist.md, licoes-e-diretrizes.md.
+
+**Proximo passo:** Cliente decide o sequenciamento: (a) merge para a main AGORA (Fase 1 parcial: auth+gating+catalogo navegavel, sem compra ativa); ou (b) H-004 (compra direta multi-vendedor, feature 014) ANTES da main. H-004 spec+prompt prontos. Fila D-011 restante: 014 → H-003 (bugs loja) → 006 backend → 005b. Rodar dev/build SEMPRE do front do worktree ([[worktree-env-local-gotcha]]); revisar entregas pelo [[revisao-pre-flight-checklist]]."
 
 **Divida tecnica registrada:** lint preexistente MarketTable.tsx:34 (setState em efeito) — na fila da feature 008 (Fase 2, arquivo de leilao ja gateado).
 

@@ -61,7 +61,7 @@
       "id": "007a",
       "titulo": "Area do cliente real — perfil do comprador persistido no Firestore + travas de seguranca",
       "fase": 1,
-      "status": "in_progress",
+      "status": "done",
       "criterio_aceite": "users/{uid} persiste cpf/phone/address; aba Perfil mostra dados reais (nao MOCK_USER) e edita/persiste; 'Comprar' com perfil incompleto leva a aba Perfil (banner) e a compra usa endereco real; updateProfile nao grava role e regra do Firestore torna role imutavel; redirect/returnTo externos sao ignorados; sacola do Header com contador de pedidos ativos",
       "notas": "H-007 executado (af54380) + fix lint (fc01a82). CODIGO APROVADO via D-012 (lint EXIT 0, build ok; travas de seguranca verificadas por leitura). Regra endurecida do Firestore DEPLOYADA e ativa (role imutavel, delete negado). D-012 pegou de novo um relatorio falso ('lint EXIT 0' que era EXIT 1 por any em PerfilTab:39). FALTA validacao humana no navegador: editar perfil persiste, CPF invalido bloqueia, trava de compra, endereco real no BuyModal, sacola conta. Pedidos seguem mock ate 006"
     },

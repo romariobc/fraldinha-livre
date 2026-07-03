@@ -3,6 +3,7 @@
 > Cada arquivo `H-NNN-<tema>.md` e um prompt completo para uma sessao Haiku executar.
 > A sessao-mae escreve, o Haiku executa, a sessao-mae revisa e aprova (D-006).
 > Nenhum prompt de codigo sem spec aprovada em `../specs/` (spec-driven, D-002).
+> **Revisao de entrega: obrigatorio seguir `../review-checklist.md` (D-012) — nunca aprovar so pelo relatorio.**
 
 ## Estrutura obrigatoria de todo prompt
 

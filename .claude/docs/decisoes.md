@@ -74,6 +74,29 @@ Constatacao: o catalogo atual so tem o CTA "Pedir oferta" (leilao). Nao existe f
 - Padronizar preco em CENTAVOS ja na Fase 1 (products.ts hoje usa reais — divergente do resto do sistema).
 - Spec da feature 014: `.claude/docs/design/specs/spec-catalogo-compra-direta.md`.
 
+## D-012 — Checklist de revisao pre-aprovacao obrigatorio (2026-07-02) — VIGENTE
+
+Toda entrega de sessao Haiku passa pelo `.claude/docs/review-checklist.md` ANTES de a sessao-mae
+declarar "aprovado". Nunca aprovar so pelo relatorio do executor.
+
+**Why:** em 2026-07-02 o H-002 foi aprovado com base no relatorio (que afirmava remover 6 arquivos
+de codigo morto — RN-06), mas o commit nao tinha nenhuma delecao. So foi pego na verificacao
+pre-main (`npm run build` ainda listava a rota /perfil). Causa-raiz: revisao baseada em relatorio +
+diff dos arquivos modificados, sem `git show --stat` (que teria mostrado a ausencia de delecoes) e
+sem rodar build/lint na propria sessao-mae.
+
+**How to apply (resumo — detalhe no review-checklist.md):**
+1. `git show --stat <hash>` — confirmar Added/Modified/**DELETED** reais; delecoes prometidas TEM
+   que aparecer como `delete mode`.
+2. Rodar `npm run build` (conferir a lista de rotas) e `npm run lint` (exit 0) na sessao-mae.
+3. Conferir cada criterio de aceite com evidencia propria (grep + `ls` + `delete mode`, nao so grep).
+4. Ler o diff dos arquivos-nucleo; checar regressao das features ja aprovadas.
+5. Registrar o veredito no chatsession com a evidencia.
+
+Complementa D-006 (papeis) e D-008 (testes do Haiku). O D-008 e o auto-teste do executor; o D-012 e
+a verificacao independente do revisor — os dois sao necessarios porque o executor pode relatar algo
+que o commit nao contem.
+
 ## Aprovacoes registradas em 2026-07-02
 
 - Spec do gating do leilao (feature 013) **APROVADA** pelo cliente → H-002 liberado para redacao/execucao.

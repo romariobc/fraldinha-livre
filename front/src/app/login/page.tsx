@@ -179,9 +179,9 @@ function LoginPageContent() {
                 Lembrar de mim
               </Label>
             </div>
-            <Link href="/como-funciona" className="text-sm font-semibold text-primary-dark hover:underline opacity-50">
+            <span className="text-sm font-semibold text-brand-muted cursor-default opacity-50">
               Esqueci minha senha
-            </Link>
+            </span>
           </div>
 
           <Button

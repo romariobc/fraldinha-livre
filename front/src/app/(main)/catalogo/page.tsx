@@ -22,19 +22,26 @@ function useFilters(): [ProductFilters, (key: keyof ProductFilters, value: strin
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  const pageStr = searchParams.get('page') ?? '1'
+  const parsedPage = parseInt(pageStr, 10)
+  const sanitizedPage = Number.isFinite(parsedPage) && parsedPage >= 1 ? parsedPage : 1
+
   const filters: ProductFilters = {
     search: searchParams.get('search') ?? '',
     brand:  searchParams.get('marca')  ?? 'todos',
     size:   searchParams.get('tam')    ?? 'todos',
     sort:   searchParams.get('sort')   ?? '',
-    page:   Number(searchParams.get('page') ?? '1'),
+    page:   sanitizedPage,
   }
 
   const updateFilter = useCallback(
     (key: keyof ProductFilters, value: string) => {
       const params = new URLSearchParams(searchParams.toString())
       const paramKey = key === 'brand' ? 'marca' : key === 'size' ? 'tam' : key
-      if (value && value !== 'todos') {
+      // Sentinela 'todos' só vale para brand/size; search e sort gravam para qualquer valor não-vazio
+      if ((key === 'brand' || key === 'size') && value === 'todos') {
+        params.delete(paramKey)
+      } else if (value) {
         params.set(paramKey, value)
       } else {
         params.delete(paramKey)
@@ -65,8 +72,10 @@ function CatalogoContent() {
 
   const { items, total, totalPages } = filterProducts(PRODUCTS, filters)
 
-  const start = (filters.page - 1) * 12 + 1
-  const end = Math.min(filters.page * 12, total)
+  // Clamp página ao range válido [1, totalPages] para coerência com itens exibidos
+  const safePage = Math.max(1, Math.min(filters.page, totalPages || 1))
+  const start = (safePage - 1) * 12 + 1
+  const end = Math.min(safePage * 12, total)
 
   function handlePageChange(page: number) {
     const params = new URLSearchParams(searchParams.toString())
@@ -188,7 +197,7 @@ function CatalogoContent() {
                   </div>
 
                   <Pagination
-                    currentPage={filters.page}
+                    currentPage={safePage}
                     totalPages={totalPages}
                     onPageChange={handlePageChange}
                   />

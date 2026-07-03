@@ -20,12 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Address, MockUser, Order } from '@/lib/account-mock'
+import { Address, MOCK_USER, Order } from '@/lib/account-mock'
+import { useAuth } from '@/contexts/auth-context'
 
 interface NovoPedidoModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  user: MockUser
   onSubmit: (order: Omit<Order, 'id' | 'createdAt'>) => void
 }
 
@@ -46,9 +46,11 @@ function normalizeCep(raw: string): string {
 export default function NovoPedidoModal({
   open,
   onOpenChange,
-  user,
   onSubmit,
 }: NovoPedidoModalProps) {
+  const { profile } = useAuth()
+  // Usar profile.address se disponível, senão MOCK_USER.address
+  const defaultAddress = profile?.address || MOCK_USER.address
   const [product, setProduct] = useState('')
   const [quantity, setQuantity] = useState('')
   const [unit, setUnit] = useState<'un' | 'cx' | 'kg'>('un')
@@ -80,7 +82,7 @@ export default function NovoPedidoModal({
       product: product.trim(),
       quantity: Number(quantity),
       unit,
-      deliveryAddress: useOther ? (other as Address) : user.address,
+      deliveryAddress: useOther ? (other as Address) : defaultAddress,
       status: 'aguardando',
       offers: [],
     })
@@ -167,10 +169,10 @@ export default function NovoPedidoModal({
               <MapPin size={14} className="text-primary-dark flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold text-brand-text truncate">
-                  {user.address.logradouro}, {user.address.numero} — {user.address.bairro}
+                  {defaultAddress.logradouro}, {defaultAddress.numero} — {defaultAddress.bairro}
                 </p>
                 <p className="text-[10px] text-brand-muted">
-                  {user.address.cidade}/{user.address.estado} · {user.address.cep}
+                  {defaultAddress.cidade}/{defaultAddress.estado} · {defaultAddress.cep}
                 </p>
               </div>
               {!useOther && (

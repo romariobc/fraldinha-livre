@@ -1,11 +1,11 @@
 // src/app/(main)/minha-conta/page.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { MOCK_USER, Order, Offer } from '@/lib/account-mock'
+import { Order, Offer } from '@/lib/account-mock'
 import { useAuth } from '@/contexts/auth-context'
 import { useOrders } from '@/contexts/orders-context'
 import PedidosTab from '@/components/minha-conta/PedidosTab'
@@ -16,13 +16,17 @@ import NovoPedidoModal from '@/components/minha-conta/NovoPedidoModal'
 
 type TabKey = 'pedidos' | 'ofertas' | 'historico' | 'perfil'
 
-export default function MinhaContaPage() {
+function MinhaContaContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, loading } = useAuth()
   const { orders, handleNovoPedido, handleAceitarOferta } = useOrders()
 
   // Hooks SEMPRE devem ser chamados na mesma ordem, antes de qualquer early return
-  const [activeTab, setActiveTab]   = useState<TabKey>('pedidos')
+  const [activeTab, setActiveTab]   = useState<TabKey>(() => {
+    const tabParam = searchParams.get('tab') as TabKey | null
+    return (tabParam && ['pedidos', 'ofertas', 'historico', 'perfil'].includes(tabParam)) ? tabParam : 'pedidos'
+  })
   const [modalOpen, setModalOpen]   = useState(false)
 
   // Guarda client-side: redireciona deslogado para /login?redirect=/minha-conta
@@ -40,6 +44,8 @@ export default function MinhaContaPage() {
   if (!user) {
     return null // Redirecionar em progresso
   }
+
+  const returnTo = searchParams.get('returnTo')
 
   // Número total de ofertas pendentes para o badge
   const pendingOffersCount = orders
@@ -171,7 +177,7 @@ export default function MinhaContaPage() {
               </TabsContent>
 
               <TabsContent value="perfil">
-                <PerfilTab user={MOCK_USER} />
+                <PerfilTab returnTo={returnTo ?? undefined} />
               </TabsContent>
             </div>
           </Tabs>
@@ -182,9 +188,16 @@ export default function MinhaContaPage() {
       <NovoPedidoModal
         open={modalOpen}
         onOpenChange={setModalOpen}
-        user={MOCK_USER}
         onSubmit={handleNovoPedidoWrapper}
       />
     </>
+  )
+}
+
+export default function MinhaContaPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Carregando...</div>}>
+      <MinhaContaContent />
+    </Suspense>
   )
 }

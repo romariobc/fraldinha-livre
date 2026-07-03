@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useOrders } from '@/contexts/orders-context'
 import { useMarket } from '@/contexts/market-context'
 import { Address } from '@/lib/account-mock'
+import { isProfileComplete } from '@/lib/utils'
 import { orderToDirectOrder } from '@/lib/order-adapters'
 import ProductCard from '@/components/catalogo/ProductCard'
 import CatalogFilters from '@/components/catalogo/CatalogFilters'
@@ -58,7 +59,7 @@ function CatalogoContent() {
   const [buyModalOpen, setBuyModalOpen] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const { createDirectOrder } = useOrders()
   const { addDirectOrder } = useMarket()
 
@@ -74,6 +75,11 @@ function CatalogoContent() {
   }
 
   function handleBuy(product: Product) {
+    // RN-06: trava de compra — se logado mas perfil incompleto, redirecionar para minha-conta
+    if (user && !isProfileComplete(profile)) {
+      router.push('/minha-conta?tab=perfil&returnTo=/catalogo')
+      return
+    }
     setSelectedProductForBuy(product)
     setBuyModalOpen(true)
   }

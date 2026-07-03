@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation'
 import { Menu, X, ShoppingBag, LogOut } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/auth-context'
+import { useOrders } from '@/contexts/orders-context'
 
 const NAV_LINKS = [
   { href: '/',             label: 'Início' },
@@ -22,6 +23,12 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const router = useRouter()
   const { user, signOutUser } = useAuth()
+  const { orders } = useOrders()
+
+  // RN-09: contar pedidos ativos (status != 'entregue' e != 'cancelado')
+  const activeOrdersCount = orders.filter(
+    (o) => o.status !== 'entregue' && o.status !== 'cancelado'
+  ).length
 
   function handleCartClick() {
     if (user) {
@@ -89,6 +96,11 @@ export default function Header() {
               className="relative p-2 rounded-full text-brand-muted hover:text-primary-dark hover:bg-primary-light transition-colors"
             >
               <ShoppingBag size={22} />
+              {user && activeOrdersCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-accent text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  {activeOrdersCount}
+                </span>
+              )}
             </button>
 
             {user ? (
@@ -125,9 +137,14 @@ export default function Header() {
             <button
               onClick={handleCartClick}
               aria-label="Minha conta"
-              className="p-2 text-brand-muted hover:text-primary-dark transition-colors"
+              className="relative p-2 text-brand-muted hover:text-primary-dark transition-colors"
             >
               <ShoppingBag size={22} />
+              {user && activeOrdersCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-accent text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  {activeOrdersCount}
+                </span>
+              )}
             </button>
             <button
               className="p-2 text-brand-text"

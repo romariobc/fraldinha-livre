@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '@/lib/firebase';
 
 export type UserRole = 'comprador' | 'fornecedor';
@@ -13,25 +13,47 @@ interface AuthUser {
   displayName: string | null;
 }
 
+export interface UserProfile {
+  role: UserRole;
+  name: string;
+  email: string;
+  cpf?: string;
+  phone?: string;
+  address?: {
+    logradouro: string;
+    numero: string;
+    complemento?: string;
+    bairro: string;
+    cidade: string;
+    estado: string;
+    cep: string;
+  };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 interface AuthContextType {
   user: AuthUser | null;
+  profile: UserProfile | null;
   role: UserRole | null;
   loading: boolean;
   signInGoogle: () => Promise<void>;
   signOutUser: () => Promise<void>;
+  updateProfile: (patch: Partial<UserProfile>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
-        // Usuario logado: carregar role do Firestore
+        // Usuario logado: carregar perfil completo do Firestore
         setUser({
           uid: fbUser.uid,
           email: fbUser.email,
@@ -40,18 +62,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         try {
           const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
-          if (userDoc.exists() && userDoc.data()?.role) {
-            setRole(userDoc.data().role as UserRole);
+          if (userDoc.exists()) {
+            const data = userDoc.data() as UserProfile;
+            setProfile(data);
+            setRole(data.role || null); // Sem papel => onboarding
           } else {
+            setProfile(null);
             setRole(null); // Sem papel => onboarding
           }
         } catch (error) {
-          console.error('Erro ao carregar papel do Firestore:', error);
+          console.error('Erro ao carregar perfil do Firestore:', error);
+          setProfile(null);
           setRole(null);
         }
       } else {
         // Usuario deslogado
         setUser(null);
+        setProfile(null);
         setRole(null);
       }
       setLoading(false);
@@ -79,12 +106,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateProfile = async (patch: Partial<UserProfile>) => {
+    if (!user) throw new Error('Usuario nao autenticado');
+
+    // D-013: NUNCA gravar role via updateProfile
+    const safePatch = { ...patch };
+    delete safePatch.role;
+
+    try {
+      const userDocRef = doc(db, 'users', user.uid);
+      const dataToUpdate = {
+        ...safePatch,
+        updatedAt: new Date().toISOString(),
+      };
+      await updateDoc(userDocRef, dataToUpdate);
+
+      // Atualizar estado local apos gravar
+      setProfile((prev) => prev ? { ...prev, ...dataToUpdate } : null);
+    } catch (error) {
+      console.error('Erro ao atualizar perfil:', error);
+      throw error;
+    }
+  };
+
   const value: AuthContextType = {
     user,
+    profile,
     role,
     loading,
     signInGoogle,
     signOutUser,
+    updateProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

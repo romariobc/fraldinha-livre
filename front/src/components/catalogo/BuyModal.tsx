@@ -5,6 +5,7 @@ import { Product } from '@/lib/products'
 import { Address, MOCK_USER } from '@/lib/account-mock'
 import { STORE_SUPPLIERS } from '@/lib/suppliers'
 import { formatPrice } from '@/lib/utils'
+import { useAuth } from '@/contexts/auth-context'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 interface BuyModalProps {
@@ -15,6 +16,7 @@ interface BuyModalProps {
 }
 
 export default function BuyModal({ product, open, onClose, onConfirm }: BuyModalProps) {
+  const { profile } = useAuth()
   const [quantity, setQuantity] = useState(1)
   const [useCustomAddress, setUseCustomAddress] = useState(false)
   const [customAddress, setCustomAddress] = useState<Address>({
@@ -32,7 +34,9 @@ export default function BuyModal({ product, open, onClose, onConfirm }: BuyModal
   const supplier = STORE_SUPPLIERS.find(s => s.id === product.supplierId)
   const total = product.priceInCents * quantity
 
-  const deliveryAddress = useCustomAddress ? customAddress : MOCK_USER.address
+  // RN-06: usar profile.address como default (real), fallback para MOCK_USER se profile vazio
+  const defaultAddress = profile?.address || MOCK_USER.address
+  const deliveryAddress = useCustomAddress ? customAddress : defaultAddress
 
   // Validação: quantidade deve ser inteiro positivo
   const isQuantityValid = Number.isInteger(quantity) && quantity > 0
@@ -134,12 +138,12 @@ export default function BuyModal({ product, open, onClose, onConfirm }: BuyModal
 
             {!useCustomAddress ? (
               <div className="mt-2 p-2 bg-slate-50 rounded text-xs text-brand-muted">
-                {MOCK_USER.address.logradouro}, {MOCK_USER.address.numero}
-                {MOCK_USER.address.complemento && ` — ${MOCK_USER.address.complemento}`}
+                {defaultAddress.logradouro}, {defaultAddress.numero}
+                {defaultAddress.complemento && ` — ${defaultAddress.complemento}`}
                 <br />
-                {MOCK_USER.address.bairro}, {MOCK_USER.address.cidade}/{MOCK_USER.address.estado}
+                {defaultAddress.bairro}, {defaultAddress.cidade}/{defaultAddress.estado}
                 <br />
-                {MOCK_USER.address.cep}
+                {defaultAddress.cep}
               </div>
             ) : (
               <div className="mt-2 space-y-2">

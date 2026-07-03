@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/auth-context'
+import { safeRedirect } from '@/lib/utils'
 
 export default function LoginPage() {
   return (
@@ -39,10 +40,10 @@ function LoginPageContent() {
   const { signInGoogle, user, role, loading } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
 
-  // Roteamento pos-login (RN-06): quando o auth resolveu (loading=false) e ha usuario,
+  // Roteamento pos-login (RN-06, D-013): quando o auth resolveu (loading=false) e ha usuario,
   // decide o destino pelo papel ja carregado do Firestore.
   // - sem papel (role === null) => onboarding (primeiro acesso escolhe comprador/fornecedor)
-  // - comprador => o redirect recebido (?redirect) ou /minha-conta
+  // - comprador => o redirect recebido (?redirect) sanitizado ou /minha-conta
   // - fornecedor => /fornecedor/painel
   // Efeito (nao no render) para evitar "Cannot update a component while rendering".
   useEffect(() => {
@@ -52,9 +53,9 @@ function LoginPageContent() {
     } else if (role === 'fornecedor') {
       router.push('/fornecedor/painel')
     } else {
-      // comprador
+      // comprador — D-013: usar safeRedirect para sanitizar o redirect
       const redirect = searchParams.get('redirect')
-      router.push(redirect || '/minha-conta')
+      router.push(safeRedirect(redirect))
     }
   }, [loading, user, role, router, searchParams])
 

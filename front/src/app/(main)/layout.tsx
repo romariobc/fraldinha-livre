@@ -5,14 +5,14 @@ import { OrdersProvider } from '@/contexts/orders-context'
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
-    <>
-      <Header />
-      <main>
-        <OrdersProvider>
-          <MarketProvider>{children}</MarketProvider>
-        </OrdersProvider>
-      </main>
-      <Footer />
-    </>
+    <OrdersProvider>
+      <MarketProvider>
+        <Header />
+        <main>
+          {children}
+        </main>
+        <Footer />
+      </MarketProvider>
+    </OrdersProvider>
   )
 }

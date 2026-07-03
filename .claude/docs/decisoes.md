@@ -117,6 +117,38 @@ trava de compra que tambem redireciona. Fechar o modelo de auth antes do backend
 **How to apply:** ambas as correcoes sao criterio de aceite da 007a. Regra do Firestore versionada
 em `firestore.rules` + deploy.
 
+## D-014 — Leilao reverso como MICROSERVICO anexo, reusavel; gate de marketplace completo+testado (2026-07-03) — VIGENTE
+
+Decisao de negocio do cliente (2026-07-03), refinando a D-007:
+
+1. **O leilao reverso NAO e um modulo interno do marketplace.** Sera construido como um
+   **microservico standalone**, com API propria, projetado para ser **consumido pelo marketplace
+   Fraldinha Livre E por outros produtos** (reusavel — o leilao e um produto em si).
+2. **O marketplace consome o leilao via contrato/API** (nao acoplado ao codigo do marketplace). Os
+   pontos gateados hoje (feature 013, "Em breve") sao os pontos de integracao que, no futuro, o
+   marketplace vai plugar no microservico. A flag `LEILAO_ATIVO` passa a significar "microservico de
+   leilao disponivel e plugado".
+3. **GATE (ordem obrigatoria):** so evoluir para o leilao DEPOIS que **TODO o marketplace (front E
+   back) estiver OK e TESTADO** — incluindo testes de **seguranca, usabilidade, stress** e afins.
+   O leilao e a ultima fronteira, nao paralela ao marketplace.
+
+**Impacto no roadmap:**
+- A "Fase 2" da D-007 deixa de ser uma fase interna e vira um **produto/microservico separado**
+  (leilao), gated atras do marketplace 100% pronto e testado.
+- Features antes em fase 2 (008 leilao, 009 pedidos preferenciais, 010 notificacoes do leilao, 012
+  admin de disputas) passam a pertencer ao escopo do microservico de leilao / integracao — nao entram
+  antes do gate.
+- Novo criterio de "marketplace pronto para o leilao": front completo + back (006) completo +
+  bateria de testes (seguranca, usabilidade, stress, carga, e2e). Enquanto isso, o leilao segue
+  visivel-porem-inativo (013).
+
+**Why:** o cliente quer o leilao como ativo reusavel (outro produto pode consumi-lo) e quer a base
+(marketplace) solida e testada antes de investir na logica concorrente/critica do leilao.
+
+**How to apply:** nao redigir specs/prompts de logica de leilao ate o gate. Ao especificar o back
+do marketplace (006), desenhar o ponto de integracao com o leilao como uma dependencia externa (API),
+nao como codigo interno. Relacionado a D-007 (que fica refinada por esta).
+
 ## Aprovacoes registradas em 2026-07-02
 
 - Spec do gating do leilao (feature 013) **APROVADA** pelo cliente → H-002 liberado para redacao/execucao.

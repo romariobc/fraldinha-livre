@@ -422,6 +422,25 @@ Cliente valida no navegador (npm run dev do worktree): editar perfil persiste no
 invalido bloqueia; trava de compra (perfil incompleto -> aba Perfil -> volta ao catalogo); BuyModal
 usa endereco real; sacola com badge. Validado → 007a done + 014 done → MERGE para a main.
 
+---
+
+## Atualizacao 15 (2026-07-03) — 007a/014/015 validados; D-014 (leilao microservico); bug UX CPF/telefone
+
+- Cliente validou compra + perfil + footer. 007a, 014, 015 done. Fase 1 happy path completa e verde.
+- **D-014 (decisao de negocio):** leilao reverso vira MICROSERVICO standalone, reusavel por outros
+  produtos, consumido pelo marketplace via API. GATE: so evoluir para o leilao apos o marketplace
+  (front+back) 100% pronto e TESTADO (seguranca, usabilidade, stress, e2e). Feature 008 = blocked.
+- **Bug de UX (validacao visual do cliente):** campos CPF e telefone da aba Perfil nao limitam a
+  digitacao (CPF `008.911.703-4000...`, telefone infinito). Causa: formatCPF devolve valor cru quando
+  != 11 digitos e nao capa; telefone armazena e.target.value cru. → H-009 (mascara ao vivo + cap +
+  validacao de quantidade). 007a reaberta como in_progress ate o fix.
+- H-008/015 aprovado (footer condicional + links + em-construcao). Follow-ups menores documentados.
+
+### Pendencia para a proxima interacao
+
+H-009 (fix CPF/telefone) executa → reviso D-012 → cliente revalida os campos → 007a done de novo →
+retomar decisao do MERGE para a main.
+
 **Licao (persistida em memoria [[worktree-env-local-gotcha]]):** arquivos gitignored (.env.local)
 devem ser criados no front do WORKTREE ativo, nao no repo principal — worktrees nao compartilham
 arquivos ignorados. Idem para o `npm run dev` de validacao: rodar no front do worktree, que tem o

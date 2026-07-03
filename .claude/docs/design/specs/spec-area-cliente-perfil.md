@@ -95,6 +95,10 @@ Incorpora as duas findings do security-review de 2026-07-03 (ver D-013).
 - [ ] `users/{uid}` persiste cpf/phone/address; a aba Perfil mostra os dados reais do usuário logado (não Ana Lima)
 - [ ] Editar perfil salva no Firestore e reflete após reload (persistência real)
 - [ ] CPF inválido (dígito verificador, ou sequência repetida) bloqueia salvar; CPF válido passa
+- [ ] **Inputs de CPF e telefone limitam a digitação:** só dígitos, cap no tamanho padrão (CPF 11
+      dígitos; telefone BR 10-11 dígitos com DDI 55 assumido), com máscara aplicada AO VIVO conforme
+      digita. Impossível ultrapassar o tamanho ou digitar letras. Validação de quantidade além do
+      dígito verificador (CPF = 11 dígitos; telefone = 10 ou 11 dígitos)
 - [ ] "Comprar" com perfil incompleto → aba Perfil + banner; completar → volta ao catálogo; comprar usa o endereço real
 - [ ] `updateProfile` não grava `role`; regra do Firestore rejeita alteração de `role` (testável no console: tentar mudar role via update falha)
 - [ ] `redirect`/`returnTo` externos (`https://...`, `//host`) são ignorados (caem no default) — login e trava de compra

@@ -39,6 +39,13 @@ Infra: **Google Cloud / Firebase** (D-001, D-010). Frontend hoje sobre mocks; Fi
   pelo cliente no navegador**. Marco: primeiro auth real + primeiro backend vivo.
 - Firebase provisionado (projeto fraldinha-livre, Firestore em SP, regra users/{uid}, Google Sign-In).
 
+## 3.1 Virada estrategica (2026-07-03) — leilao como microservico (D-014)
+
+O leilao reverso deixa de ser uma "fase interna" e passa a ser um **microservico standalone,
+reusavel por outros produtos**, consumido pelo marketplace via API. Gate: so evoluir para o leilao
+depois do marketplace (front+back) 100% pronto e TESTADO (seguranca, usabilidade, stress, e2e). Ate
+la, o leilao segue visivel-porem-inativo (013). Ver D-014.
+
 ## 4. O que se pretende fazer (proximos passos)
 
 Ordem D-011: **H-006** (limpeza p/ main) → **H-004 / 014** (compra direta multi-vendedor) →

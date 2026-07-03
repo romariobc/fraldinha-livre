@@ -51,8 +51,11 @@ Incorpora as duas findings do security-review de 2026-07-03 (ver D-013).
 - **RN-05 (aba Perfil real e editável)** `PerfilTab` deixa de receber `MOCK_USER`; lê do `profile`
   do `useAuth()`. Modo visualização + botão "Editar perfil" abre formulário (nome, CPF, telefone,
   endereço) com máscaras básicas (CPF `000.000.000-00`, CEP `00000-000`, telefone `(00) 00000-0000`).
-  Salvar → `updateProfile` (persiste no Firestore) → toast. Enquanto vazio, exibe estado "Complete
-  seu perfil". E-mail exibido readonly.
+  **CPF validado por dígito verificador** (não só máscara): util puro `isValidCPF(cpf): boolean` em
+  `lib/utils.ts` (algoritmo dos 2 dígitos verificadores; rejeita sequências repetidas como
+  `111.111.111-11`). Salvar bloqueado com mensagem se o CPF for inválido. **Nome editável** (vem do
+  Google como valor inicial; o usuário decide se muda). Salvar → `updateProfile` (persiste no
+  Firestore) → toast. Enquanto vazio, exibe estado "Complete seu perfil". E-mail readonly.
 
 - **RN-06 (trava de compra — decisão C)** No catálogo, `handleBuy`: se logado mas
   `!isProfileComplete(profile)` → `router.push('/minha-conta?tab=perfil&returnTo=/catalogo')`. A
@@ -91,6 +94,7 @@ Incorpora as duas findings do security-review de 2026-07-03 (ver D-013).
 
 - [ ] `users/{uid}` persiste cpf/phone/address; a aba Perfil mostra os dados reais do usuário logado (não Ana Lima)
 - [ ] Editar perfil salva no Firestore e reflete após reload (persistência real)
+- [ ] CPF inválido (dígito verificador, ou sequência repetida) bloqueia salvar; CPF válido passa
 - [ ] "Comprar" com perfil incompleto → aba Perfil + banner; completar → volta ao catálogo; comprar usa o endereço real
 - [ ] `updateProfile` não grava `role`; regra do Firestore rejeita alteração de `role` (testável no console: tentar mudar role via update falha)
 - [ ] `redirect`/`returnTo` externos (`https://...`, `//host`) são ignorados (caem no default) — login e trava de compra

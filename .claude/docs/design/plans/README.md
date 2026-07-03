@@ -51,6 +51,7 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | H-005 | Auth Google via Firebase (feature 005a) | 1 | DONE — validado pelo cliente no navegador (2026-07-02) |
 | H-004 | Compra direta multi-vendedor (feature 014) | 1 | CODIGO APROVADO (317838e + fix 5f84450) via D-012 — aguardando validacao humana no navegador |
 | H-006 | Remove codigo morto (013/RN-06) + conserta lint do MarketTable | 1 | APROVADO (commit 1355e51) via D-012 — branch verde (build+lint) |
+| H-007 | Area do cliente real: perfil Firestore + travas de seguranca (feature 007a) | 1 | PRONTO para disparo (spec aprovada 2026-07-03) |
 | H-003 | Bugs da loja (catalogo ?page, busca 'todos', hydration mocks) | 1 | a redigir (Header flag ja resolvido pela 005a) |
 
 **Ordem de execucao (D-011):** H-002 → H-005 → [H-006 limpeza para main] → H-004 → H-003 → 006 backend.

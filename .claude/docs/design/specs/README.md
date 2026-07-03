@@ -43,4 +43,4 @@ Arquivos de codigo, decisoes (D-NNN), outros specs.
 | [spec-plataforma-gating-leilao.md](spec-plataforma-gating-leilao.md) | 013 — leilao visivel porem inativo (Fase 1) | APROVADA (2026-07-02) |
 | [spec-auth-firebase.md](spec-auth-firebase.md) | 005a — login Google via Firebase (Fase 1) | estrategia aprovada (D-010 revisada); aguarda pre-requisitos Firebase do cliente |
 | [spec-catalogo-compra-direta.md](spec-catalogo-compra-direta.md) | 014 — compra direta multi-vendedor (Fase 1) | APROVADA (2026-07-02) |
-| [spec-area-cliente-perfil.md](spec-area-cliente-perfil.md) | 007a — perfil real no Firestore + travas de seguranca (Fase 1) | rascunho — em review do cliente |
+| [spec-area-cliente-perfil.md](spec-area-cliente-perfil.md) | 007a — perfil real no Firestore + travas de seguranca (Fase 1) | APROVADA (2026-07-03) |

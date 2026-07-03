@@ -96,4 +96,10 @@ Firestore; endurecimento SSR do auth adiado para deploy/006.
   entrega por escopo de visualizacao; aceite sem fornecedor) — Fase 2 / feature 008.
 - **Bugs da loja** (catalogo ?page nao sanitizado; busca "todos" ignorada; hydration dos mocks) — H-003.
 - **Endurecimento SSR do auth** (session cookie via Admin SDK) — deploy/006.
-- **formatPrice triplicado** → unico em lib/utils.ts — H-004.
+- **formatPrice triplicado** → unico em lib/utils.ts — H-004 (feito).
+- **Paginas "Em construcao" a finalizar (conteudo real):** `/privacidade` (Politica de Privacidade),
+  `/termos` (Termos de Uso), `/como-funciona` (fluxo do fornecedor). Criadas no H-008 como placeholder
+  para nao deixar link quebrado; conteudo real fica para depois do caminho feliz (decisao do cliente
+  2026-07-03: "criar rapido o caminho feliz, detalhes depois"). Nao sao criticas ao sistema.
+- **Landing "destaques" com precos hardcoded em reais** (`app/(main)/page.tsx` ~l.363, `product.price`
+  em dados locais) — inconsistente com o catalogo em centavos; cosmetico, alinhar quando revisar a landing.

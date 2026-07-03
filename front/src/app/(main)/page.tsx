@@ -460,7 +460,7 @@ export default function Home() {
                 Fale com a nossa equipe pelo WhatsApp ou deixe sua mensagem — respondemos em até 2 horas.
               </p>
               <Link
-                href="#"
+                href="/contato"
                 className="mt-2 inline-flex items-center justify-center px-6 py-3 rounded-full bg-primary text-white font-display font-bold text-sm hover:bg-primary-dark transition-colors"
               >
                 💬 Falar no WhatsApp

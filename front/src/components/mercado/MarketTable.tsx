@@ -31,11 +31,6 @@ export default function MarketTable({ scope, onExpandScope }: MarketTableProps) 
   const showExpandCta = filteredOrders.length < 3 && nationalCount > filteredOrders.length
 
   useEffect(() => {
-    setVisibleCount(INITIAL_COUNT)
-    setExpandedId(null)
-  }, [scope])
-
-  useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && hasMore) {

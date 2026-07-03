@@ -3,12 +3,20 @@
 
 import { useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 import { PRODUCTS, filterProducts, Product, ProductFilters } from '@/lib/products'
-import { IS_LOGGED_IN } from '@/lib/auth-mock'
+import { STORE_SUPPLIERS } from '@/lib/suppliers'
+import { useAuth } from '@/contexts/auth-context'
+import { useOrders } from '@/contexts/orders-context'
+import { useMarket } from '@/contexts/market-context'
+import { Address } from '@/lib/account-mock'
+import { isProfileComplete } from '@/lib/utils'
+import { orderToDirectOrder } from '@/lib/order-adapters'
 import ProductCard from '@/components/catalogo/ProductCard'
 import CatalogFilters from '@/components/catalogo/CatalogFilters'
 import Pagination from '@/components/catalogo/Pagination'
 import OfferModal from '@/components/catalogo/OfferModal'
+import BuyModal from '@/components/catalogo/BuyModal'
 
 function useFilters(): [ProductFilters, (key: keyof ProductFilters, value: string) => void, () => void] {
   const router = useRouter()
@@ -46,9 +54,14 @@ function useFilters(): [ProductFilters, (key: keyof ProductFilters, value: strin
 
 function CatalogoContent() {
   const [filters, updateFilter, clearFilters] = useFilters()
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [selectedProductForOffer, setSelectedProductForOffer] = useState<Product | null>(null)
+  const [selectedProductForBuy, setSelectedProductForBuy] = useState<Product | null>(null)
+  const [buyModalOpen, setBuyModalOpen] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user, profile } = useAuth()
+  const { createDirectOrder } = useOrders()
+  const { addDirectOrder } = useMarket()
 
   const { items, total, totalPages } = filterProducts(PRODUCTS, filters)
 
@@ -59,6 +72,45 @@ function CatalogoContent() {
     const params = new URLSearchParams(searchParams.toString())
     params.set('page', String(page))
     router.push(`/catalogo?${params.toString()}`)
+  }
+
+  function handleBuy(product: Product) {
+    // RN-06: trava de compra — se logado mas perfil incompleto, redirecionar para minha-conta
+    if (user && !isProfileComplete(profile)) {
+      router.push('/minha-conta?tab=perfil&returnTo=/catalogo')
+      return
+    }
+    setSelectedProductForBuy(product)
+    setBuyModalOpen(true)
+  }
+
+  function handleBuyConfirm(quantity: number, deliveryAddress: Address) {
+    if (!selectedProductForBuy) return
+
+    const totalPrice = selectedProductForBuy.priceInCents * quantity
+    const supplier = STORE_SUPPLIERS.find((s) => s.id === selectedProductForBuy.supplierId)
+    const supplierName = supplier?.name || 'Fornecedor desconhecido'
+
+    // Criar pedido em orders-context (fonte de verdade do comprador)
+    const order = createDirectOrder(
+      selectedProductForBuy.name,
+      quantity,
+      deliveryAddress,
+      totalPrice,
+      selectedProductForBuy.supplierId,
+      supplierName
+    )
+
+    // Materializar no market-context (painel do fornecedor) APENAS se o produto for do fornecedor logado (sup-001)
+    if (selectedProductForBuy.supplierId === 'sup-001') {
+      const directOrder = orderToDirectOrder(order)
+      if (directOrder) addDirectOrder(directOrder)
+    }
+
+    setBuyModalOpen(false)
+    setSelectedProductForBuy(null)
+
+    toast.success('Pedido criado! O fornecedor foi notificado.')
   }
 
   return (
@@ -128,8 +180,9 @@ function CatalogoContent() {
                       <ProductCard
                         key={product.id}
                         product={product}
-                        isLoggedIn={IS_LOGGED_IN}
-                        onRequestOffer={setSelectedProduct}
+                        isLoggedIn={user !== null}
+                        onRequestOffer={setSelectedProductForOffer}
+                        onBuy={handleBuy}
                       />
                     ))}
                   </div>
@@ -148,9 +201,17 @@ function CatalogoContent() {
 
       {/* Modal de oferta */}
       <OfferModal
-        key={selectedProduct?.id ?? ''}
-        product={selectedProduct}
-        onClose={() => setSelectedProduct(null)}
+        key={selectedProductForOffer?.id ?? ''}
+        product={selectedProductForOffer}
+        onClose={() => setSelectedProductForOffer(null)}
+      />
+
+      {/* Modal de compra */}
+      <BuyModal
+        product={selectedProductForBuy}
+        open={buyModalOpen}
+        onClose={() => setBuyModalOpen(false)}
+        onConfirm={handleBuyConfirm}
       />
     </>
   )

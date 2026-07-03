@@ -1,9 +1,10 @@
 {
-  "_comment": "Status validos: todo, in_progress, blocked, done. Feature so vira done depois que criterio de aceite passar — ver dev-flow-harness/05-harness-evals/criterios-aceite-padrao.md do harness de referencia.",
+  "_comment": "Status validos: todo, in_progress, blocked, done. Feature so vira done depois que criterio de aceite passar. Campo 'fase': 1 = MARKETPLACE (loja; leilao visivel porem inativo), 2 = MERCADO (leilao reverso) — ver .claude/docs/decisoes.md D-007.",
   "features": [
     {
       "id": "001",
       "titulo": "Landing page + Header responsivo + FAQ + Footer",
+      "fase": 1,
       "status": "done",
       "criterio_aceite": "Renderiza sem erros em mobile e desktop; CTA visivel; animacao de nuvens funcionando",
       "notas": "Animacao cloud-float implementada; WaveDivider entre secoes"
@@ -11,79 +12,130 @@
     {
       "id": "002",
       "titulo": "Catalogo de produtos com filtros e paginacao",
+      "fase": 1,
       "status": "done",
       "criterio_aceite": "Grid de produtos filtravel; paginacao funcional; OfferModal abre corretamente",
-      "notas": "Mock de produtos em src/lib/products.ts"
+      "notas": "Mock de produtos em src/lib/products.ts. Bugs conhecidos da loja (review 2026-07-02): ?page nao sanitizado, busca 'todos' ignorada — corrigir na fase 1"
     },
     {
       "id": "003",
       "titulo": "Minha Conta — area do comprador (Pedidos, Cotacoes, Historico, Perfil)",
+      "fase": 1,
       "status": "done",
       "criterio_aceite": "Todas as tabs renderizam; NovoPedidoModal funciona; dados mock carregam",
-      "notas": "Dados em src/lib/account-mock.ts"
+      "notas": "Dados em src/lib/account-mock.ts. Elementos de cotacao/oferta serao gateados na feature 013"
     },
     {
       "id": "004",
-      "titulo": "Painel do Fornecedor completo (5 tabs + modal de oferta)",
+      "titulo": "Painel do Fornecedor (3 tabs: Pedidos Diretos, Ofertas de Mercado, Logistica) + pagina /mercado",
+      "fase": 1,
       "status": "done",
-      "criterio_aceite": "Pedidos Diretos, Mercado, Minhas Ofertas, Historico e Perfil funcionando; modal de oferta com calculo por unidade",
-      "notas": "Dados em src/lib/supplier-mock.ts; dois fluxos (direta vs cotacao) documentados no AGENTS.md"
+      "criterio_aceite": "Pedidos Diretos, Ofertas de Mercado e Logistica funcionando; pagina /mercado com filtro geografico e oferta inline com calculo por unidade",
+      "notas": "Criterio atualizado em 2026-07-02 (D-003/D-007): design de 5 tabs foi substituido por 3 tabs + /mercado. Perfil e Historico do fornecedor voltam na 007. Codigo morto do design antigo sai na 013. Tab Ofertas de Mercado e /mercado serao gateados na 013 (leilao = fase 2)"
     },
     {
-      "id": "005",
-      "titulo": "Autenticacao real (JWT / session)",
+      "id": "005a",
+      "titulo": "Autenticacao Google via Firebase — fatia identidade + papel no Firestore",
+      "fase": 1,
+      "status": "done",
+      "criterio_aceite": "Login/logout Google via Firebase; useAuth() como unica fonte; IS_LOGGED_IN removido (auth-mock.ts + duplicata do Header); /minha-conta e /fornecedor protegidas (guarda client-side); papel persistido em Firestore users/{uid} (relogar mantem o papel)",
+      "notas": "H-005 executado (c5a3a4f, f3d1886, 7f0f3c5), revisado em 2 rodadas e VALIDADO pelo cliente no navegador em 2026-07-02: login Google OK, 1o acesso foi ao onboarding, escolheu comprador, roteou para /minha-conta; logout + relogin reconheceu o papel sem repetir onboarding. Firebase provisionado (projeto fraldinha-livre, Firestore SP). Endurecimento SSR e login email/senha (005b) ficam para depois"
+    },
+    {
+      "id": "005b",
+      "titulo": "Autenticacao por email/senha (Firebase email/password provider)",
+      "fase": 1,
       "status": "todo",
-      "criterio_aceite": "Login/logout funcionando; rotas privadas protegidas; IS_LOGGED_IN substituido por auth real",
-      "notas": "Hoje IS_LOGGED_IN = false em auth-mock.ts; Header ja tem guarda de login com redirect"
+      "criterio_aceite": "Login/cadastro email/senha via Firebase Auth; ativa o form hoje inativo; papel no Firestore (mesmo padrao da 005a)",
+      "notas": "Com Firebase (D-010 revisada), NAO depende mais do backend 006. Fatia separada, apos 005a. Form de email/senha ja existe na UI, visivel porem inativo ate aqui"
     },
     {
       "id": "006",
-      "titulo": "Backend — API Routes ou servidor externo",
+      "titulo": "Backend — API da loja (Google Cloud)",
+      "fase": 1,
       "status": "todo",
-      "criterio_aceite": "Todos os mocks em src/lib/ substituidos por chamadas reais; nenhum dado hardcoded no frontend",
-      "notas": "Nao criar dependencias exclusivas da Vercel (KV, Edge Config, Image Optimization proprietaria)"
+      "criterio_aceite": "Mocks da LOJA em src/lib/ substituidos por chamadas reais (produtos, pedidos diretos, perfis); nenhum dado hardcoded no frontend",
+      "notas": "Infra definida: Google Cloud, serverless e custo minimo (Cloud Run, Firestore, Cloud Storage) — ver .claude/docs/decisoes.md D-001. Endpoints do leilao (cotacoes/ofertas) ficam para a fase 2 (feature 008). Codigo em back/"
+    },
+    {
+      "id": "007a",
+      "titulo": "Area do cliente real — perfil do comprador persistido no Firestore + travas de seguranca",
+      "fase": 1,
+      "status": "done",
+      "criterio_aceite": "users/{uid} persiste cpf/phone/address; aba Perfil mostra dados reais (nao MOCK_USER) e edita/persiste; 'Comprar' com perfil incompleto leva a aba Perfil (banner) e a compra usa endereco real; updateProfile nao grava role e regra do Firestore torna role imutavel; redirect/returnTo externos sao ignorados; sacola do Header com contador de pedidos ativos",
+      "notas": "H-007 executado (af54380) + fix lint (fc01a82). CODIGO APROVADO via D-012 (lint EXIT 0, build ok; travas de seguranca verificadas por leitura). Regra endurecida do Firestore DEPLOYADA e ativa (role imutavel, delete negado). D-012 pegou de novo um relatorio falso ('lint EXIT 0' que era EXIT 1 por any em PerfilTab:39). FALTA validacao humana no navegador: editar perfil persiste, CPF invalido bloqueia, trava de compra, endereco real no BuyModal, sacola conta. Pedidos seguem mock ate 006"
     },
     {
       "id": "007",
-      "titulo": "Catalogo do fornecedor — cadastro de produtos",
+      "titulo": "Catalogo do fornecedor — cadastro de produtos + Perfil e Historico do fornecedor",
+      "fase": 1,
       "status": "todo",
-      "criterio_aceite": "Fornecedor consegue adicionar, editar e remover produtos do proprio catalogo",
-      "notas": "Depende de 006 (backend)"
+      "criterio_aceite": "Fornecedor consegue adicionar, editar e remover produtos do proprio catalogo; ve e edita perfil; consulta historico de vendas",
+      "notas": "Depende de 006. Absorve Perfil/Historico removidos do painel antigo (D-003)"
     },
     {
       "id": "008",
-      "titulo": "Logica de leilao real (fila, timestamps, locks, concorrencia)",
-      "status": "todo",
-      "criterio_aceite": "Pedido de cotacao tem prazo; fornecedores concorrem em tempo real; 'Nao concorro' persiste no servidor",
-      "notas": "Hoje 'Nao concorro' so oculta localmente; depende de 006"
+      "titulo": "Leilao reverso como MICROSERVICO anexo (reusavel) + reativacao dos pontos gateados",
+      "fase": 2,
+      "status": "blocked",
+      "criterio_aceite": "Pedido de cotacao tem prazo; fornecedores concorrem em tempo real; 'Nao concorro' persiste no servidor; flag LEILAO_ATIVO ligada reativa todos os pontos de contato da 013 sem regressao na loja",
+      "notas": "BLOQUEADA por D-014: leilao vira MICROSERVICO standalone (reusavel por outros produtos), consumido via API pelo marketplace. So iniciar APOS o marketplace (front+back 006) 100% pronto e TESTADO (seguranca, usabilidade, stress, e2e). Incluir os 4 bugs de negocio do review 2026-07-02 (parsePriceToCents milhar pt-BR; 'Melhor preco' por indice; entrega por escopo de visualizacao; aceite sem fornecedor) + lint MarketTable.tsx:34 + infinite scroll. Esses arquivos (mercado/*, market-utils, market-context) migram para o microservico"
     },
     {
       "id": "009",
       "titulo": "Pedidos preferenciais — comprador repete pedido vinculado ao mesmo fornecedor",
+      "fase": 2,
       "status": "todo",
       "criterio_aceite": "Sistema sugere fornecedor preferencial baseado em historico; comprador pode aceitar ou ignorar",
-      "notas": "Depende de 006"
+      "notas": "Depende de 006 e 008"
     },
     {
       "id": "010",
       "titulo": "Notificacoes (push/email)",
+      "fase": 2,
       "status": "todo",
       "criterio_aceite": "Fornecedor recebe notificacao quando novo pedido chega; comprador recebe quando oferta e aceita",
-      "notas": "Depende de 005 e 006"
+      "notas": "Depende de 005 e 006. Notificacoes de pedidos diretos (loja) podem ser antecipadas para a fase 1 se necessario"
     },
     {
       "id": "011",
       "titulo": "Integracao com gateway de pagamento",
+      "fase": 1,
       "status": "todo",
       "criterio_aceite": "Fluxo de pagamento completo para compra direta; boleto ou PIX",
-      "notas": "Depende de 006"
+      "notas": "Depende de 006 e 014 — a loja (fase 1) precisa de pagamento para a compra direta"
     },
     {
       "id": "012",
       "titulo": "Painel administrativo da plataforma",
+      "fase": 2,
       "status": "todo",
       "criterio_aceite": "Admin consegue ver todos os usuarios, pedidos e ofertas; pode intervir em disputas",
       "notas": "Escopo a definir; depende de 005 e 006"
+    },
+    {
+      "id": "013",
+      "titulo": "Gating do leilao — pontos de contato visiveis porem inativos + limpeza de codigo morto",
+      "fase": 1,
+      "status": "done",
+      "criterio_aceite": "Flag central unica (LEILAO_ATIVO=false) desativa TODAS as interacoes de leilao mantendo-as visiveis com estado 'Em breve'; /mercado exibe pagina 'Em breve' (nao 404); nenhum clique dispara acao de leilao; ligar a flag restaura o comportamento atual; codigo morto do design antigo removido",
+      "notas": "Gating: commit 61396e0 (flag, dupla protecao, loja intacta, reversibilidade). Remocao de codigo morto (RN-06): commit 1355e51 (H-006) — 6 itens deletados (delete mode confirmado no git show --stat), rota /perfil fora do build, lint exit 0. APROVADO pela sessao-mae via review-checklist.md/D-012 (evidencia propria: git show --stat + build + lint). Feature 013 completa"
+    },
+    {
+      "id": "015",
+      "titulo": "UX: footer condicional na home + correcao de links + paginas 'Em construcao'",
+      "fase": 1,
+      "status": "done",
+      "criterio_aceite": "Footer completo so na home, recolhido/expansivel nas demais; todos os links do Footer resolvem para rota real ou pagina 'Em construcao'; rotas /privacidade, /termos, /como-funciona existem; lint EXIT 0, build ok",
+      "notas": "H-008 executado (f87b84f) e APROVADO via D-012 (lint EXIT 0, build com 3 rotas novas, footer condicional verificado por leitura). Feedback UX do cliente 2026-07-03. Follow-ups menores documentados em licoes-e-diretrizes: 'Esqueci senha' aponta para /como-funciona (corrigir no 005b); EmConstrucao com cores genericas (alinhar aos tokens de marca). Conteudo real das paginas em construcao segue pendente"
+    },
+    {
+      "id": "014",
+      "titulo": "Compra direta do comprador no catalogo (loja multi-vendedor — Modelo A)",
+      "fase": 1,
+      "status": "done",
+      "criterio_aceite": "Todo produto do catalogo exibe seu fornecedor; CTA 'Comprar' ativo cria pedido compra-direta que aparece em minha-conta (comprador) e no painel do fornecedor dono do produto; precos padronizados em centavos",
+      "notas": "H-004 executado (commit 317838e) + fix pos-revisao (5f84450). CODIGO APROVADO via D-012 (git show --stat + build + lint exit 0). Entrega: suppliers.ts (4 fornecedores), products.ts em centavos + supplierId, formatPrice unico em utils, BuyModal com validacao completa (quantidade + endereco, sem cast as Address), OrdersProvider, ponte orders->market via orderToDirectOrder para sup-001. Gating (013) e auth (005a) preservados. FALTA validacao humana do fluxo de compra no navegador (npm run dev do worktree). Sup-001 tem produtos p1/p2/p3/m1/t1/c1"
     }
   ]
 }

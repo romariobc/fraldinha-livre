@@ -10,40 +10,41 @@ export interface Product {
   brand: Brand
   size: Size
   quantity: number
-  price: number
+  priceInCents: number
+  supplierId: string
   badge?: Badge
 }
 
 export const PRODUCTS: Product[] = [
-  // Pampers (5)
-  { id: 'p1', name: 'Supersec Pants', brand: 'Pampers', size: 'P',  quantity: 36, price: 18, badge: 'Mais vendido' },
-  { id: 'p2', name: 'Supersec Pants', brand: 'Pampers', size: 'M',  quantity: 32, price: 22 },
-  { id: 'p3', name: 'Supersec Pants', brand: 'Pampers', size: 'G',  quantity: 28, price: 26 },
-  { id: 'p4', name: 'Premium Care',   brand: 'Pampers', size: 'RN', quantity: 40, price: 24, badge: 'Novidade' },
-  { id: 'p5', name: 'Premium Care',   brand: 'Pampers', size: 'GG', quantity: 24, price: 32 },
-  // Huggies (5)
-  { id: 'h1', name: 'Supreme Care',   brand: 'Huggies', size: 'P',   quantity: 36, price: 20 },
-  { id: 'h2', name: 'Supreme Care',   brand: 'Huggies', size: 'M',   quantity: 32, price: 25, badge: 'Mais vendido' },
-  { id: 'h3', name: 'Supreme Care',   brand: 'Huggies', size: 'G',   quantity: 28, price: 29 },
-  { id: 'h4', name: 'Natural Fit',    brand: 'Huggies', size: 'GG',  quantity: 24, price: 34 },
-  { id: 'h5', name: 'Natural Fit',    brand: 'Huggies', size: 'XXG', quantity: 20, price: 38, badge: 'Novidade' },
-  // MamyPoko (5)
-  { id: 'm1', name: 'Pants Premium',  brand: 'MamyPoko', size: 'P',   quantity: 40, price: 16, badge: 'Oferta' },
-  { id: 'm2', name: 'Pants Premium',  brand: 'MamyPoko', size: 'M',   quantity: 36, price: 20 },
-  { id: 'm3', name: 'Pants Premium',  brand: 'MamyPoko', size: 'G',   quantity: 32, price: 24, badge: 'Oferta' },
-  { id: 'm4', name: 'Air Fit',        brand: 'MamyPoko', size: 'GG',  quantity: 28, price: 28 },
-  { id: 'm5', name: 'Air Fit',        brand: 'MamyPoko', size: 'XXG', quantity: 24, price: 32 },
-  // Turma da Mônica (5)
-  { id: 't1', name: 'Baby',           brand: 'Turma da Mônica', size: 'RN', quantity: 40, price: 14 },
-  { id: 't2', name: 'Baby',           brand: 'Turma da Mônica', size: 'P',  quantity: 36, price: 17, badge: 'Mais vendido' },
-  { id: 't3', name: 'Baby',           brand: 'Turma da Mônica', size: 'M',  quantity: 32, price: 21 },
-  { id: 't4', name: 'Confort',        brand: 'Turma da Mônica', size: 'G',  quantity: 28, price: 25 },
-  { id: 't5', name: 'Confort',        brand: 'Turma da Mônica', size: 'GG', quantity: 24, price: 29 },
-  // Cremer (4)
-  { id: 'c1', name: 'Naturali',       brand: 'Cremer', size: 'RN', quantity: 40, price: 13, badge: 'Oferta' },
-  { id: 'c2', name: 'Naturali',       brand: 'Cremer', size: 'P',  quantity: 36, price: 16 },
-  { id: 'c3', name: 'Naturali',       brand: 'Cremer', size: 'M',  quantity: 32, price: 20 },
-  { id: 'c4', name: 'Protect',        brand: 'Cremer', size: 'G',  quantity: 28, price: 24 },
+  // Pampers (5) — distribuidas entre sup-001 (3) e sup-002 (2)
+  { id: 'p1', name: 'Supersec Pants', brand: 'Pampers', size: 'P',  quantity: 36, priceInCents: 1800, supplierId: 'sup-001', badge: 'Mais vendido' },
+  { id: 'p2', name: 'Supersec Pants', brand: 'Pampers', size: 'M',  quantity: 32, priceInCents: 2200, supplierId: 'sup-001' },
+  { id: 'p3', name: 'Supersec Pants', brand: 'Pampers', size: 'G',  quantity: 28, priceInCents: 2600, supplierId: 'sup-001' },
+  { id: 'p4', name: 'Premium Care',   brand: 'Pampers', size: 'RN', quantity: 40, priceInCents: 2400, supplierId: 'sup-002', badge: 'Novidade' },
+  { id: 'p5', name: 'Premium Care',   brand: 'Pampers', size: 'GG', quantity: 24, priceInCents: 3200, supplierId: 'sup-002' },
+  // Huggies (5) — distribuidas entre sup-002 (3) e sup-003 (2)
+  { id: 'h1', name: 'Supreme Care',   brand: 'Huggies', size: 'P',   quantity: 36, priceInCents: 2000, supplierId: 'sup-002' },
+  { id: 'h2', name: 'Supreme Care',   brand: 'Huggies', size: 'M',   quantity: 32, priceInCents: 2500, supplierId: 'sup-002', badge: 'Mais vendido' },
+  { id: 'h3', name: 'Supreme Care',   brand: 'Huggies', size: 'G',   quantity: 28, priceInCents: 2900, supplierId: 'sup-003' },
+  { id: 'h4', name: 'Natural Fit',    brand: 'Huggies', size: 'GG',  quantity: 24, priceInCents: 3400, supplierId: 'sup-003' },
+  { id: 'h5', name: 'Natural Fit',    brand: 'Huggies', size: 'XXG', quantity: 20, priceInCents: 3800, supplierId: 'sup-003', badge: 'Novidade' },
+  // MamyPoko (5) — distribuidas entre sup-001 (2) e sup-004 (3)
+  { id: 'm1', name: 'Pants Premium',  brand: 'MamyPoko', size: 'P',   quantity: 40, priceInCents: 1600, supplierId: 'sup-001', badge: 'Oferta' },
+  { id: 'm2', name: 'Pants Premium',  brand: 'MamyPoko', size: 'M',   quantity: 36, priceInCents: 2000, supplierId: 'sup-004' },
+  { id: 'm3', name: 'Pants Premium',  brand: 'MamyPoko', size: 'G',   quantity: 32, priceInCents: 2400, supplierId: 'sup-004', badge: 'Oferta' },
+  { id: 'm4', name: 'Air Fit',        brand: 'MamyPoko', size: 'GG',  quantity: 28, priceInCents: 2800, supplierId: 'sup-004' },
+  { id: 'm5', name: 'Air Fit',        brand: 'MamyPoko', size: 'XXG', quantity: 24, priceInCents: 3200, supplierId: 'sup-004' },
+  // Turma da Mônica (5) — distribuidas entre sup-001 (1) e sup-003 (4)
+  { id: 't1', name: 'Baby',           brand: 'Turma da Mônica', size: 'RN', quantity: 40, priceInCents: 1400, supplierId: 'sup-001' },
+  { id: 't2', name: 'Baby',           brand: 'Turma da Mônica', size: 'P',  quantity: 36, priceInCents: 1700, supplierId: 'sup-003', badge: 'Mais vendido' },
+  { id: 't3', name: 'Baby',           brand: 'Turma da Mônica', size: 'M',  quantity: 32, priceInCents: 2100, supplierId: 'sup-003' },
+  { id: 't4', name: 'Confort',        brand: 'Turma da Mônica', size: 'G',  quantity: 28, priceInCents: 2500, supplierId: 'sup-003' },
+  { id: 't5', name: 'Confort',        brand: 'Turma da Mônica', size: 'GG', quantity: 24, priceInCents: 2900, supplierId: 'sup-003' },
+  // Cremer (4) — distribuidas entre sup-001 (1) e sup-002 (3)
+  { id: 'c1', name: 'Naturali',       brand: 'Cremer', size: 'RN', quantity: 40, priceInCents: 1300, supplierId: 'sup-001', badge: 'Oferta' },
+  { id: 'c2', name: 'Naturali',       brand: 'Cremer', size: 'P',  quantity: 36, priceInCents: 1600, supplierId: 'sup-002' },
+  { id: 'c3', name: 'Naturali',       brand: 'Cremer', size: 'M',  quantity: 32, priceInCents: 2000, supplierId: 'sup-002' },
+  { id: 'c4', name: 'Protect',        brand: 'Cremer', size: 'G',  quantity: 28, priceInCents: 2400, supplierId: 'sup-002' },
 ]
 
 const PER_PAGE = 12
@@ -84,9 +85,9 @@ export function filterProducts(
 
   // Ordenação
   if (filters.sort === 'preco-asc') {
-    result.sort((a, b) => a.price - b.price)
+    result.sort((a, b) => a.priceInCents - b.priceInCents)
   } else if (filters.sort === 'preco-desc') {
-    result.sort((a, b) => b.price - a.price)
+    result.sort((a, b) => b.priceInCents - a.priceInCents)
   } else if (filters.sort === 'mais-vendido') {
     result.sort((a, b) =>
       a.badge === 'Mais vendido' ? -1 : b.badge === 'Mais vendido' ? 1 : 0

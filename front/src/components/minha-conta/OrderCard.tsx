@@ -1,5 +1,6 @@
 import { Package2, MapPin } from 'lucide-react'
 import { Order, OrderStatus } from '@/lib/account-mock'
+import { formatPrice } from '@/lib/utils'
 
 interface OrderCardProps {
   order: Order
@@ -23,10 +24,6 @@ function formatAddress(addr: Order['deliveryAddress']): string {
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR')
-}
-
-function formatPrice(cents: number): string {
-  return `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`
 }
 
 export default function OrderCard({ order, mode, onVerOfertas }: OrderCardProps) {

@@ -44,6 +44,8 @@ export interface Order {
   status: OrderStatus
   createdAt: string   // ISO 8601
   price?: number      // em centavos — compra-direta ou oferta aceita
+  supplierId?: string // para compra-direta e oferta aceita
+  supplierName?: string // para compra-direta e oferta aceita
   offers?: Offer[]    // presente apenas em cotacao
 }
 

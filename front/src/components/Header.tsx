@@ -5,8 +5,10 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { Menu, X, ShoppingBag } from 'lucide-react'
+import { Menu, X, ShoppingBag, LogOut } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuth } from '@/contexts/auth-context'
+import { useOrders } from '@/contexts/orders-context'
 
 const NAV_LINKS = [
   { href: '/',             label: 'Início' },
@@ -17,19 +19,34 @@ const NAV_LINKS = [
   { href: '/contato',      label: 'Contato' },
 ]
 
-/** Mock: troque por verificação real de sessão quando o auth estiver pronto */
-const IS_LOGGED_IN = false
-
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const router = useRouter()
+  const { user, signOutUser } = useAuth()
+  const { orders } = useOrders()
+
+  // RN-09: contar pedidos ativos (status != 'entregue' e != 'cancelado')
+  const activeOrdersCount = orders.filter(
+    (o) => o.status !== 'entregue' && o.status !== 'cancelado'
+  ).length
 
   function handleCartClick() {
-    if (IS_LOGGED_IN) {
+    if (user) {
       router.push('/minha-conta')
     } else {
       toast.info('Faça login para acessar sua conta.')
       router.push('/login')
+    }
+  }
+
+  async function handleLogout() {
+    try {
+      await signOutUser()
+      router.push('/')
+      toast.success('Logout realizado com sucesso!')
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error)
+      toast.error('Erro ao fazer logout')
     }
   }
 
@@ -79,20 +96,40 @@ export default function Header() {
               className="relative p-2 rounded-full text-brand-muted hover:text-primary-dark hover:bg-primary-light transition-colors"
             >
               <ShoppingBag size={22} />
+              {user && activeOrdersCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-accent text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  {activeOrdersCount}
+                </span>
+              )}
             </button>
 
-            <Link
-              href="/login"
-              className="px-5 py-2 rounded-full border-2 border-primary text-primary-dark font-display font-bold text-sm hover:bg-primary-light transition-colors"
-            >
-              Entrar
-            </Link>
-            <Link
-              href="/cadastro"
-              className="px-5 py-2 rounded-full bg-accent text-white font-display font-bold text-sm hover:bg-accent-dark transition-all hover:-translate-y-px shadow-sm hover:shadow-accent/30"
-            >
-              Criar conta grátis
-            </Link>
+            {user ? (
+              <>
+                <span className="text-sm text-brand-muted px-2">{user.email}</span>
+                <button
+                  onClick={handleLogout}
+                  aria-label="Sair"
+                  className="p-2 rounded-full text-brand-muted hover:text-primary-dark hover:bg-primary-light transition-colors"
+                >
+                  <LogOut size={20} />
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="px-5 py-2 rounded-full border-2 border-primary text-primary-dark font-display font-bold text-sm hover:bg-primary-light transition-colors"
+                >
+                  Entrar
+                </Link>
+                <Link
+                  href="/cadastro"
+                  className="px-5 py-2 rounded-full bg-accent text-white font-display font-bold text-sm hover:bg-accent-dark transition-all hover:-translate-y-px shadow-sm hover:shadow-accent/30"
+                >
+                  Criar conta grátis
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile: carrinho + hamburger */}
@@ -100,9 +137,14 @@ export default function Header() {
             <button
               onClick={handleCartClick}
               aria-label="Minha conta"
-              className="p-2 text-brand-muted hover:text-primary-dark transition-colors"
+              className="relative p-2 text-brand-muted hover:text-primary-dark transition-colors"
             >
               <ShoppingBag size={22} />
+              {user && activeOrdersCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-accent text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                  {activeOrdersCount}
+                </span>
+              )}
             </button>
             <button
               className="p-2 text-brand-text"
@@ -135,20 +177,34 @@ export default function Header() {
             ))}
           </div>
           <div className="flex gap-2 pt-3 mt-2 border-t border-primary/10">
-            <Link
-              href="/login"
-              className="flex-1 text-center py-2.5 rounded-full border-2 border-primary text-primary-dark font-display font-bold text-sm hover:bg-primary-light transition-colors"
-              onClick={() => setMenuOpen(false)}
-            >
-              Entrar
-            </Link>
-            <Link
-              href="/cadastro"
-              className="flex-1 text-center py-2.5 rounded-full bg-accent text-white font-display font-bold text-sm hover:bg-accent-dark transition-colors"
-              onClick={() => setMenuOpen(false)}
-            >
-              Criar conta
-            </Link>
+            {user ? (
+              <button
+                onClick={() => {
+                  handleLogout()
+                  setMenuOpen(false)
+                }}
+                className="flex-1 text-center py-2.5 rounded-full border-2 border-primary text-primary-dark font-display font-bold text-sm hover:bg-primary-light transition-colors"
+              >
+                Sair
+              </button>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="flex-1 text-center py-2.5 rounded-full border-2 border-primary text-primary-dark font-display font-bold text-sm hover:bg-primary-light transition-colors"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Entrar
+                </Link>
+                <Link
+                  href="/cadastro"
+                  className="flex-1 text-center py-2.5 rounded-full bg-accent text-white font-display font-bold text-sm hover:bg-accent-dark transition-colors"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Criar conta
+                </Link>
+              </>
+            )}
           </div>
         </nav>
       )}

@@ -1,10 +1,13 @@
 // src/app/(main)/minha-conta/page.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { MOCK_USER, INITIAL_ORDERS, Order, Offer } from '@/lib/account-mock'
+import { Order, Offer } from '@/lib/account-mock'
+import { useAuth } from '@/contexts/auth-context'
+import { useOrders } from '@/contexts/orders-context'
 import PedidosTab from '@/components/minha-conta/PedidosTab'
 import OfertasTab from '@/components/minha-conta/OfertasTab'
 import HistoricoTab from '@/components/minha-conta/HistoricoTab'
@@ -13,38 +16,55 @@ import NovoPedidoModal from '@/components/minha-conta/NovoPedidoModal'
 
 type TabKey = 'pedidos' | 'ofertas' | 'historico' | 'perfil'
 
-export default function MinhaContaPage() {
-  const [activeTab, setActiveTab]   = useState<TabKey>('pedidos')
-  const [orders, setOrders]         = useState<Order[]>(INITIAL_ORDERS)
+function MinhaContaContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { user, loading } = useAuth()
+  const { orders, handleNovoPedido, handleAceitarOferta } = useOrders()
+
+  // Hooks SEMPRE devem ser chamados na mesma ordem, antes de qualquer early return
+  const [activeTab, setActiveTab]   = useState<TabKey>(() => {
+    const tabParam = searchParams.get('tab') as TabKey | null
+    return (tabParam && ['pedidos', 'ofertas', 'historico', 'perfil'].includes(tabParam)) ? tabParam : 'pedidos'
+  })
   const [modalOpen, setModalOpen]   = useState(false)
+
+  // Guarda client-side: redireciona deslogado para /login?redirect=/minha-conta
+  // (endurecimento SSR com session cookie fica para deploy/006 — D-010)
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login?redirect=/minha-conta')
+    }
+  }, [user, loading, router])
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>
+  }
+
+  if (!user) {
+    return null // Redirecionar em progresso
+  }
+
+  const returnTo = searchParams.get('returnTo')
 
   // Número total de ofertas pendentes para o badge
   const pendingOffersCount = orders
     .filter((o) => o.status === 'ofertas-recebidas')
     .reduce((sum, o) => sum + (o.offers?.length ?? 0), 0)
 
-  function handleNovoPedido(partial: Omit<Order, 'id' | 'createdAt'>) {
-    const newOrder: Order = {
-      ...partial,
-      id: `ord-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    }
-    setOrders((prev) => [newOrder, ...prev])
+  function handleNovoPedidoWrapper(partial: Omit<Order, 'id' | 'createdAt'>) {
+    handleNovoPedido(partial.product, partial.quantity, partial.deliveryAddress)
     toast.success('Pedido criado! Fornecedores serão notificados em breve.')
     setActiveTab('pedidos')
   }
 
-  function handleAceitarOferta(orderId: string, offer: Offer) {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId ? { ...o, status: 'aceito' as const, price: offer.price } : o
-      )
-    )
+  function handleAceitarOfertaWrapper(orderId: string, offer: Offer) {
+    handleAceitarOferta(orderId, offer)
     toast.success(`Oferta da ${offer.supplier} aceita! Seu pedido está confirmado.`)
     setActiveTab('pedidos')
   }
 
-  function handleVerOfertas(_orderId: string) {
+  function handleVerOfertas() {
     setActiveTab('ofertas')
   }
 
@@ -63,9 +83,9 @@ export default function MinhaContaPage() {
                 Área do cliente
               </p>
               <h1 className="font-display font-black text-brand-text text-2xl lg:text-3xl">
-                Olá, {MOCK_USER.name.split(' ')[0]} 👋
+                Olá, {(user.displayName || user.email || 'Cliente').split(' ')[0]} 👋
               </h1>
-              <p className="text-sm text-brand-muted mt-1">{MOCK_USER.email}</p>
+              <p className="text-sm text-brand-muted mt-1">{user.email}</p>
             </div>
 
             {/* Quick stats */}
@@ -149,7 +169,7 @@ export default function MinhaContaPage() {
               </TabsContent>
 
               <TabsContent value="ofertas">
-                <OfertasTab orders={orders} onAceitarOferta={handleAceitarOferta} />
+                <OfertasTab orders={orders} onAceitarOferta={handleAceitarOfertaWrapper} />
               </TabsContent>
 
               <TabsContent value="historico">
@@ -157,7 +177,7 @@ export default function MinhaContaPage() {
               </TabsContent>
 
               <TabsContent value="perfil">
-                <PerfilTab user={MOCK_USER} />
+                <PerfilTab returnTo={returnTo ?? undefined} />
               </TabsContent>
             </div>
           </Tabs>
@@ -168,9 +188,16 @@ export default function MinhaContaPage() {
       <NovoPedidoModal
         open={modalOpen}
         onOpenChange={setModalOpen}
-        user={MOCK_USER}
-        onSubmit={handleNovoPedido}
+        onSubmit={handleNovoPedidoWrapper}
       />
     </>
+  )
+}
+
+export default function MinhaContaPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Carregando...</div>}>
+      <MinhaContaContent />
+    </Suspense>
   )
 }

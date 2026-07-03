@@ -41,7 +41,9 @@
       "mcp__plugin_firebase_firebase__firebase_deploy",
       "mcp__plugin_firebase_firebase__firebase_get_security_rules",
       "PowerShell(git -C $wt add .claude chatsessions)",
-      "PowerShell(git -C $wt log --oneline -3)"
+      "PowerShell(git -C $wt log --oneline -3)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(timeout 120 npm run lint)"
     ]
   }
 }

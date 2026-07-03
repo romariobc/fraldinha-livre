@@ -22,7 +22,9 @@
 
 **Estado do branch:** VERDE e solido para a main — build passa, lint exit 0, tree limpo, sem segredos. Features done: 001-004, 013 (gating + codigo morto via H-006/commit 1355e51, aprovado por D-012), 005a (auth Firebase validado). Instituido o review-checklist.md (D-012) apos o miss do H-002; ja provou valor. Docs: decisoes.md (D-001..D-012), review-checklist.md, licoes-e-diretrizes.md.
 
-**Proximo passo:** Cliente decide o sequenciamento: (a) merge para a main AGORA (Fase 1 parcial: auth+gating+catalogo navegavel, sem compra ativa); ou (b) H-004 (compra direta multi-vendedor, feature 014) ANTES da main. H-004 spec+prompt prontos. Fila D-011 restante: 014 → H-003 (bugs loja) → 006 backend → 005b. Rodar dev/build SEMPRE do front do worktree ([[worktree-env-local-gotcha]]); revisar entregas pelo [[revisao-pre-flight-checklist]]."
+**Estado:** Cliente escolheu Decisao B (H-004 antes da main). H-004 (feature 014, compra direta multi-vendedor) executado e revisado em 2 rodadas — CODIGO APROVADO via D-012 (commits 317838e + 5f84450): centavos, formatPrice unico, BuyModal validado, ponte orders->market, gating/auth preservados, build/lint verdes. feature 014 = in_progress ate a validacao humana.
+
+**Proximo passo:** Cliente valida o fluxo de compra no navegador (npm run dev do WORKTREE front): deslogado 'Comprar'->login; logado->BuyModal->valida quantidade/endereco->confirma->toast->pedido em /minha-conta; produto sup-001 (p1/p2/p3/m1/t1/c1) aparece tambem em /fornecedor/painel>Pedidos Diretos; 'Pedir oferta' segue inativo. Validado → 014 done → MERGE para a main (mensagem descritiva pt-BR da Fase 1). Rodar do front do worktree ([[worktree-env-local-gotcha]]); revisar pelo [[revisao-pre-flight-checklist]]."
 
 **Divida tecnica registrada:** lint preexistente MarketTable.tsx:34 (setState em efeito) — na fila da feature 008 (Fase 2, arquivo de leilao ja gateado).
 

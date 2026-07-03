@@ -366,6 +366,34 @@ Sequenciamento (cliente decide): (a) ir para a main AGORA (Fase 1 parcial: auth 
 navegavel, sem fluxo de compra ativo); ou (b) H-004 (compra direta) ANTES da main, para a main ja ter
 loja que vende. H-004 spec+prompt prontos.
 
+---
+
+## Atualizacao 13 (mesma data) — Decisao B; H-004 executado, revisado (2 rodadas), CODIGO APROVADO
+
+Cliente: Decisao B (H-004 antes da main) + merge bem descritivo em pt-BR.
+
+H-004 executado (commit 317838e, 19 arquivos). Revisao D-012: nucleo correto (centavos, formatPrice
+unico, BuyModal com validacao completa sem cast as Address, gating preservado, ponte orders->market
+para sup-001, build/lint verdes). 2 ajustes de qualidade pedidos: (1) alert() -> toast; (2)
+order-adapters.ts criado mas nao usado (codigo morto). Haiku corrigiu (commit 5f84450): toast ok;
+adaptador AGORA usado (createDirectOrder retorna Order -> orderToDirectOrder -> addDirectOrder);
+opcionais aplicados (ids por timestamp; hover:bg-primary). Verificacao final da sessao-mae: grep 0
+alert/confirm, build ok, lint exit 0, tree limpo.
+
+**CODIGO do H-004 APROVADO.** feature 014 = in_progress: falta validacao HUMANA do fluxo de compra
+no navegador (npm run dev do WORKTREE). Fluxo a validar: deslogado "Comprar" -> /login; logado ->
+BuyModal -> validacao de quantidade/endereco -> confirmar -> toast -> pedido em /minha-conta; para
+produto sup-001 (p1/p2/p3/m1/t1/c1) tambem aparece em /fornecedor/painel > Pedidos Diretos; "Pedir
+oferta" segue inativo.
+
+Recorrencia: o Haiku commitou .claude/settings.local.json de novo (ruido de allowlist); a sessao-mae
+reverte antes de cada verificacao. Considerar gitignore desse arquivo no futuro.
+
+### Pendencia para a proxima interacao
+
+Cliente valida a compra no navegador → 014 vira done → MERGE para a main (mensagem descritiva pt-BR
+resumindo a Fase 1).
+
 **Licao (persistida em memoria [[worktree-env-local-gotcha]]):** arquivos gitignored (.env.local)
 devem ser criados no front do WORKTREE ativo, nao no repo principal — worktrees nao compartilham
 arquivos ignorados. Idem para o `npm run dev` de validacao: rodar no front do worktree, que tem o

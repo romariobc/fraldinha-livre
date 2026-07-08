@@ -175,6 +175,38 @@ leilao (D-014); NAO adotar no meio da Fase 1 do marketplace.**
 `front/src/providers/NextAuthProvider.tsx` sao restos MORTOS do NextAuth (abordagem abandonada na
 D-010 -> Firebase); serao DELETADOS da main (nao tem relacao com Spec Kit nem com o branch).
 
+## D-016 a D-020 — Fluxo de compra direta: carrinho + checkout (2026-07-03) — VIGENTES
+
+Aprovadas pelo cliente junto com o plano da feature 016 (compra direta ponta a ponta).
+
+- **D-016 — Carrinho e o BuyModal.** O `ProductCard` passa a ter **"Adicionar ao carrinho"**; o
+  `BuyModal` vira **"Comprar agora"** (adiciona ao carrinho e vai direto ao checkout). O fluxo
+  canonico e carrinho → checkout. Nada de compra 1-clique fora do checkout.
+
+- **D-017 — Carrinho multi-fornecedor: split no checkout.** Um carrinho pode ter produtos de
+  fornecedores diferentes (Modelo A / D-009). Na confirmacao, o checkout **cria 1 pedido por
+  fornecedor**. Coerente com o painel do fornecedor (que so ve os proprios pedidos).
+
+- **D-018 — `Order` ganha `items: OrderItem[]` (breaking).** O `Order` atual e mono-item
+  (`product` + `quantity`). Carrinho real exige linha de itens. Migra `minha-conta`, painel do
+  fornecedor e `order-adapters.ts`. Sem isso nao ha carrinho de verdade.
+
+- **D-019 — Persistencia.** Carrinho em **`localStorage`** (sobrevive a reload). Pedidos seguem em
+  memoria (`orders-context`) ate o backend 006 — nao antecipar o 006.
+
+- **D-020 — Nicho e schema de produto.** Catalogo expande de fraldas para **maes/bebes/cuidados/
+  wellness**, com schema estruturado (`slug`, `categoria`, `atributos`, `descricao`). Deixar
+  **ponto de extensao UCP documentado, NAO implementado** (descoberta por agentes e futuro).
+
+**Fora de escopo (o backend resolve):** API de pagamento e fulfillment. Nesta feature entram como
+**adaptadores mockados atras de interfaces tipadas** (`PaymentGateway`, `FulfillmentService`), com
+**contract tests** que o backend real devera satisfazer sem tocar na UI. **Motor de leilao:** nada
+aqui — o CTA "buscar ofertas personalizadas" fica visivel e inativo atras de `LEILAO_ATIVO` (D-014).
+
+**Metodo (acordado):** plano antes do codigo; tarefas pequenas com teste; subagentes por unidade
+isolada com spec fechada; coordenador (sessao-mae) integra e verifica; loop de ate 3 tentativas por
+tarefa — se nao fechar, PARAR e reportar bloqueio. Nada e "pronto" sem teste verde.
+
 ## Aprovacoes registradas em 2026-07-02
 
 - Spec do gating do leilao (feature 013) **APROVADA** pelo cliente → H-002 liberado para redacao/execucao.

@@ -36,3 +36,6 @@ yarn-error.log*
 # ── Claude Code ────────────────────────────────────────────────
 .claude/worktrees/
 .superpowers/
+
+# graphify (grafo de conhecimento gerado)
+graphify-out/

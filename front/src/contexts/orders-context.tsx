@@ -23,8 +23,9 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     supplierId?: string,
     supplierName?: string
   ): Order => {
+    const newOrderId = `ord-${Date.now()}`
     const newOrder: Order = {
-      id: `ord-${Date.now()}`,
+      id: newOrderId,
       type: 'compra-direta',
       product,
       quantity,
@@ -35,6 +36,13 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       price,
       supplierId,
       supplierName,
+      items: [{
+        productId: `${newOrderId}-p1`,
+        productName: product,
+        unitPrice: price,
+        quantity,
+        unit: 'un',
+      }],
     }
     setOrders([...orders, newOrder])
     return newOrder
@@ -68,6 +76,13 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       status: 'aguardando',
       createdAt: new Date().toISOString(),
       offers: [],
+      items: [{
+        productId: `${newOrderId}-p1`,
+        productName: product,
+        unitPrice: 0,
+        quantity,
+        unit: 'un',
+      }],
     }
     setOrders([...orders, newOrder])
     return newOrderId

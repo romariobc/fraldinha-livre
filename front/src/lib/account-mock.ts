@@ -1,3 +1,5 @@
+import type { OrderItem } from '@/lib/domain/order'
+
 export type OrderType = 'cotacao' | 'compra-direta'
 
 export type OrderStatus =
@@ -47,6 +49,7 @@ export interface Order {
   supplierId?: string // para compra-direta e oferta aceita
   supplierName?: string // para compra-direta e oferta aceita
   offers?: Offer[]    // presente apenas em cotacao
+  items?: OrderItem[] // D-018: linhas do pedido (canonico). Opcional na transicao; getOrderItems faz o fallback.
 }
 
 const SP_ADDRESS: Address = {
@@ -81,6 +84,13 @@ export const INITIAL_ORDERS: Order[] = [
       { id: 'off-001', supplier: 'Distribuidora Sul', price: 8700, deliveryDays: 2, rating: 4 },
       { id: 'off-002', supplier: 'Baby Stock SP',     price: 9200, deliveryDays: 1, rating: 5 },
     ],
+    items: [{
+      productId: 'ord-001-p1',
+      productName: 'Pampers Supersec M',
+      unitPrice: 0,
+      quantity: 32,
+      unit: 'un',
+    }],
   },
   // Pedido ativo — cotação aguardando fornecedores
   {
@@ -93,6 +103,13 @@ export const INITIAL_ORDERS: Order[] = [
     status: 'aguardando',
     createdAt: '2026-05-13T08:30:00Z',
     offers: [],
+    items: [{
+      productId: 'ord-002-p1',
+      productName: 'Huggies Supreme G',
+      unitPrice: 0,
+      quantity: 28,
+      unit: 'un',
+    }],
   },
   // Pedido ativo — compra direta confirmada
   {
@@ -105,6 +122,13 @@ export const INITIAL_ORDERS: Order[] = [
     status: 'confirmado',
     createdAt: '2026-05-11T15:00:00Z',
     price: 13400,
+    items: [{
+      productId: 'ord-003-p1',
+      productName: 'Turma da Mônica P',
+      unitPrice: 13400,
+      quantity: 2,
+      unit: 'cx',
+    }],
   },
   // Histórico — entregue
   {
@@ -117,6 +141,13 @@ export const INITIAL_ORDERS: Order[] = [
     status: 'entregue',
     createdAt: '2026-04-20T09:00:00Z',
     price: 10500,
+    items: [{
+      productId: 'ord-004-p1',
+      productName: 'MamyPoko Pants G',
+      unitPrice: 10500,
+      quantity: 40,
+      unit: 'un',
+    }],
   },
   // Histórico — cancelado
   {
@@ -129,5 +160,12 @@ export const INITIAL_ORDERS: Order[] = [
     status: 'cancelado',
     createdAt: '2026-04-10T11:00:00Z',
     offers: [],
+    items: [{
+      productId: 'ord-005-p1',
+      productName: 'Cremer XG',
+      unitPrice: 0,
+      quantity: 20,
+      unit: 'un',
+    }],
   },
 ]

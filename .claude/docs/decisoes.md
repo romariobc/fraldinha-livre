@@ -175,6 +175,22 @@ leilao (D-014); NAO adotar no meio da Fase 1 do marketplace.**
 `front/src/providers/NextAuthProvider.tsx` sao restos MORTOS do NextAuth (abordagem abandonada na
 D-010 -> Firebase); serao DELETADOS da main (nao tem relacao com Spec Kit nem com o branch).
 
+## D-021 — Node >= 20.19 como requisito do projeto (2026-07-08) — VIGENTE
+
+O ecossistema JS migrou para pacotes ESM-only; ferramentas modernas (vitest 3+, jsdom 27 via
+`@csstools/css-calc`) dependem de `require(esm)`, que so existe a partir do **Node 20.19.0** (backport)
+/ 22.12. O projeto rodava em 20.15.0 → `ERR_REQUIRE_ESM` travava o `npm test` (T0).
+
+**Decisao:** Node **>=20.19** e requisito. Maquina atualizada para **v20.20.2 (LTS Iron)** — mesma
+linha 20.x (mesmo ABI, nao precisou reinstalar node_modules; `sharp` nativo intacto). Travado no repo
+por `front/package.json` `engines.node: ">=20.19.0"` e `.nvmrc` (20.20.2) na raiz.
+
+**Higiene (aplicada na mesma sessao):** cache do npm movido para `E:\npm-cache` (C: estava com 4% livre;
+liberou ~6 GB). Nota: `front/node_modules` tem orfaos nao declarados (next-auth/openid-client — restos
+do NextAuth D-010; msw/sharp) — limpar com `npm ci` quando conveniente (divida menor).
+
+**Why:** sem isso, nenhum teste roda — e o metodo da feature 016 exige teste verde para cada tarefa.
+
 ## D-016 a D-020 — Fluxo de compra direta: carrinho + checkout (2026-07-03) — VIGENTES
 
 Aprovadas pelo cliente junto com o plano da feature 016 (compra direta ponta a ponta).

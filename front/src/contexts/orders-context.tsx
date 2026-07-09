@@ -6,7 +6,6 @@ import { Order, Address, INITIAL_ORDERS } from '@/lib/account-mock'
 interface OrdersContextType {
   orders: Order[]
   createDirectOrder: (product: string, quantity: number, deliveryAddress: Address, price: number, supplierId?: string, supplierName?: string) => Order
-  handleNovoPedido: (product: string, quantity: number, deliveryAddress: Address) => string
 }
 
 const OrdersContext = createContext<OrdersContextType | undefined>(undefined)
@@ -47,32 +46,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return newOrder
   }
 
-  const handleNovoPedido = (product: string, quantity: number, deliveryAddress: Address): string => {
-    const newOrderId = `ord-${Date.now()}`
-    const newOrder: Order = {
-      id: newOrderId,
-      type: 'cotacao',
-      product,
-      quantity,
-      unit: 'un',
-      deliveryAddress,
-      status: 'aguardando',
-      createdAt: new Date().toISOString(),
-      offers: [],
-      items: [{
-        productId: `${newOrderId}-p1`,
-        productName: product,
-        unitPrice: 0,
-        quantity,
-        unit: 'un',
-      }],
-    }
-    setOrders([...orders, newOrder])
-    return newOrderId
-  }
-
   return (
-    <OrdersContext.Provider value={{ orders, createDirectOrder, handleNovoPedido }}>
+    <OrdersContext.Provider value={{ orders, createDirectOrder }}>
       {children}
     </OrdersContext.Provider>
   )

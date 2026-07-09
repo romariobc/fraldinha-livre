@@ -3,15 +3,12 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { toast } from 'sonner'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Order } from '@/lib/account-mock'
 import { useAuth } from '@/contexts/auth-context'
 import { useOrders } from '@/contexts/orders-context'
 import PedidosTab from '@/components/minha-conta/PedidosTab'
 import HistoricoTab from '@/components/minha-conta/HistoricoTab'
 import PerfilTab from '@/components/minha-conta/PerfilTab'
-import NovoPedidoModal from '@/components/minha-conta/NovoPedidoModal'
 
 type TabKey = 'pedidos' | 'historico' | 'perfil'
 
@@ -19,14 +16,13 @@ function MinhaContaContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading } = useAuth()
-  const { orders, handleNovoPedido } = useOrders()
+  const { orders } = useOrders()
 
   // Hooks SEMPRE devem ser chamados na mesma ordem, antes de qualquer early return
   const [activeTab, setActiveTab]   = useState<TabKey>(() => {
     const tabParam = searchParams.get('tab') as TabKey | null
     return (tabParam && ['pedidos', 'historico', 'perfil'].includes(tabParam)) ? tabParam : 'pedidos'
   })
-  const [modalOpen, setModalOpen]   = useState(false)
 
   // Guarda client-side: redireciona deslogado para /login?redirect=/minha-conta
   // (endurecimento SSR com session cookie fica para deploy/006 — D-010)
@@ -45,12 +41,6 @@ function MinhaContaContent() {
   }
 
   const returnTo = searchParams.get('returnTo')
-
-  function handleNovoPedidoWrapper(partial: Omit<Order, 'id' | 'createdAt'>) {
-    handleNovoPedido(partial.product, partial.quantity, partial.deliveryAddress)
-    toast.success('Pedido criado! Fornecedores serão notificados em breve.')
-    setActiveTab('pedidos')
-  }
 
   const activeOrdersCount = orders.filter(
     (o) => o.status !== 'entregue' && o.status !== 'cancelado'
@@ -126,10 +116,7 @@ function MinhaContaContent() {
 
             <div className="pt-6">
               <TabsContent value="pedidos">
-                <PedidosTab
-                  orders={orders}
-                  onNovoPedido={() => setModalOpen(true)}
-                />
+                <PedidosTab orders={orders} />
               </TabsContent>
 
               <TabsContent value="historico">
@@ -143,13 +130,6 @@ function MinhaContaContent() {
           </Tabs>
         </div>
       </section>
-
-      {/* Modal fora das tabs para não herdar seu contexto */}
-      <NovoPedidoModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        onSubmit={handleNovoPedidoWrapper}
-      />
     </>
   )
 }

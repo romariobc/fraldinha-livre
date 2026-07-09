@@ -21,9 +21,14 @@ rola em telas baixas (18bba97); status compra-direta = "Aguardando confirmacao" 
 Teasers de descoberta (Pedir oferta no catalogo, /mercado) mantidos (D-007). Commits 7e55524, 6a135bd.
 
 **Thread S (sacola + navegacao)** — breakdown em plans/S-sacola-navegacao-breakdown.md (S1->{S2,S3,S4}->S5).
-**S1 DONE** (1c79bec): cart-context (useCart) + persistencia localStorage + 18 testes. Correcao de SSR na
-revisao (hidratacao por effect, nao lazy initializer — evitaria mismatch no S4). Suite 115/115.
-**Proximo: S2** (Adicionar a sacola no ProductCard) / S3 (pagina /sacola) / S4 (navegacao header). S5 = checkout.
+**S1 DONE** (1c79bec): cart-context (useCart) + localStorage + 18 testes. Correcao SSR na revisao
+(hidratacao por effect). **S3 DONE** (33c87a1): pagina /sacola (itens por fornecedor, qty, subtotais, 2
+CTAs gateadas) + 16 testes; ajuste de copia na revisao. **S4 DONE** (39e438b): navegacao — sacola->/sacola
+(badge = itens do carrinho), email->dropdown da conta (Minha conta/Meu perfil/Sair), mobile atualizado +
+21 testes; removido `as any` dos mocks na revisao. Suite 152/152.
+**Proximo: S2** (Adicionar a sacola no ProductCard — liga catalogo->carrinho) e depois **S5** (checkout:
+endereco->revisao->pagamento STUB->confirmacao; cria 1 pedido/fornecedor via T1+T2; limpa sacola; faz o
+FLIP do fluxo e conserta o toast). Aguardando "dispare o s2" do cliente (ritmo de aprovacao por tarefa).
 Divida: seed items[].unitPrice = total (nao por-unidade), corrigir no S5/T13. Nicho/produto (T3/T4) = trilha separada.
 
 ---

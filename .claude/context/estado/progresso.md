@@ -9,9 +9,12 @@ EXIT 0. **Node atualizado para 20.20.2** (D-021: engines >=20.19 + .nvmrc) — r
 **T1 (contratos de dominio + portas): DONE** (commit 45e7cf9). Camada pura tipada: domain/{money,cart,
 order}.ts + ports/{payment,fulfillment}.ts + 39 testes unit (suite 42/42 verde). Decisoes das 3 perguntas:
 subpastas domain/ports; pagamento pix|card (boleto = extensao comentada); migracao do Order real fica na
-**T1.5**. Revisado por D-012 (test/lint/tsc rodados pela sessao-mae). **Proximo: T2** (adaptadores mockados
-Payment/Fulfillment + contract tests) OU T1.5 (migracao Order.items[]). Caminho critico: T0->T1->T6->T9->
-T12->T13->T15. Detalhe em chatsessions/2026-07-08-sessao-compra-direta-carrinho.md.
+**T1.5**. **T2 (adaptadores mockados + contract tests): DONE** (commit 26d2507). MockPaymentGateway/
+MockFulfillmentService (deterministicos) + suites de contrato reutilizaveis (runPaymentGatewayContract/
+runFulfillmentServiceContract) que o backend 006 tera que passar. 50 testes novos, suite 92/92 verde.
+Revisado por D-012 (test/lint/tsc pela sessao-mae). **Proximo: T1.5** (migracao Order.items[], D-018, mexe
+em arquivo existente — fazer cedo e isolado) OU T3 (nicho/schema de produto). Caminho critico:
+T0->T1->T6->T9->T12->T13->T15. Detalhe em chatsessions/2026-07-08-sessao-compra-direta-carrinho.md.
 
 ---
 

@@ -1,5 +1,17 @@
 # Progresso — fraldinha-livre
 
+## Estado atual (2026-07-08) — Feature 016: compra direta (carrinho/checkout)
+
+Fase 1 do marketplace JA NA MAIN. Agora: feature 016 (catalogo→carrinho→checkout), planejada e
+aprovada (D-016..D-020 + spec-compra-direta-carrinho-checkout.md). Graphify rodado em front/src.
+**T0 (infra de testes) DONE** (commit 7b8388a): vitest 3 + RTL + jsdom, npm test 3/3 verde, lint/build
+EXIT 0. **Node atualizado para 20.20.2** (D-021: engines >=20.19 + .nvmrc) — resolveu ERR_REQUIRE_ESM.
+**T1 (contratos de dominio + portas Payment/Fulfillment): prompt apresentado, aguardando aval do
+cliente** (3 perguntas: subpastas domain/ports; boleto no pagamento; migracao do Order como T1.5).
+Detalhe completo em chatsessions/2026-07-08-sessao-compra-direta-carrinho.md.
+
+---
+
 ## Ultima sessao
 
 **Data:** 2026-07-02

@@ -6,9 +6,12 @@ Fase 1 do marketplace JA NA MAIN. Agora: feature 016 (catalogo→carrinho→chec
 aprovada (D-016..D-020 + spec-compra-direta-carrinho-checkout.md). Graphify rodado em front/src.
 **T0 (infra de testes) DONE** (commit 7b8388a): vitest 3 + RTL + jsdom, npm test 3/3 verde, lint/build
 EXIT 0. **Node atualizado para 20.20.2** (D-021: engines >=20.19 + .nvmrc) — resolveu ERR_REQUIRE_ESM.
-**T1 (contratos de dominio + portas Payment/Fulfillment): prompt apresentado, aguardando aval do
-cliente** (3 perguntas: subpastas domain/ports; boleto no pagamento; migracao do Order como T1.5).
-Detalhe completo em chatsessions/2026-07-08-sessao-compra-direta-carrinho.md.
+**T1 (contratos de dominio + portas): DONE** (commit 45e7cf9). Camada pura tipada: domain/{money,cart,
+order}.ts + ports/{payment,fulfillment}.ts + 39 testes unit (suite 42/42 verde). Decisoes das 3 perguntas:
+subpastas domain/ports; pagamento pix|card (boleto = extensao comentada); migracao do Order real fica na
+**T1.5**. Revisado por D-012 (test/lint/tsc rodados pela sessao-mae). **Proximo: T2** (adaptadores mockados
+Payment/Fulfillment + contract tests) OU T1.5 (migracao Order.items[]). Caminho critico: T0->T1->T6->T9->
+T12->T13->T15. Detalhe em chatsessions/2026-07-08-sessao-compra-direta-carrinho.md.
 
 ---
 

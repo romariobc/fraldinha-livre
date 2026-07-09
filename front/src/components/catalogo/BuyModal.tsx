@@ -81,7 +81,7 @@ export default function BuyModal({ product, open, onClose, onConfirm }: BuyModal
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Confirmar compra</DialogTitle>
         </DialogHeader>

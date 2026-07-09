@@ -5,7 +5,6 @@ import { formatPrice } from '@/lib/utils'
 interface OrderCardProps {
   order: Order
   mode: 'pedidos' | 'historico'
-  onVerOfertas?: (orderId: string) => void
 }
 
 const STATUS_CONFIG: Record<OrderStatus, { label: string; className: string }> = {
@@ -26,9 +25,15 @@ function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR')
 }
 
-export default function OrderCard({ order, mode, onVerOfertas }: OrderCardProps) {
+export default function OrderCard({ order, mode }: OrderCardProps) {
   const statusCfg = STATUS_CONFIG[order.status]
-  const offerCount = order.offers?.length ?? 0
+
+  // 'aguardando' e compartilhado: em cotacao = aguardando ofertas; em compra
+  // direta = aguardando confirmacao do fornecedor. Label precisa ser type-aware.
+  const statusLabel =
+    order.status === 'aguardando' && order.type === 'compra-direta'
+      ? 'Aguardando confirmação'
+      : statusCfg.label
 
   return (
     <div className="bg-white rounded-card shadow-card p-4 flex flex-col gap-3">
@@ -67,7 +72,7 @@ export default function OrderCard({ order, mode, onVerOfertas }: OrderCardProps)
       {/* Rodapé: status + ações */}
       <div className="flex items-center justify-between gap-2">
         <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${statusCfg.className}`}>
-          {statusCfg.label}
+          {statusLabel}
         </span>
 
         <div className="flex items-center gap-2">
@@ -82,17 +87,6 @@ export default function OrderCard({ order, mode, onVerOfertas }: OrderCardProps)
               <span className="text-xs text-brand-muted">{formatDate(order.createdAt)}</span>
             </>
           )}
-          {/* Pedidos: botão ver ofertas para cotações com resposta */}
-          {mode === 'pedidos' &&
-            order.status === 'ofertas-recebidas' &&
-            offerCount > 0 && (
-              <button
-                onClick={() => onVerOfertas?.(order.id)}
-                className="text-[11px] font-bold bg-accent text-white px-3 py-1 rounded-full hover:bg-accent-dark transition-colors"
-              >
-                {offerCount} {offerCount === 1 ? 'oferta' : 'ofertas'} →
-              </button>
-            )}
         </div>
       </div>
     </div>

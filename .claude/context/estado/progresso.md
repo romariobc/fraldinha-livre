@@ -12,9 +12,19 @@ subpastas domain/ports; pagamento pix|card (boleto = extensao comentada); migrac
 **T1.5**. **T2 (adaptadores mockados + contract tests): DONE** (commit 26d2507). MockPaymentGateway/
 MockFulfillmentService (deterministicos) + suites de contrato reutilizaveis (runPaymentGatewayContract/
 runFulfillmentServiceContract) que o backend 006 tera que passar. 50 testes novos, suite 92/92 verde.
-Revisado por D-012 (test/lint/tsc pela sessao-mae). **Proximo: T1.5** (migracao Order.items[], D-018, mexe
-em arquivo existente — fazer cedo e isolado) OU T3 (nicho/schema de produto). Caminho critico:
-T0->T1->T6->T9->T12->T13->T15. Detalhe em chatsessions/2026-07-08-sessao-compra-direta-carrinho.md.
+Revisado por D-012. **T1.5 DONE** (2449512): Order.items[] aditivo + getOrderItems.
+
+**Avaliacao de usabilidade (2026-07-09) + correcoes:** cliente rodou o app. Corrigidos: modal de compra
+rola em telas baixas (18bba97); status compra-direta = "Aguardando confirmacao" (era "Aguardando ofertas").
+**D-022:** area do comprador agora 100% compra-direta — removido todo o mock/UI de leilao do comprador
+(cotacoes do INITIAL_ORDERS, aba Ofertas, Novo Pedido de Cotacao + modal, handleAceitarOferta/handleNovoPedido).
+Teasers de descoberta (Pedir oferta no catalogo, /mercado) mantidos (D-007). Commits 7e55524, 6a135bd.
+
+**Thread S (sacola + navegacao)** — breakdown em plans/S-sacola-navegacao-breakdown.md (S1->{S2,S3,S4}->S5).
+**S1 DONE** (1c79bec): cart-context (useCart) + persistencia localStorage + 18 testes. Correcao de SSR na
+revisao (hidratacao por effect, nao lazy initializer — evitaria mismatch no S4). Suite 115/115.
+**Proximo: S2** (Adicionar a sacola no ProductCard) / S3 (pagina /sacola) / S4 (navegacao header). S5 = checkout.
+Divida: seed items[].unitPrice = total (nao por-unidade), corrigir no S5/T13. Nicho/produto (T3/T4) = trilha separada.
 
 ---
 

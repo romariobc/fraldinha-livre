@@ -5,27 +5,26 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Order, Offer } from '@/lib/account-mock'
+import { Order } from '@/lib/account-mock'
 import { useAuth } from '@/contexts/auth-context'
 import { useOrders } from '@/contexts/orders-context'
 import PedidosTab from '@/components/minha-conta/PedidosTab'
-import OfertasTab from '@/components/minha-conta/OfertasTab'
 import HistoricoTab from '@/components/minha-conta/HistoricoTab'
 import PerfilTab from '@/components/minha-conta/PerfilTab'
 import NovoPedidoModal from '@/components/minha-conta/NovoPedidoModal'
 
-type TabKey = 'pedidos' | 'ofertas' | 'historico' | 'perfil'
+type TabKey = 'pedidos' | 'historico' | 'perfil'
 
 function MinhaContaContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading } = useAuth()
-  const { orders, handleNovoPedido, handleAceitarOferta } = useOrders()
+  const { orders, handleNovoPedido } = useOrders()
 
   // Hooks SEMPRE devem ser chamados na mesma ordem, antes de qualquer early return
   const [activeTab, setActiveTab]   = useState<TabKey>(() => {
     const tabParam = searchParams.get('tab') as TabKey | null
-    return (tabParam && ['pedidos', 'ofertas', 'historico', 'perfil'].includes(tabParam)) ? tabParam : 'pedidos'
+    return (tabParam && ['pedidos', 'historico', 'perfil'].includes(tabParam)) ? tabParam : 'pedidos'
   })
   const [modalOpen, setModalOpen]   = useState(false)
 
@@ -47,25 +46,10 @@ function MinhaContaContent() {
 
   const returnTo = searchParams.get('returnTo')
 
-  // Número total de ofertas pendentes para o badge
-  const pendingOffersCount = orders
-    .filter((o) => o.status === 'ofertas-recebidas')
-    .reduce((sum, o) => sum + (o.offers?.length ?? 0), 0)
-
   function handleNovoPedidoWrapper(partial: Omit<Order, 'id' | 'createdAt'>) {
     handleNovoPedido(partial.product, partial.quantity, partial.deliveryAddress)
     toast.success('Pedido criado! Fornecedores serão notificados em breve.')
     setActiveTab('pedidos')
-  }
-
-  function handleAceitarOfertaWrapper(orderId: string, offer: Offer) {
-    handleAceitarOferta(orderId, offer)
-    toast.success(`Oferta da ${offer.supplier} aceita! Seu pedido está confirmado.`)
-    setActiveTab('pedidos')
-  }
-
-  function handleVerOfertas() {
-    setActiveTab('ofertas')
   }
 
   const activeOrdersCount = orders.filter(
@@ -97,13 +81,6 @@ function MinhaContaContent() {
                 <span className="font-black text-2xl text-primary-dark leading-none">{activeOrdersCount}</span>
                 <span className="text-xs text-brand-muted mt-1">Pedidos</span>
               </button>
-              <button
-                onClick={() => setActiveTab('ofertas')}
-                className="flex flex-col items-center bg-white rounded-2xl px-5 py-3 shadow-card border border-accent/20 hover:border-accent/40 transition-colors min-w-[90px]"
-              >
-                <span className="font-black text-2xl text-accent leading-none">{pendingOffersCount}</span>
-                <span className="text-xs text-brand-muted mt-1">Ofertas</span>
-              </button>
             </div>
           </div>
         </div>
@@ -132,18 +109,6 @@ function MinhaContaContent() {
                 </TabsTrigger>
 
                 <TabsTrigger
-                  value="ofertas"
-                  className="rounded-none px-5 py-3 text-sm font-semibold flex-none"
-                >
-                  🏷️ Ofertas
-                  {pendingOffersCount > 0 && (
-                    <span className="ml-1.5 inline-flex items-center justify-center bg-accent text-white text-[10px] font-bold w-5 h-5 rounded-full">
-                      {pendingOffersCount}
-                    </span>
-                  )}
-                </TabsTrigger>
-
-                <TabsTrigger
                   value="historico"
                   className="rounded-none px-5 py-3 text-sm font-semibold flex-none"
                 >
@@ -164,12 +129,7 @@ function MinhaContaContent() {
                 <PedidosTab
                   orders={orders}
                   onNovoPedido={() => setModalOpen(true)}
-                  onVerOfertas={handleVerOfertas}
                 />
-              </TabsContent>
-
-              <TabsContent value="ofertas">
-                <OfertasTab orders={orders} onAceitarOferta={handleAceitarOfertaWrapper} />
               </TabsContent>
 
               <TabsContent value="historico">

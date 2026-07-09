@@ -191,6 +191,34 @@ do NextAuth D-010; msw/sharp) — limpar com `npm ci` quando conveniente (divida
 
 **Why:** sem isso, nenhum teste roda — e o metodo da feature 016 exige teste verde para cada tarefa.
 
+## D-022 — Area do comprador 100% compra-direta; mock de leilao removido (2026-07-09) — VIGENTE
+
+Durante a avaliacao de usabilidade (feedback do cliente), a area do comprador (/minha-conta) misturava
+dados mock do motor de leilao — que nao sera implementado agora (leilao e microservico da Fase 2, D-014).
+Pedidos de compra-direta ate exibiam o status `aguardando` com label "Aguardando ofertas" (semantica de
+leilao).
+
+**Decisao:** limpar o leilao da AREA DO COMPRADOR, preservando os teasers de descoberta (D-007).
+Removido: as 3 cotacoes mock do `INITIAL_ORDERS` (ord-001/002/005 → sobra compra-direta; ord-005 virou
+compra-direta cancelada p/ manter variedade de status no Historico), a aba **Ofertas** (`OfertasTab.tsx`
+deletado), o quick-stat de Ofertas no hero, `handleAceitarOferta` (orfao) e todo o encadeamento
+`onVerOfertas`. Corrigido tambem o label type-aware: compra-direta + `aguardando` → "Aguardando
+confirmacao" (cotacao segue "Aguardando ofertas").
+Mantido (teaser visivel-mas-inativo, NAO e mock): "Pedir oferta" desabilitado no `ProductCard`, rota
+`/mercado` gateada, e o botao gateado "Novo Pedido de Cotacao — Em breve" no `PedidosTab` (+ o
+`handleNovoPedido`/`NovoPedidoModal` que ele aciona).
+
+**Refina D-007:** o teaser de leilao vive nas superficies de DESCOBERTA (catalogo/mercado), nao na area
+de conta do comprador. O seed de leilao sera recriado na Fase 2 junto do microservico.
+
+**Divida tecnica registrada:** o seed `items[].unitPrice` (T1.5) foi gravado = preco TOTAL do pedido, nao
+por-unidade (ex.: ord-003 qty 2, price 13400, unitPrice 13400). Nao afeta a UI atual (le campos legados);
+corrigir a semantica do seed no T13, quando os `items[]` passam a ser renderizados.
+
+**Why:** o comprador so faz compra-direta hoje; leilao e Fase 2. Mock de leilao na conta confunde o
+usuario e polui o teste de usabilidade. **How to apply:** ao construir o carrinho/checkout (T6+), nao
+reintroduzir cotacao na area do comprador; leilao entra so pelo microservico da Fase 2.
+
 ## D-016 a D-020 — Fluxo de compra direta: carrinho + checkout (2026-07-03) — VIGENTES
 
 Aprovadas pelo cliente junto com o plano da feature 016 (compra direta ponta a ponta).

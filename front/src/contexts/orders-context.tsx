@@ -1,12 +1,11 @@
 'use client'
 
 import { createContext, useContext, useState, ReactNode } from 'react'
-import { Order, Offer, Address, INITIAL_ORDERS } from '@/lib/account-mock'
+import { Order, Address, INITIAL_ORDERS } from '@/lib/account-mock'
 
 interface OrdersContextType {
   orders: Order[]
   createDirectOrder: (product: string, quantity: number, deliveryAddress: Address, price: number, supplierId?: string, supplierName?: string) => Order
-  handleAceitarOferta: (orderId: string, offer: Offer) => void
   handleNovoPedido: (product: string, quantity: number, deliveryAddress: Address) => string
 }
 
@@ -48,22 +47,6 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return newOrder
   }
 
-  const handleAceitarOferta = (orderId: string, offer: Offer) => {
-    setOrders(
-      orders.map((order) =>
-        order.id === orderId
-          ? {
-              ...order,
-              status: 'aceito' as const,
-              price: offer.price,
-              supplierId: offer.supplier,
-              supplierName: offer.supplier,
-            }
-          : order
-      )
-    )
-  }
-
   const handleNovoPedido = (product: string, quantity: number, deliveryAddress: Address): string => {
     const newOrderId = `ord-${Date.now()}`
     const newOrder: Order = {
@@ -89,7 +72,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <OrdersContext.Provider value={{ orders, createDirectOrder, handleAceitarOferta, handleNovoPedido }}>
+    <OrdersContext.Provider value={{ orders, createDirectOrder, handleNovoPedido }}>
       {children}
     </OrdersContext.Provider>
   )

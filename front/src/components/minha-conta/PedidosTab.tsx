@@ -7,10 +7,9 @@ import OrderCard from './OrderCard'
 interface PedidosTabProps {
   orders: Order[]
   onNovoPedido: () => void
-  onVerOfertas: (orderId: string) => void
 }
 
-export default function PedidosTab({ orders, onNovoPedido, onVerOfertas }: PedidosTabProps) {
+export default function PedidosTab({ orders, onNovoPedido }: PedidosTabProps) {
   const active = orders.filter(
     (o) => o.status !== 'entregue' && o.status !== 'cancelado'
   )
@@ -50,7 +49,6 @@ export default function PedidosTab({ orders, onNovoPedido, onVerOfertas }: Pedid
               key={order.id}
               order={order}
               mode="pedidos"
-              onVerOfertas={onVerOfertas}
             />
           ))}
         </div>

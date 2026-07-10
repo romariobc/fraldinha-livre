@@ -49,7 +49,7 @@ export default function SacolaPage() {
               Sua sacola
             </h1>
             <p className="text-sm text-brand-muted mt-1">
-              {itemCount} item{itemCount !== 1 ? 'ns' : ''}
+              {itemCount} {itemCount === 1 ? 'item' : 'itens'}
             </p>
           </div>
         </div>

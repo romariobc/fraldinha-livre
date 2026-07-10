@@ -146,14 +146,6 @@ export default function Header() {
                     >
                       Minha conta
                     </Link>
-                    <Link
-                      href="/minha-conta?tab=perfil"
-                      role="menuitem"
-                      className="block px-4 py-2 text-sm text-brand-muted hover:text-primary-dark hover:bg-primary-light transition-colors"
-                      onClick={() => setDropdownOpen(false)}
-                    >
-                      Meu perfil
-                    </Link>
                     <button
                       role="menuitem"
                       onClick={handleLogout}
@@ -234,13 +226,6 @@ export default function Header() {
                 onClick={() => setMenuOpen(false)}
               >
                 Minha conta
-              </Link>
-              <Link
-                href="/minha-conta?tab=perfil"
-                className="px-4 py-3 rounded-xl text-sm font-semibold text-brand-muted hover:text-primary-dark hover:bg-primary-light transition-colors"
-                onClick={() => setMenuOpen(false)}
-              >
-                Meu perfil
               </Link>
             </div>
           )}

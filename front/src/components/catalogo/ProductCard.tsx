@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Product, Badge } from '@/lib/products'
 import { LEILAO_ATIVO } from '@/lib/feature-flags'
@@ -8,6 +9,7 @@ import { STORE_SUPPLIERS } from '@/lib/suppliers'
 import { useCart } from '@/contexts/cart-context'
 import { type CartItem } from '@/lib/domain/cart'
 import { toast } from 'sonner'
+import { Minus, Plus } from 'lucide-react'
 
 const BADGE_STYLES: Record<Badge, string> = {
   'Mais vendido': 'bg-primary-dark text-white',
@@ -23,6 +25,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn }: ProductCardProps) {
+  const [quantity, setQuantity] = useState(1)
   const router = useRouter()
   const cart = useCart()
 
@@ -38,7 +41,7 @@ export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn
       supplierId: product.supplierId,
       supplierName,
       unitPrice: product.priceInCents,
-      quantity: 1,
+      quantity,
       unit: 'un',
     }
     cart.addItem(cartItem)
@@ -48,6 +51,8 @@ export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn
         onClick: () => router.push('/sacola'),
       },
     })
+    // Reset stepper to 1 after adding
+    setQuantity(1)
   }
 
   function handleBuyNow() {
@@ -105,6 +110,33 @@ export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn
             {formatPrice(product.priceInCents)}
             <span className="text-[11px] font-medium text-brand-muted font-body"> / pct</span>
           </p>
+
+          {/* Stepper de quantidade */}
+          <div className="flex items-center gap-1 bg-slate-100 rounded-full px-2 py-1 mb-3 w-fit">
+            <button
+              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+              disabled={quantity === 1}
+              aria-label={`Diminuir quantidade de ${product.name}`}
+              className="p-1 rounded-full hover:bg-slate-200 transition-colors text-brand-text disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+            <span
+              className="w-8 text-center font-bold text-sm text-brand-text"
+              aria-live="polite"
+              aria-label={`Quantidade: ${quantity}`}
+            >
+              {quantity}
+            </span>
+            <button
+              onClick={() => setQuantity(quantity + 1)}
+              aria-label={`Aumentar quantidade de ${product.name}`}
+              className="p-1 rounded-full hover:bg-slate-200 transition-colors text-brand-text"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+
           <div className="flex flex-col gap-2">
             {/* CTA primário: Adicionar à sacola */}
             <button

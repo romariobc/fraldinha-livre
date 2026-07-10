@@ -275,6 +275,161 @@ describe('ProductCard', () => {
     })
   })
 
+  describe('Stepper de quantidade', () => {
+    it('should display quantity stepper with default value 1', () => {
+      render(
+        <ProductCard
+          product={TEST_PRODUCT}
+          onBuy={vi.fn()}
+          onRequestOffer={vi.fn()}
+          isLoggedIn={true}
+        />
+      )
+
+      // Should display the quantity stepper with default value 1
+      const quantityDisplay = screen.getByLabelText(/Quantidade: 1/i)
+      expect(quantityDisplay).toBeInTheDocument()
+      expect(quantityDisplay).toHaveTextContent('1')
+    })
+
+    it('should increase quantity when clicking + button', async () => {
+      const user = userEvent.setup()
+      render(
+        <ProductCard
+          product={TEST_PRODUCT}
+          onBuy={vi.fn()}
+          onRequestOffer={vi.fn()}
+          isLoggedIn={true}
+        />
+      )
+
+      const increaseButtons = screen.getAllByLabelText(/Aumentar quantidade/i)
+      await user.click(increaseButtons[0])
+
+      // Quantity should be 2 now
+      expect(screen.getByLabelText(/Quantidade: 2/i)).toBeInTheDocument()
+    })
+
+    it('should increase quantity to 3 when clicking + twice and addItem should receive quantity: 3', async () => {
+      const mockAddItem = vi.fn()
+      mockUseCart.mockReturnValue({
+        items: [],
+        itemCount: 0,
+        subtotal: 0,
+        bySupplier: new Map(),
+        addItem: mockAddItem,
+        removeItem: vi.fn(),
+        updateQty: vi.fn(),
+        clear: vi.fn(),
+      })
+
+      const user = userEvent.setup()
+      render(
+        <ProductCard
+          product={TEST_PRODUCT}
+          onBuy={vi.fn()}
+          onRequestOffer={vi.fn()}
+          isLoggedIn={true}
+        />
+      )
+
+      const increaseButtons = screen.getAllByLabelText(/Aumentar quantidade/i)
+      // Click + twice
+      await user.click(increaseButtons[0])
+      await user.click(increaseButtons[0])
+
+      // Quantity should be 3 now
+      expect(screen.getByLabelText(/Quantidade: 3/i)).toBeInTheDocument()
+
+      // Now click "Adicionar à sacola"
+      const addButton = screen.getByRole('button', { name: /à sacola/i })
+      await user.click(addButton)
+
+      // Verify addItem was called with quantity: 3
+      expect(mockAddItem).toHaveBeenCalledOnce()
+      expect(mockAddItem).toHaveBeenCalledWith({
+        productId: 'p1',
+        productName: 'Supersec Pants P',
+        supplierId: 'sup-001',
+        supplierName: expect.any(String),
+        unitPrice: 1800,
+        quantity: 3,
+        unit: 'un',
+      })
+    })
+
+    it('should disable - button when quantity is 1', () => {
+      render(
+        <ProductCard
+          product={TEST_PRODUCT}
+          onBuy={vi.fn()}
+          onRequestOffer={vi.fn()}
+          isLoggedIn={true}
+        />
+      )
+
+      const decreaseButtons = screen.getAllByLabelText(/Diminuir quantidade/i)
+      expect(decreaseButtons[0]).toBeDisabled()
+    })
+
+    it('should not go below 1 when clicking - button', async () => {
+      const user = userEvent.setup()
+      render(
+        <ProductCard
+          product={TEST_PRODUCT}
+          onBuy={vi.fn()}
+          onRequestOffer={vi.fn()}
+          isLoggedIn={true}
+        />
+      )
+
+      const decreaseButtons = screen.getAllByLabelText(/Diminuir quantidade/i)
+      // Try clicking - when at 1
+      await user.click(decreaseButtons[0])
+
+      // Should still be 1
+      expect(screen.getByLabelText(/Quantidade: 1/i)).toBeInTheDocument()
+    })
+
+    it('should reset stepper to 1 after adding to cart', async () => {
+      const mockAddItem = vi.fn()
+      mockUseCart.mockReturnValue({
+        items: [],
+        itemCount: 0,
+        subtotal: 0,
+        bySupplier: new Map(),
+        addItem: mockAddItem,
+        removeItem: vi.fn(),
+        updateQty: vi.fn(),
+        clear: vi.fn(),
+      })
+
+      const user = userEvent.setup()
+      render(
+        <ProductCard
+          product={TEST_PRODUCT}
+          onBuy={vi.fn()}
+          onRequestOffer={vi.fn()}
+          isLoggedIn={true}
+        />
+      )
+
+      const increaseButtons = screen.getAllByLabelText(/Aumentar quantidade/i)
+      // Click + twice to get to 3
+      await user.click(increaseButtons[0])
+      await user.click(increaseButtons[0])
+
+      expect(screen.getByLabelText(/Quantidade: 3/i)).toBeInTheDocument()
+
+      // Add to cart
+      const addButton = screen.getByRole('button', { name: /à sacola/i })
+      await user.click(addButton)
+
+      // Stepper should reset to 1
+      expect(screen.getByLabelText(/Quantidade: 1/i)).toBeInTheDocument()
+    })
+  })
+
   describe('aria-labels and accessibility', () => {
     it('should have proper aria-labels for all buttons', () => {
       render(

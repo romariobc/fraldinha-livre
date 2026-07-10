@@ -77,7 +77,6 @@ describe('Header', () => {
       render(<Header />)
 
       expect(screen.queryByText('Minha conta')).not.toBeInTheDocument()
-      expect(screen.queryByText('Meu perfil')).not.toBeInTheDocument()
     })
 
     it('should display cart icons pointing to /sacola with no badge when itemCount is 0', () => {
@@ -172,7 +171,6 @@ describe('Header', () => {
 
       // Menu items should appear
       expect(screen.getByRole('menuitem', { name: /Minha conta/i })).toBeInTheDocument()
-      expect(screen.getByRole('menuitem', { name: /Meu perfil/i })).toBeInTheDocument()
       expect(screen.getByRole('menuitem', { name: /Sair/i })).toBeInTheDocument()
     })
 
@@ -202,17 +200,6 @@ describe('Header', () => {
 
       const minhaContaLink = screen.getByRole('menuitem', { name: /Minha conta/i })
       expect(minhaContaLink).toHaveAttribute('href', '/minha-conta')
-    })
-
-    it('should have Meu perfil link with correct href in dropdown', async () => {
-      const user = userEvent.setup()
-      render(<Header />)
-
-      const trigger = screen.getByRole('button', { name: /John Doe/i })
-      await user.click(trigger)
-
-      const meuPerfilLink = screen.getByRole('menuitem', { name: /Meu perfil/i })
-      expect(meuPerfilLink).toHaveAttribute('href', '/minha-conta?tab=perfil')
     })
 
     it('should call signOutUser when clicking "Sair"', async () => {
@@ -329,7 +316,7 @@ describe('Header', () => {
 
       // Check all items have menuitem role
       const menuItems = screen.getAllByRole('menuitem')
-      expect(menuItems.length).toBeGreaterThanOrEqual(3) // At least Minha conta, Meu perfil, Sair
+      expect(menuItems.length).toBeGreaterThanOrEqual(2) // At least Minha conta, Sair
     })
   })
 
@@ -370,7 +357,7 @@ describe('Header', () => {
       })
     })
 
-    it('should display "Minha conta" and "Meu perfil" in mobile menu when logged in', async () => {
+    it('should display "Minha conta" in mobile menu when logged in', async () => {
       const user = userEvent.setup()
       render(<Header />)
 
@@ -378,13 +365,11 @@ describe('Header', () => {
       const menuButton = screen.getByRole('button', { name: /Abrir menu/i })
       await user.click(menuButton)
 
-      // Mobile menu should contain these links
+      // Mobile menu should contain Minha conta link
       const links = screen.getAllByRole('link')
       const minhaContaLink = links.find((link) => link.textContent?.includes('Minha conta') && link.getAttribute('href') === '/minha-conta')
-      const meuPerfilLink = links.find((link) => link.textContent?.includes('Meu perfil') && link.getAttribute('href') === '/minha-conta?tab=perfil')
 
       expect(minhaContaLink).toBeInTheDocument()
-      expect(meuPerfilLink).toBeInTheDocument()
     })
 
     it('should display "Sair" button in mobile menu when logged in', async () => {
@@ -417,9 +402,8 @@ describe('Header', () => {
       const menuButton = screen.getByRole('button', { name: /Abrir menu/i })
       await user.click(menuButton)
 
-      // Should only show Entrar/Criar conta, not Minha conta/Meu perfil
+      // Should only show Entrar/Criar conta, not Minha conta
       expect(screen.queryByText('Minha conta')).not.toBeInTheDocument()
-      expect(screen.queryByText('Meu perfil')).not.toBeInTheDocument()
     })
   })
 })

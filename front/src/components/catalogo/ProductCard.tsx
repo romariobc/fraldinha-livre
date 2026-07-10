@@ -5,6 +5,9 @@ import { Product, Badge } from '@/lib/products'
 import { LEILAO_ATIVO } from '@/lib/feature-flags'
 import { formatPrice } from '@/lib/utils'
 import { STORE_SUPPLIERS } from '@/lib/suppliers'
+import { useCart } from '@/contexts/cart-context'
+import { type CartItem } from '@/lib/domain/cart'
+import { toast } from 'sonner'
 
 const BADGE_STYLES: Record<Badge, string> = {
   'Mais vendido': 'bg-primary-dark text-white',
@@ -21,13 +24,33 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn }: ProductCardProps) {
   const router = useRouter()
+  const cart = useCart()
 
   // Buscar fornecedor
   const supplier = STORE_SUPPLIERS.find(s => s.id === product.supplierId)
   const supplierName = supplier?.name || 'Fornecedor desconhecido'
   const supplierRating = supplier?.rating || 0
 
-  function handleBuy() {
+  function handleAddToCart() {
+    const cartItem: CartItem = {
+      productId: product.id,
+      productName: `${product.name} ${product.size}`,
+      supplierId: product.supplierId,
+      supplierName,
+      unitPrice: product.priceInCents,
+      quantity: 1,
+      unit: 'un',
+    }
+    cart.addItem(cartItem)
+    toast.success('Adicionado à sacola', {
+      action: {
+        label: 'Ver sacola',
+        onClick: () => router.push('/sacola'),
+      },
+    })
+  }
+
+  function handleBuyNow() {
     if (!isLoggedIn) {
       router.push('/login?redirect=/catalogo')
       return
@@ -83,16 +106,25 @@ export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn
             <span className="text-[11px] font-medium text-brand-muted font-body"> / pct</span>
           </p>
           <div className="flex flex-col gap-2">
-            {/* CTA primário: Comprar */}
+            {/* CTA primário: Adicionar à sacola */}
             <button
-              onClick={handleBuy}
-              aria-label={`Comprar ${product.name}`}
+              onClick={handleAddToCart}
+              aria-label={`Adicionar ${product.name} ${product.size} à sacola`}
               className="w-full py-2 rounded-full font-display font-bold text-sm transition-colors bg-primary-dark text-white hover:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-dark focus-visible:ring-offset-2"
             >
-              Comprar
+              Adicionar à sacola
             </button>
 
-            {/* CTA secundário: Pedir oferta (inativo) */}
+            {/* CTA secundário: Comprar agora (express) */}
+            <button
+              onClick={handleBuyNow}
+              aria-label={`Comprar agora ${product.name}`}
+              className="w-full py-2 rounded-full font-display font-bold text-sm transition-colors border-2 border-primary-dark text-primary-dark hover:bg-primary-dark hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-dark focus-visible:ring-offset-2"
+            >
+              Comprar agora
+            </button>
+
+            {/* CTA terciário: Pedir oferta (inativo) */}
             <div className="relative">
               <button
                 onClick={handleOffer}

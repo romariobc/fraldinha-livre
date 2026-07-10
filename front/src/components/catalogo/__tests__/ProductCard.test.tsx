@@ -43,6 +43,15 @@ const TEST_PRODUCT: Product = {
   quantity: 36,
   priceInCents: 1800,
   supplierId: 'sup-001',
+  slug: 'pampers-supersec-pants-p',
+  categoria: 'fraldas-descartaveis',
+  descricao: 'Fralda Pampers Supersec Pants tamanho P com proteção de até 12 horas.',
+  atributos: {
+    faixaPeso: '3–6 kg',
+    genero: 'unissex',
+    absorcao: 'ate 12 horas',
+    tecnologia: 'camada seca antivazamento',
+  },
   badge: 'Mais vendido',
 }
 

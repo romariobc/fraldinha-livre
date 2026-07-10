@@ -181,19 +181,13 @@ export default function SacolaPage() {
 
             {/* CTAs */}
             <div className="px-4 sm:px-6 py-6 space-y-3">
-              {/* CTA 1: Finalizar compra (desabilitada) */}
-              <div className="relative">
-                <button
-                  disabled
-                  aria-disabled
-                  className="w-full py-3 rounded-full font-display font-bold text-sm transition-colors bg-primary-dark text-white opacity-50 cursor-not-allowed"
-                >
-                  Finalizar compra
-                </button>
-                <span className="absolute top-0.5 right-0.5 text-[10px] font-bold bg-brand-muted text-white px-1.5 py-0.5 rounded-full">
-                  Em breve
-                </span>
-              </div>
+              {/* CTA 1: Finalizar compra */}
+              <Link
+                href="/checkout"
+                className="block w-full py-3 rounded-full font-display font-bold text-sm transition-colors bg-primary-dark text-white hover:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-dark focus-visible:ring-offset-2 text-center"
+              >
+                Finalizar compra
+              </Link>
 
               {/* CTA 2: Buscar ofertas personalizadas (desabilitada quando !LEILAO_ATIVO) */}
               <div className="relative">

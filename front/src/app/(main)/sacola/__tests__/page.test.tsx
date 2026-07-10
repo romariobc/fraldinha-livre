@@ -170,19 +170,21 @@ describe('SacolaPage', () => {
   })
 
   describe('CTA buttons', () => {
-    it('should display "Finalizar compra" button as disabled', () => {
+    it('should display "Finalizar compra" link as enabled', () => {
       renderWithCart([mockItem1])
 
-      const button = screen.getByRole('button', { name: /Finalizar compra/i })
-      expect(button).toBeDisabled()
-      expect(button).toHaveAttribute('aria-disabled')
+      const link = screen.getByRole('link', { name: /Finalizar compra/i })
+      expect(link).toHaveAttribute('href', '/checkout')
+      expect(link).not.toHaveAttribute('disabled')
     })
 
-    it('should display "Em breve" badge on "Finalizar compra" button', () => {
+    it('should NOT display "Em breve" badge on "Finalizar compra" link', () => {
       renderWithCart([mockItem1])
 
+      // Get all "Em breve" badges - should only be for "Buscar ofertas"
       const badges = screen.getAllByText('Em breve')
-      expect(badges.length).toBeGreaterThan(0)
+      // Should only have 1 badge (for Buscar ofertas), not for Finalizar compra
+      expect(badges.length).toBe(1)
     })
 
     it('should display "Buscar ofertas personalizadas" button as disabled (when LEILAO_ATIVO=false)', () => {
@@ -193,12 +195,12 @@ describe('SacolaPage', () => {
       expect(button).toHaveAttribute('aria-disabled')
     })
 
-    it('should display "Em breve" badge on "Buscar ofertas personalizadas" when LEILAO_ATIVO=false', () => {
+    it('should display "Em breve" badge only on "Buscar ofertas personalizadas" when LEILAO_ATIVO=false', () => {
       renderWithCart([mockItem1])
 
       const badges = screen.getAllByText('Em breve')
-      // Should have at least 2 badges (one for each CTA)
-      expect(badges.length).toBeGreaterThanOrEqual(2)
+      // Should have exactly 1 badge (one for Buscar ofertas only)
+      expect(badges.length).toBe(1)
     })
   })
 

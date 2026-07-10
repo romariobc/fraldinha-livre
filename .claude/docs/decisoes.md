@@ -344,3 +344,21 @@ Feedback do cliente após validar o catálogo com o stepper (S6):
 **Why:** consistência (dois botões lado a lado, um respeitava a quantidade e o outro não) e regra de negócio do
 cliente (interação de compra é para logados). **How to apply:** qualquer nova CTA de compra no catálogo passa pelo
 gate `isLoggedIn` e propaga a quantidade escolhida. Commit S7.
+
+## D-025 — Detalhe e cancelamento de pedido (comprador), com trava logistica (2026-07-10) — VIGENTE
+
+Feature 017 (brainstorming com o cliente). O OrderCard so mostrava resumo; o comprador pediu ver os dados do
+pedido e uma logica de cancelamento com restricao logistica. Decisoes:
+- **Escopo enxuto:** ver detalhes + **cancelar apenas** (nao editar itens/endereco).
+- **Detalhe:** **acordeao inline** no card (nao modal, nao pagina) — mostra items[] (getOrderItems T1.5), total,
+  endereco completo, data.
+- **Trava logistica:** cancelar **so em `aguardando`**; depois de confirmado, bloqueia com mensagem ("fale com o
+  fornecedor"). a-caminho/entregue/cancelado = terminal. Como cancelar so vale antes da confirmacao, nao ha estado
+  pendente nem aprovacao do fornecedor.
+- **Sinalizacao:** cancelar reflete no market-context o DirectOrder do sup-001 (baixa no painel); no-op p/ os demais.
+- **Corrige divida D-022:** renderizar items[] exige o seed com unitPrice **unitario** coerente (unit x qtd = total).
+
+**Why:** o comprador precisa inspecionar e cancelar pedidos, mas edicao completa e overkill sem backend; a trava
+por status espelha a realidade logistica. **How to apply:** cancelamento e mutacao mock no orders-context +
+reflexo no market-context (padrao do checkout S5b); edicao real e aprovacao pelo fornecedor ficam para o 006+.
+Spec: spec-pedido-detalhe-cancelamento.md.

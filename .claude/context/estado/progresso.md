@@ -54,6 +54,17 @@ enganoso corrigido na raiz. Revisado por D-012 (test/lint/tsc/build exit 0, sem 
   CTAs gateadas por login e com quantidade); cards linkam para a pagina; slug inexistente -> "nao encontrado".
   13 testes. Divida TODO(T4.1): extrair hook de compra compartilhado ProductCard<->pagina de produto.
 Suite 225/225. Todos validados no browser (Playwright): card->produto, 404, gate de login, checkout, flip, stepper.
+
+**Feature 017 — detalhe + cancelamento de pedido (brainstorming + spec, D-025):**
+Spec spec-pedido-detalhe-cancelamento.md (acordeao inline; cancelar so em 'aguardando' = trava logistica;
+sinalizacao ao fornecedor; corrige divida D-022 do unitPrice). Duas tarefas:
+- U1 (3b06355): orders-context.cancelOrder + market-context.cancelDirectOrder (no-op se ausente) + seed
+  INITIAL_ORDERS com unitPrice UNITARIO coerente (ord-003 6700, ord-004 260/price 10400, ord-005 300). 10 testes.
+- U2 (1dba637): OrderCard vira acordeao (itens/total/endereco/data) + "Cancelar pedido" so em Pedidos+aguardando
+  (Dialog de confirmacao -> cancelOrder + sup-001 cancelDirectOrder + toast); confirmado/a-caminho mostram
+  restricao; historico intacto. 23 testes.
+Suite 258/258, lint/tsc/build exit 0, sem any. Validacao no browser exige login (rota /minha-conta) — coberto
+por testes RTL. Fora de escopo (006+): editar itens/endereco, aprovacao de cancelamento pelo fornecedor.
 **Pendente de validacao HUMANA:** rodar o app e testar o fluxo completo no navegador (add a sacola -> /sacola
 -> Finalizar compra -> endereco/revisao/pagamento/confirmacao -> pedido aparece em /minha-conta; sacola vazia).
 Proximas trilhas (fora do Thread S): nicho/schema de produto (T3) + pagina de produto (T4).

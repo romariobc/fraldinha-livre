@@ -138,6 +138,15 @@
       "notas": "H-004 executado (commit 317838e) + fix pos-revisao (5f84450). CODIGO APROVADO via D-012 (git show --stat + build + lint exit 0). Entrega: suppliers.ts (4 fornecedores), products.ts em centavos + supplierId, formatPrice unico em utils, BuyModal com validacao completa (quantidade + endereco, sem cast as Address), OrdersProvider, ponte orders->market via orderToDirectOrder para sup-001. Gating (013) e auth (005a) preservados. FALTA validacao humana do fluxo de compra no navegador (npm run dev do worktree). Sup-001 tem produtos p1/p2/p3/m1/t1/c1. SUPERADA pela 016 (carrinho/checkout): o BuyModal instantaneo foi aposentado no flip do S5b (D-023)"
     },
     {
+      "id": "017",
+      "titulo": "Detalhe e cancelamento de pedido (comprador) com trava logistica",
+      "fase": 1,
+      "status": "in_progress",
+      "criterio_aceite": "OrderCard expande (acordeao) mostrando itens/total/endereco/data; comprador cancela pedido SO em status 'aguardando' (trava logistica); confirmado/a-caminho mostram restricao; cancelamento reflete no painel do fornecedor (sup-001); seed com unitPrice unitario coerente",
+      "notas": "Brainstorming + spec-pedido-detalhe-cancelamento.md (D-025). Escopo enxuto: ver detalhes + cancelar apenas (nao editar itens/endereco). U1 (3b06355): cancelOrder/cancelDirectOrder nos contextos + correcao do seed (divida D-022). U2 (1dba637): acordeao + cancelar com Dialog + trava logistica + sinalizacao sup-001. Suite 258/258, lint/tsc/build exit 0, sem any. Revisado por D-012. FALTA validacao HUMANA no navegador (rota /minha-conta exige login Google) — coberto por 23 testes RTL. Fora de escopo (006+): editar itens/endereco, aprovacao de cancelamento pelo fornecedor",
+      "_comment_pos": "inserida antes da 016 por ordem de leitura; ids nao precisam ser sequenciais no array"
+    },
+    {
       "id": "016",
       "titulo": "Compra direta: carrinho + checkout (catalogo -> sacola -> checkout -> pedidos)",
       "fase": 1,

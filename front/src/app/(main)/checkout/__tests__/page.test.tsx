@@ -7,41 +7,39 @@ import { AuthProvider } from '@/contexts/auth-context'
 import { OrdersProvider } from '@/contexts/orders-context'
 import { MarketProvider } from '@/contexts/market-context'
 import type { CartItem } from '@/lib/domain/cart'
+import { type ReactNode } from 'react'
 import CheckoutPage from '../page'
 import { vi } from 'vitest'
 
-// Mock next/navigation
+// Mock next/navigation (useRouter usado pela guarda de login — D-024)
+let mockPush = vi.fn()
 vi.mock('next/navigation', () => ({
-  useRouter: vi.fn(),
+  useRouter: () => ({ push: mockPush }),
   usePathname: vi.fn(),
   useSearchParams: vi.fn(),
-  useCallback: vi.fn((fn) => fn),
 }))
 
-// Mock firebase (used by AuthProvider)
-vi.mock('@/lib/firebase', () => ({
-  auth: {},
-  db: {},
-  googleProvider: {},
+// Mock do auth-context: por padrao logado (a guarda D-024 exige login para o checkout).
+// AuthProvider vira passthrough; useAuth e controlado por teste via vi.mocked.
+vi.mock('@/contexts/auth-context', () => ({
+  useAuth: vi.fn(),
+  AuthProvider: ({ children }: { children: ReactNode }) => children,
 }))
 
-// Mock firebase/auth
-vi.mock('firebase/auth', () => ({
-  onAuthStateChanged: vi.fn((auth, callback) => {
-    // Simulate logged out user
-    callback(null)
-    return vi.fn()
-  }),
-  signInWithPopup: vi.fn(),
-  signOut: vi.fn(),
-}))
+import { useAuth } from '@/contexts/auth-context'
 
-// Mock firebase/firestore
-vi.mock('firebase/firestore', () => ({
-  doc: vi.fn(),
-  getDoc: vi.fn(),
-  updateDoc: vi.fn(),
-}))
+function authValue(overrides: Partial<ReturnType<typeof useAuth>> = {}): ReturnType<typeof useAuth> {
+  return {
+    user: { uid: 'u1', email: 'ana@example.com', displayName: 'Ana Lima' },
+    profile: null,
+    role: 'comprador',
+    loading: false,
+    signInGoogle: vi.fn(),
+    signOutUser: vi.fn(),
+    updateProfile: vi.fn(),
+    ...overrides,
+  }
+}
 
 // Helper to render page inside providers
 function renderCheckout(items: CartItem[]) {
@@ -88,6 +86,27 @@ describe('CheckoutPage', () => {
   beforeEach(() => {
     window.localStorage.clear()
     vi.clearAllMocks()
+    mockPush = vi.fn()
+    vi.mocked(useAuth).mockReturnValue(authValue())
+  })
+
+  describe('Guarda de login (D-024)', () => {
+    it('redireciona para /login?redirect=/checkout quando deslogado', () => {
+      vi.mocked(useAuth).mockReturnValue(authValue({ user: null }))
+      renderCheckout([mockItem1])
+
+      expect(mockPush).toHaveBeenCalledWith('/login?redirect=/checkout')
+      // Nao renderiza os passos do checkout
+      expect(screen.queryByText('Endereço de entrega')).not.toBeInTheDocument()
+    })
+
+    it('mostra "Carregando..." enquanto o auth resolve', () => {
+      vi.mocked(useAuth).mockReturnValue(authValue({ user: null, loading: true }))
+      renderCheckout([mockItem1])
+
+      expect(screen.getByText('Carregando...')).toBeInTheDocument()
+      expect(mockPush).not.toHaveBeenCalled()
+    })
   })
 
   describe('Empty cart', () => {

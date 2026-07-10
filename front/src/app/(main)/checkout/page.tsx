@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useCart } from '@/contexts/cart-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useOrders } from '@/contexts/orders-context'
@@ -11,7 +12,7 @@ import type { PaymentMethod } from '@/lib/ports/payment'
 import { lineTotal, cartSubtotal } from '@/lib/domain/cart'
 import { formatPrice } from '@/lib/utils'
 import { ShoppingBag } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MockPaymentGateway } from '@/lib/adapters/mock-payment-gateway'
 import { MockFulfillmentService } from '@/lib/adapters/mock-fulfillment-service'
 import { orderToDirectOrder } from '@/lib/order-adapters'
@@ -20,9 +21,10 @@ type CheckoutStep = 'endereco' | 'revisao' | 'pagamento' | 'confirmacao'
 
 export default function CheckoutPage() {
   const { items, subtotal, bySupplier, clear } = useCart()
-  const { profile } = useAuth()
+  const { user, loading, profile } = useAuth()
   const { createOrdersFromCart } = useOrders()
   const { addDirectOrder } = useMarket()
+  const router = useRouter()
   const [step, setStep] = useState<CheckoutStep>('endereco')
   const [useCustomAddress, setUseCustomAddress] = useState(false)
   const [customAddress, setCustomAddress] = useState<Address>({
@@ -109,6 +111,22 @@ export default function CheckoutPage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  // Guarda de login (D-024): finalizar compra e interacao de compra — so logado.
+  // Guarda client-side, mesmo padrao de /minha-conta (endurecimento SSR fica para 006 — D-010).
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login?redirect=/checkout')
+    }
+  }, [user, loading, router])
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>
+  }
+
+  if (!user) {
+    return null // Redirecionamento em progresso
   }
 
   // Guard: empty cart (but not when viewing confirmacao)

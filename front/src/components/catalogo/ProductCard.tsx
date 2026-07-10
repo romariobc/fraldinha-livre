@@ -20,7 +20,7 @@ const BADGE_STYLES: Record<Badge, string> = {
 interface ProductCardProps {
   product: Product
   onRequestOffer: (product: Product) => void
-  onBuy: (product: Product) => void
+  onBuy: (product: Product, quantity: number) => void
   isLoggedIn: boolean
 }
 
@@ -35,6 +35,11 @@ export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn
   const supplierRating = supplier?.rating || 0
 
   function handleAddToCart() {
+    if (!isLoggedIn) {
+      router.push('/login?redirect=/catalogo')
+      return
+    }
+
     const cartItem: CartItem = {
       productId: product.id,
       productName: `${product.name} ${product.size}`,
@@ -60,7 +65,7 @@ export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn
       router.push('/login?redirect=/catalogo')
       return
     }
-    onBuy(product)
+    onBuy(product, quantity)
   }
 
   function handleOffer() {

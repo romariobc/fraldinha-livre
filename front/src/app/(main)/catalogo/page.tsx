@@ -75,7 +75,7 @@ function CatalogoContent() {
     router.push(`/catalogo?${params.toString()}`)
   }
 
-  function handleBuy(product: Product) {
+  function handleBuy(product: Product, quantity: number) {
     // RN-06: trava de compra — se logado mas perfil incompleto, redirecionar para minha-conta
     if (user && !isProfileComplete(profile)) {
       router.push('/minha-conta?tab=perfil&returnTo=/catalogo')
@@ -92,7 +92,7 @@ function CatalogoContent() {
       supplierId: product.supplierId,
       supplierName,
       unitPrice: product.priceInCents,
-      quantity: 1,
+      quantity,
       unit: 'un',
     })
 

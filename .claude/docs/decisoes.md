@@ -328,3 +328,19 @@ tem unitPrice = total; corrigir se/quando esses seeds forem re-renderizados.
 fornecedor cedo demais). **How to apply:** todo pedido de compra-direta nasce no checkout; nao reintroduzir
 criacao instantanea. Pagamento real (011) e fulfillment real substituem os adapters STUB pela porta ja
 definida (T1/T2) — sem mudar o fluxo.
+
+## D-024 — Interação de compra exige login; ambos os botões respeitam a quantidade (2026-07-10) — VIGENTE (emenda D-016)
+
+Feedback do cliente após validar o catálogo com o stepper (S6):
+
+1. **Gate de login nos botões de compra.** A D-016 dizia que "Adicionar à sacola" não exigia login (carrinho é
+   local, login só no checkout). O cliente REVERTE: todos veem o catálogo, mas **só logados interagem com os botões
+   de compra**. Agora "Adicionar à sacola" deslogado redireciona para `/login?redirect=/catalogo` (sem adicionar,
+   sem toast) — mesmo padrão que "Comprar agora" e "Pedir oferta" já usavam. Perfil (RN-06) segue checado só no
+   caminho do "Comprar agora"/checkout; para adicionar à sacola basta estar logado.
+2. **Ambos os botões respeitam a quantidade do stepper (S6).** "Comprar agora" ignorava o stepper e ia ao checkout
+   com 1. A prop virou `onBuy(product, quantity)` e o catálogo usa essa quantidade ao montar o CartItem.
+
+**Why:** consistência (dois botões lado a lado, um respeitava a quantidade e o outro não) e regra de negócio do
+cliente (interação de compra é para logados). **How to apply:** qualquer nova CTA de compra no catálogo passa pelo
+gate `isLoggedIn` e propaga a quantidade escolhida. Commit S7.

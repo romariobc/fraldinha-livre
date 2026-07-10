@@ -155,7 +155,7 @@ describe('ProductCard', () => {
       )
     })
 
-    it('should work without login (no redirect)', async () => {
+    it('should redirect to login when not logged in', async () => {
       const mockAddItem = vi.fn()
       mockUseCart.mockReturnValue({
         items: [],
@@ -181,14 +181,14 @@ describe('ProductCard', () => {
       const addButton = screen.getByRole('button', { name: /à sacola/i })
       await user.click(addButton)
 
-      // Should add to cart without redirecting
-      expect(mockAddItem).toHaveBeenCalledOnce()
-      expect(mockPush).not.toHaveBeenCalledWith('/login?redirect=/catalogo')
+      // Should redirect to login and NOT add to cart
+      expect(mockAddItem).not.toHaveBeenCalled()
+      expect(mockPush).toHaveBeenCalledWith('/login?redirect=/catalogo')
     })
   })
 
   describe('Comprar agora', () => {
-    it('should call onBuy with product when logged in', async () => {
+    it('should call onBuy with product and quantity when logged in', async () => {
       const mockOnBuy = vi.fn()
       const user = userEvent.setup()
       render(
@@ -204,7 +204,35 @@ describe('ProductCard', () => {
       await user.click(buyButton)
 
       expect(mockOnBuy).toHaveBeenCalledOnce()
-      expect(mockOnBuy).toHaveBeenCalledWith(TEST_PRODUCT)
+      expect(mockOnBuy).toHaveBeenCalledWith(TEST_PRODUCT, 1)
+    })
+
+    it('should call onBuy with correct quantity when stepper is set to 3', async () => {
+      const mockOnBuy = vi.fn()
+      const user = userEvent.setup()
+      render(
+        <ProductCard
+          product={TEST_PRODUCT}
+          onBuy={mockOnBuy}
+          onRequestOffer={vi.fn()}
+          isLoggedIn={true}
+        />
+      )
+
+      // Increase quantity to 3 by clicking + twice
+      const increaseButtons = screen.getAllByLabelText(/Aumentar quantidade/i)
+      await user.click(increaseButtons[0])
+      await user.click(increaseButtons[0])
+
+      // Verify quantity is 3
+      expect(screen.getByLabelText(/Quantidade: 3/i)).toBeInTheDocument()
+
+      // Click "Comprar agora"
+      const buyButton = screen.getByRole('button', { name: /Comprar agora/i })
+      await user.click(buyButton)
+
+      expect(mockOnBuy).toHaveBeenCalledOnce()
+      expect(mockOnBuy).toHaveBeenCalledWith(TEST_PRODUCT, 3)
     })
 
     it('should NOT create order or show old toast when logged in (S5b: flip to checkout)', async () => {

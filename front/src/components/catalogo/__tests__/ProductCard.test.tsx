@@ -55,6 +55,13 @@ const TEST_PRODUCT: Product = {
   badge: 'Mais vendido',
 }
 
+// Mock next/link
+vi.mock('next/link', () => ({
+  default: ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <a href={href}>{children}</a>
+  ),
+}))
+
 describe('ProductCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -86,6 +93,20 @@ describe('ProductCard', () => {
     expect(screen.getByRole('button', { name: /à sacola/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Comprar agora/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Pedir oferta/i })).toBeInTheDocument()
+  })
+
+  it('should link product name and image to product page', () => {
+    render(
+      <ProductCard
+        product={TEST_PRODUCT}
+        onBuy={vi.fn()}
+        onRequestOffer={vi.fn()}
+        isLoggedIn={true}
+      />
+    )
+
+    const productLink = screen.getByRole('link')
+    expect(productLink).toHaveAttribute('href', `/produto/${TEST_PRODUCT.slug}`)
   })
 
   describe('Adicionar à sacola', () => {

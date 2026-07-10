@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Product, Badge } from '@/lib/products'
 import { LEILAO_ATIVO } from '@/lib/feature-flags'
@@ -79,30 +80,35 @@ export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn
 
   return (
     <div className="bg-white rounded-card shadow-card overflow-hidden hover:-translate-y-1.5 hover:shadow-card-hover transition-all flex flex-col">
-      {/* Imagem / placeholder */}
-      <div className="aspect-square bg-primary-light flex items-center justify-center text-4xl sm:text-5xl relative">
-        <span aria-hidden="true">🧷</span>
-        {product.badge && (
-          <span
-            className={`absolute top-2.5 left-2.5 text-[10px] font-bold rounded-full px-2.5 py-0.5 ${BADGE_STYLES[product.badge]}`}
-          >
-            {product.badge}
+      {/* Imagem / placeholder + título (linkado) */}
+      <Link href={`/produto/${product.slug}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-dark focus-visible:ring-offset-2">
+        <div className="aspect-square bg-primary-light flex items-center justify-center text-4xl sm:text-5xl relative">
+          <span aria-hidden="true">🧷</span>
+          {product.badge && (
+            <span
+              className={`absolute top-2.5 left-2.5 text-[10px] font-bold rounded-full px-2.5 py-0.5 ${BADGE_STYLES[product.badge]}`}
+            >
+              {product.badge}
+            </span>
+          )}
+        </div>
+
+        {/* Informações (marca, nome, tamanho) */}
+        <div className="p-3.5 sm:p-4">
+          <span className="text-[10px] font-bold uppercase tracking-wide text-primary-dark mb-0.5 block">
+            {product.brand}
           </span>
-        )}
-      </div>
+          <p className="font-display font-extrabold text-sm text-brand-text mb-0.5">
+            {product.name}
+          </p>
+          <p className="text-[11px] text-brand-muted">
+            Tam. {product.size} · {product.quantity} un.
+          </p>
+        </div>
+      </Link>
 
-      {/* Informações */}
+      {/* Restante do conteúdo (fornecedor, preço, botões) */}
       <div className="p-3.5 sm:p-4 flex flex-col flex-1">
-        <span className="text-[10px] font-bold uppercase tracking-wide text-primary-dark mb-0.5">
-          {product.brand}
-        </span>
-        <p className="font-display font-extrabold text-sm text-brand-text mb-0.5">
-          {product.name}
-        </p>
-        <p className="text-[11px] text-brand-muted mb-2">
-          Tam. {product.size} · {product.quantity} un.
-        </p>
-
         {/* Fornecedor com rating */}
         <p className="text-[10px] text-brand-muted mb-3">
           <span className="font-semibold">{supplierName}</span>

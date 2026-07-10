@@ -38,6 +38,22 @@ login); "Comprar" -> "Comprar agora" (express, BuyModal). 9 testes vi.mocked. Su
   Divida D-022 do unitPrice resolvida para pedidos criados pelo carrinho (seed estatico permanece).
 **Thread S FECHADO** — loop catalogo->sacola->checkout->pedidos navegavel de ponta a ponta, com o toast
 enganoso corrigido na raiz. Revisado por D-012 (test/lint/tsc/build exit 0, sem any).
+
+**Ajustes pos-usabilidade (2026-07-10):**
+- S6 (083f7ad): remove "Meu perfil" duplicado/quebrado do menu; corrige plural "itemns"->"itens";
+  stepper de quantidade no ProductCard (guard >=1, reset apos adicionar).
+- S7 (cec44ce, D-024): botoes de compra exigem login (add-a-sacola deslogado -> /login); "Comprar agora"
+  passa a respeitar a quantidade do stepper (onBuy(product, quantity)). Emenda a D-016.
+- S7b (122f315): /checkout tambem exige login (fecha a porta lateral do carrinho persistido). Teste do
+  checkout desacoplado do firebase (useAuth mockado).
+
+**Trilha catalogo (T3/T4) — FECHADA (feature 016, RN-02/04/05):**
+- T3 (c3084ee): Product ganha slug/categoria/descricao/atributos (tipados) + getProductBySlug; ponto de
+  extensao UCP marcado. 12 testes.
+- T4 (e589ad2): pagina /produto/[slug] (nome/marca/fornecedor+rating/preco/descricao/atributos/stepper +
+  CTAs gateadas por login e com quantidade); cards linkam para a pagina; slug inexistente -> "nao encontrado".
+  13 testes. Divida TODO(T4.1): extrair hook de compra compartilhado ProductCard<->pagina de produto.
+Suite 225/225. Todos validados no browser (Playwright): card->produto, 404, gate de login, checkout, flip, stepper.
 **Pendente de validacao HUMANA:** rodar o app e testar o fluxo completo no navegador (add a sacola -> /sacola
 -> Finalizar compra -> endereco/revisao/pagamento/confirmacao -> pedido aparece em /minha-conta; sacola vazia).
 Proximas trilhas (fora do Thread S): nicho/schema de produto (T3) + pagina de produto (T4).

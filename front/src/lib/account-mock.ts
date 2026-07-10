@@ -84,7 +84,7 @@ export const INITIAL_ORDERS: Order[] = [
     items: [{
       productId: 'ord-003-p1',
       productName: 'Turma da Mônica P',
-      unitPrice: 13400,
+      unitPrice: 6700,
       quantity: 2,
       unit: 'cx',
     }],
@@ -99,11 +99,11 @@ export const INITIAL_ORDERS: Order[] = [
     deliveryAddress: SP_ADDRESS,
     status: 'entregue',
     createdAt: '2026-04-20T09:00:00Z',
-    price: 10500,
+    price: 10400,
     items: [{
       productId: 'ord-004-p1',
       productName: 'MamyPoko Pants G',
-      unitPrice: 10500,
+      unitPrice: 260,
       quantity: 40,
       unit: 'un',
     }],
@@ -122,7 +122,7 @@ export const INITIAL_ORDERS: Order[] = [
     items: [{
       productId: 'ord-005-p1',
       productName: 'Cremer XG',
-      unitPrice: 6000,
+      unitPrice: 300,
       quantity: 20,
       unit: 'un',
     }],

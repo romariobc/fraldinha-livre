@@ -266,3 +266,32 @@ describe('OrdersContext - createOrdersFromCart', () => {
     expect(orders![0].quantity).toBe(5) // 2 + 3
   })
 })
+
+describe('OrdersContext - cancelOrder', () => {
+  it('should cancel an order by changing status to cancelado', () => {
+    const { result } = renderHook(() => useOrders(), { wrapper: AllProviders })
+
+    const orderToCancel = result.current.orders[0]
+
+    act(() => {
+      result.current.cancelOrder(orderToCancel.id)
+    })
+
+    const updatedOrder = result.current.orders.find(o => o.id === orderToCancel.id)
+    expect(updatedOrder?.status).toBe('cancelado')
+  })
+
+  it('should not affect other orders when canceling one', () => {
+    const { result } = renderHook(() => useOrders(), { wrapper: AllProviders })
+
+    const orderToCancel = result.current.orders[0]
+    const otherOrdersStatuses = result.current.orders.slice(1).map(o => o.status)
+
+    act(() => {
+      result.current.cancelOrder(orderToCancel.id)
+    })
+
+    const updatedOtherOrdersStatuses = result.current.orders.slice(1).map(o => o.status)
+    expect(updatedOtherOrdersStatuses).toEqual(otherOrdersStatuses)
+  })
+})

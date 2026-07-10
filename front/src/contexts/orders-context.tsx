@@ -9,6 +9,7 @@ interface OrdersContextType {
   orders: Order[]
   createDirectOrder: (product: string, quantity: number, deliveryAddress: Address, price: number, supplierId?: string, supplierName?: string) => Order
   createOrdersFromCart: (items: CartItem[], address: Address) => Order[]
+  cancelOrder: (orderId: string) => void
 }
 
 const OrdersContext = createContext<OrdersContextType | undefined>(undefined)
@@ -96,8 +97,12 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return newOrders
   }
 
+  const cancelOrder = (orderId: string) => {
+    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'cancelado' } : o))
+  }
+
   return (
-    <OrdersContext.Provider value={{ orders, createDirectOrder, createOrdersFromCart }}>
+    <OrdersContext.Provider value={{ orders, createDirectOrder, createOrdersFromCart, cancelOrder }}>
       {children}
     </OrdersContext.Provider>
   )

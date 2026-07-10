@@ -135,7 +135,15 @@
       "fase": 1,
       "status": "done",
       "criterio_aceite": "Todo produto do catalogo exibe seu fornecedor; CTA 'Comprar' ativo cria pedido compra-direta que aparece em minha-conta (comprador) e no painel do fornecedor dono do produto; precos padronizados em centavos",
-      "notas": "H-004 executado (commit 317838e) + fix pos-revisao (5f84450). CODIGO APROVADO via D-012 (git show --stat + build + lint exit 0). Entrega: suppliers.ts (4 fornecedores), products.ts em centavos + supplierId, formatPrice unico em utils, BuyModal com validacao completa (quantidade + endereco, sem cast as Address), OrdersProvider, ponte orders->market via orderToDirectOrder para sup-001. Gating (013) e auth (005a) preservados. FALTA validacao humana do fluxo de compra no navegador (npm run dev do worktree). Sup-001 tem produtos p1/p2/p3/m1/t1/c1"
+      "notas": "H-004 executado (commit 317838e) + fix pos-revisao (5f84450). CODIGO APROVADO via D-012 (git show --stat + build + lint exit 0). Entrega: suppliers.ts (4 fornecedores), products.ts em centavos + supplierId, formatPrice unico em utils, BuyModal com validacao completa (quantidade + endereco, sem cast as Address), OrdersProvider, ponte orders->market via orderToDirectOrder para sup-001. Gating (013) e auth (005a) preservados. FALTA validacao humana do fluxo de compra no navegador (npm run dev do worktree). Sup-001 tem produtos p1/p2/p3/m1/t1/c1. SUPERADA pela 016 (carrinho/checkout): o BuyModal instantaneo foi aposentado no flip do S5b (D-023)"
+    },
+    {
+      "id": "016",
+      "titulo": "Compra direta: carrinho + checkout (catalogo -> sacola -> checkout -> pedidos)",
+      "fase": 1,
+      "status": "in_progress",
+      "criterio_aceite": "Comprador adiciona itens a sacola (por fornecedor), finaliza compra num checkout endereco->revisao->pagamento(STUB)->confirmacao, e a confirmacao cria 1 pedido por fornecedor que aparece em /minha-conta e no painel do fornecedor (sup-001); a sacola esvazia; pedido nasce SO na confirmacao (sem criacao instantanea). Pagamento/fulfillment sao adapters mock atras de portas tipadas (T1/T2) com contract tests",
+      "notas": "Arquitetura T1 (dominio+portas, 45e7cf9), T2 (mocks+contract tests, 26d2507), T1.5 (Order.items[], 2449512). Thread S: S1 carrinho (1c79bec), S3 /sacola (33c87a1), S4 navegacao (39e438b), S2 add-a-sacola (2f896aa), S5a maquina checkout (fef33df), S5b efeito+flip (b02ffa5). Revisado por D-012 a cada tarefa (test/lint/tsc/build exit 0, sem any). Decisoes D-016..D-020 (spec), D-022 (comprador 100% compra-direta), D-023 (checkout+flip). FALTA validacao HUMANA do fluxo completo no navegador (npm run dev do worktree). Trilha separada nao iniciada: nicho/schema de produto (T3) + pagina de produto (T4)"
     }
   ]
 }

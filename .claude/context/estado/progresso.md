@@ -28,10 +28,19 @@ CTAs gateadas) + 16 testes; ajuste de copia na revisao. **S4 DONE** (39e438b): n
 21 testes; removido `as any` dos mocks na revisao. Suite 152/152.
 **S2 DONE** (2f896aa): ProductCard ganha "Adicionar a sacola" (useCart.addItem + toast "Ver sacola", sem
 login); "Comprar" -> "Comprar agora" (express, BuyModal). 9 testes vi.mocked. Suite 161/161.
-Fluxo catalogo->sacola navegavel de ponta a ponta (falta so o checkout).
-**Proximo: S5** (checkout: endereco->revisao->pagamento STUB->confirmacao; cria 1 pedido/fornecedor via
-T1+T2; limpa sacola; ativa "Finalizar compra"; faz o FLIP do fluxo e conserta o toast enganoso do BuyModal).
-Divida: seed items[].unitPrice = total (nao por-unidade), corrigir no S5/T13. Nicho/produto (T3/T4) = trilha separada.
+**S5 DONE — quebrado em dois (D-023), executados um a um:**
+- **S5a** (fef33df): maquina /checkout de 4 passos endereco->revisao->pagamento(STUB)->confirmacao (estado
+  local, sem efeito); liga "Finalizar compra" da /sacola ao checkout; 22 testes. Suite 183/183.
+- **S5b** (b02ffa5): confirmar cria 1 pedido/fornecedor (buildOrdersFromCart T1) + adapters mock STUB (T2) +
+  materializa sup-001 no painel do fornecedor (feed preservado) + limpa a sacola (handler idempotente).
+  **Flip:** "Comprar agora" nao cria mais pedido instantaneo (addItem + /checkout); BuyModal/createDirectOrder/
+  toast enganoso removidos do catalogo. Pedido nasce so na confirmacao do checkout. Suite 191/191.
+  Divida D-022 do unitPrice resolvida para pedidos criados pelo carrinho (seed estatico permanece).
+**Thread S FECHADO** — loop catalogo->sacola->checkout->pedidos navegavel de ponta a ponta, com o toast
+enganoso corrigido na raiz. Revisado por D-012 (test/lint/tsc/build exit 0, sem any).
+**Pendente de validacao HUMANA:** rodar o app e testar o fluxo completo no navegador (add a sacola -> /sacola
+-> Finalizar compra -> endereco/revisao/pagamento/confirmacao -> pedido aparece em /minha-conta; sacola vazia).
+Proximas trilhas (fora do Thread S): nicho/schema de produto (T3) + pagina de produto (T4).
 
 ---
 

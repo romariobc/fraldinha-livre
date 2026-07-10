@@ -301,3 +301,30 @@ falso, a ordem de execucao passa a ser:
 3. **H-004** — compra direta (feature 014), agora sobre sessao real.
 
 Depois: 006 backend (traz role/persistencia + login por credenciais 005b) → 011 pagamento → 007.
+
+## D-023 — Checkout e o flip do fluxo de compra (2026-07-10) — VIGENTE
+
+Fechou o loop do marketplace de compra-direta (Thread S). O checkout (`/checkout`) e uma maquina de 4
+passos — endereco → revisao → pagamento (STUB) → confirmacao — entregue em duas tarefas: **S5a** (telas
++ estado local, sem efeito) e **S5b** (efeito de negocio + flip).
+
+**S5b — o "flip":** o pedido passa a nascer **so** na confirmacao do checkout. Antes, "Comprar agora"
+(BuyModal) criava o pedido instantaneamente e disparava o toast enganoso "Pedido criado! O fornecedor foi
+notificado." — reportado na avaliacao de usabilidade. Agora:
+- Confirmar cria **1 pedido por fornecedor** (D-017) via `buildOrdersFromCart` (T1), roda os adapters mock
+  Payment/Fulfillment (T2, STUB approved/scheduled), materializa pedidos `sup-001` no painel do fornecedor
+  (feed preservado — nao regrediu), e **limpa a sacola**. Handler idempotente (guard `submitting`).
+- "Comprar agora" deixa de criar pedido: passa a `addItem` + `router.push('/checkout')` (mantida a trava
+  de perfil RN-06). BuyModal/`createDirectOrder`/toast enganoso removidos do catalogo (`BuyModal.tsx` fica
+  orfao, nao deletado nesta task).
+- Bridge `createOrdersFromCart(items, address)` no OrdersContext mapeia `DomainOrder` → `Order`
+  (account-mock) com `items[]` canonicos.
+
+**Divida tecnica D-022 RESOLVIDA (parcial):** os pedidos criados pelo carrinho gravam `items[].unitPrice`
+com o preco **unitario correto** (vem do carrinho por linha). O seed estatico de `INITIAL_ORDERS` ainda
+tem unitPrice = total; corrigir se/quando esses seeds forem re-renderizados.
+
+**Why:** o pedido nascer no catalogo era uma mentira de UX (sem revisao, sem endereco confirmado, notificava
+fornecedor cedo demais). **How to apply:** todo pedido de compra-direta nasce no checkout; nao reintroduzir
+criacao instantanea. Pagamento real (011) e fulfillment real substituem os adapters STUB pela porta ja
+definida (T1/T2) — sem mudar o fluxo.

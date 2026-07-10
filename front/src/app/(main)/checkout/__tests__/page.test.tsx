@@ -4,6 +4,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CartProvider } from '@/contexts/cart-context'
 import { AuthProvider } from '@/contexts/auth-context'
+import { OrdersProvider } from '@/contexts/orders-context'
+import { MarketProvider } from '@/contexts/market-context'
 import type { CartItem } from '@/lib/domain/cart'
 import CheckoutPage from '../page'
 import { vi } from 'vitest'
@@ -51,7 +53,11 @@ function renderCheckout(items: CartItem[]) {
   return render(
     <CartProvider>
       <AuthProvider>
-        <CheckoutPage />
+        <OrdersProvider>
+          <MarketProvider>
+            <CheckoutPage />
+          </MarketProvider>
+        </OrdersProvider>
       </AuthProvider>
     </CartProvider>
   )
@@ -297,7 +303,7 @@ describe('CheckoutPage', () => {
       const pagarButton = screen.getByRole('button', { name: /Pagar/i })
       await user.click(pagarButton)
 
-      expect(screen.getByText('Pedido recebido!')).toBeInTheDocument()
+      expect(screen.getByText('Pedido confirmado!')).toBeInTheDocument()
     })
 
     it('should select pix by default', async () => {
@@ -328,8 +334,8 @@ describe('CheckoutPage', () => {
       const pagarButton = screen.getByRole('button', { name: /Pagar/i })
       await user.click(pagarButton)
 
-      expect(screen.getByText('Pedido recebido!')).toBeInTheDocument()
-      expect(screen.getByText(/Obrigado pela sua compra/)).toBeInTheDocument()
+      expect(screen.getByText('Pedido confirmado!')).toBeInTheDocument()
+      expect(screen.getByText(/Acompanhe seu pedido/)).toBeInTheDocument()
     })
 
     it('should display link to minha-conta', async () => {
@@ -344,13 +350,13 @@ describe('CheckoutPage', () => {
       const pagarButton = screen.getByRole('button', { name: /Pagar/i })
       await user.click(pagarButton)
 
+      expect(screen.getByText('Pedido confirmado!')).toBeInTheDocument()
       const link = screen.getByRole('link', { name: /Ver meus pedidos/i })
       expect(link).toHaveAttribute('href', '/minha-conta')
     })
 
-    it('should NOT call clear() when reaching confirmacao (verified via mock)', async () => {
-      // This test verifies that the cart is NOT cleared
-      // by checking that items remain in the cart context after confirmation
+    it('should clear cart after clicking pagar (S5b)', async () => {
+      // This test verifies that the cart IS cleared when reaching confirmacao
       renderCheckout([mockItem1])
       const user = userEvent.setup()
 
@@ -363,14 +369,12 @@ describe('CheckoutPage', () => {
       await user.click(pagarButton)
 
       // Verify we're at confirmacao
-      expect(screen.getByText('Pedido recebido!')).toBeInTheDocument()
+      expect(screen.getByText('Pedido confirmado!')).toBeInTheDocument()
 
-      // Verify that cart is still available (not cleared)
-      // Check localStorage to ensure it still has items
+      // Verify that cart was cleared
+      // Check localStorage to ensure it is empty
       const stored = window.localStorage.getItem('fl.cart.v1')
-      expect(stored).toBeTruthy()
-      const parsed = JSON.parse(stored!)
-      expect(parsed).toHaveLength(1)
+      expect(stored).toBe('[]')
     })
   })
 

@@ -3,19 +3,26 @@
 import Link from 'next/link'
 import { useCart } from '@/contexts/cart-context'
 import { useAuth } from '@/contexts/auth-context'
+import { useOrders } from '@/contexts/orders-context'
+import { useMarket } from '@/contexts/market-context'
 import { MOCK_USER } from '@/lib/account-mock'
-import type { Address } from '@/lib/account-mock'
+import type { Address, Order } from '@/lib/account-mock'
 import type { PaymentMethod } from '@/lib/ports/payment'
 import { lineTotal, cartSubtotal } from '@/lib/domain/cart'
 import { formatPrice } from '@/lib/utils'
 import { ShoppingBag } from 'lucide-react'
 import { useState } from 'react'
+import { MockPaymentGateway } from '@/lib/adapters/mock-payment-gateway'
+import { MockFulfillmentService } from '@/lib/adapters/mock-fulfillment-service'
+import { orderToDirectOrder } from '@/lib/order-adapters'
 
 type CheckoutStep = 'endereco' | 'revisao' | 'pagamento' | 'confirmacao'
 
 export default function CheckoutPage() {
-  const { items, subtotal, bySupplier } = useCart()
+  const { items, subtotal, bySupplier, clear } = useCart()
   const { profile } = useAuth()
+  const { createOrdersFromCart } = useOrders()
+  const { addDirectOrder } = useMarket()
   const [step, setStep] = useState<CheckoutStep>('endereco')
   const [useCustomAddress, setUseCustomAddress] = useState(false)
   const [customAddress, setCustomAddress] = useState<Address>({
@@ -28,6 +35,8 @@ export default function CheckoutPage() {
     cep: '',
   })
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix')
+  const [createdOrders, setCreatedOrders] = useState<Order[]>([])
+  const [submitting, setSubmitting] = useState(false)
 
   // Determine default address: profile.address or MOCK_USER.address
   const defaultAddress = profile?.address || MOCK_USER.address
@@ -41,6 +50,66 @@ export default function CheckoutPage() {
       customAddress.cep.trim() &&
       customAddress.cidade.trim() &&
       customAddress.estado.trim())
+
+  // Handler: Pagar (idempotent payment + order creation + fulfillment)
+  const handlePagar = async () => {
+    // Guard: already submitted
+    if (submitting) {
+      return
+    }
+    setSubmitting(true)
+
+    try {
+      // 1. Create orders from cart
+      const orders = createOrdersFromCart(items, deliveryAddress)
+
+      // 2. Instantiate adapters (STUB)
+      let txnIdCounter = 0
+      const payment = new MockPaymentGateway({
+        now: () => new Date().toISOString(),
+        idFactory: () => `txn-${Date.now()}-${++txnIdCounter}`,
+        outcome: 'approved',
+      })
+
+      let trackingIdCounter = 0
+      const fulfillment = new MockFulfillmentService({
+        idFactory: () => `trk-${Date.now()}-${++trackingIdCounter}`,
+        outcome: 'scheduled',
+      })
+
+      // 3. Process payment and fulfillment for each order
+      for (const order of orders) {
+        // Charge payment
+        await payment.charge({
+          orderId: order.id,
+          amount: order.price!,
+          method: paymentMethod,
+        })
+
+        // Schedule fulfillment
+        await fulfillment.schedule({
+          orderId: order.id,
+          address: deliveryAddress,
+          items: order.items!,
+        })
+
+        // 4. Materialize in supplier panel for sup-001
+        if (order.supplierId === 'sup-001') {
+          const directOrder = orderToDirectOrder(order)
+          if (directOrder) {
+            addDirectOrder(directOrder)
+          }
+        }
+      }
+
+      // 5. Save created orders, clear cart, and move to confirmacao
+      setCreatedOrders(orders)
+      clear()
+      setStep('confirmacao')
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   // Guard: empty cart (but not when viewing confirmacao)
   if (items.length === 0 && step !== 'confirmacao') {
@@ -350,8 +419,6 @@ export default function CheckoutPage() {
                 </label>
               </div>
 
-              {/* S5b: aqui entram MockPaymentGateway/MockFulfillmentService + criação de pedido */}
-
               <div className="border-t border-slate-100 pt-6 flex gap-3">
                 <button
                   onClick={() => setStep('revisao')}
@@ -360,8 +427,9 @@ export default function CheckoutPage() {
                   Voltar
                 </button>
                 <button
-                  onClick={() => setStep('confirmacao')}
-                  className="flex-1 py-3 px-4 bg-primary-dark text-white rounded-full font-display font-bold text-sm hover:bg-primary transition-colors"
+                  onClick={handlePagar}
+                  disabled={submitting}
+                  className="flex-1 py-3 px-4 bg-primary-dark text-white rounded-full font-display font-bold text-sm hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Pagar
                 </button>
@@ -370,7 +438,7 @@ export default function CheckoutPage() {
           </div>
         )}
 
-        {/* Step: Confirmacao (placeholder) */}
+        {/* Step: Confirmacao */}
         {step === 'confirmacao' && (
           <div className="max-w-2xl mx-auto">
             <div className="bg-white rounded-card shadow-card p-12 text-center">
@@ -391,14 +459,16 @@ export default function CheckoutPage() {
               </div>
 
               <h1 className="font-display font-black text-2xl text-brand-text mb-4">
-                Pedido recebido!
+                Pedido confirmado!
               </h1>
 
-              <p className="text-sm text-brand-muted mb-8">
-                Obrigado pela sua compra. Acompanhe seu pedido em Minha Conta.
+              <p className="text-sm text-brand-muted mb-2">
+                {createdOrders.length} pedido{createdOrders.length !== 1 ? 's' : ''} criado{createdOrders.length !== 1 ? 's' : ''} com sucesso.
               </p>
 
-              {/* S5b: aqui o pedido é criado (buildOrdersFromCart) e a sacola é limpa (clear()) */}
+              <p className="text-sm text-brand-muted mb-8">
+                Acompanhe seu pedido em Minha Conta.
+              </p>
 
               <Link
                 href="/minha-conta"

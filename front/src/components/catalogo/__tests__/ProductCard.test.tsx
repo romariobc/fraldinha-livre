@@ -188,7 +188,7 @@ describe('ProductCard', () => {
   })
 
   describe('Comprar agora', () => {
-    it('should call onBuy when logged in', async () => {
+    it('should call onBuy with product when logged in', async () => {
       const mockOnBuy = vi.fn()
       const user = userEvent.setup()
       render(
@@ -205,6 +205,27 @@ describe('ProductCard', () => {
 
       expect(mockOnBuy).toHaveBeenCalledOnce()
       expect(mockOnBuy).toHaveBeenCalledWith(TEST_PRODUCT)
+    })
+
+    it('should NOT create order or show old toast when logged in (S5b: flip to checkout)', async () => {
+      const mockOnBuy = vi.fn()
+      const user = userEvent.setup()
+      render(
+        <ProductCard
+          product={TEST_PRODUCT}
+          onBuy={mockOnBuy}
+          onRequestOffer={vi.fn()}
+          isLoggedIn={true}
+        />
+      )
+
+      const buyButton = screen.getByRole('button', { name: /Comprar agora/i })
+      await user.click(buyButton)
+
+      // Verify old toast is NOT shown
+      expect(mockToast.success).not.toHaveBeenCalledWith(
+        'Pedido criado! O fornecedor foi notificado.'
+      )
     })
 
     it('should redirect to login when not logged in', async () => {

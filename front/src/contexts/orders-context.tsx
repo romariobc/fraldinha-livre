@@ -2,10 +2,13 @@
 
 import { createContext, useContext, useState, ReactNode } from 'react'
 import { Order, Address, INITIAL_ORDERS } from '@/lib/account-mock'
+import type { CartItem } from '@/lib/domain/cart'
+import { buildOrdersFromCart } from '@/lib/domain/order'
 
 interface OrdersContextType {
   orders: Order[]
   createDirectOrder: (product: string, quantity: number, deliveryAddress: Address, price: number, supplierId?: string, supplierName?: string) => Order
+  createOrdersFromCart: (items: CartItem[], address: Address) => Order[]
 }
 
 const OrdersContext = createContext<OrdersContextType | undefined>(undefined)
@@ -46,8 +49,55 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return newOrder
   }
 
+  const createOrdersFromCart = (items: CartItem[], address: Address): Order[] => {
+    // ID factory for unique order IDs
+    let idCounter = 0
+    const idFactory = () => {
+      idCounter++
+      return `ord-${Date.now()}-${idCounter}`
+    }
+
+    // ISO 8601 timestamp for createdAt
+    const now = new Date().toISOString()
+
+    // Build domain orders from cart (grouped by supplier)
+    const domainOrders = buildOrdersFromCart(items, address, idFactory, now)
+
+    // Map DomainOrder → Order (account-mock format)
+    const newOrders: Order[] = domainOrders.map((domainOrder) => {
+      // Calculate total quantity sum
+      const totalQuantity = domainOrder.items.reduce((sum, item) => sum + item.quantity, 0)
+
+      // Product field: single item name or "N itens"
+      const productField = domainOrder.items.length === 1
+        ? domainOrder.items[0].productName
+        : `${domainOrder.items.length} itens`
+
+      const order: Order = {
+        id: domainOrder.id,
+        type: 'compra-direta',
+        status: 'aguardando',
+        product: productField,
+        quantity: totalQuantity,
+        unit: 'un',
+        deliveryAddress: address,
+        createdAt: domainOrder.createdAt,
+        price: domainOrder.total,
+        supplierId: domainOrder.supplierId,
+        supplierName: domainOrder.supplierName,
+        items: domainOrder.items,
+      }
+
+      return order
+    })
+
+    // Append to orders state and return the new orders
+    setOrders((prev) => [...prev, ...newOrders])
+    return newOrders
+  }
+
   return (
-    <OrdersContext.Provider value={{ orders, createDirectOrder }}>
+    <OrdersContext.Provider value={{ orders, createDirectOrder, createOrdersFromCart }}>
       {children}
     </OrdersContext.Provider>
   )

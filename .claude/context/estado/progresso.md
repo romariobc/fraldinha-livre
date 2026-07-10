@@ -26,9 +26,11 @@ Teasers de descoberta (Pedir oferta no catalogo, /mercado) mantidos (D-007). Com
 CTAs gateadas) + 16 testes; ajuste de copia na revisao. **S4 DONE** (39e438b): navegacao — sacola->/sacola
 (badge = itens do carrinho), email->dropdown da conta (Minha conta/Meu perfil/Sair), mobile atualizado +
 21 testes; removido `as any` dos mocks na revisao. Suite 152/152.
-**Proximo: S2** (Adicionar a sacola no ProductCard — liga catalogo->carrinho) e depois **S5** (checkout:
-endereco->revisao->pagamento STUB->confirmacao; cria 1 pedido/fornecedor via T1+T2; limpa sacola; faz o
-FLIP do fluxo e conserta o toast). Aguardando "dispare o s2" do cliente (ritmo de aprovacao por tarefa).
+**S2 DONE** (2f896aa): ProductCard ganha "Adicionar a sacola" (useCart.addItem + toast "Ver sacola", sem
+login); "Comprar" -> "Comprar agora" (express, BuyModal). 9 testes vi.mocked. Suite 161/161.
+Fluxo catalogo->sacola navegavel de ponta a ponta (falta so o checkout).
+**Proximo: S5** (checkout: endereco->revisao->pagamento STUB->confirmacao; cria 1 pedido/fornecedor via
+T1+T2; limpa sacola; ativa "Finalizar compra"; faz o FLIP do fluxo e conserta o toast enganoso do BuyModal).
 Divida: seed items[].unitPrice = total (nao por-unidade), corrigir no S5/T13. Nicho/produto (T3/T4) = trilha separada.
 
 ---

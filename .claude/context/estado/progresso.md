@@ -1,5 +1,39 @@
 # Progresso — fraldinha-livre
 
+## Estado atual (2026-07-11) — Threads S/T + feature 017 NA MAIN; proximo = backend
+
+**Marco: tudo o que estava so local foi para a `main` do GitHub.** A `origin/main` estava **77 commits
+atras** — parte era a Fase 1 (merge 1818eb2) e features 007a/015/docs do leilao **mergeadas so na main
+LOCAL e nunca pushadas**, parte era a leva nova (threads S/T + 017). Um PR unico de catch-up resolveu:
+**PR #7 MERGEADO** (merge commit 47b8c5c, 79 commits, 136 arquivos). **`origin/main` = `main` local =
+47b8c5c** (fast-forward; unico atrito foi `.nvmrc` untracked identico, removido com seguranca). Nada mais
+preso na maquina. Licao: pushar/PR com regularidade — trabalho so-local e risco de perda.
+
+**Entregue nesta leva (ja revisado por D-012 a cada tarefa, todos verdes):**
+- **Feature 016 (carrinho+checkout):** threads S1-S5b + T3/T4 (pagina de produto). Loop
+  catalogo->sacola->checkout->pedidos de ponta a ponta; "flip" do pedido nascer so na confirmacao (D-023);
+  gate de login em toda compra + quantidade nos dois botoes (D-024). **Codigo completo; status = in_progress**
+  ate a validacao HUMANA (login Google -> conferir pedidos em /minha-conta — unico trecho que exige OAuth).
+- **Feature 017 (detalhe+cancelar pedido):** OrderCard vira acordeao + cancelamento com trava logistica +
+  sinalizacao sup-001 (D-025). U1 (3b06355) + U2 (1dba637). 258/258 testes, sem any. **Codigo completo;
+  status = in_progress** ate validacao humana (rota logada; coberto por 23 testes RTL).
+
+**Nova frente aberta (nao implementada) — BACKEND:** o cliente vai estudar backend no GCP. Auditamos o
+front: o seam de **pagamento/logistica** ja esta pronto (portas + contract tests + mocks), mas o seam de
+**dados** (produtos/pedidos/estoque/usuarios) **nao existe** (mocks const em memoria, pedidos so em useState,
+sem API client, sem envio do ID Token). Registrado em **ADR-001** (`design/adr/adr-001-estrategia-backend.md`)
++ **D-026 (AGUARDANDO APROVACAO)**: duas alternativas — **A2** (backend HTTP dedicado, route handlers no
+monorepo, hexagonal forte, mais mudanca no front) vs **B** (Firestore-direto + Security Rules + Functions,
+muito menos mudanca no front, mas hexagonal fraco + lock-in). Pendencia: `integration-guide.md` esta
+DESATUALIZADO (assume NextAuth/REST, conflita com Firebase Auth 005a) — revisar quando a ADR for aprovada.
+
+**Proximo passo (proxima sessao — 2026-07-12+):** decidir **A2 vs B** (D-026) antes de implementar o 006.
+Rota faseada de baixo risco que serve aos dois: comecar pelas **portas de repositorio + persistencia de
+pedidos** (valem para A e B). Pendentes nao-bloqueantes: validacao humana de 016/017 no navegador; divida
+TODO(T4.1) hook de compra compartilhado.
+
+---
+
 ## Estado atual (2026-07-08) — Feature 016: compra direta (carrinho/checkout)
 
 Fase 1 do marketplace JA NA MAIN. Agora: feature 016 (catalogo→carrinho→checkout), planejada e

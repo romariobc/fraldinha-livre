@@ -362,3 +362,28 @@ pedido e uma logica de cancelamento com restricao logistica. Decisoes:
 por status espelha a realidade logistica. **How to apply:** cancelamento e mutacao mock no orders-context +
 reflexo no market-context (padrao do checkout S5b); edicao real e aprovacao pelo fornecedor ficam para o 006+.
 Spec: spec-pedido-detalhe-cancelamento.md.
+
+## D-026 — Estrategia de backend: como o front sai do mock (2026-07-11) — AGUARDANDO APROVACAO
+
+Antes de escolher onde o backend vai morar, auditamos o estado real do front. Achado central: o seam de
+**pagamento/logistica** ja esta pronto (portas hexagonais + contract tests + mocks), mas o seam de **dados**
+(produtos/pedidos/estoque/usuarios) **nao existe** — `PRODUCTS`/`INITIAL_ORDERS` sao `const` em memoria lidos
+direto pelos contexts, pedidos vivem so em `useState` (somem no refresh), nao ha API client nem envio do ID
+Token, e o Firestore hoje e acessado direto pelo client (so pelo auth). Ou seja, o gargalo nao e o backend, e a
+camada de integracao no front — que precisa ser construida do zero em qualquer alternativa.
+
+Duas familias na mesa (detalhe + matriz + custo + mudancas no front na ADR):
+- **A) Backend HTTP dedicado** media tudo via Firebase Admin SDK no Cloud Run. Sub-variantes: **A1** repo
+  separado (contradiz D-005 e o WORKFLOW, perde `packages/contracts` — **nao recomendada**) e **A2** route
+  handlers no monorepo (backend de verdade, um repo, seam preservado — recomendada dentro de A). Hexagonal forte,
+  mas e a que mais mexe no front.
+- **B) Backend minimo:** Firestore-direto + Security Rules + Cloud Functions so no sensivel (pagamento, estoque
+  transacional). Muito menos mudanca no front e menos infra; custo = hexagonal fraco + lock-in Firestore.
+
+Custo GCP ~R$ 0 nas duas (free tier); o custo real e esforco, concentrado no front. **Pendencia:**
+`integration-guide.md` (maio/2026) esta DESATUALIZADO — assume NextAuth 5 + REST `localhost:3001` +
+`IS_LOGGED_IN`, o que conflita com o Firebase Auth (005a); revisar ao aprovar.
+
+**Why:** decidir backend sem enxergar o buraco do seam de dados levaria a subestimar o retrabalho no front.
+**How to apply:** nada de codigo ate o cliente escolher A2 vs B; comecar pelas portas de repositorio +
+persistencia de pedidos, que valem para as duas. Doc completo: `design/adr/adr-001-estrategia-backend.md`.

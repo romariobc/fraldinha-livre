@@ -4,7 +4,10 @@
 import { useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { PRODUCTS, filterProducts, Product, ProductFilters } from '@/lib/products'
-import { IS_LOGGED_IN } from '@/lib/auth-mock'
+import { STORE_SUPPLIERS } from '@/lib/suppliers'
+import { useAuth } from '@/contexts/auth-context'
+import { useCart } from '@/contexts/cart-context'
+import { isProfileComplete } from '@/lib/utils'
 import ProductCard from '@/components/catalogo/ProductCard'
 import CatalogFilters from '@/components/catalogo/CatalogFilters'
 import Pagination from '@/components/catalogo/Pagination'
@@ -14,19 +17,26 @@ function useFilters(): [ProductFilters, (key: keyof ProductFilters, value: strin
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  const pageStr = searchParams.get('page') ?? '1'
+  const parsedPage = parseInt(pageStr, 10)
+  const sanitizedPage = Number.isFinite(parsedPage) && parsedPage >= 1 ? parsedPage : 1
+
   const filters: ProductFilters = {
     search: searchParams.get('search') ?? '',
     brand:  searchParams.get('marca')  ?? 'todos',
     size:   searchParams.get('tam')    ?? 'todos',
     sort:   searchParams.get('sort')   ?? '',
-    page:   Number(searchParams.get('page') ?? '1'),
+    page:   sanitizedPage,
   }
 
   const updateFilter = useCallback(
     (key: keyof ProductFilters, value: string) => {
       const params = new URLSearchParams(searchParams.toString())
       const paramKey = key === 'brand' ? 'marca' : key === 'size' ? 'tam' : key
-      if (value && value !== 'todos') {
+      // Sentinela 'todos' só vale para brand/size; search e sort gravam para qualquer valor não-vazio
+      if ((key === 'brand' || key === 'size') && value === 'todos') {
+        params.delete(paramKey)
+      } else if (value) {
         params.set(paramKey, value)
       } else {
         params.delete(paramKey)
@@ -46,19 +56,47 @@ function useFilters(): [ProductFilters, (key: keyof ProductFilters, value: strin
 
 function CatalogoContent() {
   const [filters, updateFilter, clearFilters] = useFilters()
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [selectedProductForOffer, setSelectedProductForOffer] = useState<Product | null>(null)
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user, profile } = useAuth()
+  const { addItem } = useCart()
 
   const { items, total, totalPages } = filterProducts(PRODUCTS, filters)
 
-  const start = (filters.page - 1) * 12 + 1
-  const end = Math.min(filters.page * 12, total)
+  // Clamp página ao range válido [1, totalPages] para coerência com itens exibidos
+  const safePage = Math.max(1, Math.min(filters.page, totalPages || 1))
+  const start = (safePage - 1) * 12 + 1
+  const end = Math.min(safePage * 12, total)
 
   function handlePageChange(page: number) {
     const params = new URLSearchParams(searchParams.toString())
     params.set('page', String(page))
     router.push(`/catalogo?${params.toString()}`)
+  }
+
+  function handleBuy(product: Product, quantity: number) {
+    // RN-06: trava de compra — se logado mas perfil incompleto, redirecionar para minha-conta
+    if (user && !isProfileComplete(profile)) {
+      router.push('/minha-conta?tab=perfil&returnTo=/catalogo')
+      return
+    }
+
+    // Add to cart and navigate to checkout
+    const supplier = STORE_SUPPLIERS.find((s) => s.id === product.supplierId)
+    const supplierName = supplier?.name || 'Fornecedor desconhecido'
+
+    addItem({
+      productId: product.id,
+      productName: `${product.name} ${product.size}`,
+      supplierId: product.supplierId,
+      supplierName,
+      unitPrice: product.priceInCents,
+      quantity,
+      unit: 'un',
+    })
+
+    router.push('/checkout')
   }
 
   return (
@@ -128,14 +166,15 @@ function CatalogoContent() {
                       <ProductCard
                         key={product.id}
                         product={product}
-                        isLoggedIn={IS_LOGGED_IN}
-                        onRequestOffer={setSelectedProduct}
+                        isLoggedIn={user !== null}
+                        onRequestOffer={setSelectedProductForOffer}
+                        onBuy={handleBuy}
                       />
                     ))}
                   </div>
 
                   <Pagination
-                    currentPage={filters.page}
+                    currentPage={safePage}
                     totalPages={totalPages}
                     onPageChange={handlePageChange}
                   />
@@ -148,9 +187,9 @@ function CatalogoContent() {
 
       {/* Modal de oferta */}
       <OfferModal
-        key={selectedProduct?.id ?? ''}
-        product={selectedProduct}
-        onClose={() => setSelectedProduct(null)}
+        key={selectedProductForOffer?.id ?? ''}
+        product={selectedProductForOffer}
+        onClose={() => setSelectedProductForOffer(null)}
       />
     </>
   )

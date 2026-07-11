@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import type { GeoScope } from '@/lib/supplier-mock'
 import { MOCK_SUPPLIER } from '@/lib/supplier-mock'
 import { geoMatch } from '@/lib/market-utils'
 import { useMarket } from '@/contexts/market-context'
+import { LEILAO_ATIVO } from '@/lib/feature-flags'
 import GeoScopeSelector from '@/components/mercado/GeoScopeSelector'
 import MarketTable from '@/components/mercado/MarketTable'
 
@@ -26,6 +28,32 @@ export default function MercadoPage() {
     })
   ).length
   const nationalCount = activeOrders.length
+
+  if (!LEILAO_ATIVO) {
+    return (
+      <div className="min-h-screen bg-brand-bg flex items-center justify-center">
+        <section className="container-fl py-20 flex flex-col items-center text-center">
+          <div className="mb-6 text-6xl">🎯</div>
+          <h1 className="font-display font-black text-brand-text text-3xl mb-3">
+            Em breve
+          </h1>
+          <p className="text-brand-muted text-sm max-w-md mb-2">
+            O Leilão Reverso está chegando! Aqui você poderá visualizar pedidos de
+            cotações abertas de outros compradores e enviar suas ofertas em tempo real.
+          </p>
+          <p className="text-brand-muted text-sm max-w-md mb-6">
+            Enquanto isso, continue navegando nosso catálogo de produtos.
+          </p>
+          <Link
+            href="/catalogo"
+            className="inline-flex items-center gap-2 bg-accent text-white font-display font-bold text-sm py-3 px-6 rounded-xl hover:bg-accent-dark transition-colors"
+          >
+            ← Voltar ao Catálogo
+          </Link>
+        </section>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-brand-bg">
@@ -73,7 +101,7 @@ export default function MercadoPage() {
 
       {/* Table */}
       <section className="py-5">
-        <MarketTable scope={scope} onExpandScope={() => setScope({ type: 'national' })} />
+        <MarketTable key={JSON.stringify(scope)} scope={scope} onExpandScope={() => setScope({ type: 'national' })} />
       </section>
     </div>
   )

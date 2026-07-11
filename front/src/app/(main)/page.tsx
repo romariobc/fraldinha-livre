@@ -360,7 +360,7 @@ export default function Home() {
                   <p className="text-[11px] text-brand-muted mb-3">{product.size}</p>
                   <div className="flex items-center justify-between">
                     <p className="font-display font-black text-base sm:text-lg text-brand-text">
-                      R$&nbsp;{product.price}
+                      R$&nbsp;{product.price.toFixed(2).replace('.', ',')}
                       <span className="text-[11px] font-medium text-brand-muted font-body"> / pct</span>
                     </p>
                     <button
@@ -460,7 +460,7 @@ export default function Home() {
                 Fale com a nossa equipe pelo WhatsApp ou deixe sua mensagem — respondemos em até 2 horas.
               </p>
               <Link
-                href="#"
+                href="/contato"
                 className="mt-2 inline-flex items-center justify-center px-6 py-3 rounded-full bg-primary text-white font-display font-bold text-sm hover:bg-primary-dark transition-colors"
               >
                 💬 Falar no WhatsApp

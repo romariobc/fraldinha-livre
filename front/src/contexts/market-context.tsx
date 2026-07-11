@@ -16,6 +16,8 @@ interface MarketContextValue {
   handleConfirmarDireto(orderId: string): Promise<void>
   handleRecusarDireto(orderId: string): Promise<void>
   handleAtualizarDespacho(orderId: string, orderType: 'market' | 'direct', status: DispatchStatus): Promise<void>
+  addDirectOrder(directOrder: DirectOrder): void
+  cancelDirectOrder(orderId: string): void
 }
 
 const MarketContext = createContext<MarketContextValue | null>(null)
@@ -80,6 +82,14 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
     // TODO: await fetch(`/api/orders/${orderId}/dispatch`, { method: 'PATCH', body: JSON.stringify({ status }) })
   }
 
+  function addDirectOrder(directOrder: DirectOrder) {
+    setDirectOrders((prev) => [directOrder, ...prev])
+  }
+
+  function cancelDirectOrder(orderId: string) {
+    setDirectOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'cancelado' as const } : o))
+  }
+
   return (
     <MarketContext.Provider
       value={{
@@ -92,6 +102,8 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
         handleConfirmarDireto,
         handleRecusarDireto,
         handleAtualizarDespacho,
+        addDirectOrder,
+        cancelDirectOrder,
       }}
     >
       {children}

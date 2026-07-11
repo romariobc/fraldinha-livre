@@ -96,10 +96,6 @@ export interface SupplierOffer {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-export function formatPrice(cents: number): string {
-  return `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`
-}
-
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR')
 }

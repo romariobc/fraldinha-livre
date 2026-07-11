@@ -36,3 +36,9 @@ yarn-error.log*
 # ── Claude Code ────────────────────────────────────────────────
 .claude/worktrees/
 .superpowers/
+
+# graphify (grafo de conhecimento gerado)
+graphify-out/
+
+# artefatos transitorios do Playwright MCP (logs/screenshots de validacao)
+.playwright-mcp/

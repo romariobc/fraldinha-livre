@@ -1,5 +1,7 @@
 # Guia de Integração Frontend — Backend Real
 
+> **Infra:** frontend e backend hospedados no Google Cloud (Cloud Run) — ver .claude/docs/decisoes.md D-001. Provedor de auth do backend será definido na feature 005.
+
 > **Versão:** maio/2026 | **Stack:** Next.js 16 + NextAuth 5 + TypeScript
 
 Este guia cobre a migração completa dos mocks locais para o backend real da Fraldinha Livre. Siga a ordem das seções para evitar quebras em cascata.
@@ -8,7 +10,7 @@ Este guia cobre a migração completa dos mocks locais para o backend real da Fr
 
 ## 1. Configuração de ambiente
 
-Crie o arquivo `.env.local` na raiz do projeto frontend (`E:\ROMARIO PC\fraldinha-livre\.env.local`):
+Crie o arquivo `.env.local` na raiz do projeto frontend (`E:\Labdev\Projetos\fraldinha-livre\front\.env.local`):
 
 ```env
 # URL do backend — troque para produção no deploy

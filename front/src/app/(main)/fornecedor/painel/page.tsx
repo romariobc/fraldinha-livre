@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useMarket } from '@/contexts/market-context'
-import { MOCK_SUPPLIER } from '@/lib/supplier-mock'
+import { useAuth } from '@/contexts/auth-context'
 import PedidosDiretosTab from '@/components/fornecedor/PedidosDiretosTab'
 import OfertasMercadoTab from '@/components/fornecedor/OfertasMercadoTab'
 import LogisticaTab      from '@/components/fornecedor/LogisticaTab'
@@ -12,8 +13,28 @@ import LogisticaTab      from '@/components/fornecedor/LogisticaTab'
 type TabKey = 'diretos' | 'ofertas' | 'logistica'
 
 export default function FornecedorPainelPage() {
+  const router = useRouter()
+  const { user, loading } = useAuth()
+
+  // Hooks SEMPRE devem ser chamados na mesma ordem, antes de qualquer early return
   const [activeTab, setActiveTab] = useState<TabKey>('diretos')
   const { directOrders, offers, handleConfirmarDireto, handleRecusarDireto } = useMarket()
+
+  // Guarda client-side: redireciona deslogado para /login?redirect=/fornecedor/painel
+  // (endurecimento SSR com session cookie fica para deploy/006 — D-010)
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login?redirect=/fornecedor/painel')
+    }
+  }, [user, loading, router])
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>
+  }
+
+  if (!user) {
+    return null // Redirecionar em progresso
+  }
 
   const pendingDirectCount  = directOrders.filter((o) => o.status === 'aguardando').length
   const pendingOffersCount  = offers.filter((o) => o.status === 'enviada').length
@@ -32,9 +53,9 @@ export default function FornecedorPainelPage() {
                 Hub do Fornecedor
               </p>
               <h1 className="font-display font-black text-brand-text text-2xl lg:text-3xl">
-                Olá, {MOCK_SUPPLIER.name.split(' ')[0]} 👋
+                Olá, {(user.displayName || user.email || 'Fornecedor').split(' ')[0]} 👋
               </h1>
-              <p className="text-sm text-brand-muted mt-1">{MOCK_SUPPLIER.email}</p>
+              <p className="text-sm text-brand-muted mt-1">{user.email}</p>
             </div>
 
             <div className="flex flex-wrap gap-3 items-start">

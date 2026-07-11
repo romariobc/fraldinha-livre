@@ -23,7 +23,27 @@
       "Bash(node -e \"const z = require\\('zod'\\); console.log\\(z.version\\)\")",
       "Bash(npx prisma *)",
       "PowerShell(docker run --name fraldinha-db -e POSTGRES_PASSWORD=password -e POSTGRES_DB=fraldinha_livre -p 5432:5432 -d postgres:16)",
-      "PowerShell(\\(Get-Content \"E:\\\\ROMARIO PC\\\\fraldinha-livre-api\\\\.env\"\\) -replace 'localhost:5432', '127.0.0.1:5432' | Set-Content \"E:\\\\ROMARIO PC\\\\fraldinha-livre-api\\\\.env\")"
+      "PowerShell(\\(Get-Content \"E:\\\\ROMARIO PC\\\\fraldinha-livre-api\\\\.env\"\\) -replace 'localhost:5432', '127.0.0.1:5432' | Set-Content \"E:\\\\ROMARIO PC\\\\fraldinha-livre-api\\\\.env\")",
+      "PowerShell(git -C $wt add chatsessions/2026-07-02-sessao-01-analise-review-decisoes.md)",
+      "PowerShell(git -C $wt log --oneline -1)",
+      "PowerShell($wt = \"E:\\\\Labdev\\\\Projetos\\\\fraldinha-livre\\\\.claude\\\\worktrees\\\\eloquent-montalcini-2dff41\")",
+      "Bash(npm run *)",
+      "PowerShell(git -C $wt show --stat 1355e51 --format='%h %s')",
+      "PowerShell(git -C $wt status --short)",
+      "PowerShell($wt=\"E:\\\\Labdev\\\\Projetos\\\\fraldinha-livre\\\\.claude\\\\worktrees\\\\eloquent-montalcini-2dff41\")",
+      "PowerShell($wt=\"E:\\\\Labdev\\\\Projetos\\\\fraldinha-livre\\\\.claude\\\\worktrees\\\\eloquent-montalcini-2dff41\"; git -C $wt checkout -- .claude/settings.local.json; Write-Host '=== STATUS pos-limpeza ==='; git -C $wt status --short; Write-Host '\\(vazio = limpo\\)'; cd \"$wt\\\\front\"; Write-Host '=== BUILD \\(rotas\\) ==='; npm run build 2>&1 | Select-String -Pattern 'perfil|Compiled|Failed|error|/minha-conta|/mercado|/onboarding' ; Write-Host '=== LINT ==='; npm run lint 2>&1 | Select-Object -Last 8; Write-Host \"LINT EXIT: $LASTEXITCODE\")",
+      "Bash(grep -v \"// \")",
+      "Bash(echo \"LINT_EXIT=$?\")",
+      "PowerShell($wt=\"E:\\\\Labdev\\\\Projetos\\\\fraldinha-livre\\\\.claude\\\\worktrees\\\\eloquent-montalcini-2dff41\"; Write-Host '=== SHOW --STAT ==='; git -C $wt show --stat 5f84450 --format='%h %s'; Write-Host '=== GREP alert/confirm ==='; git -C $wt grep -nE \"\\\\balert\\\\\\(|\\\\bconfirm\\\\\\(\" -- front/src 2>&1; Write-Host '\\(0=limpo\\)'; git -C $wt checkout -- .claude/settings.local.json; Write-Host '=== STATUS ==='; git -C $wt status --short; cd \"$wt\\\\front\"; Write-Host '=== BUILD ==='; npm run build 2>&1 | Select-String -Pattern 'Compiled|Failed|Error|error' | Select-Object -First 5; Write-Host '=== LINT ==='; npm run lint 2>&1 | Select-Object -Last 3; Write-Host \"LINT EXIT: $LASTEXITCODE\")",
+      "PowerShell(git -C $wt add .claude)",
+      "PowerShell($wt=\"E:\\\\Labdev\\\\Projetos\\\\fraldinha-livre\\\\.claude\\\\worktrees\\\\eloquent-montalcini-2dff41\"; Write-Host '=== SHOW --STAT ==='; git -C $wt show --stat af54380 --format='%h %s' | Select-Object -First 20; git -C $wt checkout -- .claude/settings.local.json 2>$null; Write-Host '=== STATUS ==='; git -C $wt status --short; cd \"$wt\\\\front\"; Write-Host '=== LINT ==='; npm run lint 2>&1 | Select-Object -Last 4; Write-Host \"LINT EXIT: $LASTEXITCODE\"; Write-Host '=== BUILD ==='; npm run build 2>&1 | Select-String -Pattern 'Compiled|Failed|Error' | Select-Object -First 4)",
+      "PowerShell($wt=\"E:\\\\Labdev\\\\Projetos\\\\fraldinha-livre\\\\.claude\\\\worktrees\\\\eloquent-montalcini-2dff41\"; Write-Host '=== SHOW --STAT ==='; git -C $wt show --stat fc01a82 --format='%h %s'; git -C $wt checkout -- .claude/settings.local.json 2>$null; Write-Host '=== STATUS ==='; git -C $wt status --short; cd \"$wt\\\\front\"; Write-Host '=== LINT \\(exit real\\) ==='; npm run lint 2>&1 | Select-Object -Last 3; Write-Host \"LINT EXIT: $LASTEXITCODE\")",
+      "mcp__plugin_firebase_firebase__firebase_deploy",
+      "mcp__plugin_firebase_firebase__firebase_get_security_rules",
+      "PowerShell(git -C $wt add .claude chatsessions)",
+      "PowerShell(git -C $wt log --oneline -3)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(timeout 120 npm run lint)"
     ]
   }
 }

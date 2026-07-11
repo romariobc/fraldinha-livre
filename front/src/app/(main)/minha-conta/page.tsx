@@ -1,52 +1,46 @@
 // src/app/(main)/minha-conta/page.tsx
 'use client'
 
-import { useState } from 'react'
-import { toast } from 'sonner'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { MOCK_USER, INITIAL_ORDERS, Order, Offer } from '@/lib/account-mock'
+import { useAuth } from '@/contexts/auth-context'
+import { useOrders } from '@/contexts/orders-context'
 import PedidosTab from '@/components/minha-conta/PedidosTab'
-import OfertasTab from '@/components/minha-conta/OfertasTab'
 import HistoricoTab from '@/components/minha-conta/HistoricoTab'
 import PerfilTab from '@/components/minha-conta/PerfilTab'
-import NovoPedidoModal from '@/components/minha-conta/NovoPedidoModal'
 
-type TabKey = 'pedidos' | 'ofertas' | 'historico' | 'perfil'
+type TabKey = 'pedidos' | 'historico' | 'perfil'
 
-export default function MinhaContaPage() {
-  const [activeTab, setActiveTab]   = useState<TabKey>('pedidos')
-  const [orders, setOrders]         = useState<Order[]>(INITIAL_ORDERS)
-  const [modalOpen, setModalOpen]   = useState(false)
+function MinhaContaContent() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { user, loading } = useAuth()
+  const { orders } = useOrders()
 
-  // Número total de ofertas pendentes para o badge
-  const pendingOffersCount = orders
-    .filter((o) => o.status === 'ofertas-recebidas')
-    .reduce((sum, o) => sum + (o.offers?.length ?? 0), 0)
+  // Hooks SEMPRE devem ser chamados na mesma ordem, antes de qualquer early return
+  const [activeTab, setActiveTab]   = useState<TabKey>(() => {
+    const tabParam = searchParams.get('tab') as TabKey | null
+    return (tabParam && ['pedidos', 'historico', 'perfil'].includes(tabParam)) ? tabParam : 'pedidos'
+  })
 
-  function handleNovoPedido(partial: Omit<Order, 'id' | 'createdAt'>) {
-    const newOrder: Order = {
-      ...partial,
-      id: `ord-${Date.now()}`,
-      createdAt: new Date().toISOString(),
+  // Guarda client-side: redireciona deslogado para /login?redirect=/minha-conta
+  // (endurecimento SSR com session cookie fica para deploy/006 — D-010)
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login?redirect=/minha-conta')
     }
-    setOrders((prev) => [newOrder, ...prev])
-    toast.success('Pedido criado! Fornecedores serão notificados em breve.')
-    setActiveTab('pedidos')
+  }, [user, loading, router])
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>
   }
 
-  function handleAceitarOferta(orderId: string, offer: Offer) {
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId ? { ...o, status: 'aceito' as const, price: offer.price } : o
-      )
-    )
-    toast.success(`Oferta da ${offer.supplier} aceita! Seu pedido está confirmado.`)
-    setActiveTab('pedidos')
+  if (!user) {
+    return null // Redirecionar em progresso
   }
 
-  function handleVerOfertas(_orderId: string) {
-    setActiveTab('ofertas')
-  }
+  const returnTo = searchParams.get('returnTo')
 
   const activeOrdersCount = orders.filter(
     (o) => o.status !== 'entregue' && o.status !== 'cancelado'
@@ -63,9 +57,9 @@ export default function MinhaContaPage() {
                 Área do cliente
               </p>
               <h1 className="font-display font-black text-brand-text text-2xl lg:text-3xl">
-                Olá, {MOCK_USER.name.split(' ')[0]} 👋
+                Olá, {(user.displayName || user.email || 'Cliente').split(' ')[0]} 👋
               </h1>
-              <p className="text-sm text-brand-muted mt-1">{MOCK_USER.email}</p>
+              <p className="text-sm text-brand-muted mt-1">{user.email}</p>
             </div>
 
             {/* Quick stats */}
@@ -76,13 +70,6 @@ export default function MinhaContaPage() {
               >
                 <span className="font-black text-2xl text-primary-dark leading-none">{activeOrdersCount}</span>
                 <span className="text-xs text-brand-muted mt-1">Pedidos</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('ofertas')}
-                className="flex flex-col items-center bg-white rounded-2xl px-5 py-3 shadow-card border border-accent/20 hover:border-accent/40 transition-colors min-w-[90px]"
-              >
-                <span className="font-black text-2xl text-accent leading-none">{pendingOffersCount}</span>
-                <span className="text-xs text-brand-muted mt-1">Ofertas</span>
               </button>
             </div>
           </div>
@@ -112,18 +99,6 @@ export default function MinhaContaPage() {
                 </TabsTrigger>
 
                 <TabsTrigger
-                  value="ofertas"
-                  className="rounded-none px-5 py-3 text-sm font-semibold flex-none"
-                >
-                  🏷️ Ofertas
-                  {pendingOffersCount > 0 && (
-                    <span className="ml-1.5 inline-flex items-center justify-center bg-accent text-white text-[10px] font-bold w-5 h-5 rounded-full">
-                      {pendingOffersCount}
-                    </span>
-                  )}
-                </TabsTrigger>
-
-                <TabsTrigger
                   value="historico"
                   className="rounded-none px-5 py-3 text-sm font-semibold flex-none"
                 >
@@ -141,15 +116,7 @@ export default function MinhaContaPage() {
 
             <div className="pt-6">
               <TabsContent value="pedidos">
-                <PedidosTab
-                  orders={orders}
-                  onNovoPedido={() => setModalOpen(true)}
-                  onVerOfertas={handleVerOfertas}
-                />
-              </TabsContent>
-
-              <TabsContent value="ofertas">
-                <OfertasTab orders={orders} onAceitarOferta={handleAceitarOferta} />
+                <PedidosTab orders={orders} />
               </TabsContent>
 
               <TabsContent value="historico">
@@ -157,20 +124,20 @@ export default function MinhaContaPage() {
               </TabsContent>
 
               <TabsContent value="perfil">
-                <PerfilTab user={MOCK_USER} />
+                <PerfilTab returnTo={returnTo ?? undefined} />
               </TabsContent>
             </div>
           </Tabs>
         </div>
       </section>
-
-      {/* Modal fora das tabs para não herdar seu contexto */}
-      <NovoPedidoModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        user={MOCK_USER}
-        onSubmit={handleNovoPedido}
-      />
     </>
+  )
+}
+
+export default function MinhaContaPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Carregando...</div>}>
+      <MinhaContaContent />
+    </Suspense>
   )
 }

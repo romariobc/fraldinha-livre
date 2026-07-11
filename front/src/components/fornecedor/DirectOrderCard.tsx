@@ -1,6 +1,7 @@
 // src/components/fornecedor/DirectOrderCard.tsx
 import { Package2, MapPin } from 'lucide-react'
-import { DirectOrder, DirectOrderStatus, formatPrice, timeAgo } from '@/lib/supplier-mock'
+import { DirectOrder, DirectOrderStatus, timeAgo } from '@/lib/supplier-mock'
+import { formatPrice } from '@/lib/utils'
 
 interface DirectOrderCardProps {
   order: DirectOrder

@@ -39,3 +39,6 @@ yarn-error.log*
 
 # graphify (grafo de conhecimento gerado)
 graphify-out/
+
+# artefatos transitorios do Playwright MCP (logs/screenshots de validacao)
+.playwright-mcp/

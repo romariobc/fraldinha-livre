@@ -1,6 +1,6 @@
 # Spec — Backend de Pedidos (Cloudflare Workers + D1) — Fatia 1
 
-**Dominio:** backend / comprador · **Feature relacionada:** 006 (fatia 1 de N) · **Status:** rascunho
+**Dominio:** backend / comprador · **Feature relacionada:** 006 (fatia 1 de N) · **Status:** APROVADA (2026-07-17)
 
 ## Contexto
 

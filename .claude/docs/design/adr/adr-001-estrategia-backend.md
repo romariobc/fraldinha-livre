@@ -1,7 +1,8 @@
 # ADR-001 — Estratégia de backend: como o front sai do mock
 
-- **Status:** PROPOSTA — aguardando aprovação (não implementar até decidir)
-- **Data:** 2026-07-11
+- **Status:** DECIDIDA (2026-07-17) — **Alternativa C: Cloudflare Workers + D1** (ver §12). A análise A/B
+  original (§3–§10) fica preservada como registro do raciocínio que levou à alternativa C.
+- **Data:** 2026-07-11 (proposta) · 2026-07-17 (decisão)
 - **Decisão-mãe relacionada:** D-026 (ponteiro no log `.claude/docs/decisoes.md`)
 - **Contexto de infra:** D-001 (100% Google Cloud) · D-005 (monorepo `front/`+`back/`) · 005a (Firebase Auth Google)
 - **Origem:** análise pedida pelo cliente antes de escolher onde o código do backend vai morar.
@@ -172,6 +173,45 @@ Uma rota faseada de baixo risco que serve aos dois caminhos: **criar primeiro as
 persistência de pedidos** (item 7.1 e 7.5), que valem para A e B, e só então plugar o backend escolhido.
 
 ---
+
+## 12. Decisão (2026-07-17) — Alternativa C: Cloudflare Workers + D1
+
+Depois de escrita a análise A/B, o cliente trouxe uma estratégia nova (Cloudflare + Replit). No
+brainstorming, **Replit foi descartado do núcleo** — seu diferencial (agente de IA + ambiente instantâneo)
+sobrepõe o harness Claude Code que o projeto já usa, e entraria como terceiro fornecedor sem somar. Sobrou
+a Cloudflare, que se revelou uma **terceira alternativa (C)** superior às duas originais para o nosso caso.
+
+**Alternativa C — Cloudflare Workers + D1.** Um Worker (Hono) em `back/` (monorepo, preserva D-005 e
+`packages/contracts`) verifica o Firebase ID Token e é o único a falar com o **D1** (SQLite gerenciado)
+via **Drizzle ORM**. O front ganha `OrderRepository` (porta) + adapter HTTP, no mesmo padrão das portas de
+pagamento/logística já existentes.
+
+**Por que C ganha das duas originais:**
+
+| Eixo | A2 (Cloud Run) | B (Firestore) | **C (Cloudflare)** |
+|---|---|---|---|
+| Aderência hexagonal | Forte | Fraca | **Forte** (autorização no Worker, testável) |
+| Lock-in de dados | Baixo | **Alto** (Firestore) | **Baixo** (D1 = SQL portável) |
+| Custo | ~R$ 0 | ~R$ 0 | **~R$ 0** (free tier) |
+| Segurança de perímetro | Manual | Manual | **Grátis** (DDoS/WAF/TLS/rate-limit) |
+| Superfície de infra | Container + IP | Rules espalhadas | **Sem porta exposta** (Worker na malha CF) |
+| Mudança no front | Grande | Pequena | Média (portas repo + async — igual A) |
+
+C herda o **hexagonal forte da A2** e o **custo/simplicidade da B**, sem o **lock-in da B** (o contra
+decisivo) — o D1 é SQL real e portável. A mudança no front é a mesma da família A (portas de repositório,
+API client, contextos assíncronos — Seção 7), aceita conscientemente.
+
+**Consequências de infra:** emenda a D-001 registrada como **D-027** (auth no Google/Firebase; dados/API na
+Cloudflare). Auth (005a) **não muda** — o Worker verifica o ID Token com `firebase-auth-cloudflare-workers`
+ou `jose` (o Admin SDK não roda no runtime do Workers). Vercel e Azure seguem descartadas.
+
+**Escopo e rollout:** a Seção 10 (rota faseada de baixo risco) foi adotada — começa por
+**portas de repositório + persistência de pedidos** (fatia 1, só Pedidos). Spec:
+`design/specs/spec-backend-pedidos-cloudflare.md`. Sync com o painel do fornecedor, produtos, perfis e
+estoque são fatias seguintes.
+
+**Stack:** Hono (rotas) · Drizzle ORM + drizzle-kit (D1, migrations versionadas) · Wrangler (dev local +
+deploy) · `firebase-auth-cloudflare-workers`/`jose` (verificação do token) · `packages/contracts` (Zod).
 
 ## 11. Referências
 

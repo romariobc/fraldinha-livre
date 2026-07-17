@@ -55,7 +55,7 @@
       "fase": 1,
       "status": "todo",
       "criterio_aceite": "Mocks da LOJA em src/lib/ substituidos por chamadas reais (produtos, pedidos diretos, perfis); nenhum dado hardcoded no frontend",
-      "notas": "Infra definida: Google Cloud, serverless e custo minimo (Cloud Run, Firestore, Cloud Storage) — ver .claude/docs/decisoes.md D-001. Endpoints do leilao (cotacoes/ofertas) ficam para a fase 2 (feature 008). Codigo em back/"
+      "notas": "DECIDIDO (2026-07-17, D-026 Alternativa C): Cloudflare Workers + D1 (Hono+Drizzle), auth Firebase mantida (Worker verifica ID Token); D-027 emenda D-001 (auth Google + dados Cloudflare). Fatiado: fatia 1 = SO PEDIDOS (spec-backend-pedidos-cloudflare.md APROVADA; plano B-backend-pedidos-breakdown.md, tarefas B1..B9). Fatias seguintes: produtos, sync fornecedor, perfis, estoque. Endpoints do leilao ficam para a fase 2 (feature 008). Codigo em back/. Proximo: escrever prompt Haiku B1"
     },
     {
       "id": "007a",

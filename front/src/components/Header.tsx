@@ -75,11 +75,11 @@ export default function Header() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5">
             <Image
-              src="/assets/img/Logo_simples_sem_fundo.png"
+              src="/assets/img/cegonha.png"
               alt="Fraldinha Livre"
-              width={44}
-              height={44}
-              className="h-10 w-auto lg:h-12"
+              width={589}
+              height={366}
+              className="h-11 w-auto lg:h-14"
               priority
             />
             <div className="flex flex-col leading-tight">

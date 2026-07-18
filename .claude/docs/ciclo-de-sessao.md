@@ -67,6 +67,7 @@ harness). Nao sao "lidos por tarefa" — sao o chao.
 |---|---|---|
 | `.claude/context/estado/progresso.md` | Diario cronologico: onde cada sessao parou, proximo passo | **Sempre, no inicio** |
 | `.claude/context/estado/feature_list.json` | Backlog com status (todo/in_progress/blocked/done), fase, criterio de aceite | **Sempre, no inicio** |
+| `.claude/context/chatsessions/` | Registro narrativo por sessao significativa (D-006). `README.md` = formato + indice | Ao retomar; para entender uma decisao passada em detalhe |
 | `.claude/docs/decisoes.md` | Log de decisoes D-NNN (arquitetura/infra/processo) — **fonte de verdade quando docs divergirem** | Ao planejar; quando um doc antigo conflita | 
 | `.claude/docs/design/specs/` | Specs de design (spec-driven, D-002). `README.md` = template + indice | Antes de implementar qualquer feature |
 | `.claude/docs/design/plans/` | Planos/prompts Haiku (H-NNN, threads S/T/U/B). `README.md` = template + indice | Ao executar uma feature |
@@ -85,6 +86,7 @@ harness). Nao sao "lidos por tarefa" — sao o chao.
 |---|---|---|
 | `.claude/context/estado/feature_list.json` | Novo status da feature; notas de execucao (commits, decisoes) | Sessao-mae, ao encerrar |
 | `.claude/context/estado/progresso.md` | Entrada da sessao: o que foi feito, estado do branch, proximo passo | Sessao-mae, ao encerrar |
+| `.claude/context/chatsessions/` + `README.md` | Registro narrativo da sessao (se significativa) + linha no indice | Sessao-mae, ao encerrar sessao significativa |
 | `.claude/docs/decisoes.md` | Nova decisao D-NNN (com Why + How to apply) | Sessao-mae, quando uma decisao e tomada |
 | `.claude/docs/design/specs/` + `README.md` | Nova spec + linha no indice | Sessao-mae, na fase de design |
 | `.claude/docs/design/plans/` + `README.md` | Novo plano/prompt Haiku + linha no indice | Sessao-mae, antes de disparar execucao |
@@ -152,9 +154,9 @@ ideia/pedido
 
 ## 7. Divergencias e lacunas conhecidas
 
-- **`chatsessions/` nao existe no repo.** A D-006 e o `progresso.md` citam "cada sessao significativa e
-  documentada em `chatsessions/`", mas a pasta nao foi materializada. **Decidir:** criar a pasta e passar
-  a registrar, ou remover a mencao da D-006. (Pendencia para o cliente.)
+- ~~`chatsessions/` nao existe no repo.~~ **RESOLVIDO (2026-07-17):** `.claude/context/chatsessions/`
+  materializado (README com formato/indice + 1a entrada). A D-006 agora e fiel. Registrar ali toda
+  sessao significativa (decisao/spec/plano/marco).
 - **Memoria fora do repo.** A memoria automatica (§5) fica na pasta do usuario, nao no git — outra maquina
   ou um clone limpo nao a tem. O `progresso.md`/`decisoes.md` versionados sao o backup durável do estado.
 - **`integration-guide.md` desatualizado** (NextAuth) — sera reescrito na thread B (D-027) para o fluxo

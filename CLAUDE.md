@@ -5,6 +5,9 @@
 Este projeto adota o ciclo de sessao definido em:
 https://github.com/romariobc/dev_flow_create_harness (branch: dominio/vendas-b2b, ou main enquanto branch de dominio nao existe)
 
+**Mapa completo do ciclo + contexto/persistencia/memoria:** `.claude/docs/ciclo-de-sessao.md`
+(contexto base, arquivos de consulta, arquivos de persistencia, memoria e divergencias). Resumo abaixo.
+
 Antes de qualquer tarefa:
 1. Leia .claude/context/estado/progresso.md — sabe onde a sessao anterior parou
 2. Leia .claude/context/estado/feature_list.json — pegue a proxima feature (status: todo)

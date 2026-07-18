@@ -1,6 +1,28 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-08) — Feature 016: compra direta (carrinho/checkout)
+## Estado atual (2026-07-17) — Backend (feature 006) DECIDIDO e PLANEJADO
+
+Sessao master reiniciada. Revisado o ADR-001; brainstorming (skill) da estrategia trazida pelo cliente
+(**Cloudflare + Replit**). **Replit descartado do nucleo** (sobrepoe o harness Claude Code). **D-026
+resolvida = Alternativa C: Cloudflare Workers + D1** (hexagonal forte da A2 + custo/simplicidade da B, sem
+lock-in — D1 = SQL portavel). **D-027** (emenda D-001): auth no Google/Firebase, dados/API na Cloudflare.
+Auth 005a NAO muda (Worker verifica o ID Token).
+
+Artefatos criados e commitados nesta sessao:
+- Spec APROVADA: `design/specs/spec-backend-pedidos-cloudflare.md` (fatia 1 = so Pedidos; commit 46bb41e).
+- ADR-001 atualizado (status DECIDIDA + secao 12: matriz A2/B/C, stack, rollout) + D-026/D-027 no log (5d9fc86).
+- Plano-mestre: `design/plans/B-backend-pedidos-breakdown.md` (tarefas B1..B9, interfaces canonicas, DEC-A
+  split no front / DEC-B contexto async; commit 149a2c8).
+
+**Proximo passo:** escrever o prompt Haiku **B1** (packages/contracts) e disparar; seguir B2..B9 um a um
+(D-006 + review D-012). **Pre-requisito do cliente para B9:** criar conta/projeto Cloudflare + D1 +
+`wrangler login` (o agente nao cria conta). Ate B8, front roda com `NEXT_PUBLIC_USE_BACKEND` off (mock),
+suite verde — nenhuma etapa quebra o app. Features 016/017 seguem in_progress (falta validacao humana com
+login Google em /minha-conta).
+
+---
+
+## Estado anterior (2026-07-08) — Feature 016: compra direta (carrinho/checkout)
 
 Fase 1 do marketplace JA NA MAIN. Agora: feature 016 (catalogo→carrinho→checkout), planejada e
 aprovada (D-016..D-020 + spec-compra-direta-carrinho-checkout.md). Graphify rodado em front/src.

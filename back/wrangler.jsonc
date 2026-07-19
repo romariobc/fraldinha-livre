@@ -11,5 +11,8 @@
       // D1 real, criado via MCP cloudflare-bindings em 2026-07-19 (antecipado da B9)
       "database_id": "a6da1bcf-ed51-4c8a-8dcb-cfd0c6c9e612"
     }
-  ]
+  ],
+  "vars": {
+    "FIREBASE_PROJECT_ID": "fraldinha-livre"
+  }
 }

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { MockOrderRepository } from '../mock-order-repository'
 import { OrderNotFoundError, OrderCancelNotAllowedError } from '@/lib/ports/order-repository'
+import { runOrderRepositoryContract } from '@/lib/ports/__tests__/order-repository.contract'
 import type { CreateOrderRequest } from '@contracts'
 import { INITIAL_ORDERS } from '@/lib/account-mock'
 
@@ -213,4 +214,9 @@ describe('MockOrderRepository', () => {
     expect(list1After.length).toBe(list1.length + 1)
     expect(list2After.length).toBe(list2.length) // repo2 inalterado
   })
+
+  // Contract tests with empty seed
+  runOrderRepositoryContract('MockOrderRepository (empty seed)', () =>
+    new MockOrderRepository({ now: mockNow, idFactory: mockIdFactory, seed: [] })
+  )
 })

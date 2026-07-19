@@ -32,10 +32,10 @@ export class MockOrderRepository implements OrderRepository {
   private now: () => string
   private idFactory: () => string
 
-  constructor(options: { now: () => string; idFactory: () => string }) {
+  constructor(options: { now: () => string; idFactory: () => string; seed?: Order[] }) {
     this.now = options.now
     this.idFactory = options.idFactory
-    this.orders = INITIAL_ORDERS.map(toContractOrder)
+    this.orders = options.seed ?? INITIAL_ORDERS.map(toContractOrder)
   }
 
   async list(): Promise<Order[]> {

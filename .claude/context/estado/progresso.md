@@ -1,6 +1,26 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-19) — B4 executado (POST /orders + PATCH cancelar)
+## Estado atual (2026-07-19) — B4 aprovado; B5 executado (OrderRepository + Mock, front)
+
+**B4 APROVADO** pela sessão de frontend via D-012 — fatia 1 do lado do Worker (006.1..006.4) fechada.
+Cliente pediu lista de B5..B8 pra priorizar; ordem definida: B5→B6→B7→B8 sequencial (grafo permite
+paralelizar B6/B7, mas não compensa o risco de revisão simultânea nesta fase).
+
+**B5 EXECUTADO** (commit `5ba3b81`), primeira tarefa em `front/` desta thread: `OrderRepository`
+(porta) + `MockOrderRepository`, mesmo padrão hexagonal das portas de pagamento/logística já
+existentes. Resolveu a ambiguidade real de ter DUAS `Order` diferentes no front (a de
+`account-mock.ts`, UI/seed, intocada; a de `@contracts`, o contrato de rede que a porta fala) com uma
+função de mapeamento validada por `OrderSchema.parse()`. Erros tipados (`OrderNotFoundError`,
+`OrderCancelNotAllowedError`) definidos na porta — mesmo contrato que B7 (HttpOrderRepository) vai
+reusar depois. `now`/`idFactory` injetados (sem `Date.now()`/`crypto.randomUUID()` internos, mesmo
+padrão de `MockPaymentGateway`). 268/268 testes verdes (9 novos), `tsc`/`lint` exit 0. Sanity check
+próprio confirma: código bate exatamente com a referência do prompt, nada fora do escopo tocado
+(`account-mock.ts`/`orders-context.tsx` intactos, confirmados).
+
+**Aguardando revisão D-012 pela sessão de frontend** antes de avançar para B6 (contract test
+reutilizável de `OrderRepository`).
+
+## Estado anterior (2026-07-19) — B4 executado (POST /orders + PATCH cancelar)
 
 **B3 APROVADO** pela sessão de frontend via D-012 (achado extra: a troca `firebase-auth-cloudflare-workers`
 → `jose` já estava pré-aprovada na própria spec, não era desvio). Sinal verde para B4.

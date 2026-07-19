@@ -3,6 +3,15 @@ import type { Context, Next } from 'hono'
 import type { Env, AppContext } from '../env'
 
 /**
+ * JWKS público do Firebase — criado UMA VEZ no escopo do módulo (não a cada chamada).
+ * O jose mantém cache interno de chaves nessa instância; recriar por request perderia
+ * o cache e refaria fetch ao Google em toda autenticação.
+ */
+const JWKS = createRemoteJWKSet(
+  new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'),
+)
+
+/**
  * Verificador testável de JWT — recebe um token e retorna uid ou null se inválido.
  */
 export type VerifyTokenFn = (token: string) => Promise<{ uid: string } | null>
@@ -41,12 +50,7 @@ export const verifyFirebaseIdToken = async (
   projectId: string,
 ): Promise<{ uid: string } | null> => {
   try {
-    // JWKS público do Firebase
-    const JWKS = createRemoteJWKSet(
-      new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'),
-    )
-
-    // Verifica assinatura, issuer, audience e expiration
+    // Verifica assinatura, issuer, audience e expiration (JWKS reutilizado do escopo do módulo)
     const verified = await jwtVerify(token, JWKS, {
       issuer: `https://securetoken.google.com/${projectId}`,
       audience: projectId,

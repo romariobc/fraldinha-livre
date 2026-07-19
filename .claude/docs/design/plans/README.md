@@ -60,7 +60,8 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | B2 | back/: scaffold Worker Hono + D1 + migration de pedidos | 1 | APROVADO (commits b6aa44b, 44aa81a, aa5d4e1) via D-012 pela sessão de frontend — incluindo D1 real criado via MCP |
 | B3 | back/: auth Firebase ID Token + GET /orders | 1 | APROVADO (commits 2af35f6, 20c62dc) via D-012 pela sessão de frontend |
 | B4 | back/: POST /orders + PATCH /orders/:id/cancel | 1 | APROVADO (commit 6309a1e) via D-012 pela sessão de frontend |
-| B5 | front/: OrderRepository (porta) + MockOrderRepository | 1 | EXECUTADO (commit 5ba3b81) — 268/268 testes, aguardando revisão D-012 pela sessão de frontend |
+| B5 | front/: OrderRepository (porta) + MockOrderRepository | 1 | APROVADO (commit 5ba3b81) via D-012 pela sessão de frontend |
+| B6 | front/: contract test reutilizável runOrderRepositoryContract | 1 | EXECUTADO (commit 4b18648) — 273/273 testes, aguardando revisão D-012 pela sessão de frontend |
 
 **Ordem de execucao (D-011):** H-002 → H-005 → [H-006 limpeza para main] → H-004 → H-003 → 006 backend.
 

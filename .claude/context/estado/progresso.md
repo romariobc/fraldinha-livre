@@ -1,6 +1,21 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-19) — B4 aprovado; B5 executado (OrderRepository + Mock, front)
+## Estado atual (2026-07-19) — B5 aprovado; B6 executado (contract test OrderRepository)
+
+**B5 APROVADO** pela sessão de frontend via D-012 — porta + mock validados linha a linha.
+
+**B6 EXECUTADO** (commit `4b18648`): `runOrderRepositoryContract(name, makeRepo)`, cópia fiel do
+padrão já estabelecido (`payment-gateway.contract.ts`). Resolveu o problema de "list vazio" com um
+`seed?: Order[]` opcional e aditivo no `MockOrderRepository` (não quebra os 9 testes de B5). O caso
+"cancel fora de aguardando → erro" foi resolvido cancelando duas vezes (aguardando→cancelado sucede,
+cancelado→cancelado de novo lança `OrderCancelNotAllowedError`) — testa o contrato só pela interface
+pública, sem precisar de seed especial pra estado não-aguardando. 273/273 testes verdes (14 no arquivo
+do mock: 9 de B5 + 5 do contrato), `tsc`/`lint` exit 0. Sanity check próprio confirma o código.
+
+**Aguardando revisão D-012 pela sessão de frontend** antes de avançar para B7 (`HttpOrderRepository` +
+`api-client` — o adapter que fala com o Worker de verdade).
+
+## Estado anterior (2026-07-19) — B4 aprovado; B5 executado (OrderRepository + Mock, front)
 
 **B4 APROVADO** pela sessão de frontend via D-012 — fatia 1 do lado do Worker (006.1..006.4) fechada.
 Cliente pediu lista de B5..B8 pra priorizar; ordem definida: B5→B6→B7→B8 sequencial (grafo permite

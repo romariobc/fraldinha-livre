@@ -57,7 +57,8 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | H-003 | Bugs da loja (catalogo ?page, busca 'todos', hydration, esqueci-senha, EmConstrucao) | 1 | APROVADO (b6c4e6c) via D-012 — lint 0, build ok |
 | B (breakdown) | Backend de pedidos (Cloudflare Workers + D1) — fatia 1, tarefas B1..B9 | 1 | breakdown APROVADO (2026-07-17); prompts B1..Bn a escrever no disparo |
 | B1 | packages/contracts: schemas Zod de Order/OrderItem/Address | 1 | APROVADO (commit b908dfe) via D-012 pela sessão de frontend |
-| B2 | back/: scaffold Worker Hono + D1 + migration de pedidos | 1 | EXECUTADO + CORRIGIDO (commits b6aa44b, 3e3782c parcial, 44aa81a definitivo) — sanity check próprio feito; aguardando revisão D-012 pela sessão de frontend |
+| B2 | back/: scaffold Worker Hono + D1 + migration de pedidos | 1 | APROVADO (commits b6aa44b, 44aa81a, aa5d4e1) via D-012 pela sessão de frontend — incluindo D1 real criado via MCP |
+| B3 | back/: auth Firebase ID Token + GET /orders | 1 | EXECUTADO (commit 2af35f6) — sanity check próprio feito; aguardando revisão D-012 pela sessão de frontend |
 
 **Ordem de execucao (D-011):** H-002 → H-005 → [H-006 limpeza para main] → H-004 → H-003 → 006 backend.
 

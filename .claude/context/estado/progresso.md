@@ -1,5 +1,25 @@
 # Progresso — fraldinha-livre
 
+## Estado atual (2026-07-19) — B3 executado (auth Firebase + GET /orders)
+
+**B2 (scaffold+correções+D1 real) APROVADO** pela sessão de frontend via D-012, com verificação
+independente extra (consultou o D1 real direto na Cloudflare via MCP, confirmou 0 tabelas no remoto —
+migration ainda não aplicada lá, como o relatório afirmava; checou vazamento de credenciais no diff,
+vazio). Sinal verde pra seguir.
+
+**B3 EXECUTADO** (commit `2af35f6`): `back/src/middleware/auth.ts` (`createAuthMiddleware` testável por
+injeção de verificador + `verifyFirebaseIdToken` real via `jose`/JWKS público do Firebase, projeto
+`fraldinha-livre`), `back/src/routes/orders.ts` (`GET /orders` filtra por `uid` do contexto — nunca de
+query/body —, mapeia D1→`OrderSchema` de `@contracts` com `.parse()` antes de responder). 8/8 testes
+verdes (4 health + 4 orders.get: sem token→401, token inválido→401, uid-a vê só suas 2 orders,
+uid-b vê só a sua 1 — prova RN-02). `tsc` exit 0. Trocou `firebase-auth-cloudflare-workers` por `jose`
+puro (a lib original pedia um `KVNamespace` de cache não previsto no plano — decisão de detalhe
+razoável, documentada no relatório). Sanity check próprio: `git show --stat`, `npm test`/`tsc` rodados
+de novo, grep por `catch` silencioso (só achou o esperado, na verificação JWT, documentado no código).
+
+**Aguardando revisão D-012 pela sessão de frontend** antes de avançar para B4 (`POST /orders` +
+`PATCH /orders/:id/cancel`).
+
 ## Marco (2026-07-19) — D1 real criado via MCP, antecipando a B9
 
 Cliente instalou o plugin `cloudflare/skills` (marketplace oficial) e autenticou o MCP

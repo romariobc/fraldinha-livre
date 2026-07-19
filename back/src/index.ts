@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { createAuthMiddleware, verifyFirebaseIdToken } from './middleware/auth'
-import { ordersGetHandler } from './routes/orders'
+import { ordersGetHandler, ordersPostHandler, ordersCancelHandler } from './routes/orders'
 import type { Env, AppContext } from './env'
 
 const app = new Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>()
@@ -16,5 +16,7 @@ app.use('/orders/*', (c, next) => {
 })
 
 app.get('/orders', ordersGetHandler)
+app.post('/orders', ordersPostHandler)
+app.patch('/orders/:id/cancel', ordersCancelHandler)
 
 export default app

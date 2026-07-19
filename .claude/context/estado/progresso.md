@@ -1,6 +1,22 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-17) — Backend (feature 006) DECIDIDO e PLANEJADO
+## Estado atual (2026-07-18) — Marca ilustrada portada + handshake p/ sessao de backend
+
+**Divisao de papeis (decidida pelo cliente):** esta sessao passa a ser **frontend + REVISAO/relato do
+backend**; a implementacao do backend vai para uma **sessao exclusiva** (loop D-006: Haiku executa, esta
+sessao revisa por D-012). Handshake escrito: `.claude/docs/backend/handshake-sessao-backend.md` (mostra
+como o front esta estruturado para receber o back: seam maduro de pagamento/logistica como padrao, seam
+de dados a construir em B5-B8, de onde vem o ID Token, onde back/ e packages/contracts moram, regras
+inviolaveis, e o loop de revisao). Proximo passo do BACK: B1 (packages/contracts).
+
+**Marca (D-028) FEITA:** logomarca ilustrada (cegonha) portada do prototipo Fraldinha Livre para o front
+real — Header, hero (card de precos -> ilustracao), Footer, login/cadastro/onboarding, OfferModal, favicon
++ apple-touch-icon. Logo antigo removido. Verificado (render Playwright + lint + build exit 0). Commit
+cea6052. Aprovado pelo cliente no navegador.
+
+---
+
+## Estado anterior (2026-07-17) — Backend (feature 006) DECIDIDO e PLANEJADO
 
 Sessao master reiniciada. Revisado o ADR-001; brainstorming (skill) da estrategia trazida pelo cliente
 (**Cloudflare + Replit**). **Replit descartado do nucleo** (sobrepoe o harness Claude Code). **D-026

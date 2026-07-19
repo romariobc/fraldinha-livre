@@ -1,26 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeAll } from 'vitest'
 import { env } from 'cloudflare:workers'
-import { migrations } from '../src/migrations-config'
+import { applyD1Migrations } from 'cloudflare:test'
 import app from '../src/index'
 
 describe('Worker Hono + D1', () => {
-  beforeEach(async () => {
-    // Reset the test environment to clear any previous data
-    try {
-      const { reset } = await import('cloudflare:test')
-      await reset()
-    } catch {
-      // If reset is not available, manually clear tables
-      await env.DB.exec('DROP TABLE IF EXISTS `order_items`')
-      await env.DB.exec('DROP TABLE IF EXISTS `orders`')
-    }
-
-    // Apply migrations from the real migration file
-    for (const migration of migrations) {
-      for (const query of migration.queries) {
-        await env.DB.exec(query)
-      }
-    }
+  beforeAll(async () => {
+    // Migrations reais lidas de back/migrations/*.sql via readD1Migrations
+    // (vitest.config.ts) — nenhuma copia manual de SQL neste arquivo.
+    await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
   })
 
   it('GET /health returns 200 with { ok: true }', async () => {

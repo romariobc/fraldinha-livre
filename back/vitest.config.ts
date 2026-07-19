@@ -1,13 +1,22 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
-import { cloudflarePool } from '@cloudflare/vitest-pool-workers'
+import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-pool-workers'
+
+const migrationsPath = fileURLToPath(new URL('./migrations', import.meta.url))
 
 export default defineConfig({
-  test: {
-    pool: cloudflarePool({
-      main: './src/index.ts',
-      wrangler: {
-        configPath: './wrangler.jsonc',
-      },
+  plugins: [
+    cloudflareTest(async () => {
+      const migrations = await readD1Migrations(migrationsPath)
+      return {
+        main: './src/index.ts',
+        wrangler: {
+          configPath: './wrangler.jsonc',
+        },
+        miniflare: {
+          bindings: { TEST_MIGRATIONS: migrations },
+        },
+      }
     }),
-  },
+  ],
 })

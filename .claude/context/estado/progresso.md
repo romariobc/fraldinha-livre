@@ -1,5 +1,16 @@
 # Progresso — fraldinha-livre
 
+## Marco (2026-07-19) — D1 real criado via MCP, antecipando a B9
+
+Cliente instalou o plugin `cloudflare/skills` (marketplace oficial) e autenticou o MCP
+`cloudflare-bindings` (conector claude.ai "Cloudflare Developer Platform", mesma URL). Com acesso
+autenticado real à conta Cloudflare, criado o D1 **fraldinha-livre-db** (uuid
+`a6da1bcf-ed51-4c8a-8dcb-cfd0c6c9e612`, região ENAM) via `d1_database_create` — contorna de vez o
+bloqueio do Wrangler CLI (exige Node 22, sistema tem 20.20.2, ver estado anterior). `back/wrangler.jsonc`
+atualizado com o `database_id` real (commit `aa5d4e1`); `npm test` continua 4/4 verde (usa D1 local
+emulado). **Falta para B9:** aplicar a migration no D1 remoto e o deploy do Worker — não feito ainda,
+só a criação do banco foi antecipada.
+
 ## Estado atual (2026-07-19) — Thread B (backend): B1 aprovado, B2 executado + corrigido
 
 **B1 APROVADO** pela sessao de frontend via D-012 (commit b908dfe, `packages/contracts` com schemas

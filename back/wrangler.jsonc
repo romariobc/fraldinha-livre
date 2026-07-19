@@ -8,8 +8,8 @@
     {
       "binding": "DB",
       "database_name": "fraldinha-livre-db",
-      // Placeholder ID — será gerado em B9 quando a conta Cloudflare estiver disponível
-      "database_id": "00000000-0000-0000-0000-000000000000"
+      // D1 real, criado via MCP cloudflare-bindings em 2026-07-19 (antecipado da B9)
+      "database_id": "a6da1bcf-ed51-4c8a-8dcb-cfd0c6c9e612"
     }
   ]
 }

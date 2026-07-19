@@ -1,18 +1,25 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { env } from 'cloudflare:workers'
+import { migrations } from '../src/migrations-config'
 import app from '../src/index'
-
-const migrations = [
-  `CREATE TABLE IF NOT EXISTS orders (id text PRIMARY KEY NOT NULL, uid text NOT NULL, type text NOT NULL, status text NOT NULL, product text NOT NULL, quantity integer NOT NULL, unit text NOT NULL, price integer, supplier_id text, supplier_name text, delivery_address text NOT NULL, created_at text NOT NULL);`,
-  `CREATE TABLE IF NOT EXISTS order_items (order_id text NOT NULL, product_id text NOT NULL, product_name text NOT NULL, unit_price integer NOT NULL, quantity integer NOT NULL, unit text NOT NULL, FOREIGN KEY (order_id) REFERENCES orders(id) ON UPDATE no action ON DELETE no action);`,
-  `CREATE INDEX IF NOT EXISTS idx_orders_uid ON orders (uid);`,
-]
 
 describe('Worker Hono + D1', () => {
   beforeEach(async () => {
-    // Apply migrations before each test
-    for (const query of migrations) {
-      await env.DB.exec(query)
+    // Reset the test environment to clear any previous data
+    try {
+      const { reset } = await import('cloudflare:test')
+      await reset()
+    } catch {
+      // If reset is not available, manually clear tables
+      await env.DB.exec('DROP TABLE IF EXISTS `order_items`')
+      await env.DB.exec('DROP TABLE IF EXISTS `orders`')
+    }
+
+    // Apply migrations from the real migration file
+    for (const migration of migrations) {
+      for (const query of migration.queries) {
+        await env.DB.exec(query)
+      }
     }
   })
 

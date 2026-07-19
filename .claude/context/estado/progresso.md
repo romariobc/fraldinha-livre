@@ -1,15 +1,37 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-19) — Thread B (backend): B1 executado
+## Estado atual (2026-07-19) — Thread B (backend): B1 aprovado, B2 executado + corrigido
 
-**Sessao de BACKEND (esta):** leu o handshake, mesclou o worktree eloquent-montalcini-2dff41 (2x —
-decisao D-026/D-027 + depois marca/handshake) via merge --no-ff. Escreveu o prompt B1-contracts-zod.md
-a partir do breakdown e disparou um executor Haiku. **B1 EXECUTADO** (commit b908dfe):
-`packages/contracts` criado (schemas Zod Address/OrderItem/Order/CreateOrderRequest, 11 testes
-verdes), alias `@contracts` ligado no front (tsconfig + vitest.config), suite do front 259/259 verde
-(258 preexistentes + 1 novo), tsc/lint exit 0. Sanity check proprio (`git show --stat`) confirmou que
-o commit bate com o relatorio do executor. **Aguardando revisao D-012 pela sessao de frontend** antes
-de avancar para B2 (scaffold do Worker).
+**B1 APROVADO** pela sessao de frontend via D-012 (commit b908dfe, `packages/contracts` com schemas
+Zod, 11 testes + suite do front 259/259 verde). Achados nao-bloqueantes registrados: `unit` enum
+duplicado 3x, `estado` sem validacao de UF real — dividas leves, nao reabrem B1.
+
+**B2 EXECUTADO com correcao em 2 rodadas** (scaffold do Worker Hono+D1+migration, commit inicial
+`b6aa44b`). No sanity check proprio da sessao de backend (antes mesmo de passar pra revisao),
+encontrados 2 problemas reais:
+1. **Node/wrangler:** `wrangler@latest` exige Node >=22, sistema tem 20.20.2 (D-021). Investigado:
+   D-021 fixou um **piso** minimo (20.19) por causa de `ERR_REQUIRE_ESM`, nunca testou/precisou de um
+   teto — nao ha motivo documentado pra Node 22 quebrar o front. **Decisao: adiar** — o loop
+   codigo+teste (`npm test`) ja roda normal em Node 20 (so o binario CLI do wrangler exige 22); a
+   decisao de subir o Node so importa quando alguem for rodar `wrangler dev`/deploy de verdade
+   (tipicamente B9). Nao bloqueia B2-B8.
+2. **Teste fake:** `back/test/health.test.ts` aplicava as migrations com SQL copiado a mao (nao o
+   arquivo `.sql` gerado por `drizzle-kit generate`), com `migrations-config.ts` criado mas nunca
+   usado (codigo morto). Corrigido em 2 rodadas: 1a tentativa (Haiku, commit `3e3782c`) trocou o SQL
+   solto por um import de `migrations-config.ts` mas manteve duplicacao manual (nao usou
+   `applyD1Migrations`). **Correcao definitiva feita pela propria sessao de backend** (commit
+   `44aa81a`), apos ler o `.d.ts` real do pacote instalado: `readD1Migrations()` le
+   `back/migrations/*.sql` direto (fonte unica, zero copia), injetado como binding `TEST_MIGRATIONS`
+   via `cloudflareTest()` (plugin) — a API v3 (`test.pool: cloudflarePool()`) tinha mudado pra v4
+   (`plugins: [cloudflareTest()]`, achado no codemod do proprio pacote), por isso `cloudflare:test`
+   nunca resolvia e o teste caia num fallback silencioso. `migrations-config.ts` e a copia de 861
+   linhas do `.d.ts` da lib (`cloudflare-test.d.ts`) foram removidos. 4/4 testes verdes, `tsc` exit 0.
+
+**Licao registrada:** catch-all silencioso (`try { await import(...) } catch { fallback }`) em codigo
+gerado por Haiku pode mascarar uma falha real de API em vez de reporta-la — vale desconfiar sempre que
+aparecer esse padrao numa entrega.
+
+**Aguardando revisao D-012 pela sessao de frontend** antes de avancar para B3 (auth + GET /orders).
 
 ## Estado anterior (2026-07-18) — Marca ilustrada portada + handshake p/ sessao de backend
 

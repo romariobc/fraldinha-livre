@@ -1,0 +1,24 @@
+{
+  "name": "fraldinha-livre-backend",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/index.ts",
+  "dependencies": {
+    "hono": "latest",
+    "drizzle-orm": "latest"
+  },
+  "devDependencies": {
+    "drizzle-kit": "latest",
+    "wrangler": "latest",
+    "@cloudflare/workers-types": "latest",
+    "@cloudflare/vitest-pool-workers": "latest",
+    "vitest": "latest",
+    "typescript": "latest"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  }
+}

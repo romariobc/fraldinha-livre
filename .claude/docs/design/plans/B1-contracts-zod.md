@@ -1,6 +1,6 @@
 # B1 — packages/contracts: schemas Zod de Order/OrderItem/Address
 
-**Executor:** sessão Haiku | **Autor:** sessão-mãe/backend (2026-07-19) | **Status:** aguardando execução
+**Executor:** sessão Haiku | **Autor:** sessão-mãe/backend (2026-07-19) | **Status:** executado (commit b908dfe) — aguardando revisão D-012
 **Spec:** `.claude/docs/design/specs/spec-backend-pedidos-cloudflare.md` (APROVADA) — seção "Interfaces canônicas"
 do `.claude/docs/design/plans/B-backend-pedidos-breakdown.md` (tarefa B1, dependências: nenhuma).
 

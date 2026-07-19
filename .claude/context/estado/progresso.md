@@ -1,6 +1,17 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-18) — Marca ilustrada portada + handshake p/ sessao de backend
+## Estado atual (2026-07-19) — Thread B (backend): B1 executado
+
+**Sessao de BACKEND (esta):** leu o handshake, mesclou o worktree eloquent-montalcini-2dff41 (2x —
+decisao D-026/D-027 + depois marca/handshake) via merge --no-ff. Escreveu o prompt B1-contracts-zod.md
+a partir do breakdown e disparou um executor Haiku. **B1 EXECUTADO** (commit b908dfe):
+`packages/contracts` criado (schemas Zod Address/OrderItem/Order/CreateOrderRequest, 11 testes
+verdes), alias `@contracts` ligado no front (tsconfig + vitest.config), suite do front 259/259 verde
+(258 preexistentes + 1 novo), tsc/lint exit 0. Sanity check proprio (`git show --stat`) confirmou que
+o commit bate com o relatorio do executor. **Aguardando revisao D-012 pela sessao de frontend** antes
+de avancar para B2 (scaffold do Worker).
+
+## Estado anterior (2026-07-18) — Marca ilustrada portada + handshake p/ sessao de backend
 
 **Divisao de papeis (decidida pelo cliente):** esta sessao passa a ser **frontend + REVISAO/relato do
 backend**; a implementacao do backend vai para uma **sessao exclusiva** (loop D-006: Haiku executa, esta

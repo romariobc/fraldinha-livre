@@ -58,7 +58,8 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | B (breakdown) | Backend de pedidos (Cloudflare Workers + D1) — fatia 1, tarefas B1..B9 | 1 | breakdown APROVADO (2026-07-17); prompts B1..Bn a escrever no disparo |
 | B1 | packages/contracts: schemas Zod de Order/OrderItem/Address | 1 | APROVADO (commit b908dfe) via D-012 pela sessão de frontend |
 | B2 | back/: scaffold Worker Hono + D1 + migration de pedidos | 1 | APROVADO (commits b6aa44b, 44aa81a, aa5d4e1) via D-012 pela sessão de frontend — incluindo D1 real criado via MCP |
-| B3 | back/: auth Firebase ID Token + GET /orders | 1 | EXECUTADO (commit 2af35f6) — sanity check próprio feito; aguardando revisão D-012 pela sessão de frontend |
+| B3 | back/: auth Firebase ID Token + GET /orders | 1 | APROVADO (commits 2af35f6, 20c62dc) via D-012 pela sessão de frontend |
+| B4 | back/: POST /orders + PATCH /orders/:id/cancel | 1 | EXECUTADO (commit 6309a1e) — 17/17 testes, aguardando revisão D-012 pela sessão de frontend |
 
 **Ordem de execucao (D-011):** H-002 → H-005 → [H-006 limpeza para main] → H-004 → H-003 → 006 backend.
 

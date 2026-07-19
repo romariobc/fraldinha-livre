@@ -1,6 +1,31 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-19) — B3 executado (auth Firebase + GET /orders)
+## Estado atual (2026-07-19) — B4 executado (POST /orders + PATCH cancelar)
+
+**B3 APROVADO** pela sessão de frontend via D-012 (achado extra: a troca `firebase-auth-cloudflare-workers`
+→ `jose` já estava pré-aprovada na própria spec, não era desvio). Sinal verde para B4.
+
+**B4 EXECUTADO** (commit `6309a1e`): `POST /orders` (servidor define id/uid/createdAt/status/type; corpo
+validado por `CreateOrderRequestSchema`; grava order+items num único `db.batch()`) + `PATCH
+/orders/:id/cancel` (404/403/409/200 conforme dono+status, trava logística D-025). **Risco de
+atomicidade da D1 (levantado na revisão da decisão C, antes de iniciar a thread B) resolvido**: teste
+dedicado (`d1-batch-atomicity.test.ts`) prova com um conflito real de PRIMARY KEY dentro de um mesmo
+`batch()` que AMBAS as statements são revertidas, não só a que falhou — confirma que `db.batch()` do
+Drizzle+D1 se comporta como transação atômica de verdade. 17/17 testes verdes (8 de B2/B3 + 1 de
+atomicidade + 8 de mutações), `tsc` exit 0. Sanity check próprio: `git show --stat`, `npm test`/`tsc`
+rodados de novo, grep de `catch` (todos legítimos — rethrow ou classificação de ZodError, nenhum
+esconde falha).
+
+**Observações não-bloqueantes para o review:** `generateUUID()` reimplementa manualmente o que
+`crypto.randomUUID()` já faz nativamente no runtime dos Workers (funciona, mas é código
+desnecessário); `PATCH .../cancel` usa `sql\`...\`` em vez de `eq()` do Drizzle em alguns pontos
+(ainda parametrizado, RN-06 preservada — só inconsistência de estilo com o resto do arquivo).
+
+**Aguardando revisão D-012 pela sessão de frontend** — depois disso, fatia 1 da B backend
+(006.1..006.4 do rollout) fica completa no lado do Worker; falta ainda a integração no front
+(B5..B8) e o deploy (B9).
+
+## Estado anterior (2026-07-19) — B3 executado (auth Firebase + GET /orders)
 
 **B2 (scaffold+correções+D1 real) APROVADO** pela sessão de frontend via D-012, com verificação
 independente extra (consultou o D1 real direto na Cloudflare via MCP, confirmou 0 tabelas no remoto —

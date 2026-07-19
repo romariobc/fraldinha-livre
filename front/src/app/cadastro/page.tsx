@@ -17,10 +17,10 @@ export default function CadastroPage() {
           style={{ background: 'rgba(255,255,255,0.06)' }}
         />
         <Image
-          src="/assets/img/Logo_simples_sem_fundo.png"
+          src="/assets/img/cegonha.png"
           alt=""
-          width={100}
-          height={100}
+          width={589}
+          height={366}
           className="h-24 w-auto animate-float relative z-10"
         />
         <h2 className="font-display font-black text-2xl lg:text-3xl text-white relative z-10">
@@ -49,10 +49,10 @@ export default function CadastroPage() {
         {/* Logo on mobile */}
         <div className="flex items-center gap-2.5 mb-8 md:hidden">
           <Image
-            src="/assets/img/Logo_simples_sem_fundo.png"
+            src="/assets/img/cegonha.png"
             alt="Fraldinha Livre"
-            width={36}
-            height={36}
+            width={589}
+            height={366}
             className="h-9 w-auto"
           />
           <div className="flex flex-col leading-tight">

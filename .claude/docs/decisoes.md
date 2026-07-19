@@ -418,3 +418,22 @@ operar um segundo fornecedor — e auth e dados sao dominios naturalmente separa
 (users/{uid}, 007a) — dados de negocio (pedidos, produtos) vao para o D1 via Worker. Vercel e Azure seguem
 descartadas (D-001). Ao citar "infra do projeto" em docs, usar esta divisao. O `integration-guide.md` sera
 reescrito para o fluxo Firebase ID Token -> Worker Hono -> Drizzle -> D1 (remover NextAuth/REST localhost).
+
+## D-028 — Logomarca ilustrada (cegonha) adotada no front (2026-07-18) — VIGENTE
+
+Portada a logomarca ilustrada do protótipo *Fraldinha Livre* (Claude Design, projeto 019dffbc…, asset
+`assets/cegonha.png` — arte do próprio cliente) para o front real. Substitui o antigo
+`Logo_simples_sem_fundo.png` (line-art minimalista) pela **cegonha ilustrada entregando o presente do
+bebê** em TODAS as superfícies de marca: Header, hero da landing (o card de preços Pampers/Huggies/
+MamyPoko foi SUBSTITUÍDO pela ilustração, mantendo os selos "Pedido confirmado" e "Economia média"),
+Footer (removido o filtro `brightness-0 invert` que achataria a ilustração), login, cadastro, onboarding,
+OfferModal. Favicon + apple-touch-icon regenerados a partir da cegonha (via sharp, fundo sky #EAF6FD);
+`favicon.ico` antigo removido (Next serve `src/app/icon.png` + `apple-icon.png`).
+
+**Why:** análise comparativa (protótipo × front real) concluiu que a logo do protótipo é mais memorável e
+on-brand, e é o único ativo **portável já na Fase 1** (não depende do gate do leilão / Fase 2, D-014). Mesma
+linhagem de marca (cegonha, azul+laranja, tagline "fraldas para o seu bebê") — não é rebrand, é upgrade do
+símbolo. **How to apply:** asset em `public/assets/img/cegonha.png` (589×366, transparência+fundo de céu
+próprio); `next/image` com width=589 height=366 e `w-auto` para não distorcer. Verificado por render
+(Playwright: landing+login), lint e build exit 0. O resto do protótipo (leilão reverso) segue como
+referência da Fase 2, NÃO implementado (gate D-014).

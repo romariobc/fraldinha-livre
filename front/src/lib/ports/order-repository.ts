@@ -21,3 +21,11 @@ export class OrderCancelNotAllowedError extends Error {
     this.name = 'OrderCancelNotAllowedError'
   }
 }
+
+/** Lançado por cancel() quando o pedido existe mas não pertence ao usuário atual (403, RN-04). */
+export class OrderForbiddenError extends Error {
+  constructor(orderId: string) {
+    super(`Not allowed to cancel order: ${orderId}`)
+    this.name = 'OrderForbiddenError'
+  }
+}

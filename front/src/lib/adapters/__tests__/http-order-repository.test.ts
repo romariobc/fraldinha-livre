@@ -1,7 +1,6 @@
 /// <reference types="vitest/globals" />
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { z } from 'zod'
 import { HttpOrderRepository } from '../http-order-repository'
 import { OrderNotFoundError, OrderCancelNotAllowedError, OrderForbiddenError } from '@/lib/ports/order-repository'
 import { runOrderRepositoryContract } from '@/lib/ports/__tests__/order-repository.contract'
@@ -15,19 +14,6 @@ vi.mock('@/lib/firebase', () => ({
     },
   },
 }))
-
-// Mock @contracts para resolver o problema de zod v3 vs v4
-vi.mock('@contracts', async () => {
-  const actual = await vi.importActual('@contracts')
-
-  // Criar um schema mock que funciona com zod v4 usando z.any()
-  const mockOrderSchema = z.any()
-
-  return {
-    ...actual,
-    OrderSchema: mockOrderSchema,
-  }
-})
 
 // ============================================================================
 // Parte A: Testes específicos de HTTP (fetch mockado simples)

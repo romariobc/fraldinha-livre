@@ -32,6 +32,10 @@ export const OrderSchema = z.object({
 })
 export type Order = z.infer<typeof OrderSchema>
 
+// Schema de lista — construido aqui (mesma instancia de zod do pacote) para que consumidores
+// (ex.: front/) nunca precisem importar 'zod' diretamente so para compor z.array(OrderSchema).
+export const OrderListSchema = z.array(OrderSchema)
+
 // Body do POST /orders — o cliente NAO envia id/uid/createdAt/status (servidor define, RN-03).
 // Zod ignora chaves desconhecidas por padrao (nao-strict): se o body vier com id/uid/status,
 // eles sao descartados no parse — o servidor sempre usa os seus proprios valores.

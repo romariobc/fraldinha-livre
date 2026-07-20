@@ -1,6 +1,36 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-20) — B6 aprovado; B7 executado + corrigido (HttpOrderRepository)
+## Estado atual (2026-07-20) — B7 aprovado; B8 executado (OrdersProvider assíncrono) — fatia 1 completa
+
+**B7 APROVADO** pela sessão de frontend via D-012, com verificação linha a linha do fix do zod
+(confirmou causa raiz via `npm ls zod`: v4 transitiva de `eslint-config-next`/`shadcn` convivendo com
+v3 hoisted).
+
+**B8 EXECUTADO** (commit `3299c98`) — tarefa de maior risco da fatia 1, tocando o fluxo real de
+checkout/cancelamento já validado no navegador. Levantamento próprio feito antes do prompt (3 arquivos
+de produção afetados fora do context, 3 arquivos de teste, achado de que os `try/finally` de
+`handlePagar`/`handleConfirmCancel` não tinham `catch`). `orders-context.tsx` reescrito: `orders`
+carrega via `OrderRepository.list()` (mock por padrão, `HttpOrderRepository` se
+`NEXT_PUBLIC_USE_BACKEND=true`), `loading`/`error` adicionados, `createOrdersFromCart`/`cancelOrder`
+assíncronos (DEC-B), ponte `contractOrderToAccountMockOrder` (inversa da B5) mantém os componentes de
+UI existentes intactos. `checkout/page.tsx` e `OrderCard.tsx` ganharam `catch` com `toast.error`.
+`minha-conta/page.tsx` ganhou loading/erro da aba Pedidos. `createDirectOrder` (código morto)
+intocado, confirmado por diff.
+
+Achado no teste que valeu a pena registrar: os 2 testes de `cancelOrder` cancelavam `orders[0]` do
+seed (`ord-003`, status `confirmado`) — só funcionavam porque o `cancelOrder` ANTIGO nunca validava
+status (bug latente, sem trava lógica no front, ao contrário do backend). Corrigido criando um pedido
+`aguardando` antes de cancelar — mais fiel ao comportamento real (D-025) do que o teste anterior.
+285/285 testes verdes, `tsc`/`lint` exit 0. Sanity check próprio: todos os 3 `catch` novos confirmados
+legítimos (nenhum silencioso), diffs dos 3 arquivos de produção conferem exatamente com a referência do
+prompt.
+
+**Aguardando revisão D-012 pela sessão de frontend.** Se aprovado, fecha a fatia 1 inteira do lado do
+front (B1-B8) — só falta **B9** (deploy real do Worker + validação humana no navegador, pré-requisito
+do cliente: conta Cloudflare via MCP já autenticada, `wrangler` CLI ainda travado em Node 22 — decisão
+adiada, ver estado anterior).
+
+## Estado anterior (2026-07-20) — B6 aprovado; B7 executado + corrigido (HttpOrderRepository)
 
 **B6 APROVADO** pela sessão de frontend via D-012.
 

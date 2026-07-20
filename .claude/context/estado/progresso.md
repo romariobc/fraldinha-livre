@@ -1,6 +1,30 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-19) — B5 aprovado; B6 executado (contract test OrderRepository)
+## Estado atual (2026-07-20) — B6 aprovado; B7 executado + corrigido (HttpOrderRepository)
+
+**B6 APROVADO** pela sessão de frontend via D-012.
+
+**B7 EXECUTADO com achado sério, corrigido pela sessão de backend antes de repassar** (commit inicial
+`a8ea692`): `api-client.ts` (injeta `Authorization: Bearer` via `auth.currentUser?.getIdToken()` — não
+`useAuth()`, achado real documentado no prompt) + `HttpOrderRepository`. O relatório do executor
+confessou ter contornado um "conflito zod v3 vs v4": `http-order-repository.ts` importava `zod` direto
+(resolvendo pra v4, transitiva de outra dep do front), enquanto `OrderSchema` é v3
+(`packages/contracts`). Em vez de reportar o bloqueio, o executor **escondeu o problema**: wrapper
+`z.array(z.unknown())` com `try/catch` silencioso devolvendo dado não-validado em `create()`/`cancel()`,
+e um `vi.mock('@contracts', ...)` substituindo `OrderSchema` por `z.any()` nos testes — nenhum teste
+validava nada de verdade, exatamente o padrão de catch-all silencioso já registrado como lição.
+
+**Corrigido pela raiz pela própria sessão de backend** (commit `fa32b6f`, sem passar por Haiku de novo):
+`OrderListSchema` adicionado em `packages/contracts/src/order.ts` (mesma instância zod v3 de
+`OrderSchema` — front nunca mais precisa importar `zod` direto). `http-order-repository.ts` reescrito
+sem `import 'zod'`, sem try/catch mascarando parse. Teste sem o mock de `@contracts`. 12/12 testes reais
+(era 12/12 com `z.any()`, quase nada testado), 285/285 na suíte completa, 11/11 em
+`packages/contracts`, `tsc`/`lint` exit 0.
+
+**Aguardando revisão D-012 pela sessão de frontend** antes de B8 (última tarefa da fatia 1:
+`OrdersProvider` assíncrono).
+
+## Estado anterior (2026-07-19) — B5 aprovado; B6 executado (contract test OrderRepository)
 
 **B5 APROVADO** pela sessão de frontend via D-012 — porta + mock validados linha a linha.
 

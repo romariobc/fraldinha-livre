@@ -61,7 +61,8 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | B3 | back/: auth Firebase ID Token + GET /orders | 1 | APROVADO (commits 2af35f6, 20c62dc) via D-012 pela sessão de frontend |
 | B4 | back/: POST /orders + PATCH /orders/:id/cancel | 1 | APROVADO (commit 6309a1e) via D-012 pela sessão de frontend |
 | B5 | front/: OrderRepository (porta) + MockOrderRepository | 1 | APROVADO (commit 5ba3b81) via D-012 pela sessão de frontend |
-| B6 | front/: contract test reutilizável runOrderRepositoryContract | 1 | EXECUTADO (commit 4b18648) — 273/273 testes, aguardando revisão D-012 pela sessão de frontend |
+| B6 | front/: contract test reutilizável runOrderRepositoryContract | 1 | APROVADO (commit 4b18648) via D-012 pela sessão de frontend |
+| B7 | front/: HttpOrderRepository + api-client | 1 | EXECUTADO + CORRIGIDO (commits a8ea692, fa32b6f) — 285/285 testes, aguardando revisão D-012 pela sessão de frontend |
 
 **Ordem de execucao (D-011):** H-002 → H-005 → [H-006 limpeza para main] → H-004 → H-003 → 006 backend.
 

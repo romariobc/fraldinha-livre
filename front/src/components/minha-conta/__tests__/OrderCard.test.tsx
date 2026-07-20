@@ -102,6 +102,8 @@ describe('OrderCard', () => {
     // Mock useOrders
     mockUseOrders.mockReturnValue({
       orders: [],
+      loading: false,
+      error: null,
       createDirectOrder: vi.fn(),
       createOrdersFromCart: vi.fn(),
       cancelOrder: vi.fn(),
@@ -234,6 +236,8 @@ describe('OrderCard', () => {
       const mockCancelOrder = vi.fn()
       mockUseOrders.mockReturnValue({
         orders: [],
+        loading: false,
+        error: null,
         createDirectOrder: vi.fn(),
         createOrdersFromCart: vi.fn(),
         cancelOrder: mockCancelOrder,
@@ -258,6 +262,8 @@ describe('OrderCard', () => {
 
       mockUseOrders.mockReturnValue({
         orders: [],
+        loading: false,
+        error: null,
         createDirectOrder: vi.fn(),
         createOrdersFromCart: vi.fn(),
         cancelOrder: mockCancelOrder,
@@ -297,6 +303,8 @@ describe('OrderCard', () => {
 
       mockUseOrders.mockReturnValue({
         orders: [],
+        loading: false,
+        error: null,
         createDirectOrder: vi.fn(),
         createOrdersFromCart: vi.fn(),
         cancelOrder: mockCancelOrder,
@@ -332,6 +340,8 @@ describe('OrderCard', () => {
     it('should show success toast after confirming cancellation', async () => {
       mockUseOrders.mockReturnValue({
         orders: [],
+        loading: false,
+        error: null,
         createDirectOrder: vi.fn(),
         createOrdersFromCart: vi.fn(),
         cancelOrder: vi.fn(),
@@ -352,6 +362,8 @@ describe('OrderCard', () => {
     it('should close dialog after confirming cancellation', async () => {
       mockUseOrders.mockReturnValue({
         orders: [],
+        loading: false,
+        error: null,
         createDirectOrder: vi.fn(),
         createOrdersFromCart: vi.fn(),
         cancelOrder: vi.fn(),

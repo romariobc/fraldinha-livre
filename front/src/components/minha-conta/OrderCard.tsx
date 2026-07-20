@@ -85,7 +85,7 @@ export default function OrderCard({ order, mode }: OrderCardProps) {
     setIsCanceling(true)
     try {
       // Cancelar pedido na lista de pedidos
-      cancelOrder(order.id)
+      await cancelOrder(order.id)
 
       // Se for sup-001, também cancelar na lista de fornecedor
       if (order.supplierId === 'sup-001') {
@@ -94,6 +94,9 @@ export default function OrderCard({ order, mode }: OrderCardProps) {
 
       toast.success('Pedido cancelado')
       setCancelDialogOpen(false)
+    } catch (err) {
+      console.error('Erro ao cancelar pedido:', err)
+      toast.error('Não foi possível cancelar o pedido. Tente novamente.')
     } finally {
       setIsCanceling(false)
     }

@@ -53,9 +53,9 @@
       "id": "006",
       "titulo": "Backend — API da loja (Google Cloud)",
       "fase": 1,
-      "status": "todo",
+      "status": "in_progress",
       "criterio_aceite": "Mocks da LOJA em src/lib/ substituidos por chamadas reais (produtos, pedidos diretos, perfis); nenhum dado hardcoded no frontend",
-      "notas": "DECIDIDO (2026-07-17, D-026 Alternativa C): Cloudflare Workers + D1 (Hono+Drizzle), auth Firebase mantida (Worker verifica ID Token); D-027 emenda D-001 (auth Google + dados Cloudflare). Fatiado: fatia 1 = SO PEDIDOS (spec-backend-pedidos-cloudflare.md APROVADA; plano B-backend-pedidos-breakdown.md, tarefas B1..B9). Fatias seguintes: produtos, sync fornecedor, perfis, estoque. Endpoints do leilao ficam para a fase 2 (feature 008). Codigo em back/. Proximo: escrever prompt Haiku B1"
+      "notas": "DECIDIDO (2026-07-17, D-026 Alternativa C): Cloudflare Workers + D1 (Hono+Drizzle), auth Firebase mantida (Worker verifica ID Token); D-027 emenda D-001 (auth Google + dados Cloudflare). Fatiado: fatia 1 = SO PEDIDOS (spec-backend-pedidos-cloudflare.md APROVADA; plano B-backend-pedidos-breakdown.md, tarefas B1..B9). FATIA 1 FECHADA (2026-07-20): B1..B8 todos aprovados via D-012 (packages/contracts; scaffold Worker+D1+D1 real; auth Firebase+GET /orders; POST /orders+PATCH cancelar com atomicidade provada; OrderRepository porta+mock; contract test reutilizavel; HttpOrderRepository, achado serio do zod v3/v4 corrigido pela raiz; OrdersProvider assincrono). Falta so B9 (deploy real do Worker + migration no D1 remoto + validacao humana no navegador) para a fatia 1 ficar ponta a ponta; front roda hoje com NEXT_PUBLIC_USE_BACKEND off (mock), suite verde. Fatias seguintes (produtos, sync fornecedor, perfis, estoque) nao iniciadas. Endpoints do leilao ficam para a fase 2 (feature 008). Codigo em back/. Proximo: B9"
     },
     {
       "id": "007a",

@@ -1,6 +1,40 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-20) — B7 aprovado; B8 executado (OrdersProvider assíncrono) — fatia 1 completa
+## Estado atual (2026-07-20) — B8 APROVADO — fatia 1 da thread B (backend de pedidos) FECHADA (B1-B8)
+
+**B8 APROVADO** pela sessão de frontend via D-012 (commit `3299c98`). Sanity check próprio completo:
+`git show --stat` (7 arquivos batem exatamente), `npm test` 285/285, `tsc`/`lint` exit 0. Pontos de
+maior risco conferidos linha a linha:
+- `createDirectOrder` (código morto) — diff confirma que só `setOrders([...orders,x])` virou
+  `setOrders(prev => [...prev,x])`, resto do corpo idêntico.
+- Exatamente 3 `catch` nos arquivos de produção tocados (`orders-context.tsx`, `checkout/page.tsx`,
+  `OrderCard.tsx`), todos legítimos (`setError`/`toast.error` + `console.error`, nenhum silencioso).
+- `contractOrderToAccountMockOrder` mapeia os 12 campos de `Order`; o único campo fora do mapeamento
+  (`offers`) é exclusivo do fluxo `cotacao`, fora do escopo de `ContractOrder` (só `compra-direta`).
+- **Achado do executor confirmado por diff**: o `cancelOrder` ANTIGO (`setOrders(prev => prev.map(o =>
+  o.id === orderId ? {...o, status:'cancelado'} : o))`) nunca validava status — sempre sucedia,
+  independente do estado do pedido. A reescrita dos testes (criar um pedido `aguardando` antes de
+  cancelar, em vez de usar `orders[0]` do seed) é correção legítima, não fuga de caso difícil: o novo
+  `cancelOrder` passa por `repo.cancel()`, que agora aplica a trava D-025 de verdade.
+- Item 10 do checklist (clique real no navegador) **não realizado nesta sessão** — sem `.env.local`
+  neste worktree efêmero (mesmo gotcha de Firebase já documentado), qualquer página autenticada falha
+  por `auth/invalid-api-key`, não por defeito do B8. Fica registrado como pendência para quando alguém
+  rodar localmente fora do worktree.
+
+**Fatia 1 da thread B (006.1..006.4, "só Pedidos") está FECHADA — B1 a B8 todos aprovados via D-012:**
+B1 (`packages/contracts`) · B2 (scaffold Worker+D1, corrigido, D1 real criado) · B3 (auth Firebase +
+`GET /orders`) · B4 (`POST /orders` + `PATCH .../cancel`, atomicidade provada) · B5 (`OrderRepository`
+porta+mock) · B6 (contract test reutilizável) · B7 (`HttpOrderRepository`, achado sério do zod v3/v4
+corrigido pela raiz) · B8 (`OrdersProvider` assíncrono).
+
+**Falta só B9** (deploy real do Worker + migration aplicada no D1 remoto + validação humana no
+navegador) para fechar a feature 006 fatia 1 ponta a ponta. Pré-requisitos já resolvidos: D1 real
+criado via MCP (`fraldinha-livre-db`), conta Cloudflare autenticada. Pré-requisito ainda pendente:
+decisão sobre Node 22 (wrangler CLI exige, sistema tem 20.20.2 — decisão de subir foi adiada até este
+ponto, ver estados anteriores). Migration ainda NÃO aplicada no D1 remoto; deploy do Worker ainda NÃO
+feito.
+
+## Estado anterior (2026-07-20) — B7 aprovado; B8 executado (OrdersProvider assíncrono) — fatia 1 completa
 
 **B7 APROVADO** pela sessão de frontend via D-012, com verificação linha a linha do fix do zod
 (confirmou causa raiz via `npm ls zod`: v4 transitiva de `eslint-config-next`/`shadcn` convivendo com

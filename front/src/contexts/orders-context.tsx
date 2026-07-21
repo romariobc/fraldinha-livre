@@ -1,6 +1,8 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth } from '@/lib/firebase'
 import { Order, Address } from '@/lib/account-mock'
 import type { CartItem } from '@/lib/domain/cart'
 import { buildOrdersFromCart } from '@/lib/domain/order'
@@ -42,14 +44,15 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  const useBackend = process.env.NEXT_PUBLIC_USE_BACKEND === 'true'
+
   const repo: OrderRepository = useMemo(() => {
-    const useBackend = process.env.NEXT_PUBLIC_USE_BACKEND === 'true'
     if (useBackend) return new HttpOrderRepository()
     return new MockOrderRepository({
       now: () => new Date().toISOString(),
       idFactory: () => crypto.randomUUID(),
     })
-  }, [])
+  }, [useBackend])
 
   useEffect(() => {
     let cancelled = false
@@ -73,9 +76,31 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    load()
-    return () => { cancelled = true }
-  }, [repo])
+    if (!useBackend) {
+      // Modo mock: sem auth envolvida, carrega direto (comportamento original).
+      load()
+      return () => { cancelled = true }
+    }
+
+    // Modo backend: pedidos sao do usuario. Sem sessao Firebase resolvida nao
+    // ha ID Token, e list() sem token e um 401 garantido — entao o load espera
+    // o onAuthStateChanged: com usuario busca; sem usuario, lista vazia.
+    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
+      if (cancelled) return
+      if (fbUser) {
+        load()
+      } else {
+        setOrders([])
+        setError(null)
+        setLoading(false)
+      }
+    })
+
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
+  }, [repo, useBackend])
 
   // Codigo morto (sem chamador em producao, sobrou do flip S5b/D-023) - NAO MEXER, fora de escopo B8.
   const createDirectOrder = (

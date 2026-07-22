@@ -63,7 +63,10 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | B5 | front/: OrderRepository (porta) + MockOrderRepository | 1 | APROVADO (commit 5ba3b81) via D-012 pela sessão de frontend |
 | B6 | front/: contract test reutilizável runOrderRepositoryContract | 1 | APROVADO (commit 4b18648) via D-012 pela sessão de frontend |
 | B7 | front/: HttpOrderRepository + api-client | 1 | APROVADO (commits a8ea692, fa32b6f) via D-012 pela sessão de frontend — verificação linha a linha do fix zod |
-| B8 | front/: OrdersProvider assíncrono + loading/erro + flag backend | 1 | EXECUTADO (commit 3299c98) — 285/285 testes, aguardando revisão D-012 pela sessão de frontend — última tarefa da fatia 1 |
+| B8 | front/: OrdersProvider assíncrono + loading/erro + flag backend | 1 | APROVADO (commit 3299c98) via D-012 pela sessão de frontend |
+| B9 | Deploy real do Worker + validação humana (fatia 1 = Pedidos) | 1 | FECHADO (2026-07-21) — produção validada, PR #8 mesclado na main (13ad06b) |
+| P (breakdown) | Backend de produtos (fatia 2 da 006) — P1/P2/P3 | 1 | breakdown APROVADO (2026-07-22, com P3 adicionado na revisão) |
+| P1 | back/: schema products + migrations + seed + GET /products | 1 | aguardando execução (disparado 2026-07-22) |
 
 **Ordem de execucao (D-011):** H-002 → H-005 → [H-006 limpeza para main] → H-004 → H-003 → 006 backend.
 

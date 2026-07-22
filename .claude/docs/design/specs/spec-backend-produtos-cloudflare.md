@@ -95,12 +95,19 @@ back/                                    front/ (INTOCADO nesta fatia)
   `Σ (item.unitPrice × item.quantity)` sobre os itens já validados por RN-P2 e rejeita com **400**
   (`total divergente`) se `body.price` não bater com a soma. Rejeita, não corrige silenciosamente —
   mesma filosofia de RN-P2. O front já envia o total correto (`domainOrder.total` = `cartSubtotal`,
-  domínio T1 já testado) — nada quebra no caminho feliz.
+  domínio T1 já testado) — nada quebra no caminho feliz. **`price` ausente conta como divergente —
+  400 (`price ausente`).** `price` é `.optional()` no `CreateOrderRequestSchema` (contrato
+  compartilhado, `packages/contracts`, fora de escopo tocar aqui), mas para pedidos `compra-direta`
+  o servidor exige o campo: se implementado como "só valida quando presente" (leitura igualmente
+  razoável do schema opcional), o buraco da RN-P2b reabre por omissão em vez de divergência. A
+  obrigatoriedade é regra de servidor desta rota, não do contrato.
 - **RN-P2c (recomendação aceita da revisão)** — o servidor também confere `product.supplier_id ===
   body.supplierId` para cada item (mesma busca de RN-P2, sem query extra). Sem essa checagem seria
   possível criar um pedido "do fornecedor A" com produtos que na verdade são do fornecedor B — dado
   incoerente que a futura fatia de sync do painel do fornecedor (D-017: 1 pedido por fornecedor)
-  herdaria. Divergência → **400** (`fornecedor divergente para produto: <productId>`).
+  herdaria. Divergência → **400** (`fornecedor divergente para produto: <productId>`). Mesma nota da
+  RN-P2b: **`supplierId` ausente também é 400 (`supplierId ausente`)** — `.optional()` no contrato
+  compartilhado não significa opcional nesta rota.
 - **RN-P3** — A checagem falha rápido no primeiro item inválido encontrado (não agrega todos os
   erros de uma vez) — consistente com o resto do Worker, que não tem esse padrão em nenhum lugar.
 - **RN-P4** — A checagem roda **antes** do `db.batch()` de criação do pedido (RN-03 da fatia 1) —
@@ -156,6 +163,8 @@ quando a migração de `/catalogo` (fatia futura) tornar esse caminho de erro re
   - `POST /orders` com `productId` inexistente → 400.
   - `POST /orders` com `body.price` (total) divergente da soma dos itens → 400 (RN-P2b).
   - `POST /orders` com `body.supplierId` diferente do `supplier_id` real do produto → 400 (RN-P2c).
+  - `POST /orders` sem `body.price` → 400 (RN-P2b, campo ausente).
+  - `POST /orders` sem `body.supplierId` → 400 (RN-P2c, campo ausente).
 
 ## Critérios de aceite
 
@@ -164,8 +173,8 @@ quando a migração de `/catalogo` (fatia futura) tornar esse caminho de erro re
 - [ ] Migration `0002_seed_products.sql` gerada pelo script (24 INSERTs), aplicada local e no D1 remoto.
 - [ ] `GET /products` responde 200 sem auth, com os 24 produtos.
 - [ ] `POST /orders` busca todos os produtos do pedido numa única query (`WHERE id IN (...)`), rejeita
-      (400) produto inexistente, preço de item divergente (RN-P2), total divergente (RN-P2b) ou
-      fornecedor divergente (RN-P2c) — antes de qualquer escrita.
+      (400) produto inexistente, preço de item divergente (RN-P2), total divergente ou ausente
+      (RN-P2b) ou fornecedor divergente ou ausente (RN-P2c) — antes de qualquer escrita.
 - [ ] Suíte do `back/` verde (testes existentes + novos), `tsc`/lint exit 0.
 - [ ] `front/` **inalterado** — `/catalogo`, `products.ts`, e toda a suíte do front continuam exatamente
       como estavam (nenhum arquivo do front tocado nesta fatia).
@@ -180,9 +189,10 @@ quando a migração de `/catalogo` (fatia futura) tornar esse caminho de erro re
 - **Estoque** (decremento transacional, disponibilidade) — fatia futura separada, só faz sentido
   depois que Produtos existir no D1 (esta fatia).
 - **`Product` em `packages/contracts`** — entra quando `/catalogo` migrar de verdade.
-- **`unit` e `productName` de cada item** não são revalidados nesta fatia — o catálogo (`products.ts`
-  do front) não tem esses campos por produto de forma que dê pra comparar 1:1 hoje; RN-P2/P2b/P2c
-  cobrem só preço/existência/dono, que é o que a dívida DEC-A pedia.
+- **`unit`, `productName`, `quantity` e `product` (agregado de exibição, ex.: "2 itens")** não são
+  revalidados nesta fatia — o catálogo (`products.ts` do front) não tem esses campos por produto de
+  forma que dê pra comparar 1:1 hoje; RN-P2/P2b/P2c cobrem só preço/existência/dono, que é o que a
+  dívida DEC-A pedia.
 
 ## Riscos
 

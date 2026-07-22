@@ -70,9 +70,11 @@ export const products = sqliteTable('products', {
 ## Tarefas (ordem e dependencias)
 
 ```
-P1 (schema + seed + GET /products) ──> P2 (validacao em POST /orders)
+P1 (schema + seed + GET /products) ──> P2 (validacao em POST /orders) ──> P3 (deploy + migrations remotas)
 ```
 Sequencial — P2 depende da tabela `products` existir e estar populada (P1) para validar contra ela.
+P3 (coordenador+cliente) só acontece depois de P1 e P2 estarem revisados e aprovados via D-012 — é
+deploy real, não uma tarefa Haiku.
 
 ### P1 — `back/`: schema `products` + migrations + seed + `GET /products`  [dep: —]
 - **Create:**
@@ -80,12 +82,16 @@ Sequencial — P2 depende da tabela `products` existir e estar populada (P1) par
   - `back/migrations/0001_products.sql` — **gerada por `npx drizzle-kit generate`** a partir do
     schema acima (nao escrever a mao). Conferir que o SQL resultante tem `id TEXT PRIMARY KEY`,
     `price_cents INTEGER NOT NULL`, `supplier_id TEXT NOT NULL`.
-  - `back/scripts/generate-products-seed.ts` — script Node standalone (roda com `npx tsx` ou
-    equivalente ja disponivel no projeto) que **importa/le** `front/src/lib/products.ts` (caminho
-    relativo `../../front/src/lib/products.ts`), itera o array `PRODUCTS`, e escreve em stdout (ou
-    direto no arquivo de migration) um `INSERT INTO products (id, price_cents, supplier_id) VALUES
-    (...)` por produto, usando `p.id`, `p.priceInCents`, `p.supplierId`. **Nao e import de runtime do
-    Worker** — so roda uma vez, na hora de gerar a migration; commitado para reprodutibilidade.
+  - `back/scripts/generate-products-seed.ts` — script Node standalone que **importa/le**
+    `front/src/lib/products.ts` (caminho relativo `../../front/src/lib/products.ts`), itera o array
+    `PRODUCTS`, e escreve em stdout (ou direto no arquivo de migration) um `INSERT INTO products (id,
+    price_cents, supplier_id) VALUES (...)` por produto, usando `p.id`, `p.priceInCents`,
+    `p.supplierId`. **Mecanismo de execucao (fixado aqui, nao inventar outro):** `tsx` **nao** esta em
+    `back/package.json` — adicionar como devDependency (`npm install -D tsx` dentro de `back/`) e
+    rodar com `npx tsx scripts/generate-products-seed.ts`. Node 20 nao tem
+    `--experimental-strip-types` utilizavel aqui; nao usar isso como alternativa. **Nao e import de
+    runtime do Worker** — so roda uma vez, na hora de gerar a migration; commitado para
+    reprodutibilidade.
   - `back/migrations/0002_seed_products.sql` — saida do script acima, com os 24 INSERTs reais
     (confira contra `front/src/lib/products.ts` real antes de finalizar — os ids/precos/fornecedores
     tem que bater exatamente, incluindo os já vistos: `p1`/1800/`sup-001`, etc.).
@@ -123,9 +129,11 @@ Sequencial — P2 depende da tabela `products` existir e estar populada (P1) par
 - **Modify:** `back/test/orders.mutations.test.ts` — os fixtures atuais usam `productId: 'prod-1'`
   (fictício) — **trocar por um id real do seed** (ex.: `p1`, `priceInCents: 1800`, `supplierId:
   'sup-001'`, conferir os valores reais em `front/src/lib/products.ts` antes de escrever, nao
-  assumir). Isso vale para TODOS os testes existentes de `POST /orders` que hoje passam (eles vao
-  falhar com a validacao nova se continuarem usando produto fictício — atualizar os fixtures é
-  correção, não invenção de caso novo).
+  assumir). Isso vale **só** para os testes que passam pelo **handler** `ordersPostHandler` (chamam
+  `POST /orders` de verdade, hoje usando `prod-1`/`1000`). **Não mexer** nos `INSERT` diretos no D1 que
+  outros testes usam como seed (ex.: o `INSERT INTO order_items ... 'prod-test' ...` da suíte de
+  `PATCH /orders/:id/cancel`, linha ~311) — esses não passam pela validação nova, são fixture de outro
+  fluxo (cancelamento), fora do alcance de P2.
 - **Create (casos novos, no mesmo arquivo `orders.mutations.test.ts`):**
   - `POST /orders` com preço/fornecedor corretos de produto real → 201 (regressão, confirma que P2
     não quebrou o caminho feliz).
@@ -143,6 +151,40 @@ Sequencial — P2 depende da tabela `products` existir e estar populada (P1) par
   corrigidos; `tsc`/lint exit 0; teste de atomicidade (`d1-batch-atomicity.test.ts`) continua
   passando sem mudança (prova que a validação nova não interferiu na transação).
 - **Commit:** `feat(back): POST /orders revalida preco/existencia/fornecedor contra products (thread P)`
+
+### P3 — Deploy do Worker + migrations remotas  [dep: P1, P2]  (coordenador + cliente, NAO Haiku)
+
+**Achado da revisão do plano (2026-07-22) que motiva esta tarefa e sua ordem exata:** aplicar as
+migrations remotas antes do deploy é seguro (tabela nova, código velho em produção simplesmente a
+ignora). Mas **deployar o código de P2 sem antes aplicar as migrations remotas quebra produção
+inteira** — todo `POST /orders` passaria a consultar uma tabela `products` que ainda não existe no D1
+remoto, e a query falha (sem try/catch ao redor, por constraint global desta thread) → **500 em todo
+pedido real**, não só nos casos de validação. A ordem abaixo não é opcional.
+
+1. **Migrations remotas primeiro:**
+   ```
+   npx -y wrangler@4.86.0 d1 migrations apply fraldinha-livre-db --remote
+   ```
+   A tabela `d1_migrations` (já existe no D1 remoto desde a fatia 1) garante que só `0001_products.sql`
+   e `0002_seed_products.sql` são aplicadas — `0000` já está marcada como aplicada, não roda de novo.
+2. **Só então o deploy:**
+   ```
+   npx -y wrangler@4.86.0 deploy
+   ```
+3. **Smoke test em produção** (via `curl` ou equivalente, contra
+   `https://fraldinha-livre-backend.romariobc.workers.dev`):
+   - `GET /products` → 200, array com 24 itens.
+   - `GET /orders` sem token → continua 401 (regressão — confirma que o deploy não quebrou o que já
+     funcionava).
+4. **Regressão de produção no navegador (5 min):** login Google → checkout com produto real (preço da
+   tela) → confirma que o pedido é criado normalmente (a validação nova não rejeita o caminho feliz
+   real, não só o de teste).
+5. **Registro:** `feature_list.json` (006, nota da fatia 2 concluída), `progresso.md`, e uma linha no
+   `integration-guide.md` documentando a validação nova de `POST /orders` (produto/preço/fornecedor/
+   total) para quem for integrar um próximo consumidor do endpoint.
+
+**DoD:** os 2 itens do smoke test + a regressão do navegador confirmados; registro escrito.
+**Pré-requisito humano:** nenhum novo — conta Cloudflare e D1 já existem desde a fatia 1 (B9).
 
 ---
 

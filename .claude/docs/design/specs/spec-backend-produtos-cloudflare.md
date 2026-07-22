@@ -41,8 +41,11 @@ maior, com UI nova no painel do fornecedor, e permanece `todo` sem data definida
 ```
 back/                                    front/ (INTOCADO nesta fatia)
   src/schema/products.ts (Drizzle)         src/lib/products.ts (continua sendo
-    id, price_cents, supplier_id            a fonte do /catalogo, sem mudanca)
-  migrations/0001_seed_products.sql
+    id, price_cents, supplier_id            a fonte do seed, sem mudanca)
+  migrations/0001_products.sql
+    (gerada por `drizzle-kit generate` a partir do schema —
+    so a tabela, snapshot em migrations/meta/ fica coerente)
+  migrations/0002_seed_products.sql
     (gerada por back/scripts/generate-products-seed.ts,
     commitado — le front/src/lib/products.ts e imprime
     os 24 INSERTs. Roda uma vez, na hora de escrever a
@@ -50,10 +53,13 @@ back/                                    front/ (INTOCADO nesta fatia)
     e front/ — o script fica versionado so para o D1
     poder ser recriado do zero de forma reprodutivel)
   src/routes/products.ts
-    GET /products (sem auth, publico)
+    GET /products (sem auth, publico — ver "Proposito
+    do GET /products" abaixo)
   src/routes/orders.ts (existente)
     POST /orders ganha checagem de preco/
-    existencia ANTES do db.batch() (B4)
+    existencia/dono ANTES do db.batch() (B4),
+    com UMA query WHERE id IN (...) para todos
+    os productId do pedido (nao 1 query por item)
 ```
 
 - **Monorepo (D-005) preservado**, mesmo padrão hexagonal (schema Drizzle isolado, rota isolada) já
@@ -61,6 +67,17 @@ back/                                    front/ (INTOCADO nesta fatia)
 - **Sem impacto na atomicidade da B4:** a checagem de produto acontece antes de qualquer escrita —
   se falhar, nenhuma linha em `orders`/`order_items` é tocada. O teste de atomicidade
   (`d1-batch-atomicity.test.ts`) continua provando exatamente o que já provava.
+- **Migration em duas partes, não uma só (correção pós-revisão):** escrever schema+seed juntos num
+  `0001` à mão dessincroniza o snapshot que o `drizzle-kit` mantém em `migrations/meta/` — o próximo
+  `drizzle-kit generate` não saberia que `products` já existe e tentaria recriá-la. `0001` vem só do
+  `drizzle-kit generate` (schema), `0002` só do script de seed.
+- **Busca em lote, não por item:** a checagem de `POST /orders` busca todos os produtos do pedido
+  numa única query (`WHERE id IN (...)`) — não uma query por item. RN-P3 (falha no primeiro item
+  inválido) continua valendo, só que sobre o resultado dessa única busca.
+- **Propósito do `GET /products`:** mesmo sem consumidor nesta fatia, o endpoint existe como (a)
+  superfície de verificação operacional (smoke test do que está semeado no D1) e (b) seam já pronto
+  para quando `/catalogo` migrar. Não é esquecimento de escopo — é a mesma decisão de "endpoint
+  existe, contrato Zod compartilhado não" já registrada acima.
 
 ## Regras de negócio
 
@@ -70,6 +87,20 @@ back/                                    front/ (INTOCADO nesta fatia)
   `productId` na tabela `products`. Se não existir, **400** (`produto nao encontrado: <productId>`).
   Se existir mas `item.unitPrice !== product.price_cents`, **400**
   (`preco divergente para produto: <productId>`).
+- **RN-P2b (OBRIGATÓRIA — achado da revisão da spec, 2026-07-22)** — RN-P2 sozinha valida só os
+  `unitPrice` das linhas; o campo `price` do pedido (o TOTAL, é o que aparece no `OrderCard` e o que a
+  futura feature 011/gateway de pagamento vai cobrar) vinha de `createRequest.price` sem nenhuma
+  validação — um cliente malicioso podia mandar `items[]` corretos e um `price` total qualquer,
+  deixando a dívida DEC-A declarada como fechada sem estar. O servidor recomputa
+  `Σ (item.unitPrice × item.quantity)` sobre os itens já validados por RN-P2 e rejeita com **400**
+  (`total divergente`) se `body.price` não bater com a soma. Rejeita, não corrige silenciosamente —
+  mesma filosofia de RN-P2. O front já envia o total correto (`domainOrder.total` = `cartSubtotal`,
+  domínio T1 já testado) — nada quebra no caminho feliz.
+- **RN-P2c (recomendação aceita da revisão)** — o servidor também confere `product.supplier_id ===
+  body.supplierId` para cada item (mesma busca de RN-P2, sem query extra). Sem essa checagem seria
+  possível criar um pedido "do fornecedor A" com produtos que na verdade são do fornecedor B — dado
+  incoerente que a futura fatia de sync do painel do fornecedor (D-017: 1 pedido por fornecedor)
+  herdaria. Divergência → **400** (`fornecedor divergente para produto: <productId>`).
 - **RN-P3** — A checagem falha rápido no primeiro item inválido encontrado (não agrega todos os
   erros de uma vez) — consistente com o resto do Worker, que não tem esse padrão em nenhum lugar.
 - **RN-P4** — A checagem roda **antes** do `db.batch()` de criação do pedido (RN-03 da fatia 1) —
@@ -79,14 +110,16 @@ back/                                    front/ (INTOCADO nesta fatia)
 ## Modelo de dados (D1)
 
 ```sql
--- migrations/0001_seed_products.sql (schema + seed, gerados juntos)
+-- migrations/0001_products.sql (gerada por `drizzle-kit generate` a partir do schema)
 CREATE TABLE products (
   id            TEXT PRIMARY KEY,
   price_cents   INTEGER NOT NULL,
   supplier_id   TEXT NOT NULL
 );
-
--- 24 INSERTs gerados a partir de front/src/lib/products.ts (id, priceInCents, supplierId)
+```
+```sql
+-- migrations/0002_seed_products.sql (gerada por back/scripts/generate-products-seed.ts)
+-- 24 INSERTs a partir de front/src/lib/products.ts (id, priceInCents, supplierId)
 -- ex.: INSERT INTO products (id, price_cents, supplier_id) VALUES ('p1', 1800, 'sup-001');
 ```
 
@@ -99,7 +132,14 @@ enquanto `/catalogo` não migra).
 | Método | Rota | Auth | Resp OK | Erros |
 |---|---|---|---|---|
 | GET | `/products` | Não | `200 Product[]` (`{id, priceCents, supplierId}`) | — |
-| POST | `/orders` | Sim (já existia) | `201 Order` (inalterado) | **novo:** `400` produto inexistente ou preço divergente, além dos já existentes (`401`, `400` Zod) |
+| POST | `/orders` | Sim (já existia) | `201 Order` (inalterado) | **novo:** `400` produto inexistente, preço de item divergente, total divergente (RN-P2b) ou fornecedor divergente (RN-P2c), além dos já existentes (`401`, `400` Zod) |
+
+**Nota de UX (registrada, não resolvida nesta fatia):** `HttpOrderRepository` (front) já mapeia
+403/409/404 para erros tipados (`OrderForbiddenError`, `OrderCancelNotAllowedError`,
+`OrderNotFoundError`); um `400` novo desta fatia cai no tratamento de erro genérico do checkout — hoje
+isso é só defesa em profundidade (front e backend leem o mesmo `products.ts`/seed, então a divergência
+é praticamente impossível de ocorrer na prática). Fica registrado para não ser confundido com bug
+quando a migração de `/catalogo` (fatia futura) tornar esse caminho de erro real de acontecer.
 
 ## Testes
 
@@ -112,16 +152,20 @@ enquanto `/catalogo` não migra).
   "consertar pra passar".
 - Casos novos em `orders.mutations.test.ts`:
   - `POST /orders` com preço correto de produto real → 201 (regressão, com fixture atualizado).
-  - `POST /orders` com preço errado de produto real → 400.
+  - `POST /orders` com preço de item errado de produto real → 400.
   - `POST /orders` com `productId` inexistente → 400.
+  - `POST /orders` com `body.price` (total) divergente da soma dos itens → 400 (RN-P2b).
+  - `POST /orders` com `body.supplierId` diferente do `supplier_id` real do produto → 400 (RN-P2c).
 
 ## Critérios de aceite
 
 - [ ] `back/scripts/generate-products-seed.ts` commitado (lê `front/src/lib/products.ts`, gera o SQL).
-- [ ] Migration `0001_seed_products.sql` gerada por esse script (schema + 24 INSERTs), aplicada local e
-      no D1 remoto.
+- [ ] Migration `0001_products.sql` gerada por `drizzle-kit generate` (só schema, snapshot coerente).
+- [ ] Migration `0002_seed_products.sql` gerada pelo script (24 INSERTs), aplicada local e no D1 remoto.
 - [ ] `GET /products` responde 200 sem auth, com os 24 produtos.
-- [ ] `POST /orders` rejeita (400) produto inexistente ou preço divergente, antes de qualquer escrita.
+- [ ] `POST /orders` busca todos os produtos do pedido numa única query (`WHERE id IN (...)`), rejeita
+      (400) produto inexistente, preço de item divergente (RN-P2), total divergente (RN-P2b) ou
+      fornecedor divergente (RN-P2c) — antes de qualquer escrita.
 - [ ] Suíte do `back/` verde (testes existentes + novos), `tsc`/lint exit 0.
 - [ ] `front/` **inalterado** — `/catalogo`, `products.ts`, e toda a suíte do front continuam exatamente
       como estavam (nenhum arquivo do front tocado nesta fatia).
@@ -136,6 +180,9 @@ enquanto `/catalogo` não migra).
 - **Estoque** (decremento transacional, disponibilidade) — fatia futura separada, só faz sentido
   depois que Produtos existir no D1 (esta fatia).
 - **`Product` em `packages/contracts`** — entra quando `/catalogo` migrar de verdade.
+- **`unit` e `productName` de cada item** não são revalidados nesta fatia — o catálogo (`products.ts`
+  do front) não tem esses campos por produto de forma que dê pra comparar 1:1 hoje; RN-P2/P2b/P2c
+  cobrem só preço/existência/dono, que é o que a dívida DEC-A pedia.
 
 ## Riscos
 

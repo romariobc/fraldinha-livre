@@ -15,14 +15,12 @@
     "tsx": "^4.23.1",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10",
-    "wrangler": "^4.112.0",
-    "zod": "^3.25.76"
+    "wrangler": "^4.112.0"
   },
   "scripts": {
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "lint": "tsc --noEmit"
+    "deploy": "wrangler deploy"
   }
 }

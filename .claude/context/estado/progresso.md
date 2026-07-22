@@ -1,6 +1,58 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-20) — B8 APROVADO — fatia 1 da thread B (backend de pedidos) FECHADA (B1-B8)
+## Estado atual (2026-07-21) — B9 FECHADO — backend real de Pedidos em producao, validado por humano
+
+**A fatia 1 da thread B (Pedidos) está ponta a ponta em produção.** Sequência executada nesta sessão
+(coordenador + cliente, conforme o plano previa — não delegado a executor autônomo):
+
+1. **Migration aplicada no D1 remoto** (`fraldinha-livre-db`) via conector MCP `cloudflare-bindings`
+   (autenticação do conector, sem depender do Wrangler CLI para este passo): tabelas `orders`,
+   `order_items`, índice `idx_orders_uid` confirmados por consulta ao `sqlite_master`.
+2. **Cliente autenticou o Wrangler** (`wrangler login`, OAuth local) — único passo que exigia ação do
+   cliente. Descoberta: `wrangler` ≥4.87 exige Node ≥22 (sistema tem 20.20.2, D-021); resolvido fixando
+   `npx -y wrangler@4.86.0` (última versão compatível com Node 20) em vez de instalar Node 22.
+3. **Deploy do Worker**: `https://fraldinha-livre-backend.romariobc.workers.dev`. Smoke test inicial
+   verde (`/health` 200, `/orders` sem token 401).
+4. **`.env.local` do worktree** (`blissful-lamport-ccb562/front`, gitignored) com chaves Firebase
+   (copiadas do repo principal) + `NEXT_PUBLIC_BACKEND_URL` + `NEXT_PUBLIC_USE_BACKEND=true`.
+5. **`npm run dev` no navegador (preview) revelou 2 bugs que teste/build não pegavam** — ambos
+   corrigidos, testados e commitados na branch `Romir/folder-analysis-070a4b`:
+   - **CORS ausente no Worker** — `Authorization` no header força preflight `OPTIONS`, que caía em 404
+     sem `hono/cors` configurado (nenhum teste de integração exercita isso; só aparece com navegador
+     real). Fix: CORS restrito a `localhost` (regex, qualquer porta) + 3 testes (preflight, resposta
+     real, origem desconhecida não refletida). Commit `a2b1212`. Redeployado, preflight confirmado em
+     produção via curl.
+   - **`OrdersProvider` chamava `list()` no mount antes do Firebase restaurar a sessão** — sem usuário
+     ainda resolvido, sem token, `401` garantido mesmo para quem estava logado (apareceria após F5).
+     Fix: o load em modo backend passa a ser disparado por `onAuthStateChanged` (com usuário → busca;
+     sem usuário → lista vazia sem erro). Junto: `turbopack.root` no `next.config.ts` — o Turbopack do
+     `next dev` limitava a resolução de módulos à raiz detectada pelo lockfile (`front/`), e `@contracts`
+     mora em `../packages/contracts`, fora dela (`Module not found`, só em dev, não no build). Commit
+     `95879f9`, 3 testes novos (gating por auth). Suite front 288/288, back 20/20, lint/tsc limpos.
+6. **Validação humana no navegador — os 4 critérios da spec confirmados pelo cliente:**
+   login Google → checkout → pedido real aparece em `/minha-conta` → **refresh mantém o pedido** (prova
+   que vem do D1, não mais de `useState`) → cancelamento respeita a trava `aguardando` (bloqueado em
+   `confirmado`/`a-caminho`, `409` do servidor, não só UI) → **2 contas Google diferentes não veem
+   pedido uma da outra** (RN-02 provada em produção, não só em teste unitário).
+7. **Registro fechado**: `feature_list.json` — 006 avança (fatia 1 done, resto do escopo original
+   ainda todo); 016 e 017 viram `done` (a única pendência de ambas era exatamente essa validação
+   humana com login Google). `integration-guide.md` totalmente reescrito — a versão antiga descrevia
+   NextAuth/credentials provider, que nunca existiu neste projeto (auth sempre foi Firebase, D-010); a
+   nova documenta o padrão real (porta+adapter, Firebase ID Token → Worker Hono → Drizzle → D1, gotchas
+   de CORS/Turbopack/Node encontrados nesta sessão).
+
+**Nota de escopo:** a ponte do pedido para o painel do fornecedor (sup-001, via `order-adapters.ts`) não
+foi re-exercitada nesta sessão — o código não foi tocado pelas mudanças de B9 e já tinha validação
+Playwright anterior, mas fica registrado como não re-confirmado com o backend real ligado.
+
+**Trabalho não mergeado:** toda a thread B (B1-B9) vive na branch `Romir/folder-analysis-070a4b`
+(worktree `blissful-lamport-ccb562`) — ainda não foi para a `main`. Próximo passo natural: decidir o
+merge para a main, e/ou definir a próxima fatia do backend (Produtos, sync do painel do fornecedor,
+Perfis ou Estoque — nenhuma iniciada).
+
+---
+
+## Estado anterior (2026-07-20) — B8 APROVADO — fatia 1 da thread B (backend de pedidos) FECHADA (B1-B8)
 
 **B8 APROVADO** pela sessão de frontend via D-012 (commit `3299c98`). Sanity check próprio completo:
 `git show --stat` (7 arquivos batem exatamente), `npm test` 285/285, `tsc`/`lint` exit 0. Pontos de

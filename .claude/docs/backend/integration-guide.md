@@ -1,540 +1,274 @@
-# Guia de Integração Frontend — Backend Real
+# Guia de Integração Frontend — Backend Real (Cloudflare Workers + D1)
 
-> **Infra:** frontend e backend hospedados no Google Cloud (Cloud Run) — ver .claude/docs/decisoes.md D-001. Provedor de auth do backend será definido na feature 005.
+> **Infra:** auth no Google/Firebase, dados/API na Cloudflare — D-027 (emenda D-001, duas nuvens por
+> domínio). Ver `.claude/docs/decisoes.md` D-026 (Alternativa C) e D-027.
 
-> **Versão:** maio/2026 | **Stack:** Next.js 16 + NextAuth 5 + TypeScript
+> **Versão:** 2026-07-21 (B9, fatia 1 — Pedidos, fechada) | **Stack:** Next.js 16 + Firebase Auth
+> (client SDK, sem mudança — feature 005a) + Hono + Drizzle ORM + Cloudflare D1 + Wrangler.
 
-Este guia cobre a migração completa dos mocks locais para o backend real da Fraldinha Livre. Siga a ordem das seções para evitar quebras em cascata.
+Este guia documenta a integração de verdade, já em produção para o domínio **Pedidos**. Não há NextAuth,
+não há credentials provider, não há endpoints REST genéricos — o padrão é **porta + adapter** (já usado
+pelos mocks de pagamento/logística) mais Firebase ID Token no header `Authorization`.
 
 ---
 
-## 1. Configuração de ambiente
+## 1. Arquitetura — visão geral
 
-Crie o arquivo `.env.local` na raiz do projeto frontend (`E:\Labdev\Projetos\fraldinha-livre\front\.env.local`):
-
-```env
-# URL do backend — troque para produção no deploy
-NEXT_PUBLIC_API_URL=http://localhost:3001
-
-# NextAuth — deve ser igual ao JWT_SECRET do backend
-NEXTAUTH_SECRET=mesmo-valor-que-backend-JWT_SECRET
-NEXTAUTH_URL=http://localhost:3000
-
-# Google OAuth (preencher quando configurado)
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
+```
+Browser (Firebase client SDK, ja logado)
+   │  getIdToken() → JWT do Firebase
+   ▼
+front/src/lib/api-client.ts (apiFetch)
+   │  Authorization: Bearer <token>
+   ▼
+back/ — Worker Cloudflare (Hono)
+   │  middleware auth.ts verifica o token (JWKS publico do Google, sem Admin SDK)
+   │  extrai uid → c.get('uid')
+   ▼
+back/src/routes/orders.ts → Drizzle ORM → D1 (SQLite)
 ```
 
-> **Importante:** `NEXT_PUBLIC_API_URL` fica exposto ao browser. Nunca coloque segredos nessa variável.
-> Em produção, `NEXTAUTH_URL` deve apontar para `https://fraldinha-livre.com`.
+O front nunca fala com o D1 diretamente e o Worker nunca vê senha/credencial — só o ID Token do Firebase,
+que ele verifica sozinho via `firebase-auth-cloudflare-workers`/`jose`.
+
+**Domínios cobertos hoje:** só **Pedidos** (a fatia 1 da thread B). Catálogo, perfis, painel do
+fornecedor **continuam em mock** (`src/lib/products.ts`, `src/lib/supplier-mock.ts` etc.) — não delete
+esses arquivos ainda, eles não têm equivalente no backend.
 
 ---
 
-## 2. Criar o API client
+## 2. Padrão porta + adapter (não é um api-client genérico)
 
-Crie o arquivo `src/lib/api-client.ts`:
+Cada domínio migrado ganha uma **porta** (interface TS) em `front/src/lib/ports/` e dois adapters: um
+**mock** (estado em memória, usado nos testes e como fallback) e um **http** (chama o Worker de verdade).
+Uma flag de ambiente escolhe qual adapter o Context usa. Isso já existia para pagamento/fulfillment
+(ver `front/src/lib/ports/payment.ts`); Pedidos seguiu o mesmo molde.
+
+### `OrderRepository` (a porta, `front/src/lib/ports/order-repository.ts`)
 
 ```typescript
-import { getSession } from 'next-auth/react'
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
-
-async function getAuthHeaders(): Promise<HeadersInit> {
-  const session = await getSession()
-  const headers: HeadersInit = { 'Content-Type': 'application/json' }
-  if (session?.accessToken) {
-    headers['Authorization'] = `Bearer ${session.accessToken}`
-  }
-  return headers
-}
-
-async function handleResponse<T>(res: Response): Promise<T> {
-  if (res.status === 401) {
-    // Redireciona para login preservando a rota atual
-    if (typeof window !== 'undefined') {
-      window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`
-    }
-    throw new Error('Não autenticado')
-  }
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body?.message ?? `Erro ${res.status}`)
-  }
-  return res.json() as Promise<T>
-}
-
-export async function get<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: await getAuthHeaders(),
-  })
-  return handleResponse<T>(res)
-}
-
-export async function post<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method: 'POST',
-    headers: await getAuthHeaders(),
-    body: JSON.stringify(body),
-  })
-  return handleResponse<T>(res)
-}
-
-export async function put<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method: 'PUT',
-    headers: await getAuthHeaders(),
-    body: JSON.stringify(body),
-  })
-  return handleResponse<T>(res)
-}
-
-export async function patch<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method: 'PATCH',
-    headers: await getAuthHeaders(),
-    body: JSON.stringify(body),
-  })
-  return handleResponse<T>(res)
-}
-
-export async function del<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method: 'DELETE',
-    headers: await getAuthHeaders(),
-  })
-  return handleResponse<T>(res)
+export interface OrderRepository {
+  list(): Promise<Order[]>                       // GET /orders (do uid do token)
+  create(req: CreateOrderRequest): Promise<Order> // POST /orders — cria UM pedido
+  cancel(orderId: string): Promise<Order>         // PATCH /orders/:id/cancel
 }
 ```
 
-> **Uso em Server Components:** use `getServerSession` do NextAuth em vez de `getSession`. O `api-client.ts` acima serve para Client Components e Route Handlers.
+- **`MockOrderRepository`** (`front/src/lib/adapters/mock-order-repository.ts`) — estado em memória,
+  seed = `INITIAL_ORDERS`. Usado por padrão e em todos os testes.
+- **`HttpOrderRepository`** (`front/src/lib/adapters/http-order-repository.ts`) — chama o Worker via
+  `apiFetch`, parseia a resposta com `OrderSchema`/`OrderListSchema` (Zod, de `@contracts`), mapeia
+  403/409/404 para erros tipados (`OrderForbiddenError`, `OrderCancelNotAllowedError`,
+  `OrderNotFoundError`).
+
+Escolha do adapter, em `front/src/contexts/orders-context.tsx`:
+
+```typescript
+const useBackend = process.env.NEXT_PUBLIC_USE_BACKEND === 'true'
+const repo: OrderRepository = useBackend
+  ? new HttpOrderRepository()
+  : new MockOrderRepository({ now: ..., idFactory: ... })
+```
+
+**Gotcha resolvido em B9:** o `list()` inicial não pode disparar antes do Firebase restaurar a sessão —
+sem usuário não há token, e `GET /orders` sem token é sempre `401`. Por isso o load em modo backend está
+amarrado ao `onAuthStateChanged(auth, ...)`: com usuário, busca; sem usuário, lista vazia e sem erro;
+login/logout re-dispara. Ao migrar um novo domínio, replique esse padrão — não faça fetch no mount puro
+se o endpoint exigir auth.
+
+**Migrar um novo domínio (ex.: Produtos) segue os mesmos 4 passos:**
+1. Schema Zod em `packages/contracts/src/<dominio>.ts` (fonte única de tipos, compartilhada front/back).
+2. Porta + `Mock<Dominio>Repository` no front.
+3. Rota Hono + Drizzle no back (`back/src/routes/<dominio>.ts`), com o mesmo middleware de auth.
+4. `Http<Dominio>Repository` no front + flag no Context correspondente.
 
 ---
 
-## 3. Instalar e configurar NextAuth
+## 3. `api-client.ts` — injeção do token (não é NextAuth)
 
-### 3.1 Instalação
+`front/src/lib/api-client.ts`:
+
+```typescript
+import { auth } from '@/lib/firebase'
+
+const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? ''
+
+export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const token = await auth.currentUser?.getIdToken()
+  const headers = new Headers(init.headers)
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+  return fetch(`${BASE_URL}${path}`, { ...init, headers })
+}
+```
+
+Não existe `getSession`/`getServerSession` — o SDK do Firebase já mantém `auth.currentUser` no client.
+`getIdToken()` renova o JWT automaticamente se estiver perto de expirar; não cacheie o token manualmente.
+
+---
+
+## 4. Backend (`back/`) — Worker Hono + Drizzle + D1
+
+### 4.1 Estrutura
+
+```
+back/
+├── src/
+│   ├── index.ts              # app Hono, monta CORS + auth middleware + rotas
+│   ├── env.ts                 # tipos de Env (Bindings) e AppContext
+│   ├── middleware/auth.ts     # verifica Firebase ID Token, injeta uid no contexto
+│   ├── routes/orders.ts       # GET/POST /orders, PATCH /orders/:id/cancel
+│   └── schema/orders.ts       # tabelas Drizzle (orders, order_items)
+├── migrations/0000_charming_mordo.sql
+├── drizzle.config.ts
+└── wrangler.jsonc             # binding D1 (DB), var FIREBASE_PROJECT_ID
+```
+
+### 4.2 Middleware de auth (`back/src/middleware/auth.ts`)
+
+Verifica o ID Token contra o JWKS público do projeto Firebase (`FIREBASE_PROJECT_ID` no `wrangler.jsonc`)
+— **sem Firebase Admin SDK**, sem service account, sem segredo algum no Worker. `401` se token
+ausente/inválido/expirado. `uid` fica disponível via `c.get('uid')` nas rotas.
+
+### 4.3 CORS (adicionado em B9 — não estava no plano original)
+
+O front chama o Worker de uma origem diferente (`localhost:3000` → `*.workers.dev`), e o header
+`Authorization` força o navegador a fazer **preflight** (`OPTIONS`). Sem CORS configurado, esse preflight
+cai em 404 e a chamada real nunca acontece — bug só visível no navegador, não em testes/build.
+
+`back/src/index.ts` monta `hono/cors` restrito a `http://localhost:<qualquer porta>`:
+
+```typescript
+const ALLOWED_ORIGIN = /^https?:\/\/localhost(:\d+)?$/
+app.use('*', cors({
+  origin: (origin) => (ALLOWED_ORIGIN.test(origin) ? origin : null),
+  allowMethods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
+  allowHeaders: ['Authorization', 'Content-Type'],
+}))
+```
+
+**Quando o front ganhar domínio de produção**, adicione essa origem ao regex (ou troque por lista
+explícita) — sem isso, o front em produção não vai conseguir chamar o Worker.
+
+### 4.4 Regras de servidor (RN-01..RN-08 da spec)
+
+- `uid` **sempre** do token verificado, nunca do corpo da requisição.
+- Toda query de pedido filtra por `uid` — um usuário nunca vê pedido de outro (provado em B3/B9).
+- `POST /orders` ignora `id`/`uid`/`status` enviados pelo cliente; o servidor gera tudo.
+- `PATCH /orders/:id/cancel`: `403` se `uid` do token ≠ dono; `409` se `status != 'aguardando'` (trava
+  logística, D-025); `404` se não existe.
+- Persistência de order + items em transação (D1 batch) — order nunca fica sem items.
+
+### 4.5 Limitação conhecida (DEC-A, aceita nesta fatia)
+
+O servidor **confia** nos `items[]` (nomes/preços) que o cliente envia — não há catálogo no D1 ainda para
+revalidar preço. Isso fecha quando a fatia de **Produtos** existir. Não é um bug: está registrado na spec
+e no plano B como escopo consciente da fatia 1.
+
+---
+
+## 5. Deploy e operação — o que aprendemos em B9
+
+### 5.1 Versão do Wrangler (Node 20)
+
+`wrangler` ≥4.87 exige Node ≥22. A máquina de desenvolvimento está em Node 20.20.2 (D-021). **Última
+versão compatível: `wrangler@4.86.0`.** Rode sempre fixando a versão:
 
 ```bash
-npm install next-auth@5
+npx -y wrangler@4.86.0 deploy
+npx -y wrangler@4.86.0 d1 migrations apply fraldinha-livre-db --remote
 ```
 
-### 3.2 Criar o handler de autenticação
+Não instale Node 22 globalmente só para isso — o pin funciona e evita quebrar o resto do projeto
+(front/tooling dependem de Node 20.19+, D-021).
 
-Crie `src/app/api/auth/[...nextauth]/route.ts`:
+### 5.2 Autenticação do Wrangler
 
-```typescript
-import NextAuth from 'next-auth'
-import CredentialsProvider from 'next-auth/providers/credentials'
+`wrangler login` abre OAuth no navegador; o token fica cacheado localmente (fora do repo). É ação do
+cliente, não do agente — o Worker MCP `cloudflare-bindings`/`cloudflare-api` cobre leitura/D1 query, mas
+**não faz deploy** (sem ferramenta `workers_deploy` disponível até 2026-07). Deploy real sempre passa pelo
+CLI.
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+### 5.3 D1 remoto
 
-const handler = NextAuth({
-  providers: [
-    CredentialsProvider({
-      name: 'credentials',
-      credentials: {
-        email: { label: 'E-mail', type: 'email' },
-        password: { label: 'Senha', type: 'password' },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null
+O banco `fraldinha-livre-db` (`database_id` no `wrangler.jsonc`) já existe e a migration
+`0000_charming_mordo.sql` está aplicada (tabelas `orders`, `order_items`, índice `idx_orders_uid`). Para
+aplicar migrations futuras:
 
-        const res = await fetch(`${BASE_URL}/auth/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: credentials.email,
-            password: credentials.password,
-          }),
-        })
-
-        if (!res.ok) return null
-
-        const data = await res.json()
-        // Espera-se: { accessToken, user: { id, name, email, role } }
-        return {
-          id: data.user.id,
-          name: data.user.name,
-          email: data.user.email,
-          role: data.user.role,
-          accessToken: data.accessToken,
-        }
-      },
-    }),
-  ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.role = (user as any).role
-        token.accessToken = (user as any).accessToken
-      }
-      return token
-    },
-    async session({ session, token }) {
-      session.user.role = token.role as string
-      session.accessToken = token.accessToken as string
-      return session
-    },
-  },
-  pages: {
-    signIn: '/login',
-  },
-})
-
-export { handler as GET, handler as POST }
+```bash
+npx -y wrangler@4.86.0 d1 migrations apply fraldinha-livre-db --remote
 ```
 
-### 3.3 Tipos do NextAuth (TypeScript)
+### 5.4 `.env.local` do front (gitignored — por worktree)
 
-Crie `src/types/next-auth.d.ts`:
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=...            # mesmas chaves da feature 005a
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=...
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
+NEXT_PUBLIC_FIREBASE_APP_ID=...
+NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID=...
+
+NEXT_PUBLIC_BACKEND_URL=https://fraldinha-livre-backend.romariobc.workers.dev
+NEXT_PUBLIC_USE_BACKEND=true
+```
+
+Cada worktree tem seu próprio `.env.local` (arquivo gitignored) — copie as chaves Firebase do
+`front/.env.local` do repo principal, não invente valores novos.
+
+### 5.5 `next.config.ts` — Turbopack + monorepo
+
+O front importa `@contracts` de `../packages/contracts` (fora de `front/`). O Turbopack do `next dev`
+detecta a raiz do projeto pelo lockfile mais próximo (`front/package-lock.json`) e **não resolve nada
+fora dessa raiz** por padrão — resultado: `Module not found: Can't resolve '@contracts'` só em `next dev`
+(o `build` de produção não pegava esse erro). Fix, documentado pelo próprio Next 16:
 
 ```typescript
-import 'next-auth'
-import 'next-auth/jwt'
-
-declare module 'next-auth' {
-  interface Session {
-    accessToken: string
-    user: {
-      id: string
-      name: string
-      email: string
-      role: 'COMPRADOR' | 'FORNECEDOR' | 'ADMIN'
-    }
-  }
-}
-
-declare module 'next-auth/jwt' {
-  interface JWT {
-    role: string
-    accessToken: string
-  }
-}
+// front/next.config.ts
+import path from "path";
+const nextConfig: NextConfig = {
+  turbopack: { root: path.join(__dirname, "..") },
+};
 ```
 
 ---
 
-## 4. Remover os mocks — tabela completa
+## 6. Smoke test manual do Worker
 
-| Arquivo mock | Ação | Substituto |
-|---|---|---|
-| `src/lib/auth-mock.ts` | **DELETAR** após integrar NextAuth | `useSession()` do NextAuth (veja Seção 10) |
-| `src/lib/account-mock.ts` | **DELETAR** | `GET /comprador/pedidos`, `/comprador/cotacoes`, `/comprador/historico` |
-| `src/lib/products.ts` | **MANTER como fallback** inicialmente, depois deletar | `GET /produtos` com query params |
-| `src/lib/supplier-mock.ts` | **DELETAR** | `GET /fornecedor/*` (endpoints detalhados na Seção 5) |
+```bash
+curl -s https://fraldinha-livre-backend.romariobc.workers.dev/health
+# {"ok":true}
 
-> **Estratégia segura:** remova um mock por vez, testando cada rota antes de partir para o próximo.
-
----
-
-## 5. Migrar cada página — instruções específicas
-
-### `/catalogo`
-
-**Antes (mock):**
-```typescript
-import { MOCK_PRODUCTS } from '@/lib/products'
-const products = MOCK_PRODUCTS
-```
-
-**Depois (API):**
-```typescript
-// src/app/(main)/catalogo/page.tsx
-import { get } from '@/lib/api-client'
-
-const data = await get<{ products: Product[]; total: number }>(
-  `/produtos?page=${page}&limit=20&categoria=${categoria}&marca=${marca}`
-)
-```
-
-- `CatalogFilters` — ao alterar filtro, atualize os query params da URL usando `useRouter().push()`. O componente de página relê os `searchParams` e reexecuta o fetch.
-- `ProductCard` — `supplierId` e dados do fornecedor agora vêm no objeto produto retornado pela API. Não precisa lookup separado.
-
----
-
-### `/minha-conta`
-
-**Antes (mock):**
-```typescript
-import { MOCK_ORDERS, MOCK_QUOTES } from '@/lib/account-mock'
-```
-
-**Depois (API):**
-```typescript
-// Carregar na montagem do page.tsx (use useEffect ou Server Component)
-const [pedidos, cotacoes] = await Promise.all([
-  get('/comprador/pedidos'),
-  get('/comprador/cotacoes'),
-])
-```
-
-**Ações específicas:**
-
-| Ação | Chamada API |
-|---|---|
-| Criar nova cotação | `POST /comprador/cotacoes` com `{ produto, quantidade, prazoDesejado }` |
-| Aceitar oferta | `POST /comprador/cotacoes/:id/aceitar` com `{ offerId }` |
-| Ver ofertas de um pedido | `GET /comprador/pedidos/:id` — campo `offers[]` com `batchNumber` |
-| Histórico | `GET /comprador/historico` |
-
----
-
-### `/fornecedor/painel`
-
-**Antes (mock):**
-```typescript
-import { MOCK_MARKET_ORDERS, MOCK_DIRECT_ORDERS } from '@/lib/supplier-mock'
-```
-
-**Depois (API):**
-
-| Tab | Chamada API |
-|---|---|
-| Mercado | `GET /fornecedor/mercado?scope=national` |
-| Pedidos Diretos | `GET /fornecedor/diretos` |
-| Minhas Ofertas | `GET /fornecedor/ofertas` |
-| Histórico | `GET /fornecedor/historico` |
-| Perfil | `GET /fornecedor/perfil` |
-
-**Ações específicas:**
-
-| Ação | Chamada API |
-|---|---|
-| Enviar oferta | `POST /fornecedor/mercado/:id/oferta` com `{ preco, prazo, observacao }` |
-| Recusar pedido do mercado | `POST /fornecedor/mercado/:id/recusar` |
-| Confirmar pedido direto | `PATCH /fornecedor/diretos/:id` com `{ status: 'confirmado' }` |
-| Recusar pedido direto | `PATCH /fornecedor/diretos/:id` com `{ status: 'recusado' }` |
-| Atualizar perfil | `PUT /fornecedor/perfil` com os campos do formulário |
-
----
-
-### `/login` e `/cadastro`
-
-**Login (`/login/page.tsx`):**
-```typescript
-import { signIn } from 'next-auth/react'
-import { useRouter, useSearchParams } from 'next/navigation'
-
-const router = useRouter()
-const searchParams = useSearchParams()
-
-async function handleLogin(email: string, password: string) {
-  const result = await signIn('credentials', {
-    email,
-    password,
-    redirect: false,
-  })
-
-  if (result?.error) {
-    // Exibir toast de erro
-    return
-  }
-
-  const redirect = searchParams.get('redirect') ?? '/minha-conta'
-  router.push(redirect)
-}
-```
-
-**Cadastro (`/cadastro/page.tsx`):**
-```typescript
-import { post } from '@/lib/api-client'
-import { signIn } from 'next-auth/react'
-
-async function handleCadastro(dados: CadastroPayload) {
-  await post('/auth/register', dados)
-  // Após cadastro, faz login automático
-  await signIn('credentials', {
-    email: dados.email,
-    password: dados.password,
-    redirect: false,
-  })
-  router.push(dados.role === 'COMPRADOR' ? '/minha-conta' : '/fornecedor/painel')
-}
-```
-
-**Redirecionamento por role:**
-```typescript
-// Após login, verificar role da sessão
-const { data: session } = useSession()
-if (session?.user.role === 'FORNECEDOR') {
-  router.push('/fornecedor/painel')
-} else {
-  router.push('/minha-conta')
-}
+curl -s -o /dev/null -w "%{http_code}\n" https://fraldinha-livre-backend.romariobc.workers.dev/orders
+# 401 (sem token)
 ```
 
 ---
 
-## 6. Corrigir inconsistências de tipos
+## 7. Checklist de migração — próximos domínios
 
-Ao consumir a API real, os seguintes campos diferem dos mocks. Corrija nos componentes:
+Ao trazer **Produtos**, **Perfis** ou **sync do painel do fornecedor** para o backend real, siga o mesmo
+molde de Pedidos:
 
-| Campo | Mock (formato atual) | API (formato correto) | Onde corrigir |
-|---|---|---|---|
-| `Product.price` | `number` em reais (ex: `31.20`) | `priceInCents: number` em centavos (ex: `3120`) | `ProductCard.tsx`, `CatalogFilters.tsx` |
-| Formato de usuário | dois formatos distintos | `{ id, name, email, phone, cpf, role }` unificado | `PerfilTab.tsx` (comprador e fornecedor) |
-| Endereço | `logradouro`, `bairro` | `street`, `neighborhood` | `PerfilTab.tsx`, formulários de endereço |
-| `Offer.supplier` | `string` (nome) | `{ id, companyName, rating }` (objeto) | `OfertaCard.tsx`, `OfertasTab.tsx` |
-
-**Utilitário para preços:** a função `formatPrice` em `src/lib/supplier-mock.ts` já converte centavos. Quando migrar, use-a também no catálogo:
-
-```typescript
-// Antes (mock com reais)
-<span>{product.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-
-// Depois (API com centavos)
-import { formatPrice } from '@/lib/supplier-mock' // ou mova para utils.ts
-<span>{formatPrice(product.priceInCents)}</span>
-```
+- [ ] Schema Zod em `packages/contracts/src/<dominio>.ts`
+- [ ] Porta `<Dominio>Repository` em `front/src/lib/ports/`
+- [ ] `Mock<Dominio>Repository` + contract test reutilizável (`run<Dominio>RepositoryContract`)
+- [ ] Rota Hono + Drizzle em `back/src/routes/<dominio>.ts`, reaproveitando o middleware de auth existente
+- [ ] `Http<Dominio>Repository` no front, usando `apiFetch`
+- [ ] Context correspondente: flag `NEXT_PUBLIC_USE_BACKEND`, load gateado por auth se o endpoint exigir
+      token (replicar o padrão do `onAuthStateChanged` de `orders-context.tsx`)
+- [ ] CORS já cobre `/*` no Worker — não precisa reconfigurar por rota
+- [ ] Migration nova em `back/migrations/`, aplicada localmente e depois com `--remote`
+- [ ] Suite do front (`npm test`) e do back (`cd back && npm test`) verdes; `lint`/`tsc`/`build` exit 0
+- [ ] Validação humana no navegador (refresh mantém dado; isolamento por uid com 2 contas, se aplicável)
 
 ---
 
-## 7. Dados de teste disponíveis (do seed)
+## O que NÃO existe neste projeto (evite reintroduzir)
 
-Use estas credenciais para testar a integração com o backend em desenvolvimento.
-
-### Compradores
-
-| E-mail | Senha | Perfil |
-|---|---|---|
-| `clinica@teste.com` | `senha123` | Clinica Sao Lucas — CNPJ 66.777.888/0001-99 |
-| `revendedora@teste.com` | `senha123` | Revendedora Maria — Curitiba/PR |
-
-### Fornecedores
-
-| E-mail | Senha | Empresa | Marcas |
-|---|---|---|---|
-| `norte@teste.com` | `senha123` | Distribuidora Norte Ltda | Pampers |
-| `sul@teste.com` | `senha123` | Sul Distribuidora | Huggies |
-| `centro@teste.com` | `senha123` | Centro-Oeste Higiene | MamyPoko |
-| `nordeste@teste.com` | `senha123` | Nordeste Baby Ltda | Turma da Monica |
-| `nacional@teste.com` | `senha123` | Nacional Higiene SA | Cremer + Pampers + Huggies |
-
-### Pedidos pré-criados no seed
-
-| Identificador | Tipo | Status | Detalhes |
-|---|---|---|---|
-| cotacao-1 | `COTACAO` | `OFERTAS_RECEBIDAS` | 500cx Pampers M — 2 ofertas no lote 1 |
-| cotacao-2 | `COTACAO` | `AGUARDANDO` | 200cx Huggies G — sem ofertas |
-| direto-1 | `COMPRA_DIRETA` | `CONFIRMADO` | 100cx Pampers P — Distribuidora Norte |
-| direto-2 | `COMPRA_DIRETA` | `ENTREGUE` | 50cx Cremer M — Nacional Higiene |
-| cotacao-3 | `COTACAO` | `CANCELADO` | 300un MamyPoko G |
-
----
-
-## 8. Ordem sugerida de integração (por prioridade)
-
-Siga esta sequência para minimizar riscos. Cada etapa é independente da seguinte, exceto onde indicado.
-
-```
-1. Auth (NextAuth + POST /auth/login + POST /auth/register)
-   └── Desbloqueia todo o resto — faça isso primeiro.
-
-2. Catálogo (GET /produtos)
-   └── Maior visibilidade pública, mais simples, sem estado de usuário.
-
-3. Minha Conta (área do comprador)
-   └── Depende do Auth estar funcionando.
-
-4. Painel do Fornecedor
-   └── Depende do Auth + roles funcionando.
-
-5. Perfis e Endereços
-   └── Polish — pode ser feito após os fluxos principais estarem estáveis.
-```
-
-Para cada etapa:
-1. Implemente o `api-client.ts` call
-2. Remova o import do mock correspondente
-3. Teste manualmente com as credenciais de seed
-4. Delete o arquivo mock quando todos os consumidores estiverem migrados
-
----
-
-## 9. Headers obrigatórios em todas as chamadas autenticadas
-
-O `api-client.ts` da Seção 2 já adiciona esses headers automaticamente. Se fizer qualquer fetch manual fora do client, inclua:
-
-```
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-Para obter o token em Server Components:
-
-```typescript
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
-
-const session = await getServerSession(authOptions)
-const token = session?.accessToken
-```
-
----
-
-## 10. Substituir o flag `IS_LOGGED_IN`
-
-O arquivo `src/lib/auth-mock.ts` exporta `IS_LOGGED_IN = false`. Após integrar o NextAuth, substitua **todas** as referências por:
-
-**Em Client Components:**
-```typescript
-import { useSession } from 'next-auth/react'
-
-export function MinhaContaPage() {
-  const { data: session, status } = useSession()
-  const isLoggedIn = status === 'authenticated'
-
-  if (status === 'loading') return <div>Carregando...</div>
-  if (!isLoggedIn) redirect('/login')
-
-  // ...
-}
-```
-
-**Em Server Components / Layouts:**
-```typescript
-import { getServerSession } from 'next-auth'
-import { redirect } from 'next/navigation'
-
-export default async function ProtectedLayout({ children }) {
-  const session = await getServerSession()
-  if (!session) redirect('/login')
-  return <>{children}</>
-}
-```
-
-**No `Header.tsx` (guarda do carrinho):**
-```typescript
-// Antes
-import { IS_LOGGED_IN } from '@/lib/auth-mock'
-
-// Depois
-import { useSession } from 'next-auth/react'
-const { status } = useSession()
-const IS_LOGGED_IN = status === 'authenticated'
-```
-
-Após confirmar que nenhum arquivo importa mais `auth-mock.ts`, delete-o.
-
----
-
-## Checklist de migração
-
-Use como referência para acompanhar o progresso:
-
-- [ ] `.env.local` criado com todas as variáveis
-- [ ] `src/lib/api-client.ts` criado e testado
-- [ ] `next-auth@5` instalado
-- [ ] `src/app/api/auth/[...nextauth]/route.ts` criado
-- [ ] `src/types/next-auth.d.ts` criado
-- [ ] Login funcionando com credenciais de seed
-- [ ] `IS_LOGGED_IN` substituído por `useSession` em todos os arquivos
-- [ ] `src/lib/auth-mock.ts` deletado
-- [ ] `/catalogo` consumindo `GET /produtos`
-- [ ] `src/lib/products.ts` deletado
-- [ ] `/minha-conta` consumindo endpoints do comprador
-- [ ] `src/lib/account-mock.ts` deletado
-- [ ] `/fornecedor/painel` consumindo endpoints do fornecedor
-- [ ] `src/lib/supplier-mock.ts` deletado (exceto utilitários movidos para `utils.ts`)
-- [ ] Tipos corrigidos (priceInCents, User, Address, Offer.supplier)
-- [ ] Testado com todos os usuários de seed
+- NextAuth, `next-auth/react`, `CredentialsProvider`, `getServerSession` — auth é 100% Firebase (D-010,
+  005a). Não há segredo compartilhado tipo `NEXTAUTH_SECRET`.
+- Endpoints REST genéricos tipo `/comprador/pedidos`, `/fornecedor/mercado` — a API real segue o contrato
+  fixado no plano B (`GET/POST /orders`, `PATCH /orders/:id/cancel`), sem prefixos de papel.
+- `auth-mock.ts`/`IS_LOGGED_IN` — já removidos na feature 013/005a.

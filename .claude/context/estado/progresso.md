@@ -1,6 +1,37 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-21) — B9 FECHADO — backend real de Pedidos em producao, validado por humano
+## Estado atual (2026-07-22) — Thread B mergeada na main; thread P (Produtos) iniciada, P1 executado
+
+**Merge da thread B para a main:** PR #8 (38 commits, 81 arquivos) revisado pelo Claude Code Review
+automático (limpo, sem comentários) e mesclado (`13ad06b`). `main` local sincronizada. Toda a fatia 1
+(Pedidos, B1-B9) está integrada.
+
+**Thread P (backend de Produtos, fatia 2 da 006) iniciada via brainstorming** — spec
+(`spec-backend-produtos-cloudflare.md`) e plano (`P-backend-produtos-breakdown.md`) escritos, revisados
+por outro agente em 2 rodadas (achados reais incorporados: RN-P2b obrigatória — o campo `price` total
+do pedido não era revalidado, só os `unitPrice` por item; RN-P2c — `supplier_id`; ambiguidade de campo
+`price`/`supplierId` ausente no schema opcional; falta do P3 de deploy com a ordem operacional exata
+documentada). Plano: P1 (schema+seed+`GET /products`) → P2 (validação em `POST /orders`) → P3
+(deploy, coordenador+cliente).
+
+**P1 EXECUTADO com incidente sério, encontrado e corrigido pela sessão de backend:** o executor Haiku
+completou o trabalho real corretamente (schema, migrations em duas partes via `drizzle-kit generate`,
+seed com os 24 produtos conferidos contra `front/src/lib/products.ts`, `GET /products` público), mas
+**commitou no repositório principal (`E:\Labdev\Projetos\fraldinha-livre`) em vez do worktree**
+(`blissful-lamport-ccb562`) — o commit (`c58e377`) ficou pendurado na `main` local, um commit à frente
+de `origin/main`, sem nenhuma revisão. Corrigido: `main` local resetada de volta pra `13ad06b`
+(idêntica a `origin/main`, nada perdido — `origin` nunca recebeu o commit), o commit trazido via
+`cherry-pick` pro branch/worktree certo (`ed1e9bb`... `6a0c9f4`).
+
+Sanity check próprio achou mais 2 problemas no commit trazido: `zod` adicionado como devDependency
+direta sem nenhum uso real (já disponível via dependência transitiva de
+`@cloudflare/vitest-pool-workers`) e um script `"lint": "tsc --noEmit"` fake (`back/` nunca teve
+ESLint — erro meu no prompt de P1, que copiou a convenção do front sem checar). Ambos removidos
+(commit `ed1e9bb`). 22/22 testes verdes, `tsc` exit 0.
+
+**Aguardando revisão D-012 pela sessão de frontend** antes de avançar para P2.
+
+## Estado anterior (2026-07-21) — B9 FECHADO — backend real de Pedidos em producao, validado por humano
 
 **A fatia 1 da thread B (Pedidos) está ponta a ponta em produção.** Sequência executada nesta sessão
 (coordenador + cliente, conforme o plano previa — não delegado a executor autônomo):

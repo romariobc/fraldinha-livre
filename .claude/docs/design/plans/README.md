@@ -66,7 +66,7 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | B8 | front/: OrdersProvider assíncrono + loading/erro + flag backend | 1 | APROVADO (commit 3299c98) via D-012 pela sessão de frontend |
 | B9 | Deploy real do Worker + validação humana (fatia 1 = Pedidos) | 1 | FECHADO (2026-07-21) — produção validada, PR #8 mesclado na main (13ad06b) |
 | P (breakdown) | Backend de produtos (fatia 2 da 006) — P1/P2/P3 | 1 | breakdown APROVADO (2026-07-22, com P3 adicionado na revisão) |
-| P1 | back/: schema products + migrations + seed + GET /products | 1 | aguardando execução (disparado 2026-07-22) |
+| P1 | back/: schema products + migrations + seed + GET /products | 1 | EXECUTADO + CORRIGIDO (commits 6a0c9f4, ed1e9bb) — 22/22 testes, aguardando revisão D-012 pela sessão de frontend |
 
 **Ordem de execucao (D-011):** H-002 → H-005 → [H-006 limpeza para main] → H-004 → H-003 → 006 backend.
 

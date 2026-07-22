@@ -50,10 +50,10 @@ export default function OfferModal({ product, onClose }: OfferModalProps) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
             <Image
-              src="/assets/img/Logo_simples_sem_fundo.png"
+              src="/assets/img/cegonha.png"
               alt=""
-              width={28}
-              height={28}
+              width={589}
+              height={366}
               className="h-7 w-auto"
             />
             <span className="font-display font-extrabold text-base text-brand-text">

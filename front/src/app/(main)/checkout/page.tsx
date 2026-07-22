@@ -16,6 +16,7 @@ import { useState, useEffect } from 'react'
 import { MockPaymentGateway } from '@/lib/adapters/mock-payment-gateway'
 import { MockFulfillmentService } from '@/lib/adapters/mock-fulfillment-service'
 import { orderToDirectOrder } from '@/lib/order-adapters'
+import { toast } from 'sonner'
 
 type CheckoutStep = 'endereco' | 'revisao' | 'pagamento' | 'confirmacao'
 
@@ -63,7 +64,7 @@ export default function CheckoutPage() {
 
     try {
       // 1. Create orders from cart
-      const orders = createOrdersFromCart(items, deliveryAddress)
+      const orders = await createOrdersFromCart(items, deliveryAddress)
 
       // 2. Instantiate adapters (STUB)
       let txnIdCounter = 0
@@ -108,6 +109,9 @@ export default function CheckoutPage() {
       setCreatedOrders(orders)
       clear()
       setStep('confirmacao')
+    } catch (err) {
+      console.error('Erro ao finalizar compra:', err)
+      toast.error('Não foi possível finalizar a compra. Tente novamente.')
     } finally {
       setSubmitting(false)
     }

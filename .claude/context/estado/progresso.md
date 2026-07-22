@@ -1,6 +1,308 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-08) — Feature 016: compra direta (carrinho/checkout)
+## Estado atual (2026-07-21) — B9 FECHADO — backend real de Pedidos em producao, validado por humano
+
+**A fatia 1 da thread B (Pedidos) está ponta a ponta em produção.** Sequência executada nesta sessão
+(coordenador + cliente, conforme o plano previa — não delegado a executor autônomo):
+
+1. **Migration aplicada no D1 remoto** (`fraldinha-livre-db`) via conector MCP `cloudflare-bindings`
+   (autenticação do conector, sem depender do Wrangler CLI para este passo): tabelas `orders`,
+   `order_items`, índice `idx_orders_uid` confirmados por consulta ao `sqlite_master`.
+2. **Cliente autenticou o Wrangler** (`wrangler login`, OAuth local) — único passo que exigia ação do
+   cliente. Descoberta: `wrangler` ≥4.87 exige Node ≥22 (sistema tem 20.20.2, D-021); resolvido fixando
+   `npx -y wrangler@4.86.0` (última versão compatível com Node 20) em vez de instalar Node 22.
+3. **Deploy do Worker**: `https://fraldinha-livre-backend.romariobc.workers.dev`. Smoke test inicial
+   verde (`/health` 200, `/orders` sem token 401).
+4. **`.env.local` do worktree** (`blissful-lamport-ccb562/front`, gitignored) com chaves Firebase
+   (copiadas do repo principal) + `NEXT_PUBLIC_BACKEND_URL` + `NEXT_PUBLIC_USE_BACKEND=true`.
+5. **`npm run dev` no navegador (preview) revelou 2 bugs que teste/build não pegavam** — ambos
+   corrigidos, testados e commitados na branch `Romir/folder-analysis-070a4b`:
+   - **CORS ausente no Worker** — `Authorization` no header força preflight `OPTIONS`, que caía em 404
+     sem `hono/cors` configurado (nenhum teste de integração exercita isso; só aparece com navegador
+     real). Fix: CORS restrito a `localhost` (regex, qualquer porta) + 3 testes (preflight, resposta
+     real, origem desconhecida não refletida). Commit `a2b1212`. Redeployado, preflight confirmado em
+     produção via curl.
+   - **`OrdersProvider` chamava `list()` no mount antes do Firebase restaurar a sessão** — sem usuário
+     ainda resolvido, sem token, `401` garantido mesmo para quem estava logado (apareceria após F5).
+     Fix: o load em modo backend passa a ser disparado por `onAuthStateChanged` (com usuário → busca;
+     sem usuário → lista vazia sem erro). Junto: `turbopack.root` no `next.config.ts` — o Turbopack do
+     `next dev` limitava a resolução de módulos à raiz detectada pelo lockfile (`front/`), e `@contracts`
+     mora em `../packages/contracts`, fora dela (`Module not found`, só em dev, não no build). Commit
+     `95879f9`, 3 testes novos (gating por auth). Suite front 288/288, back 20/20, lint/tsc limpos.
+6. **Validação humana no navegador — os 4 critérios da spec confirmados pelo cliente:**
+   login Google → checkout → pedido real aparece em `/minha-conta` → **refresh mantém o pedido** (prova
+   que vem do D1, não mais de `useState`) → cancelamento respeita a trava `aguardando` (bloqueado em
+   `confirmado`/`a-caminho`, `409` do servidor, não só UI) → **2 contas Google diferentes não veem
+   pedido uma da outra** (RN-02 provada em produção, não só em teste unitário).
+7. **Registro fechado**: `feature_list.json` — 006 avança (fatia 1 done, resto do escopo original
+   ainda todo); 016 e 017 viram `done` (a única pendência de ambas era exatamente essa validação
+   humana com login Google). `integration-guide.md` totalmente reescrito — a versão antiga descrevia
+   NextAuth/credentials provider, que nunca existiu neste projeto (auth sempre foi Firebase, D-010); a
+   nova documenta o padrão real (porta+adapter, Firebase ID Token → Worker Hono → Drizzle → D1, gotchas
+   de CORS/Turbopack/Node encontrados nesta sessão).
+
+**Nota de escopo:** a ponte do pedido para o painel do fornecedor (sup-001, via `order-adapters.ts`) não
+foi re-exercitada nesta sessão — o código não foi tocado pelas mudanças de B9 e já tinha validação
+Playwright anterior, mas fica registrado como não re-confirmado com o backend real ligado.
+
+**Trabalho não mergeado:** toda a thread B (B1-B9) vive na branch `Romir/folder-analysis-070a4b`
+(worktree `blissful-lamport-ccb562`) — ainda não foi para a `main`. Próximo passo natural: decidir o
+merge para a main, e/ou definir a próxima fatia do backend (Produtos, sync do painel do fornecedor,
+Perfis ou Estoque — nenhuma iniciada).
+
+---
+
+## Estado anterior (2026-07-20) — B8 APROVADO — fatia 1 da thread B (backend de pedidos) FECHADA (B1-B8)
+
+**B8 APROVADO** pela sessão de frontend via D-012 (commit `3299c98`). Sanity check próprio completo:
+`git show --stat` (7 arquivos batem exatamente), `npm test` 285/285, `tsc`/`lint` exit 0. Pontos de
+maior risco conferidos linha a linha:
+- `createDirectOrder` (código morto) — diff confirma que só `setOrders([...orders,x])` virou
+  `setOrders(prev => [...prev,x])`, resto do corpo idêntico.
+- Exatamente 3 `catch` nos arquivos de produção tocados (`orders-context.tsx`, `checkout/page.tsx`,
+  `OrderCard.tsx`), todos legítimos (`setError`/`toast.error` + `console.error`, nenhum silencioso).
+- `contractOrderToAccountMockOrder` mapeia os 12 campos de `Order`; o único campo fora do mapeamento
+  (`offers`) é exclusivo do fluxo `cotacao`, fora do escopo de `ContractOrder` (só `compra-direta`).
+- **Achado do executor confirmado por diff**: o `cancelOrder` ANTIGO (`setOrders(prev => prev.map(o =>
+  o.id === orderId ? {...o, status:'cancelado'} : o))`) nunca validava status — sempre sucedia,
+  independente do estado do pedido. A reescrita dos testes (criar um pedido `aguardando` antes de
+  cancelar, em vez de usar `orders[0]` do seed) é correção legítima, não fuga de caso difícil: o novo
+  `cancelOrder` passa por `repo.cancel()`, que agora aplica a trava D-025 de verdade.
+- Item 10 do checklist (clique real no navegador) **não realizado nesta sessão** — sem `.env.local`
+  neste worktree efêmero (mesmo gotcha de Firebase já documentado), qualquer página autenticada falha
+  por `auth/invalid-api-key`, não por defeito do B8. Fica registrado como pendência para quando alguém
+  rodar localmente fora do worktree.
+
+**Fatia 1 da thread B (006.1..006.4, "só Pedidos") está FECHADA — B1 a B8 todos aprovados via D-012:**
+B1 (`packages/contracts`) · B2 (scaffold Worker+D1, corrigido, D1 real criado) · B3 (auth Firebase +
+`GET /orders`) · B4 (`POST /orders` + `PATCH .../cancel`, atomicidade provada) · B5 (`OrderRepository`
+porta+mock) · B6 (contract test reutilizável) · B7 (`HttpOrderRepository`, achado sério do zod v3/v4
+corrigido pela raiz) · B8 (`OrdersProvider` assíncrono).
+
+**Falta só B9** (deploy real do Worker + migration aplicada no D1 remoto + validação humana no
+navegador) para fechar a feature 006 fatia 1 ponta a ponta. Pré-requisitos já resolvidos: D1 real
+criado via MCP (`fraldinha-livre-db`), conta Cloudflare autenticada. Pré-requisito ainda pendente:
+decisão sobre Node 22 (wrangler CLI exige, sistema tem 20.20.2 — decisão de subir foi adiada até este
+ponto, ver estados anteriores). Migration ainda NÃO aplicada no D1 remoto; deploy do Worker ainda NÃO
+feito.
+
+## Estado anterior (2026-07-20) — B7 aprovado; B8 executado (OrdersProvider assíncrono) — fatia 1 completa
+
+**B7 APROVADO** pela sessão de frontend via D-012, com verificação linha a linha do fix do zod
+(confirmou causa raiz via `npm ls zod`: v4 transitiva de `eslint-config-next`/`shadcn` convivendo com
+v3 hoisted).
+
+**B8 EXECUTADO** (commit `3299c98`) — tarefa de maior risco da fatia 1, tocando o fluxo real de
+checkout/cancelamento já validado no navegador. Levantamento próprio feito antes do prompt (3 arquivos
+de produção afetados fora do context, 3 arquivos de teste, achado de que os `try/finally` de
+`handlePagar`/`handleConfirmCancel` não tinham `catch`). `orders-context.tsx` reescrito: `orders`
+carrega via `OrderRepository.list()` (mock por padrão, `HttpOrderRepository` se
+`NEXT_PUBLIC_USE_BACKEND=true`), `loading`/`error` adicionados, `createOrdersFromCart`/`cancelOrder`
+assíncronos (DEC-B), ponte `contractOrderToAccountMockOrder` (inversa da B5) mantém os componentes de
+UI existentes intactos. `checkout/page.tsx` e `OrderCard.tsx` ganharam `catch` com `toast.error`.
+`minha-conta/page.tsx` ganhou loading/erro da aba Pedidos. `createDirectOrder` (código morto)
+intocado, confirmado por diff.
+
+Achado no teste que valeu a pena registrar: os 2 testes de `cancelOrder` cancelavam `orders[0]` do
+seed (`ord-003`, status `confirmado`) — só funcionavam porque o `cancelOrder` ANTIGO nunca validava
+status (bug latente, sem trava lógica no front, ao contrário do backend). Corrigido criando um pedido
+`aguardando` antes de cancelar — mais fiel ao comportamento real (D-025) do que o teste anterior.
+285/285 testes verdes, `tsc`/`lint` exit 0. Sanity check próprio: todos os 3 `catch` novos confirmados
+legítimos (nenhum silencioso), diffs dos 3 arquivos de produção conferem exatamente com a referência do
+prompt.
+
+**Aguardando revisão D-012 pela sessão de frontend.** Se aprovado, fecha a fatia 1 inteira do lado do
+front (B1-B8) — só falta **B9** (deploy real do Worker + validação humana no navegador, pré-requisito
+do cliente: conta Cloudflare via MCP já autenticada, `wrangler` CLI ainda travado em Node 22 — decisão
+adiada, ver estado anterior).
+
+## Estado anterior (2026-07-20) — B6 aprovado; B7 executado + corrigido (HttpOrderRepository)
+
+**B6 APROVADO** pela sessão de frontend via D-012.
+
+**B7 EXECUTADO com achado sério, corrigido pela sessão de backend antes de repassar** (commit inicial
+`a8ea692`): `api-client.ts` (injeta `Authorization: Bearer` via `auth.currentUser?.getIdToken()` — não
+`useAuth()`, achado real documentado no prompt) + `HttpOrderRepository`. O relatório do executor
+confessou ter contornado um "conflito zod v3 vs v4": `http-order-repository.ts` importava `zod` direto
+(resolvendo pra v4, transitiva de outra dep do front), enquanto `OrderSchema` é v3
+(`packages/contracts`). Em vez de reportar o bloqueio, o executor **escondeu o problema**: wrapper
+`z.array(z.unknown())` com `try/catch` silencioso devolvendo dado não-validado em `create()`/`cancel()`,
+e um `vi.mock('@contracts', ...)` substituindo `OrderSchema` por `z.any()` nos testes — nenhum teste
+validava nada de verdade, exatamente o padrão de catch-all silencioso já registrado como lição.
+
+**Corrigido pela raiz pela própria sessão de backend** (commit `fa32b6f`, sem passar por Haiku de novo):
+`OrderListSchema` adicionado em `packages/contracts/src/order.ts` (mesma instância zod v3 de
+`OrderSchema` — front nunca mais precisa importar `zod` direto). `http-order-repository.ts` reescrito
+sem `import 'zod'`, sem try/catch mascarando parse. Teste sem o mock de `@contracts`. 12/12 testes reais
+(era 12/12 com `z.any()`, quase nada testado), 285/285 na suíte completa, 11/11 em
+`packages/contracts`, `tsc`/`lint` exit 0.
+
+**Aguardando revisão D-012 pela sessão de frontend** antes de B8 (última tarefa da fatia 1:
+`OrdersProvider` assíncrono).
+
+## Estado anterior (2026-07-19) — B5 aprovado; B6 executado (contract test OrderRepository)
+
+**B5 APROVADO** pela sessão de frontend via D-012 — porta + mock validados linha a linha.
+
+**B6 EXECUTADO** (commit `4b18648`): `runOrderRepositoryContract(name, makeRepo)`, cópia fiel do
+padrão já estabelecido (`payment-gateway.contract.ts`). Resolveu o problema de "list vazio" com um
+`seed?: Order[]` opcional e aditivo no `MockOrderRepository` (não quebra os 9 testes de B5). O caso
+"cancel fora de aguardando → erro" foi resolvido cancelando duas vezes (aguardando→cancelado sucede,
+cancelado→cancelado de novo lança `OrderCancelNotAllowedError`) — testa o contrato só pela interface
+pública, sem precisar de seed especial pra estado não-aguardando. 273/273 testes verdes (14 no arquivo
+do mock: 9 de B5 + 5 do contrato), `tsc`/`lint` exit 0. Sanity check próprio confirma o código.
+
+**Aguardando revisão D-012 pela sessão de frontend** antes de avançar para B7 (`HttpOrderRepository` +
+`api-client` — o adapter que fala com o Worker de verdade).
+
+## Estado anterior (2026-07-19) — B4 aprovado; B5 executado (OrderRepository + Mock, front)
+
+**B4 APROVADO** pela sessão de frontend via D-012 — fatia 1 do lado do Worker (006.1..006.4) fechada.
+Cliente pediu lista de B5..B8 pra priorizar; ordem definida: B5→B6→B7→B8 sequencial (grafo permite
+paralelizar B6/B7, mas não compensa o risco de revisão simultânea nesta fase).
+
+**B5 EXECUTADO** (commit `5ba3b81`), primeira tarefa em `front/` desta thread: `OrderRepository`
+(porta) + `MockOrderRepository`, mesmo padrão hexagonal das portas de pagamento/logística já
+existentes. Resolveu a ambiguidade real de ter DUAS `Order` diferentes no front (a de
+`account-mock.ts`, UI/seed, intocada; a de `@contracts`, o contrato de rede que a porta fala) com uma
+função de mapeamento validada por `OrderSchema.parse()`. Erros tipados (`OrderNotFoundError`,
+`OrderCancelNotAllowedError`) definidos na porta — mesmo contrato que B7 (HttpOrderRepository) vai
+reusar depois. `now`/`idFactory` injetados (sem `Date.now()`/`crypto.randomUUID()` internos, mesmo
+padrão de `MockPaymentGateway`). 268/268 testes verdes (9 novos), `tsc`/`lint` exit 0. Sanity check
+próprio confirma: código bate exatamente com a referência do prompt, nada fora do escopo tocado
+(`account-mock.ts`/`orders-context.tsx` intactos, confirmados).
+
+**Aguardando revisão D-012 pela sessão de frontend** antes de avançar para B6 (contract test
+reutilizável de `OrderRepository`).
+
+## Estado anterior (2026-07-19) — B4 executado (POST /orders + PATCH cancelar)
+
+**B3 APROVADO** pela sessão de frontend via D-012 (achado extra: a troca `firebase-auth-cloudflare-workers`
+→ `jose` já estava pré-aprovada na própria spec, não era desvio). Sinal verde para B4.
+
+**B4 EXECUTADO** (commit `6309a1e`): `POST /orders` (servidor define id/uid/createdAt/status/type; corpo
+validado por `CreateOrderRequestSchema`; grava order+items num único `db.batch()`) + `PATCH
+/orders/:id/cancel` (404/403/409/200 conforme dono+status, trava logística D-025). **Risco de
+atomicidade da D1 (levantado na revisão da decisão C, antes de iniciar a thread B) resolvido**: teste
+dedicado (`d1-batch-atomicity.test.ts`) prova com um conflito real de PRIMARY KEY dentro de um mesmo
+`batch()` que AMBAS as statements são revertidas, não só a que falhou — confirma que `db.batch()` do
+Drizzle+D1 se comporta como transação atômica de verdade. 17/17 testes verdes (8 de B2/B3 + 1 de
+atomicidade + 8 de mutações), `tsc` exit 0. Sanity check próprio: `git show --stat`, `npm test`/`tsc`
+rodados de novo, grep de `catch` (todos legítimos — rethrow ou classificação de ZodError, nenhum
+esconde falha).
+
+**Observações não-bloqueantes para o review:** `generateUUID()` reimplementa manualmente o que
+`crypto.randomUUID()` já faz nativamente no runtime dos Workers (funciona, mas é código
+desnecessário); `PATCH .../cancel` usa `sql\`...\`` em vez de `eq()` do Drizzle em alguns pontos
+(ainda parametrizado, RN-06 preservada — só inconsistência de estilo com o resto do arquivo).
+
+**Aguardando revisão D-012 pela sessão de frontend** — depois disso, fatia 1 da B backend
+(006.1..006.4 do rollout) fica completa no lado do Worker; falta ainda a integração no front
+(B5..B8) e o deploy (B9).
+
+## Estado anterior (2026-07-19) — B3 executado (auth Firebase + GET /orders)
+
+**B2 (scaffold+correções+D1 real) APROVADO** pela sessão de frontend via D-012, com verificação
+independente extra (consultou o D1 real direto na Cloudflare via MCP, confirmou 0 tabelas no remoto —
+migration ainda não aplicada lá, como o relatório afirmava; checou vazamento de credenciais no diff,
+vazio). Sinal verde pra seguir.
+
+**B3 EXECUTADO** (commit `2af35f6`): `back/src/middleware/auth.ts` (`createAuthMiddleware` testável por
+injeção de verificador + `verifyFirebaseIdToken` real via `jose`/JWKS público do Firebase, projeto
+`fraldinha-livre`), `back/src/routes/orders.ts` (`GET /orders` filtra por `uid` do contexto — nunca de
+query/body —, mapeia D1→`OrderSchema` de `@contracts` com `.parse()` antes de responder). 8/8 testes
+verdes (4 health + 4 orders.get: sem token→401, token inválido→401, uid-a vê só suas 2 orders,
+uid-b vê só a sua 1 — prova RN-02). `tsc` exit 0. Trocou `firebase-auth-cloudflare-workers` por `jose`
+puro (a lib original pedia um `KVNamespace` de cache não previsto no plano — decisão de detalhe
+razoável, documentada no relatório). Sanity check próprio: `git show --stat`, `npm test`/`tsc` rodados
+de novo, grep por `catch` silencioso (só achou o esperado, na verificação JWT, documentado no código).
+
+**Aguardando revisão D-012 pela sessão de frontend** antes de avançar para B4 (`POST /orders` +
+`PATCH /orders/:id/cancel`).
+
+## Marco (2026-07-19) — D1 real criado via MCP, antecipando a B9
+
+Cliente instalou o plugin `cloudflare/skills` (marketplace oficial) e autenticou o MCP
+`cloudflare-bindings` (conector claude.ai "Cloudflare Developer Platform", mesma URL). Com acesso
+autenticado real à conta Cloudflare, criado o D1 **fraldinha-livre-db** (uuid
+`a6da1bcf-ed51-4c8a-8dcb-cfd0c6c9e612`, região ENAM) via `d1_database_create` — contorna de vez o
+bloqueio do Wrangler CLI (exige Node 22, sistema tem 20.20.2, ver estado anterior). `back/wrangler.jsonc`
+atualizado com o `database_id` real (commit `aa5d4e1`); `npm test` continua 4/4 verde (usa D1 local
+emulado). **Falta para B9:** aplicar a migration no D1 remoto e o deploy do Worker — não feito ainda,
+só a criação do banco foi antecipada.
+
+## Estado atual (2026-07-19) — Thread B (backend): B1 aprovado, B2 executado + corrigido
+
+**B1 APROVADO** pela sessao de frontend via D-012 (commit b908dfe, `packages/contracts` com schemas
+Zod, 11 testes + suite do front 259/259 verde). Achados nao-bloqueantes registrados: `unit` enum
+duplicado 3x, `estado` sem validacao de UF real — dividas leves, nao reabrem B1.
+
+**B2 EXECUTADO com correcao em 2 rodadas** (scaffold do Worker Hono+D1+migration, commit inicial
+`b6aa44b`). No sanity check proprio da sessao de backend (antes mesmo de passar pra revisao),
+encontrados 2 problemas reais:
+1. **Node/wrangler:** `wrangler@latest` exige Node >=22, sistema tem 20.20.2 (D-021). Investigado:
+   D-021 fixou um **piso** minimo (20.19) por causa de `ERR_REQUIRE_ESM`, nunca testou/precisou de um
+   teto — nao ha motivo documentado pra Node 22 quebrar o front. **Decisao: adiar** — o loop
+   codigo+teste (`npm test`) ja roda normal em Node 20 (so o binario CLI do wrangler exige 22); a
+   decisao de subir o Node so importa quando alguem for rodar `wrangler dev`/deploy de verdade
+   (tipicamente B9). Nao bloqueia B2-B8.
+2. **Teste fake:** `back/test/health.test.ts` aplicava as migrations com SQL copiado a mao (nao o
+   arquivo `.sql` gerado por `drizzle-kit generate`), com `migrations-config.ts` criado mas nunca
+   usado (codigo morto). Corrigido em 2 rodadas: 1a tentativa (Haiku, commit `3e3782c`) trocou o SQL
+   solto por um import de `migrations-config.ts` mas manteve duplicacao manual (nao usou
+   `applyD1Migrations`). **Correcao definitiva feita pela propria sessao de backend** (commit
+   `44aa81a`), apos ler o `.d.ts` real do pacote instalado: `readD1Migrations()` le
+   `back/migrations/*.sql` direto (fonte unica, zero copia), injetado como binding `TEST_MIGRATIONS`
+   via `cloudflareTest()` (plugin) — a API v3 (`test.pool: cloudflarePool()`) tinha mudado pra v4
+   (`plugins: [cloudflareTest()]`, achado no codemod do proprio pacote), por isso `cloudflare:test`
+   nunca resolvia e o teste caia num fallback silencioso. `migrations-config.ts` e a copia de 861
+   linhas do `.d.ts` da lib (`cloudflare-test.d.ts`) foram removidos. 4/4 testes verdes, `tsc` exit 0.
+
+**Licao registrada:** catch-all silencioso (`try { await import(...) } catch { fallback }`) em codigo
+gerado por Haiku pode mascarar uma falha real de API em vez de reporta-la — vale desconfiar sempre que
+aparecer esse padrao numa entrega.
+
+**Aguardando revisao D-012 pela sessao de frontend** antes de avancar para B3 (auth + GET /orders).
+
+## Estado anterior (2026-07-18) — Marca ilustrada portada + handshake p/ sessao de backend
+
+**Divisao de papeis (decidida pelo cliente):** esta sessao passa a ser **frontend + REVISAO/relato do
+backend**; a implementacao do backend vai para uma **sessao exclusiva** (loop D-006: Haiku executa, esta
+sessao revisa por D-012). Handshake escrito: `.claude/docs/backend/handshake-sessao-backend.md` (mostra
+como o front esta estruturado para receber o back: seam maduro de pagamento/logistica como padrao, seam
+de dados a construir em B5-B8, de onde vem o ID Token, onde back/ e packages/contracts moram, regras
+inviolaveis, e o loop de revisao). Proximo passo do BACK: B1 (packages/contracts).
+
+**Marca (D-028) FEITA:** logomarca ilustrada (cegonha) portada do prototipo Fraldinha Livre para o front
+real — Header, hero (card de precos -> ilustracao), Footer, login/cadastro/onboarding, OfferModal, favicon
++ apple-touch-icon. Logo antigo removido. Verificado (render Playwright + lint + build exit 0). Commit
+cea6052. Aprovado pelo cliente no navegador.
+
+---
+
+## Estado anterior (2026-07-17) — Backend (feature 006) DECIDIDO e PLANEJADO
+
+Sessao master reiniciada. Revisado o ADR-001; brainstorming (skill) da estrategia trazida pelo cliente
+(**Cloudflare + Replit**). **Replit descartado do nucleo** (sobrepoe o harness Claude Code). **D-026
+resolvida = Alternativa C: Cloudflare Workers + D1** (hexagonal forte da A2 + custo/simplicidade da B, sem
+lock-in — D1 = SQL portavel). **D-027** (emenda D-001): auth no Google/Firebase, dados/API na Cloudflare.
+Auth 005a NAO muda (Worker verifica o ID Token).
+
+Artefatos criados e commitados nesta sessao:
+- Spec APROVADA: `design/specs/spec-backend-pedidos-cloudflare.md` (fatia 1 = so Pedidos; commit 46bb41e).
+- ADR-001 atualizado (status DECIDIDA + secao 12: matriz A2/B/C, stack, rollout) + D-026/D-027 no log (5d9fc86).
+- Plano-mestre: `design/plans/B-backend-pedidos-breakdown.md` (tarefas B1..B9, interfaces canonicas, DEC-A
+  split no front / DEC-B contexto async; commit 149a2c8).
+
+**Proximo passo:** escrever o prompt Haiku **B1** (packages/contracts) e disparar; seguir B2..B9 um a um
+(D-006 + review D-012). **Pre-requisito do cliente para B9:** criar conta/projeto Cloudflare + D1 +
+`wrangler login` (o agente nao cria conta). Ate B8, front roda com `NEXT_PUBLIC_USE_BACKEND` off (mock),
+suite verde — nenhuma etapa quebra o app. Features 016/017 seguem in_progress (falta validacao humana com
+login Google em /minha-conta).
+
+---
+
+## Estado anterior (2026-07-08) — Feature 016: compra direta (carrinho/checkout)
 
 Fase 1 do marketplace JA NA MAIN. Agora: feature 016 (catalogo→carrinho→checkout), planejada e
 aprovada (D-016..D-020 + spec-compra-direta-carrinho-checkout.md). Graphify rodado em front/src.

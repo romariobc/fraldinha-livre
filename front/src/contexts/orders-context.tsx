@@ -1,22 +1,108 @@
 'use client'
 
-import { createContext, useContext, useState, ReactNode } from 'react'
-import { Order, Address, INITIAL_ORDERS } from '@/lib/account-mock'
+import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth } from '@/lib/firebase'
+import { Order, Address } from '@/lib/account-mock'
 import type { CartItem } from '@/lib/domain/cart'
 import { buildOrdersFromCart } from '@/lib/domain/order'
+import type { OrderRepository } from '@/lib/ports/order-repository'
+import { MockOrderRepository } from '@/lib/adapters/mock-order-repository'
+import { HttpOrderRepository } from '@/lib/adapters/http-order-repository'
+import type { Order as ContractOrder, CreateOrderRequest } from '@contracts'
+
+function contractOrderToAccountMockOrder(order: ContractOrder): Order {
+  return {
+    id: order.id,
+    type: order.type,
+    product: order.product,
+    quantity: order.quantity,
+    unit: order.unit,
+    deliveryAddress: order.deliveryAddress,
+    status: order.status,
+    createdAt: order.createdAt,
+    price: order.price,
+    supplierId: order.supplierId,
+    supplierName: order.supplierName,
+    items: order.items,
+  }
+}
 
 interface OrdersContextType {
   orders: Order[]
+  loading: boolean
+  error: string | null
   createDirectOrder: (product: string, quantity: number, deliveryAddress: Address, price: number, supplierId?: string, supplierName?: string) => Order
-  createOrdersFromCart: (items: CartItem[], address: Address) => Order[]
-  cancelOrder: (orderId: string) => void
+  createOrdersFromCart: (items: CartItem[], address: Address) => Promise<Order[]>
+  cancelOrder: (orderId: string) => Promise<void>
 }
 
 const OrdersContext = createContext<OrdersContextType | undefined>(undefined)
 
 export function OrdersProvider({ children }: { children: ReactNode }) {
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS)
+  const [orders, setOrders] = useState<Order[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
+  const useBackend = process.env.NEXT_PUBLIC_USE_BACKEND === 'true'
+
+  const repo: OrderRepository = useMemo(() => {
+    if (useBackend) return new HttpOrderRepository()
+    return new MockOrderRepository({
+      now: () => new Date().toISOString(),
+      idFactory: () => crypto.randomUUID(),
+    })
+  }, [useBackend])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const load = async () => {
+      if (cancelled) return
+      setLoading(true)
+      setError(null)
+
+      try {
+        const result = await repo.list()
+        if (cancelled) return
+        setOrders(result.map(contractOrderToAccountMockOrder))
+      } catch (err) {
+        if (cancelled) return
+        console.error('Erro ao carregar pedidos:', err)
+        setError('Não foi possível carregar seus pedidos. Tente novamente.')
+      } finally {
+        if (cancelled) return
+        setLoading(false)
+      }
+    }
+
+    if (!useBackend) {
+      // Modo mock: sem auth envolvida, carrega direto (comportamento original).
+      load()
+      return () => { cancelled = true }
+    }
+
+    // Modo backend: pedidos sao do usuario. Sem sessao Firebase resolvida nao
+    // ha ID Token, e list() sem token e um 401 garantido — entao o load espera
+    // o onAuthStateChanged: com usuario busca; sem usuario, lista vazia.
+    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
+      if (cancelled) return
+      if (fbUser) {
+        load()
+      } else {
+        setOrders([])
+        setError(null)
+        setLoading(false)
+      }
+    })
+
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
+  }, [repo, useBackend])
+
+  // Codigo morto (sem chamador em producao, sobrou do flip S5b/D-023) - NAO MEXER, fora de escopo B8.
   const createDirectOrder = (
     product: string,
     quantity: number,
@@ -46,63 +132,56 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         unit: 'un',
       }],
     }
-    setOrders([...orders, newOrder])
+    setOrders(prev => [...prev, newOrder])
     return newOrder
   }
 
-  const createOrdersFromCart = (items: CartItem[], address: Address): Order[] => {
-    // ID factory for unique order IDs
+  const createOrdersFromCart = async (items: CartItem[], address: Address): Promise<Order[]> => {
     let idCounter = 0
     const idFactory = () => {
       idCounter++
-      return `ord-${Date.now()}-${idCounter}`
+      return `tmp-${idCounter}` // descartado - servidor define o id real (RN-03)
     }
-
-    // ISO 8601 timestamp for createdAt
     const now = new Date().toISOString()
 
-    // Build domain orders from cart (grouped by supplier)
+    // DEC-A: o split por fornecedor continua no front (dominio puro, ja testado, T1).
     const domainOrders = buildOrdersFromCart(items, address, idFactory, now)
 
-    // Map DomainOrder → Order (account-mock format)
-    const newOrders: Order[] = domainOrders.map((domainOrder) => {
-      // Calculate total quantity sum
+    const newOrders: Order[] = []
+    for (const domainOrder of domainOrders) {
       const totalQuantity = domainOrder.items.reduce((sum, item) => sum + item.quantity, 0)
-
-      // Product field: single item name or "N itens"
       const productField = domainOrder.items.length === 1
         ? domainOrder.items[0].productName
         : `${domainOrder.items.length} itens`
 
-      const order: Order = {
-        id: domainOrder.id,
-        type: 'compra-direta',
-        status: 'aguardando',
+      const createRequest: CreateOrderRequest = {
         product: productField,
         quantity: totalQuantity,
         unit: 'un',
-        deliveryAddress: address,
-        createdAt: domainOrder.createdAt,
         price: domainOrder.total,
         supplierId: domainOrder.supplierId,
         supplierName: domainOrder.supplierName,
+        deliveryAddress: address,
         items: domainOrder.items,
       }
 
-      return order
-    })
+      // DEC-A: uma chamada POST /orders por pedido resultante do split.
+      const created = await repo.create(createRequest)
+      newOrders.push(contractOrderToAccountMockOrder(created))
+    }
 
-    // Append to orders state and return the new orders
     setOrders((prev) => [...prev, ...newOrders])
     return newOrders
   }
 
-  const cancelOrder = (orderId: string) => {
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'cancelado' } : o))
+  const cancelOrder = async (orderId: string): Promise<void> => {
+    const updated = await repo.cancel(orderId)
+    const mapped = contractOrderToAccountMockOrder(updated)
+    setOrders((prev) => prev.map((o) => (o.id === orderId ? mapped : o)))
   }
 
   return (
-    <OrdersContext.Provider value={{ orders, createDirectOrder, createOrdersFromCart, cancelOrder }}>
+    <OrdersContext.Provider value={{ orders, loading, error, createDirectOrder, createOrdersFromCart, cancelOrder }}>
       {children}
     </OrdersContext.Provider>
   )

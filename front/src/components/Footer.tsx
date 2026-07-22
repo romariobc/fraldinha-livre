@@ -68,11 +68,11 @@ export default function Footer() {
               <div>
                 <Link href="/" className="flex items-center gap-2.5">
                   <Image
-                    src="/assets/img/Logo_simples_sem_fundo.png"
+                    src="/assets/img/cegonha.png"
                     alt="Fraldinha Livre"
-                    width={40}
-                    height={40}
-                    className="h-9 w-auto brightness-0 invert"
+                    width={589}
+                    height={366}
+                    className="h-11 w-auto"
                   />
                   <div className="flex flex-col leading-tight">
                     <span className="font-display font-black text-base text-white tracking-tight">

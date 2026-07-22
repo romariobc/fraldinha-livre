@@ -55,6 +55,15 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | H-008 | Footer condicional + correcao de links + paginas 'Em construcao' (feature 015) | 1 | APROVADO (f87b84f) via D-012 — branch verde |
 | H-009 | Fix mascaras/limite de CPF e telefone no perfil (feature 007a) | 1 | APROVADO (65d2e43) via D-012 — cap+mascara verificados por leitura; lint 0 |
 | H-003 | Bugs da loja (catalogo ?page, busca 'todos', hydration, esqueci-senha, EmConstrucao) | 1 | APROVADO (b6c4e6c) via D-012 — lint 0, build ok |
+| B (breakdown) | Backend de pedidos (Cloudflare Workers + D1) — fatia 1, tarefas B1..B9 | 1 | breakdown APROVADO (2026-07-17); prompts B1..Bn a escrever no disparo |
+| B1 | packages/contracts: schemas Zod de Order/OrderItem/Address | 1 | APROVADO (commit b908dfe) via D-012 pela sessão de frontend |
+| B2 | back/: scaffold Worker Hono + D1 + migration de pedidos | 1 | APROVADO (commits b6aa44b, 44aa81a, aa5d4e1) via D-012 pela sessão de frontend — incluindo D1 real criado via MCP |
+| B3 | back/: auth Firebase ID Token + GET /orders | 1 | APROVADO (commits 2af35f6, 20c62dc) via D-012 pela sessão de frontend |
+| B4 | back/: POST /orders + PATCH /orders/:id/cancel | 1 | APROVADO (commit 6309a1e) via D-012 pela sessão de frontend |
+| B5 | front/: OrderRepository (porta) + MockOrderRepository | 1 | APROVADO (commit 5ba3b81) via D-012 pela sessão de frontend |
+| B6 | front/: contract test reutilizável runOrderRepositoryContract | 1 | APROVADO (commit 4b18648) via D-012 pela sessão de frontend |
+| B7 | front/: HttpOrderRepository + api-client | 1 | APROVADO (commits a8ea692, fa32b6f) via D-012 pela sessão de frontend — verificação linha a linha do fix zod |
+| B8 | front/: OrdersProvider assíncrono + loading/erro + flag backend | 1 | EXECUTADO (commit 3299c98) — 285/285 testes, aguardando revisão D-012 pela sessão de frontend — última tarefa da fatia 1 |
 
 **Ordem de execucao (D-011):** H-002 → H-005 → [H-006 limpeza para main] → H-004 → H-003 → 006 backend.
 

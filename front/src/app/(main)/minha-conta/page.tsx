@@ -16,7 +16,7 @@ function MinhaContaContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user, loading } = useAuth()
-  const { orders } = useOrders()
+  const { orders, loading: ordersLoading, error: ordersError } = useOrders()
 
   // Hooks SEMPRE devem ser chamados na mesma ordem, antes de qualquer early return
   const [activeTab, setActiveTab]   = useState<TabKey>(() => {
@@ -38,6 +38,18 @@ function MinhaContaContent() {
 
   if (!user) {
     return null // Redirecionar em progresso
+  }
+
+  if (ordersLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Carregando pedidos...</div>
+  }
+
+  if (ordersError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-brand-muted">{ordersError}</p>
+      </div>
+    )
   }
 
   const returnTo = searchParams.get('returnTo')

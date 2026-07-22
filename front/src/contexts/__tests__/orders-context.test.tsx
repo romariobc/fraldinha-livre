@@ -1,6 +1,6 @@
 /// <reference types="vitest/globals" />
 
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, waitFor } from '@testing-library/react'
 import { ReactNode } from 'react'
 import { OrdersProvider, useOrders } from '../orders-context'
 import { CartProvider } from '../cart-context'
@@ -59,8 +59,11 @@ describe('OrdersContext - createOrdersFromCart', () => {
     cep: '01310-100',
   }
 
-  it('should create orders from cart with 2 suppliers', () => {
+  it('should create orders from cart with 2 suppliers', async () => {
     const { result } = renderHook(() => useOrders(), { wrapper: AllProviders })
+
+    // Wait for initial loading to finish
+    await waitFor(() => expect(result.current.loading).toBe(false))
 
     // Two items from different suppliers
     const item1 = {
@@ -84,8 +87,8 @@ describe('OrdersContext - createOrdersFromCart', () => {
     }
 
     let orders
-    act(() => {
-      orders = result.current.createOrdersFromCart([item1, item2], mockAddress)
+    await act(async () => {
+      orders = await result.current.createOrdersFromCart([item1, item2], mockAddress)
     })
 
     expect(orders).toHaveLength(2)
@@ -115,8 +118,11 @@ describe('OrdersContext - createOrdersFromCart', () => {
     expect(order2.items![0].quantity).toBe(1)
   })
 
-  it('should set correct product field for single item', () => {
+  it('should set correct product field for single item', async () => {
     const { result } = renderHook(() => useOrders(), { wrapper: AllProviders })
+
+    // Wait for initial loading to finish
+    await waitFor(() => expect(result.current.loading).toBe(false))
 
     const item = {
       productId: 'p1',
@@ -129,15 +135,18 @@ describe('OrdersContext - createOrdersFromCart', () => {
     }
 
     let createdOrders
-    act(() => {
-      createdOrders = result.current.createOrdersFromCart([item], mockAddress)
+    await act(async () => {
+      createdOrders = await result.current.createOrdersFromCart([item], mockAddress)
     })
 
     expect(createdOrders![0].product).toBe('Fralda Premium')
   })
 
-  it('should set product field to "N itens" for multiple items', () => {
+  it('should set product field to "N itens" for multiple items', async () => {
     const { result } = renderHook(() => useOrders(), { wrapper: AllProviders })
+
+    // Wait for initial loading to finish
+    await waitFor(() => expect(result.current.loading).toBe(false))
 
     const items = [
       {
@@ -161,15 +170,18 @@ describe('OrdersContext - createOrdersFromCart', () => {
     ]
 
     let orders
-    act(() => {
-      orders = result.current.createOrdersFromCart(items, mockAddress)
+    await act(async () => {
+      orders = await result.current.createOrdersFromCart(items, mockAddress)
     })
 
     expect(orders![0].product).toBe('2 itens')
   })
 
-  it('should append orders to existing orders in context', () => {
+  it('should append orders to existing orders in context', async () => {
     const { result } = renderHook(() => useOrders(), { wrapper: AllProviders })
+
+    // Wait for initial loading to finish
+    await waitFor(() => expect(result.current.loading).toBe(false))
 
     const item = {
       productId: 'p1',
@@ -183,16 +195,19 @@ describe('OrdersContext - createOrdersFromCart', () => {
 
     const initialOrderCount = result.current.orders.length
 
-    act(() => {
-      result.current.createOrdersFromCart([item], mockAddress)
+    await act(async () => {
+      await result.current.createOrdersFromCart([item], mockAddress)
     })
 
     // Check that orders were appended
     expect(result.current.orders.length).toBe(initialOrderCount + 1)
   })
 
-  it('should set deliveryAddress correctly', () => {
+  it('should set deliveryAddress correctly', async () => {
     const { result } = renderHook(() => useOrders(), { wrapper: AllProviders })
+
+    // Wait for initial loading to finish
+    await waitFor(() => expect(result.current.loading).toBe(false))
 
     const item = {
       productId: 'p1',
@@ -205,15 +220,18 @@ describe('OrdersContext - createOrdersFromCart', () => {
     }
 
     let orders
-    act(() => {
-      orders = result.current.createOrdersFromCart([item], mockAddress)
+    await act(async () => {
+      orders = await result.current.createOrdersFromCart([item], mockAddress)
     })
 
     expect(orders![0].deliveryAddress).toEqual(mockAddress)
   })
 
-  it('should set createdAt to ISO 8601 timestamp', () => {
+  it('should set createdAt to ISO 8601 timestamp', async () => {
     const { result } = renderHook(() => useOrders(), { wrapper: AllProviders })
+
+    // Wait for initial loading to finish
+    await waitFor(() => expect(result.current.loading).toBe(false))
 
     const item = {
       productId: 'p1',
@@ -226,15 +244,18 @@ describe('OrdersContext - createOrdersFromCart', () => {
     }
 
     let orders
-    act(() => {
-      orders = result.current.createOrdersFromCart([item], mockAddress)
+    await act(async () => {
+      orders = await result.current.createOrdersFromCart([item], mockAddress)
     })
 
     expect(orders![0].createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
   })
 
-  it('should calculate total quantity correctly for multiple items in same order', () => {
+  it('should calculate total quantity correctly for multiple items in same order', async () => {
     const { result } = renderHook(() => useOrders(), { wrapper: AllProviders })
+
+    // Wait for initial loading to finish
+    await waitFor(() => expect(result.current.loading).toBe(false))
 
     const items = [
       {
@@ -258,8 +279,8 @@ describe('OrdersContext - createOrdersFromCart', () => {
     ]
 
     let orders
-    act(() => {
-      orders = result.current.createOrdersFromCart(items, mockAddress)
+    await act(async () => {
+      orders = await result.current.createOrdersFromCart(items, mockAddress)
     })
 
     // Total quantity should be sum of all quantities
@@ -268,30 +289,90 @@ describe('OrdersContext - createOrdersFromCart', () => {
 })
 
 describe('OrdersContext - cancelOrder', () => {
-  it('should cancel an order by changing status to cancelado', () => {
+  const mockAddress = {
+    logradouro: 'Rua Teste',
+    numero: '123',
+    complemento: 'Apt 456',
+    bairro: 'Centro',
+    cidade: 'São Paulo',
+    estado: 'SP',
+    cep: '01310-100',
+  }
+
+  it('should cancel an order by changing status to cancelado', async () => {
     const { result } = renderHook(() => useOrders(), { wrapper: AllProviders })
 
-    const orderToCancel = result.current.orders[0]
+    // Wait for initial loading to finish
+    await waitFor(() => expect(result.current.loading).toBe(false))
 
-    act(() => {
-      result.current.cancelOrder(orderToCancel.id)
+    // Create a new order (with status 'aguardando') to cancel
+    const item = {
+      productId: 'p1',
+      productName: 'Fralda Premium',
+      supplierId: 'sup-001',
+      supplierName: 'Fornecedor A',
+      unitPrice: 5000,
+      quantity: 1,
+      unit: 'un' as const,
+    }
+
+    let createdOrders
+    await act(async () => {
+      createdOrders = await result.current.createOrdersFromCart([item], mockAddress)
+    })
+
+    const orderToCancel = createdOrders![0]
+
+    await act(async () => {
+      await result.current.cancelOrder(orderToCancel.id)
     })
 
     const updatedOrder = result.current.orders.find(o => o.id === orderToCancel.id)
     expect(updatedOrder?.status).toBe('cancelado')
   })
 
-  it('should not affect other orders when canceling one', () => {
+  it('should not affect other orders when canceling one', async () => {
     const { result } = renderHook(() => useOrders(), { wrapper: AllProviders })
 
-    const orderToCancel = result.current.orders[0]
-    const otherOrdersStatuses = result.current.orders.slice(1).map(o => o.status)
+    // Wait for initial loading to finish
+    await waitFor(() => expect(result.current.loading).toBe(false))
 
-    act(() => {
-      result.current.cancelOrder(orderToCancel.id)
+    // Create two new orders to test cancellation
+    const items = [
+      {
+        productId: 'p1',
+        productName: 'Fralda A',
+        supplierId: 'sup-001',
+        supplierName: 'Fornecedor A',
+        unitPrice: 5000,
+        quantity: 1,
+        unit: 'un' as const,
+      },
+      {
+        productId: 'p2',
+        productName: 'Fralda B',
+        supplierId: 'sup-002',
+        supplierName: 'Fornecedor B',
+        unitPrice: 3000,
+        quantity: 1,
+        unit: 'un' as const,
+      },
+    ]
+
+    let createdOrders
+    await act(async () => {
+      createdOrders = await result.current.createOrdersFromCart(items, mockAddress)
     })
 
-    const updatedOtherOrdersStatuses = result.current.orders.slice(1).map(o => o.status)
-    expect(updatedOtherOrdersStatuses).toEqual(otherOrdersStatuses)
+    const orderToCancel = createdOrders![0]
+    const otherOrder = createdOrders![1]
+    const otherOrderInitialStatus = otherOrder.status
+
+    await act(async () => {
+      await result.current.cancelOrder(orderToCancel.id)
+    })
+
+    const updatedOtherOrder = result.current.orders.find(o => o.id === otherOrder.id)
+    expect(updatedOtherOrder?.status).toBe(otherOrderInitialStatus)
   })
 })

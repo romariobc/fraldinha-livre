@@ -363,7 +363,7 @@ por status espelha a realidade logistica. **How to apply:** cancelamento e mutac
 reflexo no market-context (padrao do checkout S5b); edicao real e aprovacao pelo fornecedor ficam para o 006+.
 Spec: spec-pedido-detalhe-cancelamento.md.
 
-## D-026 — Estrategia de backend: como o front sai do mock (2026-07-11) — AGUARDANDO APROVACAO
+## D-026 — Estrategia de backend: como o front sai do mock (2026-07-11) — RESOLVIDA (2026-07-17): ALTERNATIVA C
 
 Antes de escolher onde o backend vai morar, auditamos o estado real do front. Achado central: o seam de
 **pagamento/logistica** ja esta pronto (portas hexagonais + contract tests + mocks), mas o seam de **dados**
@@ -387,3 +387,53 @@ Custo GCP ~R$ 0 nas duas (free tier); o custo real e esforco, concentrado no fro
 **Why:** decidir backend sem enxergar o buraco do seam de dados levaria a subestimar o retrabalho no front.
 **How to apply:** nada de codigo ate o cliente escolher A2 vs B; comecar pelas portas de repositorio +
 persistencia de pedidos, que valem para as duas. Doc completo: `design/adr/adr-001-estrategia-backend.md`.
+
+**RESOLUCAO (2026-07-17) — ALTERNATIVA C: Cloudflare Workers + D1.** Apos brainstorming (estrategia
+Cloudflare + Replit trazida pelo cliente; Replit descartado do nucleo por sobrepor o harness Claude Code
+que ja temos), o cliente aprovou uma terceira alternativa que herda o melhor de A2 e B:
+- **Runtime:** Cloudflare Workers (Hono) em `back/`, no monorepo (preserva D-005 e `packages/contracts`).
+- **Dados:** Cloudflare D1 (SQLite) via Drizzle ORM — **SQL portavel, sem o lock-in do Firestore** (o
+  contra decisivo da Alternativa B). Migrations versionadas (drizzle-kit); dev local via Wrangler.
+- **Auth:** Firebase (005a) **nao muda** — o Worker verifica o Firebase ID Token (lib
+  `firebase-auth-cloudflare-workers`/`jose`, sem Admin SDK, que nao roda no runtime do Workers).
+- **Hexagonal forte** (como A2): autorizacao centralizada e testavel no Worker, nao espalhada em
+  Security Rules (ganho sobre B). Perimetro de seguranca (DDoS/WAF/TLS) gratis pela Cloudflare.
+- **A1 e A2 descartadas; B descartada** (lock-in). Custo ~R$ 0 no free tier.
+Spec da 1a fatia (so Pedidos): `design/specs/spec-backend-pedidos-cloudflare.md`. Consequencia de infra
+registrada na D-027.
+
+## D-027 — Emenda a D-001: auth no Google/Firebase, dados/API na Cloudflare (2026-07-17) — VIGENTE (emenda D-001)
+
+A D-001 dizia "infra 100% Google Cloud". Com a resolucao da D-026 (Alternativa C), o projeto passa a ter
+**duas nuvens, por dominio separado**:
+- **Identidade/auth:** Google/Firebase Auth (005a) — inalterado.
+- **Dados e API:** Cloudflare (Workers + D1).
+
+**Why:** a Cloudflare entrega, no free tier, (a) D1 = **SQL portavel** (elimina o lock-in do Firestore que
+condenava a Alternativa B), (b) **perimetro de seguranca gratis** (DDoS/WAF/TLS/rate-limit) que no Cloud
+Run/VM daria trabalho, e (c) custo perto de zero sem container sempre-ligado. O ganho supera o custo de
+operar um segundo fornecedor — e auth e dados sao dominios naturalmente separados.
+
+**How to apply:** auth continua no Firebase; nenhum dado sensivel novo vai para o Firestore alem do perfil
+(users/{uid}, 007a) — dados de negocio (pedidos, produtos) vao para o D1 via Worker. Vercel e Azure seguem
+descartadas (D-001). Ao citar "infra do projeto" em docs, usar esta divisao. O `integration-guide.md` sera
+reescrito para o fluxo Firebase ID Token -> Worker Hono -> Drizzle -> D1 (remover NextAuth/REST localhost).
+
+## D-028 — Logomarca ilustrada (cegonha) adotada no front (2026-07-18) — VIGENTE
+
+Portada a logomarca ilustrada do protótipo *Fraldinha Livre* (Claude Design, projeto 019dffbc…, asset
+`assets/cegonha.png` — arte do próprio cliente) para o front real. Substitui o antigo
+`Logo_simples_sem_fundo.png` (line-art minimalista) pela **cegonha ilustrada entregando o presente do
+bebê** em TODAS as superfícies de marca: Header, hero da landing (o card de preços Pampers/Huggies/
+MamyPoko foi SUBSTITUÍDO pela ilustração, mantendo os selos "Pedido confirmado" e "Economia média"),
+Footer (removido o filtro `brightness-0 invert` que achataria a ilustração), login, cadastro, onboarding,
+OfferModal. Favicon + apple-touch-icon regenerados a partir da cegonha (via sharp, fundo sky #EAF6FD);
+`favicon.ico` antigo removido (Next serve `src/app/icon.png` + `apple-icon.png`).
+
+**Why:** análise comparativa (protótipo × front real) concluiu que a logo do protótipo é mais memorável e
+on-brand, e é o único ativo **portável já na Fase 1** (não depende do gate do leilão / Fase 2, D-014). Mesma
+linhagem de marca (cegonha, azul+laranja, tagline "fraldas para o seu bebê") — não é rebrand, é upgrade do
+símbolo. **How to apply:** asset em `public/assets/img/cegonha.png` (589×366, transparência+fundo de céu
+próprio); `next/image` com width=589 height=366 e `w-auto` para não distorcer. Verificado por render
+(Playwright: landing+login), lint e build exit 0. O resto do protótipo (leilão reverso) segue como
+referência da Fase 2, NÃO implementado (gate D-014).

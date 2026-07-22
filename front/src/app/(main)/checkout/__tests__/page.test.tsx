@@ -11,6 +11,30 @@ import { type ReactNode } from 'react'
 import CheckoutPage from '../page'
 import { vi } from 'vitest'
 
+// Mock firebase
+vi.mock('@/lib/firebase', () => ({
+  auth: {},
+  db: {},
+  googleProvider: {},
+}))
+
+// Mock firebase/auth
+vi.mock('firebase/auth', () => ({
+  onAuthStateChanged: vi.fn((auth, callback) => {
+    callback(null)
+    return vi.fn()
+  }),
+  signInWithPopup: vi.fn(),
+  signOut: vi.fn(),
+}))
+
+// Mock firebase/firestore
+vi.mock('firebase/firestore', () => ({
+  doc: vi.fn(),
+  getDoc: vi.fn(),
+  updateDoc: vi.fn(),
+}))
+
 // Mock next/navigation (useRouter usado pela guarda de login — D-024)
 let mockPush = vi.fn()
 vi.mock('next/navigation', () => ({

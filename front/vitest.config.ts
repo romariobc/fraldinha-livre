@@ -8,6 +8,7 @@ export default defineConfig({
     alias: {
       // Alias absoluto (o Vite nao resolve caminhos relativos em resolve.alias)
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@contracts': fileURLToPath(new URL('../packages/contracts/src', import.meta.url)),
     },
   },
   test: {

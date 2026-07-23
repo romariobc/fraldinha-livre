@@ -1,6 +1,29 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-22) — Thread B mergeada na main; thread P (Produtos) iniciada, P1 executado
+## Estado atual (2026-07-22) — P1 aprovado (com fix); P2 executado — falta só P3 (deploy)
+
+**P1 APROVADO** pela sessão de frontend via D-012, com 1 ressalva de conformidade: o critério "script
+lê `front/src/lib/products.ts`" não foi cumprido ao pé da letra (entregue como cópia manual). Resolvido
+trocando "guia" por "sensor": `products.seed-consistency.test.ts` importa o array real do front dentro
+do ambiente de teste do Worker (`@cloudflare/vitest-pool-workers` resolve o import relativo sem
+problema — testado) e compara com `GET /products` nas duas direções. Spec emendada (commit `7d08f46`).
+
+**Lição de processo incorporada ao template:** "Passo 0" obrigatório adicionado a
+`plans/README.md` — todo prompt Haiku agora exige `git rev-parse --show-toplevel` confirmado antes de
+tocar em qualquer arquivo, motivado pelo incidente de commit no repo principal da P1.
+
+**P2 EXECUTADO** (commit `256d22a`) — `ordersPostHandler` agora revalida `price`/`supplierId`
+ausentes, busca produtos em lote (`WHERE id IN`), e checa produto/preço/fornecedor/total na ordem
+certa, tudo antes do `db.batch()`. Passo 0 confirmado corretamente desta vez (sem repetir o incidente
+da P1). 30/30 testes verdes (24 de P1 + 6 novos), `d1-batch-atomicity.test.ts` confirmado intacto,
+`tsc` exit 0. Sanity check próprio: commit confirmado como ancestral do HEAD certo (não repetiu o
+problema de diretório), imports limpos (sem duplicar), 3 `catch` (mesmos de antes, nenhum novo).
+
+**Aguardando revisão D-012 pela sessão de frontend.** Depois disso, só falta **P3** (deploy real —
+migrations remotas antes do deploy, smoke test, regressão de checkout no navegador) para fechar a
+fatia 2 (Produtos) inteira.
+
+## Estado anterior (2026-07-22) — Thread B mergeada na main; thread P (Produtos) iniciada, P1 executado
 
 **Merge da thread B para a main:** PR #8 (38 commits, 81 arquivos) revisado pelo Claude Code Review
 automático (limpo, sem comentários) e mesclado (`13ad06b`). `main` local sincronizada. Toda a fatia 1

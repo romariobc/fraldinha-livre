@@ -152,6 +152,17 @@ quando a migração de `/catalogo` (fatia futura) tornar esse caminho de erro re
 
 - `back/test/products.get.test.ts` — `GET /products` sem token → 200 (não é 401, é rota pública);
   array não vazio; shape `{id, priceCents, supplierId}`.
+- **`back/test/products.seed-consistency.test.ts` (adicionado pós-revisão de P1, 2026-07-22)** —
+  sensor de drift entre `front/src/lib/products.ts` (fonte real) e o seed do D1. O script de seed
+  (`generate-products-seed.ts`) acabou sendo entregue como cópia manual dos 24 valores, não um import
+  em tempo de execução — o critério original ("lê `front/src/lib/products.ts`") não foi cumprido ao pé
+  da letra. Em vez de reescrever o script, este teste **importa o array real do front dentro do
+  ambiente de teste do Worker** (funciona — testado, `@cloudflare/vitest-pool-workers` resolve o import
+  relativo sem problema) e compara com `GET /products` nas duas direções (todo produto do front existe
+  no D1 com preço/fornecedor iguais; nenhum produto do D1 é estranho ao front). Isso troca a garantia
+  de "guia" (script que deveria ler a fonte) por uma de "sensor" (teste vermelho se alguém editar um
+  lado sem o outro) — mais forte, porque pega drift automaticamente a cada `npm test`, não só na hora
+  de gerar o seed.
 - `back/test/orders.mutations.test.ts` (existente, **modificar fixtures**) — os testes atuais de
   `POST /orders` usam produtos fictícios (`prod-1`, preço `1000`) que não existem no catálogo real;
   com a validação nova eles passam a falhar por produto inexistente. Atualizar os fixtures para usar
@@ -198,7 +209,7 @@ quando a migração de `/catalogo` (fatia futura) tornar esse caminho de erro re
 
 | Risco | Mitigação |
 |---|---|
-| Seed do D1 diverge do array do front (alguém edita um sem editar o outro) | Aceito conscientemente — não há CRUD ainda (feature 007 resolve isso de vez). Documentar no código que o seed é gerado a partir do front na data X, não é sincronizado automaticamente. |
+| Seed do D1 diverge do array do front (alguém edita um sem editar o outro) | **Resolvido com sensor, não só aceito** — `products.seed-consistency.test.ts` compara os dois lados a cada `npm test`; drift vira teste vermelho, não silêncio. Mitigação definitiva só chega com CRUD real (feature 007). |
 | Testes existentes de B4 quebram com a validação nova | Esperado e no escopo desta fatia — fixtures atualizados para produtos reais do seed. |
 | Script gerador do seed vira dependência de runtime entre `back/` e `front/` | Não deixar isso acontecer — o script roda uma vez, gera SQL estático, `back/` nunca importa nada de `front/` em tempo de execução. |
 

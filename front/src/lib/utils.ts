@@ -99,3 +99,34 @@ export function safeRedirect(param: string | null): string {
 
   return trimmed
 }
+
+/**
+ * Valida um CNPJ brasileiro:
+ * - Remove caracteres não dígitos
+ * - Rejeita se não tiver exatamente 14 dígitos
+ * - Rejeita sequências repetidas (ex: 11111111111111)
+ * - Valida os 2 dígitos verificadores com o algoritmo padrão
+ */
+export function isValidCNPJ(cnpj: string): boolean {
+  const digits = cnpj.replace(/\D/g, '')
+
+  if (digits.length !== 14) return false
+  if (/^(\d)\1{13}$/.test(digits)) return false
+
+  const calcCheckDigit = (base: string, weights: number[]): number => {
+    let sum = 0
+    for (let i = 0; i < weights.length; i++) {
+      sum += parseInt(base[i]) * weights[i]
+    }
+    const remainder = sum % 11
+    return remainder < 2 ? 0 : 11 - remainder
+  }
+
+  const firstDigit = calcCheckDigit(digits.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
+  if (parseInt(digits[12]) !== firstDigit) return false
+
+  const secondDigit = calcCheckDigit(digits.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2])
+  if (parseInt(digits[13]) !== secondDigit) return false
+
+  return true
+}

@@ -1,6 +1,22 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-22) — P2 APROVADO — thread P fechada do lado do código, falta só P3
+## Estado atual (2026-07-22) — P3 em andamento: migrations remotas + deploy + smoke test OK
+
+**P3 (deploy real) executado até o passo 3 de 5:**
+1. Migrations remotas aplicadas (`npx -y wrangler@4.86.0 d1 migrations apply fraldinha-livre-db
+   --remote`) — `0001_slow_sabretooth.sql` (schema) + `0002_seed_products.sql` (seed). Confirmado por
+   query direta (`SELECT COUNT(*) FROM products`): **24 produtos reais no D1 remoto**.
+2. Deploy do Worker (`npx -y wrangler@4.86.0 deploy`) — versão `15c80ecf-7144-4388-8f6d-45723a301dd0`
+   no ar em `https://fraldinha-livre-backend.romariobc.workers.dev`.
+3. Smoke test confirmado: `GET /products` → 200, 24 itens, shape `{id, priceCents, supplierId}`
+   correto (amostra: `p1`/1800/`sup-001`, bate com o seed); `GET /orders` sem token → 401 (regressão —
+   nada quebrou).
+
+**Falta:** passo 4 (regressão de checkout no navegador — login Google real + comprar produto real,
+confirmar que o pedido é criado normalmente com a validação nova ativa — só o cliente pode fazer) e
+passo 5 (registro final: `feature_list.json`, `integration-guide.md`).
+
+## Estado anterior (2026-07-22) — P2 APROVADO — thread P fechada do lado do código, falta só P3
 
 **P2 APROVADO** pela sessão de frontend via D-012 (commit `256d22a`). Checklist completo rodado pela
 revisora, incluindo o item extra pós-incidente (`git merge-base --is-ancestor` confirmando que o

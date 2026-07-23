@@ -1,6 +1,19 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-22) — P1 aprovado (com fix); P2 executado — falta só P3 (deploy)
+## Estado atual (2026-07-22) — P2 APROVADO — thread P fechada do lado do código, falta só P3
+
+**P2 APROVADO** pela sessão de frontend via D-012 (commit `256d22a`). Checklist completo rodado pela
+revisora, incluindo o item extra pós-incidente (`git merge-base --is-ancestor` confirmando que o
+commit é ancestral do HEAD — sem repetir o problema da P1) e a comparação do diff de
+`d1-batch-atomicity.test.ts` contra o commit certo (B4, `6309a1e`) confirmando zero mudança.
+
+**Thread P fechada do lado do código: P1 + P2 aprovados.** Tabela `products` real no D1 (24 produtos,
+sensor de drift contra o front), `POST /orders` revalidando preço/existência/fornecedor/total antes de
+gravar. Só falta **P3** (deploy real — migrations remotas, deploy do Worker, smoke test, regressão de
+checkout no navegador, registro) para fechar a fatia 2 (Produtos) inteira. Pré-requisitos humanos: **nenhum
+novo** — conta Cloudflare e D1 já existem desde a B9.
+
+## Estado anterior (2026-07-22) — P1 aprovado (com fix); P2 executado — falta só P3 (deploy)
 
 **P1 APROVADO** pela sessão de frontend via D-012, com 1 ressalva de conformidade: o critério "script
 lê `front/src/lib/products.ts`" não foi cumprido ao pé da letra (entregue como cópia manual). Resolvido

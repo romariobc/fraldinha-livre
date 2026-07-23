@@ -1,6 +1,22 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-23) — P3 FECHADO — fatia 2 (Produtos) ponta a ponta em produção
+## Estado atual (2026-07-23) — Thread P mergeada na main (PR #9)
+
+**Merge da thread P para a main:** PR #9 (16 commits) revisado pelo Claude Code Review automático
+(job `claude-review` verde, "No buffered inline comments" — limpo, sem achados) e mesclado
+(`f9186e0`, merge commit via `gh pr merge --merge`). `main` local sincronizada (fast-forward
+`13ad06b..f9186e0`). Toda a fatia 2 (Produtos, P1-P3) está integrada, somada à fatia 1 (Pedidos,
+B1-B9) já mergeada anteriormente (PR #8, `13ad06b`).
+
+Branch `Romir/folder-analysis-070a4b` e worktree `blissful-lamport-ccb562` mantidos vivos (mesmo
+padrão adotado após a B9: a branch continuou recebendo a thread P em vez de ser apagada) — prontos
+para a próxima fatia do backend.
+
+**Próximo passo (não decidido ainda):** definir a próxima fatia do backend — sync do painel do
+fornecedor, Perfis, ou Estoque (nenhuma iniciada; feature 007 no `feature_list.json` já cobre
+catálogo+perfil+histórico do fornecedor como um bloco, mas o escopo pode ser fatiado).
+
+## Estado anterior (2026-07-23) — P3 FECHADO — fatia 2 (Produtos) ponta a ponta em produção
 
 **P3 completo, os 5 passos:**
 1. Migrations remotas aplicadas (`npx -y wrangler@4.86.0 d1 migrations apply fraldinha-livre-db

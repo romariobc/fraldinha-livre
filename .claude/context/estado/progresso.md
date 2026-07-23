@@ -1,6 +1,100 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-21) — B9 FECHADO — backend real de Pedidos em producao, validado por humano
+## Estado atual (2026-07-23) — P3 FECHADO — fatia 2 (Produtos) ponta a ponta em produção
+
+**P3 completo, os 5 passos:**
+1. Migrations remotas aplicadas (`npx -y wrangler@4.86.0 d1 migrations apply fraldinha-livre-db
+   --remote`) — `0001_slow_sabretooth.sql` (schema) + `0002_seed_products.sql` (seed). Confirmado por
+   query direta (`SELECT COUNT(*) FROM products`): **24 produtos reais no D1 remoto**.
+2. Deploy do Worker (`npx -y wrangler@4.86.0 deploy`) — versão `15c80ecf-7144-4388-8f6d-45723a301dd0`
+   no ar em `https://fraldinha-livre-backend.romariobc.workers.dev`.
+3. Smoke test confirmado: `GET /products` → 200, 24 itens, shape `{id, priceCents, supplierId}`
+   correto; `GET /orders` sem token → 401 (regressão — nada quebrou).
+4. **Regressão de checkout no navegador confirmada pelo cliente:** login Google → catálogo →
+   adicionar ao carrinho → finalizar compra → pedido aparece em `/minha-conta` — com a validação nova
+   de preço/existência/fornecedor/total ativa em produção, o caminho feliz não quebrou.
+5. Registro fechado: `feature_list.json` (006 — fatia 2/Produtos documentada como ponta a ponta em
+   produção, junto com a nota de que a fatia 1 já foi mergeada na main); `integration-guide.md`
+   (seção 4.5 reescrita — a limitação DEC-A antiga foi substituída pela descrição real da validação
+   nova).
+
+**Thread P (Produtos) FECHADA: P1, P2, P3 completos e em produção.** Servidor não confia mais em
+preço/fornecedor enviados pelo cliente — a dívida DEC-A da fatia 1 está fechada de verdade, não só
+"aceita conscientemente".
+
+**Próximo passo (não decidido ainda):** (1) merge da branch `Romir/folder-analysis-070a4b` (agora com
+B1-B9 + P1-P3) para a main — pendente, já tem a fatia 1 mergeada via PR #8, falta a fatia 2; (2)
+definir a próxima fatia do backend (sync do painel do fornecedor, Perfis, ou Estoque — nenhuma
+iniciada).
+
+## Estado anterior (2026-07-22) — P2 APROVADO — thread P fechada do lado do código, falta só P3
+
+**P2 APROVADO** pela sessão de frontend via D-012 (commit `256d22a`). Checklist completo rodado pela
+revisora, incluindo o item extra pós-incidente (`git merge-base --is-ancestor` confirmando que o
+commit é ancestral do HEAD — sem repetir o problema da P1) e a comparação do diff de
+`d1-batch-atomicity.test.ts` contra o commit certo (B4, `6309a1e`) confirmando zero mudança.
+
+**Thread P fechada do lado do código: P1 + P2 aprovados.** Tabela `products` real no D1 (24 produtos,
+sensor de drift contra o front), `POST /orders` revalidando preço/existência/fornecedor/total antes de
+gravar. Só falta **P3** (deploy real — migrations remotas, deploy do Worker, smoke test, regressão de
+checkout no navegador, registro) para fechar a fatia 2 (Produtos) inteira. Pré-requisitos humanos: **nenhum
+novo** — conta Cloudflare e D1 já existem desde a B9.
+
+## Estado anterior (2026-07-22) — P1 aprovado (com fix); P2 executado — falta só P3 (deploy)
+
+**P1 APROVADO** pela sessão de frontend via D-012, com 1 ressalva de conformidade: o critério "script
+lê `front/src/lib/products.ts`" não foi cumprido ao pé da letra (entregue como cópia manual). Resolvido
+trocando "guia" por "sensor": `products.seed-consistency.test.ts` importa o array real do front dentro
+do ambiente de teste do Worker (`@cloudflare/vitest-pool-workers` resolve o import relativo sem
+problema — testado) e compara com `GET /products` nas duas direções. Spec emendada (commit `7d08f46`).
+
+**Lição de processo incorporada ao template:** "Passo 0" obrigatório adicionado a
+`plans/README.md` — todo prompt Haiku agora exige `git rev-parse --show-toplevel` confirmado antes de
+tocar em qualquer arquivo, motivado pelo incidente de commit no repo principal da P1.
+
+**P2 EXECUTADO** (commit `256d22a`) — `ordersPostHandler` agora revalida `price`/`supplierId`
+ausentes, busca produtos em lote (`WHERE id IN`), e checa produto/preço/fornecedor/total na ordem
+certa, tudo antes do `db.batch()`. Passo 0 confirmado corretamente desta vez (sem repetir o incidente
+da P1). 30/30 testes verdes (24 de P1 + 6 novos), `d1-batch-atomicity.test.ts` confirmado intacto,
+`tsc` exit 0. Sanity check próprio: commit confirmado como ancestral do HEAD certo (não repetiu o
+problema de diretório), imports limpos (sem duplicar), 3 `catch` (mesmos de antes, nenhum novo).
+
+**Aguardando revisão D-012 pela sessão de frontend.** Depois disso, só falta **P3** (deploy real —
+migrations remotas antes do deploy, smoke test, regressão de checkout no navegador) para fechar a
+fatia 2 (Produtos) inteira.
+
+## Estado anterior (2026-07-22) — Thread B mergeada na main; thread P (Produtos) iniciada, P1 executado
+
+**Merge da thread B para a main:** PR #8 (38 commits, 81 arquivos) revisado pelo Claude Code Review
+automático (limpo, sem comentários) e mesclado (`13ad06b`). `main` local sincronizada. Toda a fatia 1
+(Pedidos, B1-B9) está integrada.
+
+**Thread P (backend de Produtos, fatia 2 da 006) iniciada via brainstorming** — spec
+(`spec-backend-produtos-cloudflare.md`) e plano (`P-backend-produtos-breakdown.md`) escritos, revisados
+por outro agente em 2 rodadas (achados reais incorporados: RN-P2b obrigatória — o campo `price` total
+do pedido não era revalidado, só os `unitPrice` por item; RN-P2c — `supplier_id`; ambiguidade de campo
+`price`/`supplierId` ausente no schema opcional; falta do P3 de deploy com a ordem operacional exata
+documentada). Plano: P1 (schema+seed+`GET /products`) → P2 (validação em `POST /orders`) → P3
+(deploy, coordenador+cliente).
+
+**P1 EXECUTADO com incidente sério, encontrado e corrigido pela sessão de backend:** o executor Haiku
+completou o trabalho real corretamente (schema, migrations em duas partes via `drizzle-kit generate`,
+seed com os 24 produtos conferidos contra `front/src/lib/products.ts`, `GET /products` público), mas
+**commitou no repositório principal (`E:\Labdev\Projetos\fraldinha-livre`) em vez do worktree**
+(`blissful-lamport-ccb562`) — o commit (`c58e377`) ficou pendurado na `main` local, um commit à frente
+de `origin/main`, sem nenhuma revisão. Corrigido: `main` local resetada de volta pra `13ad06b`
+(idêntica a `origin/main`, nada perdido — `origin` nunca recebeu o commit), o commit trazido via
+`cherry-pick` pro branch/worktree certo (`ed1e9bb`... `6a0c9f4`).
+
+Sanity check próprio achou mais 2 problemas no commit trazido: `zod` adicionado como devDependency
+direta sem nenhum uso real (já disponível via dependência transitiva de
+`@cloudflare/vitest-pool-workers`) e um script `"lint": "tsc --noEmit"` fake (`back/` nunca teve
+ESLint — erro meu no prompt de P1, que copiou a convenção do front sem checar). Ambos removidos
+(commit `ed1e9bb`). 22/22 testes verdes, `tsc` exit 0.
+
+**Aguardando revisão D-012 pela sessão de frontend** antes de avançar para P2.
+
+## Estado anterior (2026-07-21) — B9 FECHADO — backend real de Pedidos em producao, validado por humano
 
 **A fatia 1 da thread B (Pedidos) está ponta a ponta em produção.** Sequência executada nesta sessão
 (coordenador + cliente, conforme o plano previa — não delegado a executor autônomo):

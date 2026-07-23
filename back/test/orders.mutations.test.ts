@@ -59,13 +59,15 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
         },
         items: [
           {
-            productId: 'prod-1',
+            productId: 'p1',
             productName: 'Fralda P',
-            unitPrice: 1000,
+            unitPrice: 1800,
             quantity: 10,
             unit: 'cx',
           },
         ],
+        supplierId: 'sup-001',
+        price: 18000,
       }),
     })
     const response = await app.fetch(request, env)
@@ -96,6 +98,8 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
           cep: '01000-000',
         },
         items: [], // Inválido: deve ter ao menos 1 item
+        supplierId: 'sup-001',
+        price: 0,
       }),
     })
     const response = await app.fetch(request, env)
@@ -132,13 +136,15 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
         },
         items: [
           {
-            productId: 'prod-1',
+            productId: 'p1',
             productName: 'Fralda P',
-            unitPrice: 1000,
+            unitPrice: 1800,
             quantity: 10,
             unit: 'cx',
           },
         ],
+        supplierId: 'sup-001',
+        price: 18000,
       }),
     })
     const response = await app.fetch(request, env)
@@ -163,9 +169,9 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
         Authorization: 'Bearer token-uid-b',
       },
       body: JSON.stringify({
-        product: 'Toalha',
+        product: 'Fralda Mix',
         quantity: 50,
-        unit: 'un',
+        unit: 'cx',
         deliveryAddress: {
           logradouro: 'Rua B',
           numero: '456',
@@ -176,20 +182,22 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
         },
         items: [
           {
-            productId: 'prod-2',
-            productName: 'Toalha P',
-            unitPrice: 500,
-            quantity: 25,
-            unit: 'un',
+            productId: 'p1',
+            productName: 'Fralda P',
+            unitPrice: 1800,
+            quantity: 10,
+            unit: 'cx',
           },
           {
-            productId: 'prod-3',
-            productName: 'Toalha M',
-            unitPrice: 600,
-            quantity: 25,
-            unit: 'un',
+            productId: 'p2',
+            productName: 'Fralda M',
+            unitPrice: 2200,
+            quantity: 10,
+            unit: 'cx',
           },
         ],
+        supplierId: 'sup-001',
+        price: 40000,
       }),
     })
     const response = await app.fetch(request, env)
@@ -208,6 +216,248 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     expect(dbItems).toHaveLength(2)
     // E devem corresponder aos items da resposta
     expect(body.items).toHaveLength(2)
+  })
+
+  // Novos testes P2 — validação contra products
+
+  it('POST /orders com unitPrice divergente do produto → 400, preco divergente', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-uid-a',
+      },
+      body: JSON.stringify({
+        product: 'Fralda',
+        quantity: 10,
+        unit: 'cx',
+        deliveryAddress: {
+          logradouro: 'Rua A',
+          numero: '123',
+          bairro: 'Centro',
+          cidade: 'São Paulo',
+          estado: 'SP',
+          cep: '01000-000',
+        },
+        items: [
+          {
+            productId: 'p1',
+            productName: 'Fralda P',
+            unitPrice: 9999, // Divergente: p1 é 1800
+            quantity: 1,
+            unit: 'cx',
+          },
+        ],
+        supplierId: 'sup-001',
+        price: 9999,
+      }),
+    })
+    const response = await app.fetch(request, env)
+
+    expect(response.status).toBe(400)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'preco divergente para produto: p1' })
+  })
+
+  it('POST /orders com productId inexistente → 400, produto nao encontrado', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-uid-a',
+      },
+      body: JSON.stringify({
+        product: 'Fralda',
+        quantity: 10,
+        unit: 'cx',
+        deliveryAddress: {
+          logradouro: 'Rua A',
+          numero: '123',
+          bairro: 'Centro',
+          cidade: 'São Paulo',
+          estado: 'SP',
+          cep: '01000-000',
+        },
+        items: [
+          {
+            productId: 'produto-fantasma',
+            productName: 'Produto Fantasma',
+            unitPrice: 1000,
+            quantity: 1,
+            unit: 'cx',
+          },
+        ],
+        supplierId: 'sup-001',
+        price: 1000,
+      }),
+    })
+    const response = await app.fetch(request, env)
+
+    expect(response.status).toBe(400)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'produto nao encontrado: produto-fantasma' })
+  })
+
+  it('POST /orders com supplierId divergente do produto → 400, fornecedor divergente', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-uid-a',
+      },
+      body: JSON.stringify({
+        product: 'Fralda',
+        quantity: 10,
+        unit: 'cx',
+        deliveryAddress: {
+          logradouro: 'Rua A',
+          numero: '123',
+          bairro: 'Centro',
+          cidade: 'São Paulo',
+          estado: 'SP',
+          cep: '01000-000',
+        },
+        items: [
+          {
+            productId: 'p1',
+            productName: 'Fralda P',
+            unitPrice: 1800,
+            quantity: 1,
+            unit: 'cx',
+          },
+        ],
+        supplierId: 'sup-999', // Divergente: p1 é sup-001
+        price: 1800,
+      }),
+    })
+    const response = await app.fetch(request, env)
+
+    expect(response.status).toBe(400)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'fornecedor divergente para produto: p1' })
+  })
+
+  it('POST /orders sem price → 400, price ausente', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-uid-a',
+      },
+      body: JSON.stringify({
+        product: 'Fralda',
+        quantity: 10,
+        unit: 'cx',
+        deliveryAddress: {
+          logradouro: 'Rua A',
+          numero: '123',
+          bairro: 'Centro',
+          cidade: 'São Paulo',
+          estado: 'SP',
+          cep: '01000-000',
+        },
+        items: [
+          {
+            productId: 'p1',
+            productName: 'Fralda P',
+            unitPrice: 1800,
+            quantity: 1,
+            unit: 'cx',
+          },
+        ],
+        supplierId: 'sup-001',
+        // price ausente
+      }),
+    })
+    const response = await app.fetch(request, env)
+
+    expect(response.status).toBe(400)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'price ausente' })
+  })
+
+  it('POST /orders sem supplierId → 400, supplierId ausente', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-uid-a',
+      },
+      body: JSON.stringify({
+        product: 'Fralda',
+        quantity: 10,
+        unit: 'cx',
+        deliveryAddress: {
+          logradouro: 'Rua A',
+          numero: '123',
+          bairro: 'Centro',
+          cidade: 'São Paulo',
+          estado: 'SP',
+          cep: '01000-000',
+        },
+        items: [
+          {
+            productId: 'p1',
+            productName: 'Fralda P',
+            unitPrice: 1800,
+            quantity: 1,
+            unit: 'cx',
+          },
+        ],
+        price: 1800,
+        // supplierId ausente
+      }),
+    })
+    const response = await app.fetch(request, env)
+
+    expect(response.status).toBe(400)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'supplierId ausente' })
+  })
+
+  it('POST /orders com total divergente → 400, total divergente', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-uid-a',
+      },
+      body: JSON.stringify({
+        product: 'Fralda',
+        quantity: 10,
+        unit: 'cx',
+        deliveryAddress: {
+          logradouro: 'Rua A',
+          numero: '123',
+          bairro: 'Centro',
+          cidade: 'São Paulo',
+          estado: 'SP',
+          cep: '01000-000',
+        },
+        items: [
+          {
+            productId: 'p1',
+            productName: 'Fralda P',
+            unitPrice: 1800,
+            quantity: 2, // 2 * 1800 = 3600
+            unit: 'cx',
+          },
+        ],
+        supplierId: 'sup-001',
+        price: 9999, // Divergente: deveria ser 3600
+      }),
+    })
+    const response = await app.fetch(request, env)
+
+    expect(response.status).toBe(400)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'total divergente' })
   })
 
   // ============================================================

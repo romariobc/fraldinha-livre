@@ -159,11 +159,30 @@ explícita) — sem isso, o front em produção não vai conseguir chamar o Work
   logística, D-025); `404` se não existe.
 - Persistência de order + items em transação (D1 batch) — order nunca fica sem items.
 
-### 4.5 Limitação conhecida (DEC-A, aceita nesta fatia)
+### 4.5 Validação de produtos (fatia 2, thread P — fechou a limitação DEC-A)
 
-O servidor **confia** nos `items[]` (nomes/preços) que o cliente envia — não há catálogo no D1 ainda para
-revalidar preço. Isso fecha quando a fatia de **Produtos** existir. Não é um bug: está registrado na spec
-e no plano B como escopo consciente da fatia 1.
+A limitação original (servidor confiava cegamente em `items[]`) foi fechada. Existe uma tabela
+`products` no D1 (`back/src/schema/products.ts` — schema mínimo: `id`, `priceCents`, `supplierId`),
+semeada com o catálogo real (24 produtos, espelhando `front/src/lib/products.ts`; um teste dedicado,
+`back/test/products.seed-consistency.test.ts`, importa o array real do front e compara com
+`GET /products` — é o sensor de drift entre as duas cópias). `GET /products` é público (sem auth — é
+dado de catálogo).
+
+`POST /orders` agora, antes de qualquer escrita, para cada item do pedido:
+- Rejeita (`400`) se o `productId` não existe na tabela.
+- Rejeita (`400`) se `unitPrice` do item não bate com o preço real do produto.
+- Rejeita (`400`) se o `supplierId` do produto não bate com o `supplierId` do pedido.
+- Rejeita (`400`) se `price` (total) ou `supplierId` do corpo vierem ausentes — ambos são
+  `.optional()` no schema Zod compartilhado (`packages/contracts`), mas obrigatórios nesta rota.
+- Rejeita (`400`) se o `price` total não bater com a soma de `unitPrice × quantity` de todos os itens.
+
+Toda a busca de produtos é em lote (`WHERE id IN (...)`, uma query por pedido, não por item). Nenhuma
+das checagens acima interfere na transação de gravação (`db.batch()`) — elas rodam antes, e uma
+rejeição não grava nada.
+
+**Ainda não fechado:** o catálogo público (`/catalogo` no front) continua lendo o array estático — não
+consome `GET /products`. Migrar isso, junto com CRUD de produto pelo fornecedor, fica para a feature 007
+(sem data definida).
 
 ---
 

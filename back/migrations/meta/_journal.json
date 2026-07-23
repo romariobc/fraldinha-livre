@@ -8,6 +8,13 @@
       "when": 1784438614140,
       "tag": "0000_charming_mordo",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1784762991478,
+      "tag": "0001_slow_sabretooth",
+      "breakpoints": true
     }
   ]
 }

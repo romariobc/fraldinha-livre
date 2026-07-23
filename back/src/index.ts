@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { createAuthMiddleware, verifyFirebaseIdToken } from './middleware/auth'
 import { ordersGetHandler, ordersPostHandler, ordersCancelHandler } from './routes/orders'
+import { productsGetHandler } from './routes/products'
 import type { Env, AppContext } from './env'
 
 const app = new Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>()
@@ -20,6 +21,8 @@ app.use(
 )
 
 app.get('/health', (c) => c.json({ ok: true }))
+
+app.get('/products', productsGetHandler)
 
 // Middleware de autenticação para /orders/*
 app.use('/orders/*', (c, next) => {

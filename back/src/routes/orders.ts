@@ -1,8 +1,9 @@
 import { drizzle } from 'drizzle-orm/d1'
-import { eq, sql } from 'drizzle-orm'
+import { eq, sql, inArray } from 'drizzle-orm'
 import type { Context } from 'hono'
 import { OrderSchema, CreateOrderRequestSchema } from '../../../packages/contracts/src/order'
 import { orders, orderItems } from '../schema/orders'
+import { products } from '../schema/products'
 import type { Env, AppContext } from '../env'
 import { ZodError } from 'zod'
 
@@ -107,7 +108,45 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
     // Zod ignora chaves desconhecidas, então id/uid/status/createdAt vindos do body são descartados
     const createRequest = CreateOrderRequestSchema.parse(body)
 
+    // RN-P2b: price (total) e obrigatorio nesta rota, mesmo sendo .optional() no schema compartilhado.
+    if (createRequest.price === undefined) {
+      return c.json({ error: 'price ausente' }, 400)
+    }
+
+    // RN-P2c: supplierId e obrigatorio nesta rota, mesmo sendo .optional() no schema compartilhado.
+    if (createRequest.supplierId === undefined) {
+      return c.json({ error: 'supplierId ausente' }, 400)
+    }
+
     const db = drizzle(c.env.DB)
+
+    // Busca em lote (nao 1 query por item) - RN-P2/P2c.
+    const productIds = createRequest.items.map((item) => item.productId)
+    const productRows = await db.select().from(products).where(inArray(products.id, productIds)).all()
+    const productById = new Map(productRows.map((p) => [p.id, p]))
+
+    // Falha rapido no primeiro item invalido (RN-P3), antes de qualquer escrita (RN-P4).
+    for (const item of createRequest.items) {
+      const product = productById.get(item.productId)
+      if (!product) {
+        return c.json({ error: `produto nao encontrado: ${item.productId}` }, 400)
+      }
+      if (item.unitPrice !== product.priceCents) {
+        return c.json({ error: `preco divergente para produto: ${item.productId}` }, 400)
+      }
+      if (product.supplierId !== createRequest.supplierId) {
+        return c.json({ error: `fornecedor divergente para produto: ${item.productId}` }, 400)
+      }
+    }
+
+    // RN-P2b: total tem que bater com a soma dos itens.
+    const computedTotal = createRequest.items.reduce(
+      (sum, item) => sum + item.unitPrice * item.quantity,
+      0,
+    )
+    if (createRequest.price !== computedTotal) {
+      return c.json({ error: 'total divergente' }, 400)
+    }
 
     // Servidor define metadados (RN-03)
     const orderId = generateUUID()

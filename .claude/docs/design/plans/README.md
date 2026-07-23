@@ -78,7 +78,8 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | B9 | Deploy real do Worker + validação humana (fatia 1 = Pedidos) | 1 | FECHADO (2026-07-21) — produção validada, PR #8 mesclado na main (13ad06b) |
 | P (breakdown) | Backend de produtos (fatia 2 da 006) — P1/P2/P3 | 1 | breakdown APROVADO (2026-07-22, com P3 adicionado na revisão) |
 | P1 | back/: schema products + migrations + seed + GET /products | 1 | APROVADO (commits 6a0c9f4, ed1e9bb, 7d08f46) via D-012 — incidente de commit no repo errado corrigido; ressalva do seed resolvida com teste-sensor |
-| P2 | back/: POST /orders revalida preco/existencia/fornecedor | 1 | APROVADO (commit 256d22a) via D-012 — thread P fechada do lado do código, falta só P3 (deploy) |
+| P2 | back/: POST /orders revalida preco/existencia/fornecedor | 1 | APROVADO (commit 256d22a) via D-012 |
+| P3 | Deploy real do Worker + migrations remotas + validação humana (fatia 2 = Produtos) | 1 | FECHADO (2026-07-23) — produção validada pelo cliente (checkout completo), registro em feature_list.json/integration-guide.md feito |
 
 **Ordem de execucao (D-011):** H-002 → H-005 → [H-006 limpeza para main] → H-004 → H-003 → 006 backend.
 

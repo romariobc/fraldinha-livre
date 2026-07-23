@@ -1,20 +1,31 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-22) — P3 em andamento: migrations remotas + deploy + smoke test OK
+## Estado atual (2026-07-23) — P3 FECHADO — fatia 2 (Produtos) ponta a ponta em produção
 
-**P3 (deploy real) executado até o passo 3 de 5:**
+**P3 completo, os 5 passos:**
 1. Migrations remotas aplicadas (`npx -y wrangler@4.86.0 d1 migrations apply fraldinha-livre-db
    --remote`) — `0001_slow_sabretooth.sql` (schema) + `0002_seed_products.sql` (seed). Confirmado por
    query direta (`SELECT COUNT(*) FROM products`): **24 produtos reais no D1 remoto**.
 2. Deploy do Worker (`npx -y wrangler@4.86.0 deploy`) — versão `15c80ecf-7144-4388-8f6d-45723a301dd0`
    no ar em `https://fraldinha-livre-backend.romariobc.workers.dev`.
 3. Smoke test confirmado: `GET /products` → 200, 24 itens, shape `{id, priceCents, supplierId}`
-   correto (amostra: `p1`/1800/`sup-001`, bate com o seed); `GET /orders` sem token → 401 (regressão —
-   nada quebrou).
+   correto; `GET /orders` sem token → 401 (regressão — nada quebrou).
+4. **Regressão de checkout no navegador confirmada pelo cliente:** login Google → catálogo →
+   adicionar ao carrinho → finalizar compra → pedido aparece em `/minha-conta` — com a validação nova
+   de preço/existência/fornecedor/total ativa em produção, o caminho feliz não quebrou.
+5. Registro fechado: `feature_list.json` (006 — fatia 2/Produtos documentada como ponta a ponta em
+   produção, junto com a nota de que a fatia 1 já foi mergeada na main); `integration-guide.md`
+   (seção 4.5 reescrita — a limitação DEC-A antiga foi substituída pela descrição real da validação
+   nova).
 
-**Falta:** passo 4 (regressão de checkout no navegador — login Google real + comprar produto real,
-confirmar que o pedido é criado normalmente com a validação nova ativa — só o cliente pode fazer) e
-passo 5 (registro final: `feature_list.json`, `integration-guide.md`).
+**Thread P (Produtos) FECHADA: P1, P2, P3 completos e em produção.** Servidor não confia mais em
+preço/fornecedor enviados pelo cliente — a dívida DEC-A da fatia 1 está fechada de verdade, não só
+"aceita conscientemente".
+
+**Próximo passo (não decidido ainda):** (1) merge da branch `Romir/folder-analysis-070a4b` (agora com
+B1-B9 + P1-P3) para a main — pendente, já tem a fatia 1 mergeada via PR #8, falta a fatia 2; (2)
+definir a próxima fatia do backend (sync do painel do fornecedor, Perfis, ou Estoque — nenhuma
+iniciada).
 
 ## Estado anterior (2026-07-22) — P2 APROVADO — thread P fechada do lado do código, falta só P3
 

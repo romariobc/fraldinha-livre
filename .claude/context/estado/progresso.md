@@ -4,7 +4,7 @@
 
 **Perfil do Fornecedor (feature descrita na Task 4) IMPLEMENTADO e DOCUMENTADO.** Fatia do escopo 006 (backend) que captura dados do fornecedor (CNPJ/razão social/nome fantasia/endereço) em `users/{uid}` via Firestore, editáveis numa nova aba `PerfilTab.tsx` no painel do fornecedor. Commits: `cd5a67f` (isValidCNPJ + UserProfile), `dc2f696` (PerfilTab.tsx + testes), `8804685` (wired na dashboard). Suite 298/298 verde, `tsc`/`lint` limpos.
 
-**Nota crítica de escopo (aprovada na spec original):** este perfil data **NÃO TEM CONSUMIDOR em nenhum outro lugar do app**. Não filtra `directOrders`/`offers` no painel do fornecedor (ambas seguem vindo de arrays mock estáticos), e não aparece no catálogo do comprador. A amarração `uid↔supplierId` fica **reservada para a feature 007** ("Catálogo do fornecedor") — desejo consciente, não um bug pendente. Sem essa nota explícita, futuras sessões podem interpretar como regressão.
+**Nota crítica de escopo (aprovada na spec original):** este dado de perfil **NÃO TEM CONSUMIDOR em nenhum outro lugar do app**. Não filtra `directOrders`/`offers` no painel do fornecedor (ambas seguem vindo de arrays mock estáticos), e não aparece no catálogo do comprador. A amarração `uid↔supplierId` fica **reservada para a feature 007** ("Catálogo do fornecedor") — desejo consciente, não um bug pendente. Sem essa nota explícita, futuras sessões podem interpretar como regressão.
 
 Trabalho nesta tarefa: Steps 1, 2 e 4 da task-4-brief.md (documentação de estado + commit). Step 3 (validação navegador com login Google real) não foi executado — reservado para controller humano.
 

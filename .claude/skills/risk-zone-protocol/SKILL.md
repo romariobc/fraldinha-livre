@@ -7,6 +7,8 @@ description: Protocolo de governança para modificação de arquivos compartilha
 
 Invoque esta skill quando sua tarefa exigir modificar qualquer arquivo da **Zona de Risco**.
 
+> Atualizado em 2026-07-23: `src/contexts/` entrou na lista — os providers `Market`/`Orders`/`Cart`/`Auth` são montados no layout raiz e compartilhados entre domínios, exatamente como `src/lib/`.
+
 ---
 
 ## Zona de Risco — arquivos protegidos
@@ -15,6 +17,7 @@ Você está terminantemente proibido de modificar os arquivos abaixo sem seguir 
 
 ```
 src/lib/                          ← tipos e mocks compartilhados entre domínios
+src/contexts/                     ← providers compartilhados (Market/Orders/Cart/Auth)
 src/components/ui/                ← primitivos base-ui/shadcn usados em tudo
 src/components/Header.tsx
 src/components/Footer.tsx
@@ -47,7 +50,7 @@ git log -n 5 --pretty=format:"%ai %an — %s" -- <caminho_do_arquivo>
 Antes de escrever qualquer linha, responda as três perguntas e inclua as respostas no seu commit message:
 
 1. **Por que** este arquivo compartilhado precisa mudar? (não pode ser resolvido só no domínio isolado?)
-2. **Quais domínios** são impactados por esta mudança? (fornecedor / comprador / catálogo)
+2. **Quais domínios** são impactados por esta mudança? (fornecedor / comprador / catálogo / mercado / ...)
 3. **O que quebra** se a mudança for aplicada sem os outros domínios serem atualizados?
 
 Formato do commit:
@@ -67,7 +70,7 @@ Após modificar qualquer arquivo da Zona de Risco, execute:
 npx tsc --noEmit
 ```
 
-**Se TypeScript reportar erros:** corrija-os antes de commitar. Uma mudança em `src/lib/` pode quebrar componentes de múltiplos domínios.
+**Se TypeScript reportar erros:** corrija-os antes de commitar. Uma mudança em `src/lib/` ou `src/contexts/` pode quebrar componentes de múltiplos domínios.
 
 ---
 
@@ -78,6 +81,7 @@ Faça a **menor mudança possível**:
 - Adicionando um tipo novo → adicione sem alterar tipos existentes
 - Adicionando um token Tailwind → adicione no final da seção relevante
 - Corrigindo um helper → corrija somente o helper, não reescreva o arquivo
+- Adicionando um handler novo em um Context → adicione a função e inclua no value do Provider, sem alterar a assinatura dos handlers existentes
 - Adicionando uma propriedade opcional → use `?:` para não quebrar consumidores existentes
 
 ```typescript
@@ -106,6 +110,9 @@ interface Order {
 
 **Preciso modificar um componente em `src/components/ui/`:**
 → Se for adicionar uma nova prop, torne-a opcional. Se for alterar comportamento existente, verifique todos os usos com `grep` antes de modificar.
+
+**Preciso adicionar um handler ou campo novo em `src/contexts/market-context.tsx` (ou outro Provider):**
+→ Verifique quem mais consome o Context com `grep -r "useMarket\|useOrders\|useAuth\|useCart" src/` — já há acoplamento cross-domain conhecido (`OrderCard.tsx` do comprador chama `useMarket().cancelDirectOrder`). Adicione o novo campo/handler sem remover ou renomear os existentes.
 
 **Preciso alterar um tipo que já é usado por múltiplos domínios:**
 → Este é o caso de maior risco. Sempre faça em uma branch separada, nunca em paralelo com outros agentes.

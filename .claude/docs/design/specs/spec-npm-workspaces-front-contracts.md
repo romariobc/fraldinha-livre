@@ -54,24 +54,31 @@ packages/contracts/package.json
 
 front/package.json
   + "@fraldinha-livre/contracts": "*" (dependencies)
-  `npm install` na RAIZ cria o symlink:
-  front/node_modules/@fraldinha-livre/contracts -> packages/contracts
+  `npm install` na RAIZ cria o symlink na raiz do node_modules do repo
+  (confirmado empiricamente, npm workspaces nao cria front/node_modules
+  pra isso — ver nota abaixo):
+  <raiz>/node_modules/@fraldinha-livre/contracts -> packages/contracts
 
 front/tsconfig.json
   "paths": {
-    "@contracts": ["@fraldinha-livre/contracts"],
-    "@contracts/*": ["@fraldinha-livre/contracts/*"]
+    "@contracts": ["../node_modules/@fraldinha-livre/contracts/src/index.ts"],
+    "@contracts/*": ["../node_modules/@fraldinha-livre/contracts/src/*"]
   }
   (antes apontava pra "../packages/contracts/src/..." — um caminho de
-  arquivo cru que sai da raiz de front/. Agora aponta pra OUTRO
-  especificador de modulo, "@fraldinha-livre/contracts" — nao mais um
-  caminho de arquivo — deixando a resolucao de node_modules real (via
-  o symlink que o workspace cria) fazer o trabalho, sem assumir se o
-  npm hospeda o symlink dentro de front/node_modules/ ou na raiz do
-  repo. E essa a mudanca que resolve o bug: o bundler nunca mais
-  precisa atravessar a fronteira do projeto com um caminho de arquivo
-  cru — so resolve um nome de pacote, do jeito que qualquer bundler ja
-  sabe fazer.)
+  arquivo cru que sai da raiz de front/. Uma primeira correcao tentou
+  trocar por um alias de especificador de modulo,
+  "@fraldinha-livre/contracts" — mas ISSO NAO FUNCIONA: entradas de
+  "paths" do TypeScript sao sempre tratadas como caminho relativo ao
+  baseUrl, nunca como "resolva este outro nome normalmente" (confirmado
+  empiricamente com --traceResolution: cai de volta a procurar o nome
+  ORIGINAL "@contracts" em node_modules, gera TS2307). O fix real e um
+  caminho de arquivo apontando pro symlink de verdade, que fica na raiz
+  do node_modules do repo (testado num npm install isolado, front/node_modules
+  nem chega a ser criado) — "../node_modules/..." a partir de front/,
+  nao "./node_modules/...". E essa a mudanca que resolve o bug: o caminho
+  aponta pro symlink real do workspace dentro de node_modules — resolucao
+  padrao de pacote, nao mais um caminho cru saindo da raiz do projeto que
+  o Turbopack recusa atravessar.)
 
 front/next.config.ts
   + transpilePackages: ['@fraldinha-livre/contracts']
@@ -114,9 +121,10 @@ INTOCADO:
 - [ ] `package.json` na raiz com `"workspaces": ["front", "packages/contracts"]`.
 - [ ] `packages/contracts/package.json` com `"exports"` declarado.
 - [ ] `front/package.json` com `@fraldinha-livre/contracts` como dependency de workspace.
-- [ ] `front/tsconfig.json` com os `paths` de `@contracts`/`@contracts/*` apontando pro
-      especificador de módulo `@fraldinha-livre/contracts` (não mais um caminho de arquivo cru
-      pra fora de `front/`).
+- [ ] `front/tsconfig.json` com os `paths` de `@contracts`/`@contracts/*` apontando para
+      `../node_modules/@fraldinha-livre/contracts/src/...` (o symlink real do workspace, na raiz
+      do node_modules do repo — não `../packages/contracts/src/...` como antes, e não um alias de
+      especificador de módulo puro, que não funciona em `paths` do TypeScript).
 - [ ] `front/next.config.ts` com `transpilePackages: ['@fraldinha-livre/contracts']`.
 - [ ] `front/package-lock.json` e `packages/contracts/package-lock.json` removidos; um
       `package-lock.json` na raiz cobrindo os dois.

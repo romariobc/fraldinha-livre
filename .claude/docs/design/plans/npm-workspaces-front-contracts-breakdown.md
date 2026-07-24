@@ -22,11 +22,12 @@ Next.js `16.2.11`.
   `tsconfig.json`. Critério de aceite: `git status back/` vazio ao final.
 - **O alias `@contracts` continua existindo** — nenhum dos 8 arquivos de `front/src/` que importam
   `@contracts` é modificado. Só o mecanismo por trás muda.
-- **`@contracts` no `tsconfig.json` aponta pra um especificador de módulo
-  (`@fraldinha-livre/contracts`), não para um caminho de arquivo.** Não hardcodar um caminho tipo
-  `./node_modules/.../src/index.ts` — o npm pode hospedar o symlink do workspace na raiz do repo
-  ou dentro de `front/node_modules/`, dependendo de hoisting; aliasar pra outro nome de módulo
-  funciona nos dois casos.
+- **`@contracts` no `tsconfig.json` aponta para `../node_modules/@fraldinha-livre/contracts/src/...`**
+  — o caminho do symlink real que o npm workspaces cria na raiz do repo (confirmado empiricamente:
+  `front/node_modules` não chega a ser criado para isso). **Não** usar um alias de especificador de
+  módulo puro (`["@fraldinha-livre/contracts"]`) — testado e não funciona, entradas de `paths` do
+  TypeScript são sempre um caminho relativo ao `baseUrl`, nunca "resolva este outro nome
+  normalmente" (gera `TS2307`, confirmado com `--traceResolution`).
 - **`transpilePackages` e `turbopack.root` (já existente em `front/next.config.ts`) não são
   removidos nesta fatia**, mesmo que um possa ser redundante agora — candidatos a limpeza futura,
   não decidido agora (evitar scope creep).
@@ -194,10 +195,10 @@ Rodar este comando de dentro da **raiz** do repo (não de `front/` nem de `packa
 Expected: completa sem erro de peer dependency (o bump do Next para `16.2.11` já satisfaz o que o
 `@opennextjs/cloudflare` exige — não deve precisar de `--legacy-peer-deps`; se precisar, isso é um
 sinal de que algo está diferente do esperado — reporte como concern, não force silenciosamente).
-Deve gerar um `package-lock.json` na raiz e criar um symlink resolvendo
-`@fraldinha-livre/contracts` a partir de `front/` (o local exato do symlink — dentro de
-`front/node_modules/` ou na raiz — não importa para este plano, só que a resolução funcione,
-verificado no Step 10).
+Deve gerar um `package-lock.json` na raiz e criar o symlink `@fraldinha-livre/contracts` **na raiz
+do `node_modules` do repo** (confirmado empiricamente: npm workspaces não cria `front/node_modules`
+para isso — verifique com `ls node_modules/@fraldinha-livre` na raiz do repo depois deste comando,
+não em `front/node_modules`).
 
 - [ ] **Step 7: Atualizar `front/tsconfig.json`**
 
@@ -211,13 +212,17 @@ Localizar:
     }
 ```
 
-Substituir por:
+Substituir por (caminho de arquivo apontando pro symlink real na raiz do `node_modules` do repo —
+**não** um alias de especificador de módulo puro do tipo `["@fraldinha-livre/contracts"]`, que não
+funciona: entradas de `paths` do TypeScript são sempre tratadas como caminho relativo ao `baseUrl`,
+nunca como "resolva este outro nome normalmente" — confirmado com `--traceResolution`, cai de volta
+a procurar o nome original `@contracts` e gera `TS2307`):
 
 ```json
     "paths": {
       "@/*": ["./src/*"],
-      "@contracts": ["@fraldinha-livre/contracts"],
-      "@contracts/*": ["@fraldinha-livre/contracts/*"]
+      "@contracts": ["../node_modules/@fraldinha-livre/contracts/src/index.ts"],
+      "@contracts/*": ["../node_modules/@fraldinha-livre/contracts/src/*"]
     }
 ```
 

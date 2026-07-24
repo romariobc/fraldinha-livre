@@ -3,7 +3,7 @@
   "name": "fraldinha-livre-frontend",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-05-03",
-  "compatibility_flags": ["nodejs_compat", "streams_enable_constructors"],
+  "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"

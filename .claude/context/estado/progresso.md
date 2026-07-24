@@ -1,6 +1,30 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-23) — P3 FECHADO — fatia 2 (Produtos) ponta a ponta em produção
+## Estado atual (2026-07-23) — Task 4: Perfil do Fornecedor documentado
+
+**Perfil do Fornecedor (feature descrita na Task 4) IMPLEMENTADO e DOCUMENTADO.** Fatia do escopo 006 (backend) que captura dados do fornecedor (CNPJ/razão social/nome fantasia/endereço) em `users/{uid}` via Firestore, editáveis numa nova aba `PerfilTab.tsx` no painel do fornecedor. Commits: `cd5a67f` (isValidCNPJ + UserProfile), `dc2f696` (PerfilTab.tsx + testes), `8804685` (wired na dashboard). Suite 298/298 verde, `tsc`/`lint` limpos.
+
+**Nota crítica de escopo (aprovada na spec original):** este dado de perfil **NÃO TEM CONSUMIDOR em nenhum outro lugar do app**. Não filtra `directOrders`/`offers` no painel do fornecedor (ambas seguem vindo de arrays mock estáticos), e não aparece no catálogo do comprador. A amarração `uid↔supplierId` fica **reservada para a feature 007** ("Catálogo do fornecedor") — desejo consciente, não um bug pendente. Sem essa nota explícita, futuras sessões podem interpretar como regressão.
+
+Trabalho nesta tarefa: Steps 1, 2 e 4 da task-4-brief.md (documentação de estado + commit). Step 3 (validação navegador com login Google real) não foi executado — reservado para controller humano.
+
+## Estado anterior (2026-07-23) — Thread P mergeada na main (PR #9)
+
+**Merge da thread P para a main:** PR #9 (16 commits) revisado pelo Claude Code Review automático
+(job `claude-review` verde, "No buffered inline comments" — limpo, sem achados) e mesclado
+(`f9186e0`, merge commit via `gh pr merge --merge`). `main` local sincronizada (fast-forward
+`13ad06b..f9186e0`). Toda a fatia 2 (Produtos, P1-P3) está integrada, somada à fatia 1 (Pedidos,
+B1-B9) já mergeada anteriormente (PR #8, `13ad06b`).
+
+Branch `Romir/folder-analysis-070a4b` e worktree `blissful-lamport-ccb562` mantidos vivos (mesmo
+padrão adotado após a B9: a branch continuou recebendo a thread P em vez de ser apagada) — prontos
+para a próxima fatia do backend.
+
+**Próximo passo (não decidido ainda):** definir a próxima fatia do backend — sync do painel do
+fornecedor, Perfis, ou Estoque (nenhuma iniciada; feature 007 no `feature_list.json` já cobre
+catálogo+perfil+histórico do fornecedor como um bloco, mas o escopo pode ser fatiado).
+
+## Estado anterior (2026-07-23) — P3 FECHADO — fatia 2 (Produtos) ponta a ponta em produção
 
 **P3 completo, os 5 passos:**
 1. Migrations remotas aplicadas (`npx -y wrangler@4.86.0 d1 migrations apply fraldinha-livre-db

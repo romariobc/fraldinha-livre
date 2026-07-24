@@ -59,13 +59,19 @@ front/package.json
 
 front/tsconfig.json
   "paths": {
-    "@contracts": ["./node_modules/@fraldinha-livre/contracts/src/index.ts"],
-    "@contracts/*": ["./node_modules/@fraldinha-livre/contracts/src/*"]
+    "@contracts": ["@fraldinha-livre/contracts"],
+    "@contracts/*": ["@fraldinha-livre/contracts/*"]
   }
-  (antes apontava pra "../packages/contracts/src/..." — fora da raiz de front/;
-  agora aponta pra DENTRO de front/node_modules/, via o symlink do workspace —
-  e essa e a mudanca que resolve o bug: o bundler nunca mais precisa
-  atravessar a fronteira do projeto)
+  (antes apontava pra "../packages/contracts/src/..." — um caminho de
+  arquivo cru que sai da raiz de front/. Agora aponta pra OUTRO
+  especificador de modulo, "@fraldinha-livre/contracts" — nao mais um
+  caminho de arquivo — deixando a resolucao de node_modules real (via
+  o symlink que o workspace cria) fazer o trabalho, sem assumir se o
+  npm hospeda o symlink dentro de front/node_modules/ ou na raiz do
+  repo. E essa a mudanca que resolve o bug: o bundler nunca mais
+  precisa atravessar a fronteira do projeto com um caminho de arquivo
+  cru — so resolve um nome de pacote, do jeito que qualquer bundler ja
+  sabe fazer.)
 
 front/next.config.ts
   + transpilePackages: ['@fraldinha-livre/contracts']
@@ -97,25 +103,28 @@ INTOCADO:
 - Suíte completa de `packages/contracts` deve continuar verde (roda de dentro da própria pasta,
   `cd packages/contracts && npm test`, inalterado).
 - Suíte completa de `back/` deve continuar verde, comprovando que nada vazou pra lá.
-- **Critério de aceite final desta spec:** a Task 2 do plano de deploy do front
-  (`deploy-frontend-cloudflare-breakdown.md`) roda de novo (`npm run preview`) e o build do
-  adapter OpenNext **completa sem o erro `Module not found: Can't resolve '@contracts'`**.
+- **Critério de aceite final desta spec:** `cd front && npm run build` (o `next build` puro, que
+  foi onde o erro apareceu originalmente via Turbopack, antes mesmo do wrapper do OpenNext entrar
+  em ação) completa **sem o erro `Module not found: Can't resolve '@contracts'`**. Não precisa
+  necessariamente rodar `npm run preview` (build + wrangler dev) aqui — isso é retomar a Task 2 do
+  plano de deploy, fora desta spec.
 
 ## Critérios de aceite
 
 - [ ] `package.json` na raiz com `"workspaces": ["front", "packages/contracts"]`.
 - [ ] `packages/contracts/package.json` com `"exports"` declarado.
 - [ ] `front/package.json` com `@fraldinha-livre/contracts` como dependency de workspace.
-- [ ] `front/tsconfig.json` com os `paths` de `@contracts`/`@contracts/*` apontando pra dentro de
-      `front/node_modules/` (via symlink), não mais pra fora de `front/`.
+- [ ] `front/tsconfig.json` com os `paths` de `@contracts`/`@contracts/*` apontando pro
+      especificador de módulo `@fraldinha-livre/contracts` (não mais um caminho de arquivo cru
+      pra fora de `front/`).
 - [ ] `front/next.config.ts` com `transpilePackages: ['@fraldinha-livre/contracts']`.
 - [ ] `front/package-lock.json` e `packages/contracts/package-lock.json` removidos; um
       `package-lock.json` na raiz cobrindo os dois.
 - [ ] `back/` inalterado — `package.json`, `package-lock.json`, `tsconfig.json` sem diff.
 - [ ] Suítes de `front/`, `back/`, `packages/contracts` todas verdes; `tsc --noEmit` limpo nos
       três.
-- [ ] `npm run preview` (Task 2 do plano de deploy) builda sem o erro de `@contracts` — não
-      precisa necessariamente completar TODO o smoke test do deploy aqui (isso é escopo da Task 2
+- [ ] `cd front && npm run build` completa sem o erro de `@contracts` — não precisa
+      necessariamente completar TODO o smoke test do deploy aqui (isso é escopo da Task 2
       retomada), só provar que o bloqueio específico desta spec foi removido.
 
 ## Fora de escopo (registrado, não é esquecimento)

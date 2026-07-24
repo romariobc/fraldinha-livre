@@ -437,3 +437,53 @@ símbolo. **How to apply:** asset em `public/assets/img/cegonha.png` (589×366, 
 próprio); `next/image` com width=589 height=366 e `w-auto` para não distorcer. Verificado por render
 (Playwright: landing+login), lint e build exit 0. O resto do protótipo (leilão reverso) segue como
 referência da Fase 2, NÃO implementado (gate D-014).
+
+## D-029 — Emenda a D-027: frontend tambem vai para Cloudflare; Firebase fica so como servico de auth (2026-07-23) — VIGENTE (emenda D-001/D-027)
+
+Com o backend (D-026/D-027) ja em producao na Cloudflare (Workers + D1), avaliamos onde hospedar o
+frontend Next.js: manter no ecossistema Google (Firebase App Hosting, GA desde abril/2025, com SSR via
+Cloud Run e o SDK `FirebaseServerApp` para sincronizar auth em paginas server-rendered) ou levar tambem
+para a Cloudflare (Workers + adapter OpenNext).
+
+**Decisao: front + back na Cloudflare. Firebase deixa de ser candidato a hospedagem e vira SOMENTE
+servico de autenticacao** (Firebase Auth, como ja e desde D-010/005a).
+
+**Por que Cloudflare ganhou:**
+- **Correcao tecnica (2026-07-24, achada na revisao do rascunho pela sessao de backend/deploy):** a
+  formulacao original desta secao dizia que "CORS e eliminado na raiz" por front e back estarem na mesma
+  nuvem. **Isso estava errado** — CORS e sobre origem (protocolo+host+porta), nao sobre "mesma conta/nuvem".
+  O plano usa DOIS Workers com hostnames diferentes (`fraldinha-livre-frontend.workers.dev` vs
+  `fraldinha-livre-backend.workers.dev`): toda chamada feita pelo NAVEGADOR (client components, a maioria
+  do trafego hoje) continua exigindo CORS normal, exatamente como ja exige hoje — vai precisar so de uma
+  regex nova na config de CORS do backend para aceitar a origem de producao (e as preview URLs) do front.
+  **O que realmente se ganha** estando na mesma conta/plataforma: simplificacao operacional (um so
+  `wrangler`/pipeline/console/conector MCP), nao eliminacao de CORS. Service Bindings eliminariam CORS
+  so para chamadas SERVIDOR-A-SERVIDOR (SSR do front chamando o backend direto via RPC interno) — isso
+  nao existe hoje porque o app e majoritariamente client-side (Firebase Auth no browser).
+- **Cloudflare tambem descontinuou Pages em favor de Workers + Static Assets** — o caminho oficial hoje
+  para Next.js na Cloudflare e o adapter OpenNext (`@opennextjs/cloudflare`), mantido pela propria
+  Cloudflare, com suporte a SSR/App Router/PPR.
+- **Custo:** Firebase App Hosting tem piso pago (~US$9,37/mes); Cloudflare Workers tem tier gratuito mais
+  generoso — coerente com D-001 (custo minimo).
+- **Uma so plataforma de deploy/observabilidade** para front+back (um `wrangler`/pipeline, um conector
+  MCP `cloudflare-bindings`), em vez de dois consoles (Firebase + Cloudflare) para um dev solo manter.
+- **O que se perde (aceito conscientemente):** o `FirebaseServerApp` do Firebase App Hosting sincroniza
+  auth em SSR de forma mais "pronta"; na Cloudflare isso continua manual (`user.getIdToken()` +
+  middleware/contexto propro, como ja e feito hoje). Custo aceitavel porque o auth ja funciona assim.
+
+**Consequencia de infra (superset da D-027):** a partir de agora sao duas nuvens **por funcao**, nao mais
+por "front vs dados": **Google/Firebase = so identidade** (Auth); **Cloudflare = front + API + dados**
+(Workers para o Next.js via OpenNext, Workers+Hono para a API, D1 para persistencia). Vercel, Azure e
+Cloudflare Pages seguem descartados (Pages por estar em descontinuacao na propria Cloudflare).
+
+**Why:** consolidar a operacao em uma unica plataforma (um pipeline, um console, um conector MCP) custa
+menos em dinheiro e em superficie de infra do que a integracao SSR-nativa do Firebase App Hosting entrega
+de conveniencia — CORS entre front e back segue necessario nos dois cenarios (Google+Cloudflare ou
+Cloudflare+Cloudflare) e NAO e criterio de decisao aqui.
+
+**How to apply:** ao especificar/implementar o deploy do frontend, usar Cloudflare Workers + adapter
+OpenNext (nao Cloudflare Pages, nao Firebase Hosting/App Hosting). Firebase, daqui em diante, so entra em
+specs/docs como "Auth" — nunca como candidato a hospedagem de front. A config de CORS do backend
+(`back/src/index.ts`, hoje restrita a `localhost`) vai precisar de uma regex nova para a origem de producao
+do front e para as preview URLs geradas por Workers Builds — isso e trabalho obrigatorio do spec de
+deploy, nao uma consequencia automatica de estar na mesma nuvem.

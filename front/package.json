@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
+    "@fraldinha-livre/contracts": "*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "firebase": "^12.15.0",

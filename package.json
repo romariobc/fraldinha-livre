@@ -1,4 +1,5 @@
 {
+  "name": "fraldinha-livre",
   "private": true,
   "workspaces": [
     "front",

@@ -9,9 +9,10 @@ atravessar a fronteira do projeto).
 
 **Architecture:** `package.json` novo na raiz com `"workspaces": ["front", "packages/contracts"]`.
 `packages/contracts` ganha um `"exports"` real. `front/tsconfig.json` troca o alias `@contracts`
-de um caminho de arquivo cru para outro especificador de módulo (`@fraldinha-livre/contracts`),
-deixando a resolução de node_modules real (via o symlink que o workspace cria) fazer o trabalho.
-`back/` fica 100% fora do workspace, sem nenhuma mudança.
+de um caminho de arquivo cru saindo da raiz de `front/` (`../packages/contracts/src/...`) para um
+caminho de arquivo apontando pro symlink real que o workspace cria na raiz do `node_modules` do
+repo (`../node_modules/@fraldinha-livre/contracts/src/...`). `back/` fica 100% fora do workspace,
+sem nenhuma mudança.
 
 **Tech Stack:** npm workspaces (nativo, npm já usado no projeto — sem ferramenta nova), TypeScript,
 Next.js `16.2.11`.

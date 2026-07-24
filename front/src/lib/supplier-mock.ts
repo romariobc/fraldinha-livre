@@ -113,7 +113,7 @@ export function timeAgo(iso: string): string {
 export function maskCnpj(cnpj: string): string {
   const masked = cnpj.replace(
     /^(\d{2})\.(\d{3}\.\d{3}\/\d{4})-(\d{2})$/,
-    (_, _a, mid, _c) => `***.${mid}-**`
+    (_, _a, mid) => `***.${mid}-**`
   )
   if (masked === cnpj) {
     return cnpj.slice(0, 3).replace(/./g, '*') + cnpj.slice(3, -2) + '**'

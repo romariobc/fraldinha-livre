@@ -7,9 +7,13 @@ import type { Env, AppContext } from './env'
 
 const app = new Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>()
 
-// Auth e por Bearer token (sem cookies) — CORS restrito a localhost (dev).
-// Quando o front ganhar dominio proprio, adicionar a origem de producao aqui.
-const ALLOWED_ORIGIN = /^https?:\/\/localhost(:\d+)?$/
+// Auth e por Bearer token (sem cookies). CORS aceita: localhost (dev), o
+// Worker de producao do front, e as preview URLs do Workers Builds (prefixo
+// dinamico de branch/versao antes do nome do Worker). Estar na mesma conta
+// Cloudflare NAO elimina CORS — os dois Workers tem hostnames diferentes,
+// toda chamada do navegador continua cross-origin (D-029, correcao registrada).
+const ALLOWED_ORIGIN =
+  /^(https?:\/\/localhost(:\d+)?|https:\/\/([a-z0-9-]+-)?fraldinha-livre-frontend\.romariobc\.workers\.dev)$/
 
 app.use(
   '*',

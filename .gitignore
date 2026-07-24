@@ -6,6 +6,9 @@ front/out/
 front/build
 front/next-env.d.ts
 front/*.tsbuildinfo
+front/.open-next/
+front/.wrangler/
+front/cloudflare-env.d.ts
 
 # ── Flutter / Dart ─────────────────────────────────────────────
 app/.dart_tool/

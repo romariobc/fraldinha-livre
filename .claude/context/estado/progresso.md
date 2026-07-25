@@ -1,5 +1,37 @@
 # Progresso — fraldinha-livre
 
+## Nota (2026-07-25) — Revisão de arquitetura pelo Gemini (Firebase): 3 pontos checados, nenhuma ação imediata
+
+Romario pediu revisão da arquitetura (Firebase Auth + backend Cloudflare Workers/D1 + frontend
+Cloudflare Containers) ao agente Gemini integrado ao Firebase. Ele reportou 3 pontos; cada um foi
+checado contra o código/estado real antes de agir (nenhuma mudança feita — só registro):
+
+1. **Domínios autorizados do Firebase Auth** — alerta correto em tese, mas **prematuro**: o
+   frontend ainda não tem deploy de produção (H-010 só validado localmente via Docker, esperando o
+   cliente ativar Workers Paid plan). `front/wrangler.jsonc` não tem `route`/domínio customizado
+   ainda. Não há hoje nenhum domínio de produção fora dos 3 já autorizados
+   (`localhost`/`fraldinha-livre.firebaseapp.com`/`fraldinha-livre.web.app`) para adicionar. **Vira
+   ação real só no momento do deploy** — quando o domínio final (workers.dev ou customizado)
+   existir, precisa ser adicionado em Firebase Console → Authentication → Settings → Authorized
+   domains. Não há tooling MCP disponível para ler a lista atual de domínios autorizados
+   diretamente.
+2. **Validação stateless do JWT no Worker** — **já implementado exatamente assim**, não é lacuna:
+   `back/src/middleware/auth.ts` usa `jose` (`createRemoteJWKSet` + `jwtVerify` contra o JWKS
+   público do Firebase), sem SDK admin, sem sessão em banco. Confirmado: zero dependência
+   `firebase-admin` no `back/package.json`. Resolvido desde a fatia B3 (2026-07-19).
+3. **Backend escrevendo no Firestore via service account** — **não se aplica à arquitetura atual**:
+   confirmado por grep que `back/src` não tem nenhuma referência a Firestore. Todas as escritas de
+   perfil (CNPJ/razão social/endereço) são client-side, via SDK do Firebase em
+   `front/src/contexts/auth-context.tsx`, protegidas por `firestore.rules` (só o dono do `uid`
+   escreve no próprio doc) — decisão consciente, não descuido. A recomendação do Gemini só passa a
+   valer se um dia decidirmos mover escritas de dados para o Worker.
+
+**Pendência real gerada por esta revisão:** nenhuma ação de código agora. Item 1 fica anotado como
+dependência do H-010 (deploy do frontend) — lembrar de registrar o domínio final nos Authorized
+domains do Firebase Auth quando o deploy acontecer.
+
+---
+
 ## Estado atual (2026-07-24) — H-010: deploy do frontend via Cloudflare Containers (local, DONE)
 
 **Decisão de plataforma do frontend mudou de novo: Cloudflare Workers + adapter OpenNext (D-029)

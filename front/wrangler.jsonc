@@ -4,6 +4,12 @@
   "main": "src/container-worker.ts",
   "compatibility_date": "2026-05-03",
   "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
+  },
   "containers": [
     {
       "class_name": "FrontendContainer",

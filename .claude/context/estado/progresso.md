@@ -1,6 +1,82 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-23) — Task 4: Perfil do Fornecedor documentado
+## Estado atual (2026-07-24) — H-010: deploy do frontend via Cloudflare Containers (local, DONE)
+
+**Decisão de plataforma do frontend mudou de novo: Cloudflare Workers + adapter OpenNext (D-029)
+foi ABANDONADO em favor de Cloudflare Containers.** Sequência que levou até aqui, nesta mesma
+branch/worktree:
+
+1. **Migração para npm workspaces** (`front/` + `packages/contracts`, commits `1462da7`+`59164ed`)
+   — resolveu de vez o bug antigo `Module not found: Can't resolve '@contracts'` que travava
+   qualquer build de produção do front (Turbopack não atravessava a fronteira do monorepo sem
+   symlink real). Ganho **permanente e independente** da escolha de plataforma abaixo — não foi
+   revertido.
+2. **Tentativa do adapter OpenNext (Task 2 do plano original) travou num bug DIFERENTE e mais
+   sério**, já com workspaces resolvido: `EvalError: Code generation from strings disallowed for
+   this context`, disparado pelo Firestore (`@firebase/firestore` → `@grpc/proto-loader` →
+   `protobufjs`, que usa `new Function()` em runtime — proibido no sandbox V8 do Workers).
+   Confirmado como bug real e aberto do ecossistema: GitHub issue
+   `opennextjs/opennextjs-cloudflare#1301`, sem fix oficial, reproduzido exatamente (mesmo stack
+   trace) no nosso build. **App usa Firestore de verdade** (perfil do usuário via
+   `getDoc`/`setDoc`/`updateDoc` em `auth-context.tsx`/`onboarding/page.tsx`), não é hipotético.
+3. **Comparação de plataforma reaberta** (Romario pediu, por causa do bug do Firestore + questão
+   de segurança WAF/DDoS que ele não queria perder saindo da Cloudflare). Opções avaliadas:
+   `firebase/firestore/lite` (troca de SDK, mesma API pras 3 funções usadas, sem `onSnapshot`),
+   **Cloudflare Containers** (GA desde abril/2026 — Node.js completo, sem sandbox V8, elimina a
+   classe inteira do bug), Firebase App Hosting, e um relatório externo propondo Google Cloud Run
+   (com a Cloudflare só como CDN/WAF na frente). Verificação cruzada entre as duas sessões:
+   Cloudflare Containers resolve o mesmo problema que Cloud Run resolveria, sem sair da conta
+   Cloudflare (custo: Workers Paid, US$5/mês, ativado manualmente pelo cliente); o WAF/DDoS da
+   Cloudflare protege qualquer origem (self-hosted ou serverless), então não trava a escolha.
+4. **Decisão: Cloudflare Containers.** Nova spec (`spec-deploy-frontend-cloudflare-containers.md`,
+   `c2952b2`) + plano (`H-010-deploy-frontend-cloudflare-containers.md`, `1f6a8e8`) escritos,
+   substituindo o plano antigo de adapter OpenNext (`deploy-frontend-cloudflare-breakdown.md`,
+   agora obsoleto — Task 1 dele, CORS do backend, segue válida e já commitada; Task 2/3 dele não se
+   aplicam mais).
+
+**Execução (commit `a6848e5`), REVISADA por mim de forma independente (não só o relatório do
+executor nem o da sessão de backend):**
+- `front/next.config.ts`: `output: "standalone"` + `outputFileTracingRoot` = raiz do monorepo
+  (mesmo valor de `turbopack.root`, evita warning de inconsistência).
+- `front/Dockerfile` (novo): multi-stage `node:22-alpine`, builda a partir da raiz do monorepo,
+  copia `.next/standalone/front` (caminho verificado com build real — o standalone aninha por
+  `front/` por causa do `outputFileTracingRoot`).
+- `front/src/container-worker.ts` (novo): Worker fino (`Container` + `getRandom` de
+  `@cloudflare/containers`) que roteia pro container.
+- `front/wrangler.jsonc`: reescrito para `containers` + Durable Object binding (era config do
+  adapter OpenNext).
+- `front/tsconfig.worker.json` (novo): isola os tipos do worker do resto do app Next;
+  `front/tsconfig.json`/`eslint.config.mjs` excluem `container-worker.ts`.
+- `front/package.json` + lockfile raiz: `@opennextjs/cloudflare` removido, `@cloudflare/containers`
+  + `@cloudflare/workers-types` adicionados; scripts `preview`/`deploy` do adapter removidos,
+  `cf:deploy` novo.
+- **`back/` e `packages/contracts/` sem NENHUM diff** — confirmado por `git diff --stat` entre os
+  commits (não só grep no relatório).
+
+**Verificação própria desta sessão (refeita do zero, não reaproveitando relatório de ninguém):**
+`npm run lint` (exit 0, 1 warning pré-existente em `supplier-mock.ts`, não tocado aqui), `npm test`
+(298/298), `npx tsc --noEmit -p tsconfig.worker.json` (exit 0), `docker build --no-cache` completo
+do zero + `docker run` numa porta isolada + smoke test manual das 4 rotas (`/`, `/catalogo`,
+`/login`, `/minha-conta`) → todas `200`, logs limpos, **sem** o `EvalError`. Containers de teste e
+imagens removidos ao final (`docker rm`/`docker rmi`).
+
+**Duas correções técnicas que a sessão de backend fez sobre a spec original** (ambas verificadas
+antes de escrever o prompt, documentadas no H-010): o campo do wrangler é `max_instances` (não
+`instances`, nome antigo usado na spec); o caminho exato do standalone (`.next/standalone/front/`)
+foi confirmado com build real antes do Dockerfile, não assumido.
+
+**Pendente (fora do escopo desta fatia, mesmo padrão de B9/P3):** deploy real (`wrangler deploy`)
+depende do **Workers Paid plan (US$5/mês)** ativado manualmente pelo cliente no dashboard da
+Cloudflare — nenhum agente pode fazer isso. Até lá, o front segue sem deploy de produção, só
+validado localmente (Docker).
+
+Ver [[infra-google-cloud]] (memória de sessão, já atualizada com Containers) e D-029 em
+`.claude/docs/decisoes.md` (precisa de emenda formal registrando a troca OpenNext→Containers —
+pendente de próxima sessão, não bloqueia o H-010).
+
+---
+
+## Estado anterior (2026-07-23) — Task 4: Perfil do Fornecedor documentado
 
 **Perfil do Fornecedor (feature descrita na Task 4) IMPLEMENTADO e DOCUMENTADO.** Fatia do escopo 006 (backend) que captura dados do fornecedor (CNPJ/razão social/nome fantasia/endereço) em `users/{uid}` via Firestore, editáveis numa nova aba `PerfilTab.tsx` no painel do fornecedor. Commits: `cd5a67f` (isValidCNPJ + UserProfile), `dc2f696` (PerfilTab.tsx + testes), `8804685` (wired na dashboard). Suite 298/298 verde, `tsc`/`lint` limpos.
 

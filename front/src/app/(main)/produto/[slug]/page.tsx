@@ -3,11 +3,11 @@
 import { useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { getProductBySlug } from '@/lib/products'
 import { STORE_SUPPLIERS } from '@/lib/suppliers'
 import { formatPrice, isProfileComplete } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useAuth } from '@/contexts/auth-context'
+import { useProducts } from '@/contexts/products-context'
 import { type CartItem } from '@/lib/domain/cart'
 import { toast } from 'sonner'
 import { Minus, Plus } from 'lucide-react'
@@ -15,11 +15,48 @@ import { Minus, Plus } from 'lucide-react'
 export default function ProductPage() {
   const params = useParams<{ slug: string }>()
   const slug = params.slug as string
-  const product = getProductBySlug(slug)
   const [quantity, setQuantity] = useState(1)
   const router = useRouter()
   const cart = useCart()
   const { user, profile } = useAuth()
+  const { products, loading, error } = useProducts()
+
+  const product = products.find((p) => p.slug === slug)
+
+  if (loading) {
+    return (
+      <div className="container-fl py-16 text-center">
+        <div className="max-w-md mx-auto">
+          <div className="mb-4 w-12 h-12 border-4 border-primary-light border-t-primary-dark rounded-full animate-spin mx-auto"></div>
+          <p className="font-display font-extrabold text-lg text-brand-text">
+            Carregando produto...
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container-fl py-16 text-center">
+        <div className="max-w-md mx-auto">
+          <span className="text-5xl mb-4 block">⚠️</span>
+          <h1 className="font-display font-black text-2xl text-brand-text mb-2">
+            Erro ao carregar produto
+          </h1>
+          <p className="text-brand-muted mb-6">
+            {error}
+          </p>
+          <Link
+            href="/catalogo"
+            className="inline-block px-6 py-3 rounded-full bg-primary-dark text-white font-display font-bold hover:bg-primary transition-colors"
+          >
+            Voltar ao catálogo
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   if (!product) {
     return (

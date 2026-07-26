@@ -3,10 +3,11 @@
 
 import { useState, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { PRODUCTS, filterProducts, Product, ProductFilters } from '@/lib/products'
+import { filterProducts, Product, ProductFilters } from '@/lib/products'
 import { STORE_SUPPLIERS } from '@/lib/suppliers'
 import { useAuth } from '@/contexts/auth-context'
 import { useCart } from '@/contexts/cart-context'
+import { useProducts } from '@/contexts/products-context'
 import { isProfileComplete } from '@/lib/utils'
 import ProductCard from '@/components/catalogo/ProductCard'
 import CatalogFilters from '@/components/catalogo/CatalogFilters'
@@ -61,8 +62,9 @@ function CatalogoContent() {
   const searchParams = useSearchParams()
   const { user, profile } = useAuth()
   const { addItem } = useCart()
+  const { products, loading, error } = useProducts()
 
-  const { items, total, totalPages } = filterProducts(PRODUCTS, filters)
+  const { items, total, totalPages } = filterProducts(products, filters)
 
   // Clamp página ao range válido [1, totalPages] para coerência com itens exibidos
   const safePage = Math.max(1, Math.min(filters.page, totalPages || 1))
@@ -143,7 +145,26 @@ function CatalogoContent() {
 
             {/* Grid */}
             <div className="flex-1 min-w-0">
-              {items.length === 0 ? (
+              {loading && (
+                <div className="flex flex-col items-center justify-center py-24 text-center">
+                  <div className="mb-4 w-12 h-12 border-4 border-primary-light border-t-primary-dark rounded-full animate-spin"></div>
+                  <p className="font-display font-extrabold text-lg text-brand-text">
+                    Carregando catálogo...
+                  </p>
+                </div>
+              )}
+              {error && !loading && (
+                <div className="flex flex-col items-center justify-center py-24 text-center">
+                  <span className="text-5xl mb-4">⚠️</span>
+                  <p className="font-display font-extrabold text-lg text-brand-text mb-2">
+                    Erro ao carregar catálogo
+                  </p>
+                  <p className="text-sm text-brand-muted mb-6">
+                    {error}
+                  </p>
+                </div>
+              )}
+              {!loading && !error && items.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-24 text-center">
                   <span className="text-5xl mb-4">🔍</span>
                   <p className="font-display font-extrabold text-lg text-brand-text mb-2">
@@ -159,7 +180,8 @@ function CatalogoContent() {
                     Limpar filtros
                   </button>
                 </div>
-              ) : (
+              )}
+              {!loading && !error && items.length > 0 && (
                 <>
                   <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
                     {items.map((product) => (

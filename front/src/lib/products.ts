@@ -1,16 +1,33 @@
 // src/lib/products.ts
 
-export type Brand = 'Pampers' | 'Huggies' | 'MamyPoko' | 'Turma da Mônica' | 'Cremer'
-export type Size = 'RN' | 'P' | 'M' | 'G' | 'GG' | 'XXG'
-export type Badge = 'Mais vendido' | 'Oferta' | 'Novidade'
+// Alargado para `string` em C8: produtos reais de fornecedor (via CRUD, C4) nao ficam
+// restritos aos valores do seed antigo. PRODUCTS abaixo continua valido (strings literais
+// sao atribuiveis a string).
+export type Brand = string
+
+// Alargado para `string` em C8: produtos reais de fornecedor (via CRUD, C4) nao ficam
+// restritos aos valores do seed antigo. PRODUCTS abaixo continua valido (strings literais
+// sao atribuiveis a string).
+export type Size = string
+
+// Alargado para `string` em C8: produtos reais de fornecedor (via CRUD, C4) nao ficam
+// restritos aos valores do seed antigo. PRODUCTS abaixo continua valido (strings literais
+// sao atribuiveis a string).
+export type Badge = string
 
 // Categoria do produto. Hoje o catálogo é 100% fraldas; o tipo deixa espaço para expandir
 // (mães/bebês/cuidados/wellness) sem quebrar consumidores. RN-02.
-export type ProductCategory = 'fraldas-descartaveis'
+// Alargado para `string` em C8: produtos reais de fornecedor (via CRUD, C4) nao ficam
+// restritos aos valores do seed antigo. PRODUCTS abaixo continua valido (strings literais
+// sao atribuiveis a string).
+export type ProductCategory = string
 
 export interface ProductAtributos {
   faixaPeso: string        // ex.: "5–9 kg" (mapeado por tamanho)
-  genero: 'unissex'        // fraldas são unissex; tipo deixa espaço para variar no futuro
+  // Alargado para `string` em C8: produtos reais de fornecedor (via CRUD, C4) nao ficam
+  // restritos aos valores do seed antigo. 'unissex' continua valido (strings literais
+  // sao atribuiveis a string).
+  genero: string           // ex.: "unissex" (fraldas são unissex; tipo deixa espaço para variar no futuro)
   absorcao: string         // ex.: "até 12 horas"
   tecnologia: string       // ex.: "camada seca antivazamento"
 }

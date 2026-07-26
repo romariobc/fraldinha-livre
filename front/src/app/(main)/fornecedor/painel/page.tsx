@@ -10,8 +10,9 @@ import PedidosDiretosTab from '@/components/fornecedor/PedidosDiretosTab'
 import OfertasMercadoTab from '@/components/fornecedor/OfertasMercadoTab'
 import LogisticaTab      from '@/components/fornecedor/LogisticaTab'
 import PerfilTab         from '@/components/fornecedor/PerfilTab'
+import CatalogoTab       from '@/components/fornecedor/CatalogoTab'
 
-type TabKey = 'diretos' | 'ofertas' | 'logistica' | 'perfil'
+type TabKey = 'diretos' | 'ofertas' | 'logistica' | 'catalogo' | 'perfil'
 
 export default function FornecedorPainelPage() {
   const router = useRouter()
@@ -145,6 +146,12 @@ export default function FornecedorPainelPage() {
                   🚚 Logística
                 </TabsTrigger>
                 <TabsTrigger
+                  value="catalogo"
+                  className="rounded-none px-5 py-3 text-sm font-semibold flex-none whitespace-nowrap"
+                >
+                  📦 Catálogo
+                </TabsTrigger>
+                <TabsTrigger
                   value="perfil"
                   className="rounded-none px-5 py-3 text-sm font-semibold flex-none whitespace-nowrap"
                 >
@@ -166,6 +173,9 @@ export default function FornecedorPainelPage() {
               </TabsContent>
               <TabsContent value="logistica">
                 <LogisticaTab />
+              </TabsContent>
+              <TabsContent value="catalogo">
+                <CatalogoTab />
               </TabsContent>
               <TabsContent value="perfil">
                 <PerfilTab />

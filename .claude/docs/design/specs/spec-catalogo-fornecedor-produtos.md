@@ -1,8 +1,8 @@
 # Spec — Catálogo do Fornecedor: Cadastro de Produtos + Sync do Painel (feature 007)
 
 **Domínio:** fornecedor (com impacto em catalogo) · **Feature relacionada:** 007 (depende de 006,
-fatias 1-Pedidos e 2-Produtos já em produção) · **Status:** rascunho (proposta inicial, aguardando
-aprovação do cliente antes do plano de implementação)
+fatias 1-Pedidos e 2-Produtos já em produção) · **Status:** APROVADA (2026-07-25) — aguardando plano
+de implementação
 
 ## Contexto
 
@@ -40,12 +40,11 @@ identidade de fornecedor real existe no sistema ainda**. Sem resolver `uid↔sup
 qualquer CRUD de produto ficaria "de quem?" sem resposta, e o sync do painel (pedidos reais filtrados)
 continuaria impossível.
 
-## Decisões de escopo
+## Decisões de escopo (APROVADAS pelo cliente, 2026-07-25)
 
-Diferente das specs anteriores (fatia 1/2), esta ainda não passou por um brainstorming completo com o
-cliente. O item 4 (despublicar) já foi decidido com o cliente em 2026-07-25; os demais (1, 2, 3, 5, 6)
-seguem como **proposta desta sessão**, pendentes de confirmação antes de qualquer plano de
-implementação:
+Diferente das specs anteriores (fatia 1/2), esta não passou por um brainstorming dedicado — as
+decisões abaixo foram propostas nesta sessão e confirmadas pelo cliente em bloco. Todas as 6 valem
+para o plano de implementação:
 
 1. **`supplierId` = `uid` do Firebase, sem gerar um ID novo.** O jeito mais simples de resolver a
    amarração: quando um usuário com `role: 'fornecedor'` cria seu primeiro produto (ou faz onboarding),
@@ -62,12 +61,11 @@ implementação:
 3. **`Product` entra em `packages/contracts`** (deixado de fora na fatia 2 por YAGNI — agora tem
    consumidor de verdade nos dois lados, front e back).
 4. **Produto tem DOIS estados de remoção: despublicar (reversível) e deletar (definitivo).**
-   Decidido com o cliente (2026-07-25): despublicar é o caminho padrão — barato de implementar (só um
-   campo `active`) e evita perda de dado por engano (preço/descrição/histórico de edição preservados,
-   fornecedor pode reativar). Deletar (físico) continua existindo para quando o fornecedor realmente
-   quer remover de vez. Seguro nos dois casos porque `order_items` já denormaliza
-   `productName`/`unitPrice` no momento da compra (confirmado no schema) — pedidos antigos não
-   dependem da linha em `products` continuar existindo ou ativa.
+   Despublicar é o caminho padrão — barato de implementar (só um campo `active`) e evita perda de dado
+   por engano (preço/descrição/histórico de edição preservados, fornecedor pode reativar). Deletar
+   (físico) continua existindo para quando o fornecedor realmente quer remover de vez. Seguro nos dois
+   casos porque `order_items` já denormaliza `productName`/`unitPrice` no momento da compra (confirmado
+   no schema) — pedidos antigos não dependem da linha em `products` continuar existindo ou ativa.
 5. **Estoque (`quantity`) é um campo editável pelo fornecedor, não um contador transacional.** Decremento
    automático no checkout, concorrência, "esgotado" — fica para a fatia de Estoque, já registrada
    separadamente no backlog (D-026/progresso.md). Aqui, `quantity` é só um dado que o fornecedor digita

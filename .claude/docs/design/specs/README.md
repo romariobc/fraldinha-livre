@@ -48,4 +48,4 @@ Arquivos de codigo, decisoes (D-NNN), outros specs.
 | [spec-backend-pedidos-cloudflare.md](spec-backend-pedidos-cloudflare.md) | 006 (fatia 1) — backend de pedidos em Cloudflare Workers + D1 (resolve D-026) | APROVADA (2026-07-17) |
 | [spec-backend-produtos-cloudflare.md](spec-backend-produtos-cloudflare.md) | 006 (fatia 2) — backend de produtos (revalida preco/existencia/fornecedor) | APROVADA (2026-07-22) |
 | [spec-perfil-fornecedor.md](spec-perfil-fornecedor.md) | 006 (fatia — perfil do fornecedor no Firestore) | IMPLEMENTADA (2026-07-23) |
-| [spec-catalogo-fornecedor-produtos.md](spec-catalogo-fornecedor-produtos.md) | 007 — cadastro de produtos + sync do painel + historico do fornecedor | RASCUNHO (2026-07-25, aguardando aprovacao) |
+| [spec-catalogo-fornecedor-produtos.md](spec-catalogo-fornecedor-produtos.md) | 007 — cadastro de produtos + sync do painel + historico do fornecedor | APROVADA (2026-07-25) |

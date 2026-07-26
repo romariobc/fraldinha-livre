@@ -69,9 +69,9 @@
       "id": "007",
       "titulo": "Catalogo do fornecedor — cadastro de produtos + Perfil e Historico do fornecedor",
       "fase": 1,
-      "status": "todo",
+      "status": "done",
       "criterio_aceite": "Fornecedor consegue adicionar, editar e remover produtos do proprio catalogo; ve e edita perfil; consulta historico de vendas",
-      "notas": "Depende de 006. Absorve Perfil/Historico removidos do painel antigo (D-003)"
+      "notas": "Depende de 006. Absorve Perfil/Historico removidos do painel antigo (D-003). Thread C (C1-C11) completa: contrato Zod, backend CRUD de produtos, ProductRepository mock+http, CatalogoTab no painel, MarketProvider sync real. C11 (deploy real + migrations remotas + validacao humana) fechado em 2026-07-26 (D-033/D-034/D-035/D-036) apos confirmacao do login mobile em Android real pelo usuario"
     },
     {
       "id": "008",

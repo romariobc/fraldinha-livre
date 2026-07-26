@@ -1,5 +1,24 @@
 # Progresso — fraldinha-livre
 
+## Marco (2026-07-26) — C11 fechado: login mobile confirmado em Android real, thread C (feature 007) concluída (D-036)
+
+Romario confirmou teste real no Android: login Google autorizou e voltou autenticado. Essa era a
+última pendência humana de C11 (deploy real + migrations remotas + validação humana completa,
+thread C — feature 007 Catálogo do Fornecedor). **Feature 007 marcada `done`** em `feature_list.json`.
+
+Estado de produção: frontend `fraldinha-livre-frontend.romariobc.workers.dev` (deploy `a56ec67b`,
+`NEXT_PUBLIC_USE_BACKEND=true`, proxy de auth mobile ativo); backend
+`fraldinha-livre-backend.romariobc.workers.dev` (fix de badge null, commit `b1611c4`). Login Google
+confirmado em desktop e mobile.
+
+**Próximo passo:** avisar a sessão do backend (worktree `blissful-lamport-ccb562`, branch
+`Romir/folder-analysis-070a4b`) que é hora de consolidar frontend (`Romir/master-session-restart-535624`)
++ backend num PR único para `main`.
+
+Detalhes completos em D-036.
+
+---
+
 ## Marco (2026-07-26) — Fix real do login mobile (proxying authDomain) — falta 1 passo humano (D-035)
 
 O fix de D-034 (`signInWithRedirect`) não resolveu — usuário Android continuou sem conseguir logar

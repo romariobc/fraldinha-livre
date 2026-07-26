@@ -803,3 +803,30 @@ de "funciona no desktop, quebra no mobile" — não assumir que `signInWithRedir
 sempre checar o proxying (ou GIS) junto. Antes de declarar qualquer fix de auth mobile "concluído",
 confirmar com o usuário que ele testou em um celular real — testes daqui (navegador automatizado,
 sem conta Google real) não substituem essa validação.
+
+---
+
+## D-036 — C11 fechado: login mobile confirmado pelo usuário em Android real; validação humana completa da thread C (2026-07-26) — VIGENTE
+
+Romario confirmou (após a propagação do OAuth Client ID no Google Cloud Console, pendência deixada
+em D-035) que testou o login Google no Android de verdade e funcionou — autorizou no Google e voltou
+autenticado no app. Essa era a última pendência humana bloqueando o fechamento de **C11** (deploy real
++ migrations remotas + validação humana completa no navegador, thread C — feature 007, Catálogo do
+Fornecedor).
+
+**Estado de produção confirmado:**
+- Frontend: `https://fraldinha-livre-frontend.romariobc.workers.dev`, deploy `a56ec67b`,
+  `NEXT_PUBLIC_USE_BACKEND=true`, proxy de auth mobile (D-035) ativo.
+- Backend: `https://fraldinha-livre-backend.romariobc.workers.dev`, com o fix de `badge null` (D-033,
+  commit `b1611c4`).
+- Login Google confirmado funcionando em desktop (validado em C11/D-033) e agora em mobile Android
+  (D-035 + esta confirmação).
+
+**Why:** sem confirmação humana explícita de teste real (não simulação/navegador automatizado), C11
+não podia ser marcado como concluído — login mobile era a última peça sem prova executável direta do
+usuário, conforme a própria lição registrada em D-035.
+
+**How to apply:** feature 007 e C11 fecham como concluídos em `feature_list.json`/`progresso.md`.
+Próximo: avisar a sessão do backend (worktree `blissful-lamport-ccb562`, branch
+`Romir/folder-analysis-070a4b`) que é hora de consolidar as duas branches (frontend
+`Romir/master-session-restart-535624` + backend) num PR único para `main`.

@@ -22,6 +22,23 @@ describe('CORS', () => {
     expect(response.headers.get('Access-Control-Allow-Methods')).toContain('PATCH')
   })
 
+  it('OPTIONS /products/:id (preflight) permite PUT e DELETE', async () => {
+    const request = new Request('http://localhost/products/1', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'http://localhost:3000',
+        'Access-Control-Request-Method': 'PUT',
+        'Access-Control-Request-Headers': 'authorization',
+      },
+    })
+    const response = await app.fetch(request, env)
+
+    expect(response.status).toBe(204)
+    const allowMethods = response.headers.get('Access-Control-Allow-Methods')
+    expect(allowMethods).toContain('PUT')
+    expect(allowMethods).toContain('DELETE')
+  })
+
   it('resposta real de /orders carrega Access-Control-Allow-Origin (mesmo em 401)', async () => {
     const request = new Request('http://localhost/orders', {
       headers: { Origin: 'http://localhost:3000' },

@@ -2,7 +2,7 @@ import { drizzle } from 'drizzle-orm/d1'
 import { eq } from 'drizzle-orm'
 import type { Context } from 'hono'
 import { products } from '../schema/products'
-import type { Env, AppContext } from '../env.d'
+import type { Env, AppContext } from '../env'
 
 // GET /products — publico, so active=true (RN-007-04).
 // GET /products?scope=fornecedor — autenticado (uid do middleware condicional em index.ts),

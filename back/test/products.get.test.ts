@@ -6,7 +6,7 @@ import { applyD1Migrations } from 'cloudflare:test'
 import { createAuthMiddleware } from '../src/middleware/auth'
 import { productsGetHandler } from '../src/routes/products'
 import { products } from '../src/schema/products'
-import type { Env, AppContext } from '../src/env.d'
+import type { Env, AppContext } from '../src/env'
 import app from '../src/index'
 
 describe('GET /products', () => {

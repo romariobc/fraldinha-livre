@@ -631,3 +631,62 @@ sem push, sem afetar este deploy (o front deployado nao chama nenhum endpoint no
 esta base — cada tarefa de frontend aprovada da thread C (C7-C10) pode gerar um novo deploy sem
 reabrir esta decisao. C11 (fim da thread C) e quando o comportamento do catalogo de fato muda em
 produção — validacao humana completa (login real, CRUD de produto, checkout) acontece la, nao aqui.
+
+## D-033 — C11 executado: migrations remotas + deploy real (back+front) + bug de badge null encontrado e corrigido em produção (2026-07-26) — VIGENTE
+
+A pedido explicito do Romario ("aplique as migrations e redeploy que eu sigo"), executei o C11
+(deploy real da feature 007, thread C completa: C1-C10 todas aprovadas antes disso).
+
+**Passos executados, nesta ordem:**
+1. `wrangler d1 migrations list --remote` (check nao-destrutivo) confirmou exatamente 0003+0004
+   pendentes, nada inesperado.
+2. `wrangler d1 migrations apply --remote` — aplicadas com sucesso. Confirmado por query direta:
+   24 produtos, 0 linhas vazias (D-031 funcionou).
+3. Deploy do backend (`wrangler deploy`, worktree `blissful-lamport-ccb562`) — versao
+   `fd487cb3-3513-4e19-95d4-6c28adcdf4ed`. Smoke test: `GET /products` 200 (24, todos active),
+   `?scope=fornecedor`/`POST /products`/`GET /orders?scope=fornecedor` sem token → 401.
+4. Deploy do frontend (`wrangler deploy`, worktree `eloquent-montalcini-2dff41`) — primeiro redeploy
+   desde D-032.
+
+**Achado crítico durante a verificação (não pulado — por isso o C11 exige navegador de verdade, não
+só smoke test de curl):** o frontend redeployado nunca tinha `NEXT_PUBLIC_USE_BACKEND=true`
+configurado em nenhum lugar (nem Dockerfile, nem `.env.production` — o build sempre rodou em modo
+mock desde o D-032 original). Ou seja, a feature 007 nunca esteve de fato testada contra o backend
+real até este momento. **Corrigido:** criado `front/.env.production` (committed, exceção no
+`.gitignore` — `NEXT_PUBLIC_*` é público por design) com `NEXT_PUBLIC_USE_BACKEND=true` +
+`NEXT_PUBLIC_BACKEND_URL`. Confirmado via build Docker local isolado que o valor é embutido no
+bundle antes de redeployar de verdade.
+
+**Segundo achado, este sim um bug real de produção (só apareceu agora porque foi a primeira vez que
+o front chamou o backend de verdade):** `GET /products` (`back/src/routes/products.ts`,
+`productsGetHandler`) retornava linhas do D1 direto via `c.json(rows)`, sem normalizar `badge`
+(coluna nullable — Drizzle retorna `null`, não `undefined`). `ProductSchema.badge` é
+`z.string().optional()`, que aceita `undefined` mas **rejeita `null` explícito** — o front
+(`HttpProductRepository`/`ProductsProvider`) quebrava ao validar a resposta, mostrando "Erro ao
+carregar catálogo" pro usuário real. A mesma normalização (`badge ?? undefined`) já tinha sido
+aplicada em `POST`/`PUT` desde C4 — só faltava em `GET`, e nenhum teste (back ou front) pegava isso
+porque nenhum validava a resposta inteira contra `ProductListSchema`, só campos pontuais. **Fix**
+(commit `b1611c4`, branch `Romir/folder-analysis-070a4b`): função `normalizeBadge` aplicada nas duas
+branches de `productsGetHandler`; 2 testes novos que validam a resposta completa contra o schema
+(sensor pra essa classe de bug não voltar). Redeployado o backend com o fix; confirmado no navegador
+(aba nova, sem cache) que `/catalogo` e `/produto/[slug]` carregam de verdade via backend, badges
+corretos, textos acentuados corretos (checagem de encoding que parecia suspeita na 1a olhada era só
+artefato de exibição do terminal local, não dado real — confirmado lendo os bytes/codepoints).
+
+**Pendências que continuam do usuário (não mudou):** autorizar o domínio no Firebase Auth (D-032,
+ainda não confirmado se foi feito); validação humana completa no navegador (login real com Google,
+CRUD de produto pelo fornecedor, checkout ponta a ponta) — isso é o passo humano final do C11, ainda
+não executado.
+
+**Why:** deploy real é o único jeito de expor a classe de bug (mismatch de contrato entre camadas
+testadas independentemente) que nenhuma revisão D-012 anterior — por mais rigorosa que fosse com
+testes automatizados — conseguiria pegar, porque cada lado (back/front) só testava contra fixtures
+próprias, nunca uma integração de verdade.
+
+**How to apply:** sempre que uma tarefa futura mexer em qualquer campo `nullable` no D1/Drizzle que
+o contrato declara como `.optional()` (não `.nullable()`), checar se o handler que lê e retorna via
+`c.json()` normaliza `null`→`undefined` — e adicionar um teste que valida a resposta completa contra
+o `*Schema`/`*ListSchema` compartilhado, não só propriedades pontuais. Antes de aprovar qualquer
+tarefa que liga front↔back de verdade pela primeira vez, produção deve ser verificada no navegador
+com uma aba nova (sem cache/console history de navegações anteriores) — o console pode acumular
+mensagens de erro de antes do fix e confundir a leitura.

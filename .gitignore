@@ -27,6 +27,7 @@ back/build/
 .env
 .env.*
 !.env.example
+!front/.env.production
 
 # ── Misc ──────────────────────────────────────────────────────
 .DS_Store

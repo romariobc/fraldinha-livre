@@ -1,5 +1,32 @@
 # Progresso — fraldinha-livre
 
+## Marco (2026-07-26) — C11 executado: migrations remotas + deploy real + bug de produção encontrado e corrigido (D-033)
+
+A pedido do Romario ("aplique as migrations e redeploy que eu sigo"): migrations 0003+0004 aplicadas
+no D1 remoto (24 produtos, 0 vazios, D-031 confirmado funcionando); backend redeployado
+(`fd487cb3`); frontend redeployado.
+
+**Dois achados reais durante a verificação (não pulei pro "deploy feito", segui verificando de
+verdade no navegador, aba nova):**
+1. **Frontend nunca teve `NEXT_PUBLIC_USE_BACKEND=true` configurado** — desde o primeiro deploy
+   (D-032), o site sempre rodou em modo mock. Perguntei ao Romario antes de ligar (mudança real de
+   comportamento em produção — checkout/CRUD/login passam a ser de verdade). Confirmado "sim,
+   ligar". Criado `front/.env.production` (committed, exceção no `.gitignore`), rebuild+redeploy.
+2. **Bug real de produção**: `GET /products` quebrava pro front real (`ProductSchema.badge` rejeita
+   `null`, e o D1 retorna `null` pra produtos sem badge — a maioria dos 24). Corrigido no backend
+   (`normalizeBadge`, commit `b1611c4`, mesma disciplina de C4 que faltava em C3), com 2 testes
+   novos que validam a resposta completa contra `ProductListSchema` (o gap que deixou isso passar
+   por todas as revisões D-012 anteriores). Redeployado, confirmado no navegador (aba limpa):
+   `/catalogo` e `/produto/[slug]` carregam via backend real, sem erro.
+
+Detalhes completos em D-033 (`.claude/docs/decisoes.md`).
+
+**Pendências do usuário, ainda não confirmadas:** autorizar o domínio no Firebase Auth (D-032);
+validação humana completa no navegador (login Google real, CRUD de produto pelo fornecedor,
+checkout ponta a ponta) — passo humano final do C11.
+
+---
+
 ## Nota (2026-07-26) — C10 executado (Haiku) e aprovado, com correção de teste (thread C fecha a fatia de código)
 
 Prompt `.claude/docs/design/plans/C10-market-provider-sync-real.md` — resolveu 2 decisões que a spec

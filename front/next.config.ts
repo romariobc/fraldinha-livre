@@ -19,6 +19,19 @@ const nextConfig: NextConfig = {
   // npm workspace — isto instrui o Next a transpilir o pacote como se fosse
   // codigo de 1a parte, em vez de esperar JS ja compilado em node_modules.
   transpilePackages: ["@fraldinha-livre/contracts"],
+  // Proxy do handler de auth do Firebase (login mobile via signInWithRedirect) —
+  // authDomain aponta pro proprio dominio do app (front/.env.production), entao
+  // o SDK acessa /__/auth/* como same-origin em vez de iframe de terceiro, o que
+  // navegadores mobile bloqueiam silenciosamente (storage partitioning). Ver
+  // .claude/docs/decisoes.md D-034/D-035.
+  async rewrites() {
+    return [
+      {
+        source: "/__/auth/:path*",
+        destination: "https://fraldinha-livre.firebaseapp.com/__/auth/:path*",
+      },
+    ];
+  },
 };
 
 export default nextConfig;

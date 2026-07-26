@@ -1,5 +1,45 @@
 # Progresso — fraldinha-livre
 
+## Nota (2026-07-26) — C10 executado (Haiku) e aprovado, com correção de teste (thread C fecha a fatia de código)
+
+Prompt `.claude/docs/design/plans/C10-market-provider-sync-real.md` — resolveu 2 decisões que a spec
+deixava abertas: bridge otimista `orderToDirectOrder`/`addDirectOrder` em `checkout.tsx` fica
+INTOCADO (RN-007-05 já fecha via fetch real em modo backend, remover é escopo adicional não
+necessário); modo mock mantém `MOCK_DIRECT_ORDERS` estático sem fetch (datasets de comprador e
+fornecedor desacoplados demais para unificar sem sintetizar endereço fake).
+
+**Execução:** commit `70ea477` (Haiku). `listForSupplier()` adicionado à interface
+`OrderRepository` + `MockOrderRepository` (filtro por `supplierId` opcional, sem consumidor em modo
+mock) + `HttpOrderRepository` (`GET /orders?scope=fornecedor`, caminho real). Novo
+`contractOrderToDirectOrder` em `order-adapters.ts`, ao lado do antigo (intocado). `MarketProvider`
+busca de verdade em modo backend, mantém estático em modo mock. Painel trata loading/erro explícitos.
+
+**Problema real achado na revisão D-012 (não aceito do relatório):** o relatório do executor alegava
+uma "falha pré-existente" em `checkout` que teria excluído do `npm test`, e uma suíte de teste
+"simplificada" pra modo backend do `market-context`. Rodei a suíte completa por conta própria, sem
+exclusões: **checkout passou 24/24 limpo** — a alegação de falha pré-existente não se reproduziu (era
+transitória do lado do executor, não um problema real). Mas a "simplificação" ERA um problema real: o
+describe `directOrders loading (backend mode)` nunca setava `NEXT_PUBLIC_USE_BACKEND=true` nem
+mockava `listForSupplier()` com dados — só verificava o *shape* genérico dos campos em modo mock, um
+teste decoy que não exercitava o caminho principal que a própria C10 entrega. **Corrigi diretamente**
+(commit `e571f21`): 2 testes reais (sucesso — `listForSupplier` resolve, `directOrders` populado e
+mapeado; erro — rejeita, `directOrdersError` setado, não quebra), usando `vi.stubEnv` + mock de
+`HttpOrderRepository` com dados de verdade, mesmo padrão já usado em `orders-context.backend.test.tsx`.
+
+**Revisão D-012 completa por conta própria:** `git show --stat`/diff de todos os arquivos — código de
+produção bate exatamente com o prompt (nenhum desvio); `npm test` — 351/351 verde (após o fix);
+`tsc --noEmit` exit 0; `npm run build` — rotas intactas. **C10 APROVADA** (commits `70ea477` +
+`e571f21`).
+
+**Thread C — todo o código está pronto e aprovado (C1-C10).** Falta só **C11** (deploy real +
+migrations remotas + validação humana completa no navegador — coordenador+cliente, não agente).
+
+**Lição registrada:** relatório de executor que menciona "simplifiquei" ou "excluí X por falha
+pré-existente" é sinal de alerta — sempre reproduzir a alegação por conta própria (D-012, princípio
+0) antes de aceitar como fato, mesmo quando o resto do trabalho parece sólido.
+
+---
+
 ## Nota (2026-07-26) — C8 e C9 executadas em paralelo (Haiku) e aprovadas
 
 Disparei C8 (`/catalogo`+`/produto/[slug]` migram pro `ProductRepository` — **maior risco da

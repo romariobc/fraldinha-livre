@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '@/lib/firebase';
 
@@ -54,6 +54,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Retorno do signInWithRedirect (mobile/WebView) - onAuthStateChanged abaixo ja
+    // restabelece a sessao; isto so captura erro de redirect que passaria em silencio.
+    getRedirectResult(auth).catch((error) => {
+      console.error('Erro ao concluir login via redirect:', error);
+    });
+
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
         // Usuario logado: carregar perfil completo do Firestore
@@ -91,9 +97,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInGoogle = async () => {
+    // Popup e bloqueado/quebra em navegadores moveis e em WebViews de apps
+    // (Instagram/WhatsApp) - nesses casos, signInWithRedirect e o unico caminho
+    // confiavel. onAuthStateChanged (acima) restabelece a sessao nos dois casos.
+    const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+
     try {
-      await signInWithPopup(auth, googleProvider);
-      // onAuthStateChanged dispara automaticamente apos o login
+      if (isMobile) {
+        await signInWithRedirect(auth, googleProvider);
+      } else {
+        await signInWithPopup(auth, googleProvider);
+      }
     } catch (error) {
       console.error('Erro ao fazer login com Google:', error);
       throw error;

@@ -1,5 +1,29 @@
 # Progresso — fraldinha-livre
 
+## Marco (2026-07-26) — PR #12 mergeado na main; thread C (feature 007) consolidada ponta a ponta
+
+A sessão de frontend (`Romir/master-session-restart-535624`) mesclou o backend (C2-C5, este worktree)
+na própria branch (commit `a17a872`, zero conflitos — mudanças contidas em `back/`), rodou a suíte
+completa (back 57/57, front 351/351, tsc/lint limpos nos dois, build de produção OK) e abriu o PR
+único #12 pra `main` cobrindo toda a thread C (C2-C11) + fixes de auth mobile (D-034/D-035/D-036).
+
+**Ação desta sessão (backend):** confirmei o estado antes do push (HEAD `b1611c4`, sem commits novos,
+57/57 verde), sem objeção à estratégia de consolidação. Após aprovação do Romario, **mergeei o PR #12**
+(`gh pr merge 12 --merge`, merge commit — mesma convenção das PRs #7-#11 deste repo, confirmada por
+`git show --format=%P` num merge anterior antes de escolher o método) — commit `f52ab467`. Sincronizei
+este worktree/branch com `origin/main` (fast-forward `b1611c4..f52ab46`, sem conflito). Reverifiquei
+depois do sync: suite back 57/57, `tsc --noEmit` exit 0. `feature_list.json` confirma `007` como
+`done`. Verifiquei os 2 arquivos `.env.production*` novos trazidos pelo merge — só `NEXT_PUBLIC_*`
+(públicas por design, documentado nos próprios comentários), nenhum segredo.
+
+**Thread C (feature 007, Catálogo do Fornecedor) fechada ponta a ponta em produção — C1 a C11,
+backend e frontend, com validação humana completa (login Google desktop+mobile).**
+
+**Próximo passo (não decidido ainda):** definir a próxima fatia — Estoque foi mencionada como
+possível próxima frente de backend, mas nada iniciado.
+
+---
+
 ## Marco (2026-07-26) — C11 fechado: login mobile confirmado em Android real, thread C (feature 007) concluída (D-036)
 
 Romario confirmou teste real no Android: login Google autorizou e voltou autenticado. Essa era a

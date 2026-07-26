@@ -87,6 +87,7 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | C3 | back/: GET /products filtra active + GET /products?scope=fornecedor | 1 | APROVADO (commits 70b9ee0 + 627a86a, executado pela sessao de backend) via D-012 — 39/39 testes verdes, tsc 0, escopo confere |
 | C4 | back/: POST/PUT/DELETE /products com autorizacao por dono | 1 | APROVADO (commit 93e7f55, executado pela sessao de backend) via D-012 — 51/51 testes verdes, tsc 0, fix de badge null->undefined feito pelo proprio Haiku e confirmado |
 | C5 | back/: GET /orders?scope=fornecedor filtra pedidos por produtos do fornecedor | 1 | APROVADO (commit 2e861d2, executado pela sessao de backend) via D-012 — 55/55 testes verdes, tsc 0, codigo identico ao prompt. Thread C fecha o lado backend (C2-C5) |
+| C6 | front/: ProductRepository (porta) + MockProductRepository + contract test | 1 | APROVADO (commit 34dd865) via D-012 — 311/311 testes verdes, tsc 0, desvio de design aceito (teste de ProductForbiddenError movido do contract pro mock-specific) |
 
 **Ordem de execucao (D-011):** H-002 → H-005 → [H-006 limpeza para main] → H-004 → H-003 → 006 backend.
 

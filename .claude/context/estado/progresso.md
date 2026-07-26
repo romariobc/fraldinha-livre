@@ -1,5 +1,33 @@
 # Progresso — fraldinha-livre
 
+## Nota (2026-07-26) — C6 executado (Haiku, meu worktree) e aprovado — primeira tarefa de frontend
+
+Prompt `.claude/docs/design/plans/C6-product-repository-mock.md` escrito seguindo o molde exato de
+`OrderRepository`/`MockOrderRepository` (B5/B6), com duas decisões novas já resolvidas no prompt:
+`supplierId` do "fornecedor atual" sempre via parâmetro no construtor (nunca singleton), e
+`update()`/`remove()` do mock replicam a checagem de dono do backend (404 se não existe, 403 se não é
+do dono) em vez de só simular o caminho feliz.
+
+**Execução:** commit `34dd865` (Haiku). Criou `product-repository.ts` (porta + `ProductNotFoundError`/
+`ProductForbiddenError`), `mock-product-repository.ts` (seed default = 24 produtos mapeados de
+`priceInCents`→`priceCents`), contract test reutilizável, e testes do mock (seed default, isolamento,
+autorização). **Desvio do prompt, avaliado e aceito:** o prompt pedia o teste de `ProductForbiddenError`
+dentro do contract test reutilizável (com um parâmetro `supplierId` extra em `makeRepo`); o Haiku
+moveu esse teste para o arquivo específico do mock, argumentando que exigir um seed de "produto de
+outro fornecedor" não generaliza bem pra futuras implementações do contrato (`HttpProductRepository`,
+C7, que não tem conceito de seed via construtor). Concordei — é uma correção de design, não um corte
+de escopo: o `ProductForbiddenError` continua testado (2 casos, `update`/`remove`), só que no lugar
+mais apropriado.
+
+**Revisão D-012 feita por mim, independente:** `git show --stat` confirma escopo exato (só a camada
+nova, nenhum arquivo de produção tocado); leitura completa dos 4 arquivos linha a linha; `npm test`
+(front/) rodado de novo — 311/311 verde; `tsc --noEmit` exit 0; lint só o warning preexistente.
+**C6 APROVADA** (commit `34dd865`).
+
+Próximo passo: C7 (`HttpProductRepository`, dep: C6 concluída).
+
+---
+
 ## Nota (2026-07-26) — C5 executado (sessão de backend) e aprovado — thread C fecha o lado back (C2-C5)
 
 **Execução:** commit `2e861d2` (Haiku, sem fix de revisão — código bate literalmente com o prompt).

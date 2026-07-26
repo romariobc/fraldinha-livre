@@ -31,15 +31,21 @@ export class MockOrderRepository implements OrderRepository {
   private orders: Order[]
   private now: () => string
   private idFactory: () => string
+  private supplierId?: string
 
-  constructor(options: { now: () => string; idFactory: () => string; seed?: Order[] }) {
+  constructor(options: { now: () => string; idFactory: () => string; seed?: Order[]; supplierId?: string }) {
     this.now = options.now
     this.idFactory = options.idFactory
     this.orders = options.seed ?? INITIAL_ORDERS.map(toContractOrder)
+    this.supplierId = options.supplierId
   }
 
   async list(): Promise<Order[]> {
     return [...this.orders]
+  }
+
+  async listForSupplier(): Promise<Order[]> {
+    return this.orders.filter((o) => o.supplierId === this.supplierId)
   }
 
   async create(req: CreateOrderRequest): Promise<Order> {

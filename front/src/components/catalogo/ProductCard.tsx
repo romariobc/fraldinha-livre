@@ -78,6 +78,8 @@ export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn
     onRequestOffer(product)
   }
 
+  const badgeClass = product.badge ? (BADGE_STYLES[product.badge] ?? 'bg-brand-muted text-white') : undefined
+
   return (
     <div className="bg-white rounded-card shadow-card overflow-hidden hover:-translate-y-1.5 hover:shadow-card-hover transition-all flex flex-col">
       {/* Imagem / placeholder + título (linkado) */}
@@ -86,7 +88,7 @@ export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn
           <span aria-hidden="true">🧷</span>
           {product.badge && (
             <span
-              className={`absolute top-2.5 left-2.5 text-[10px] font-bold rounded-full px-2.5 py-0.5 ${BADGE_STYLES[product.badge]}`}
+              className={`absolute top-2.5 left-2.5 text-[10px] font-bold rounded-full px-2.5 py-0.5 ${badgeClass}`}
             >
               {product.badge}
             </span>

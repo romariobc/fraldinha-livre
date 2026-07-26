@@ -1,6 +1,540 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-23) — Task 4: Perfil do Fornecedor documentado
+## Marco (2026-07-26) — C11 fechado: login mobile confirmado em Android real, thread C (feature 007) concluída (D-036)
+
+Romario confirmou teste real no Android: login Google autorizou e voltou autenticado. Essa era a
+última pendência humana de C11 (deploy real + migrations remotas + validação humana completa,
+thread C — feature 007 Catálogo do Fornecedor). **Feature 007 marcada `done`** em `feature_list.json`.
+
+Estado de produção: frontend `fraldinha-livre-frontend.romariobc.workers.dev` (deploy `a56ec67b`,
+`NEXT_PUBLIC_USE_BACKEND=true`, proxy de auth mobile ativo); backend
+`fraldinha-livre-backend.romariobc.workers.dev` (fix de badge null, commit `b1611c4`). Login Google
+confirmado em desktop e mobile.
+
+**Próximo passo:** avisar a sessão do backend (worktree `blissful-lamport-ccb562`, branch
+`Romir/folder-analysis-070a4b`) que é hora de consolidar frontend (`Romir/master-session-restart-535624`)
++ backend num PR único para `main`.
+
+Detalhes completos em D-036.
+
+---
+
+## Marco (2026-07-26) — Fix real do login mobile (proxying authDomain) — falta 1 passo humano (D-035)
+
+O fix de D-034 (`signInWithRedirect`) não resolveu — usuário Android continuou sem conseguir logar
+(autoriza no Google, volta pra `/login` sem erro). Consultei o Gemini (Firebase Console), causa raiz
+confirmada: `authDomain` (`fraldinha-livre.firebaseapp.com`) é origem diferente do domínio real do
+app (`workers.dev`) — mobile bloqueia o storage de terceiro que o Firebase usa pra recuperar o
+resultado do redirect.
+
+**Fix aplicado (proxying, sem DNS customizado):** `next.config.ts` faz rewrite de `/__/auth/*` pro
+handler real do Firebase; `authDomain` de produção passa a ser o domínio do app
+(`front/.env.production.local` — teve que ser esse arquivo específico, não `.env.production`, por
+causa de precedência do Next.js com `.env.local`). Verificado com build Docker local + produção real
+antes de fechar: `authDomain` correto no bundle, `/__/auth/handler` responde com o handler real do
+Firebase nos dois ambientes. Deploy `a56ec67b`.
+
+**⚠️ Pendência humana obrigatória, ainda não confirmada:** Romario precisa atualizar o OAuth Client
+ID do provider Google no **Google Cloud Console** (não Firebase Console) — adicionar a origem JS
+`https://fraldinha-livre-frontend.romariobc.workers.dev` e o redirect URI
+`https://fraldinha-livre-frontend.romariobc.workers.dev/__/auth/handler`. **Sem isso o login mobile
+ainda não funciona de verdade** — o código está certo, falta essa configuração do lado do Google.
+
+Detalhes completos em D-035.
+
+---
+
+## Marco (2026-07-26) — Login mobile + e-mail/senha habilitado + 2 fornecedores de teste (D-034)
+
+Fix do login Google em mobile (`signInWithRedirect`, achado real de usuário Android). Verificado
+(não assumido) que o login por e-mail/senha NÃO estava funcional apesar da tela existir — implementado
+de verdade (`signInEmail`/`signUpEmail`, reusa `/onboarding` já existente). 2 contas de fornecedor de
+teste criadas via o próprio fluxo novo, confirmadas funcionando (painel + aba Catálogo visíveis):
+
+- `fornecedor.teste1@fraldinhalivre.com.br` / `Teste123!`
+- `fornecedor.teste2@fraldinhalivre.com.br` / `Teste123!`
+
+Detalhes completos em D-034. Deploy `297df1bc`, 351/351 testes verdes.
+
+---
+
+## Marco (2026-07-26) — C11 executado: migrations remotas + deploy real + bug de produção encontrado e corrigido (D-033)
+
+A pedido do Romario ("aplique as migrations e redeploy que eu sigo"): migrations 0003+0004 aplicadas
+no D1 remoto (24 produtos, 0 vazios, D-031 confirmado funcionando); backend redeployado
+(`fd487cb3`); frontend redeployado.
+
+**Dois achados reais durante a verificação (não pulei pro "deploy feito", segui verificando de
+verdade no navegador, aba nova):**
+1. **Frontend nunca teve `NEXT_PUBLIC_USE_BACKEND=true` configurado** — desde o primeiro deploy
+   (D-032), o site sempre rodou em modo mock. Perguntei ao Romario antes de ligar (mudança real de
+   comportamento em produção — checkout/CRUD/login passam a ser de verdade). Confirmado "sim,
+   ligar". Criado `front/.env.production` (committed, exceção no `.gitignore`), rebuild+redeploy.
+2. **Bug real de produção**: `GET /products` quebrava pro front real (`ProductSchema.badge` rejeita
+   `null`, e o D1 retorna `null` pra produtos sem badge — a maioria dos 24). Corrigido no backend
+   (`normalizeBadge`, commit `b1611c4`, mesma disciplina de C4 que faltava em C3), com 2 testes
+   novos que validam a resposta completa contra `ProductListSchema` (o gap que deixou isso passar
+   por todas as revisões D-012 anteriores). Redeployado, confirmado no navegador (aba limpa):
+   `/catalogo` e `/produto/[slug]` carregam via backend real, sem erro.
+
+Detalhes completos em D-033 (`.claude/docs/decisoes.md`).
+
+**Pendências do usuário, ainda não confirmadas:** autorizar o domínio no Firebase Auth (D-032);
+validação humana completa no navegador (login Google real, CRUD de produto pelo fornecedor,
+checkout ponta a ponta) — passo humano final do C11.
+
+---
+
+## Nota (2026-07-26) — C10 executado (Haiku) e aprovado, com correção de teste (thread C fecha a fatia de código)
+
+Prompt `.claude/docs/design/plans/C10-market-provider-sync-real.md` — resolveu 2 decisões que a spec
+deixava abertas: bridge otimista `orderToDirectOrder`/`addDirectOrder` em `checkout.tsx` fica
+INTOCADO (RN-007-05 já fecha via fetch real em modo backend, remover é escopo adicional não
+necessário); modo mock mantém `MOCK_DIRECT_ORDERS` estático sem fetch (datasets de comprador e
+fornecedor desacoplados demais para unificar sem sintetizar endereço fake).
+
+**Execução:** commit `70ea477` (Haiku). `listForSupplier()` adicionado à interface
+`OrderRepository` + `MockOrderRepository` (filtro por `supplierId` opcional, sem consumidor em modo
+mock) + `HttpOrderRepository` (`GET /orders?scope=fornecedor`, caminho real). Novo
+`contractOrderToDirectOrder` em `order-adapters.ts`, ao lado do antigo (intocado). `MarketProvider`
+busca de verdade em modo backend, mantém estático em modo mock. Painel trata loading/erro explícitos.
+
+**Problema real achado na revisão D-012 (não aceito do relatório):** o relatório do executor alegava
+uma "falha pré-existente" em `checkout` que teria excluído do `npm test`, e uma suíte de teste
+"simplificada" pra modo backend do `market-context`. Rodei a suíte completa por conta própria, sem
+exclusões: **checkout passou 24/24 limpo** — a alegação de falha pré-existente não se reproduziu (era
+transitória do lado do executor, não um problema real). Mas a "simplificação" ERA um problema real: o
+describe `directOrders loading (backend mode)` nunca setava `NEXT_PUBLIC_USE_BACKEND=true` nem
+mockava `listForSupplier()` com dados — só verificava o *shape* genérico dos campos em modo mock, um
+teste decoy que não exercitava o caminho principal que a própria C10 entrega. **Corrigi diretamente**
+(commit `e571f21`): 2 testes reais (sucesso — `listForSupplier` resolve, `directOrders` populado e
+mapeado; erro — rejeita, `directOrdersError` setado, não quebra), usando `vi.stubEnv` + mock de
+`HttpOrderRepository` com dados de verdade, mesmo padrão já usado em `orders-context.backend.test.tsx`.
+
+**Revisão D-012 completa por conta própria:** `git show --stat`/diff de todos os arquivos — código de
+produção bate exatamente com o prompt (nenhum desvio); `npm test` — 351/351 verde (após o fix);
+`tsc --noEmit` exit 0; `npm run build` — rotas intactas. **C10 APROVADA** (commits `70ea477` +
+`e571f21`).
+
+**Thread C — todo o código está pronto e aprovado (C1-C10).** Falta só **C11** (deploy real +
+migrations remotas + validação humana completa no navegador — coordenador+cliente, não agente).
+
+**Lição registrada:** relatório de executor que menciona "simplifiquei" ou "excluí X por falha
+pré-existente" é sinal de alerta — sempre reproduzir a alegação por conta própria (D-012, princípio
+0) antes de aceitar como fato, mesmo quando o resto do trabalho parece sólido.
+
+---
+
+## Nota (2026-07-26) — C8 e C9 executadas em paralelo (Haiku) e aprovadas
+
+Disparei C8 (`/catalogo`+`/produto/[slug]` migram pro `ProductRepository` — **maior risco da
+fatia**) e C9 (`CatalogoTab.tsx` no painel do fornecedor) simultaneamente, arquivos diferentes, sem
+conflito. **Achado de coordenação:** os dois agentes rodando ao mesmo tempo no mesmo worktree
+deixaram a working tree "suja" durante a execução — o `npm test` que a C9 rodou por conta própria viu
+2 falhas transitórias causadas pelo WIP não-commitado da C8 no momento (não um bug real da C9).
+Confirmei isso rodando a suíte de novo eu mesma DEPOIS que as duas commitaram, limpo: 340/340 verde.
+**Lição pra próximas paralelizações no mesmo worktree:** não confiar no `npm test` que um executor
+roda enquanto outro ainda está com WIP não-commitado — sempre revalidar depois que ambos commitarem.
+
+**C8 (commit `8e41af4`):** alargou `Brand`/`Size`/`Badge`/`ProductCategory` (e também
+`ProductAtributos.genero`, decisão extra do Haiku não pedida explicitamente no prompt, mas consistente
+com a mesma razão — aceitei) de unions literais fechadas pra `string`, já que produtos reais de
+fornecedor (CRUD, C4) não ficam restritos aos valores do seed antigo. Fallback seguro de badge em
+`ProductCard.tsx` (nunca renderiza classe `"undefined"`). Criou `ProductsProvider`/`useProducts`
+(`front/src/contexts/products-context.tsx`), carregando via `ProductRepository` sem gating de auth
+(rota pública). `/catalogo` e `/produto/[slug]` migrados, com loading/erro explícitos.
+
+**C9 (commit `bb86c2d`):** `CatalogoTab.tsx` completo (lista, criar/editar, despublicar/republicar,
+excluir com `Dialog` de confirmação D-025), repositório instanciado direto no componente (decisão de
+escopo mínimo, sem provider novo), slug gerado automaticamente do nome, preço reais→centavos sem
+float.
+
+**Revisão D-012 feita por mim, independente, depois das duas commitarem (estado limpo):**
+`git show --stat`/diff completo dos 2 commits — código bate com o especificado nos dois prompts;
+leitura integral de `CatalogoTab.tsx` e `products-context.tsx`; `npm test` — 340/340 verde;
+`tsc --noEmit` exit 0; `lint` só o warning preexistente; **`npm run build`** — sucesso, lista de rotas
+intacta (`/catalogo`, `/produto/[slug]`, `/fornecedor/painel` todas presentes).
+
+**Verificação visual OBRIGATÓRIA de C8 (maior risco, feita no navegador de verdade, não só
+testes):** subi o dev server (`preview_start`), limpei cache `.next` stale que causava 404 falso
+(problema de cache, não do código), naveguei em `/catalogo` (24 produtos reais carregados via
+`MockProductRepository`, badges/preços/paginação corretos), `/produto/pampers-supersec-pants-p`
+(detalhe completo correto), e `/produto/nao-existe-xyz` (mensagem "produto não encontrado" correta,
+sem falso-positivo durante loading). **C8 e C9 APROVADAS.**
+
+Próximo passo: **C10** (`MarketProvider` sync real via `GET /orders?scope=fornecedor`, dep: C7+C5,
+ambas concluídas) — última tarefa de código da thread antes de C11 (deploy+validação humana,
+coordenador+cliente).
+
+---
+
+## Nota (2026-07-26) — C7 executado (Haiku) e aprovado
+
+Prompt `.claude/docs/design/plans/C7-http-product-repository.md` escrito seguindo exatamente o molde
+de `HttpOrderRepository` (fetch via `apiFetch`, mapeamento 404→`ProductNotFoundError`/
+403→`ProductForbiddenError`, contract test com fake fetch stateful).
+
+**Execução:** commit `1543b08` (Haiku, sem desvio — código idêntico ao prompt). 5 operações
+implementadas; 14 testes novos (Parte A: auth header + mapeamento de status; Parte B: contract test
+reutilizável de C6 rodando contra o fake fetch).
+
+**Revisão D-012 feita por mim, independente:** `git show --stat` confirma escopo exato (só os 2
+arquivos novos, nada de produção tocado); leitura completa dos 2 arquivos linha a linha — bate
+exatamente com o prompt; `npm test` (front/) rodado de novo — 325/325 verde; `tsc --noEmit` exit 0;
+`grep "from 'zod'"` no arquivo novo — nada encontrado. **C7 APROVADA** (commit `1543b08`).
+
+Próximo passo: C8 (front — `/catalogo` e `/produto/[slug]` migram pro `ProductRepository`, **maior
+risco da fatia**, revisão humana no navegador obrigatória antes de aprovar) e C9 (front —
+`CatalogoTab.tsx` no painel do fornecedor) podem rodar em paralelo depois de C7 (páginas diferentes).
+
+---
+
+## Marco (2026-07-26) — Frontend em PRODUÇÃO por trás de PLACEHOLDER pendente de acao humana (D-032)
+
+`wrangler deploy` real executado a pedido explícito do Romario. Worker no ar:
+**https://fraldinha-livre-frontend.romariobc.workers.dev**. Smoke test confirmado (200 + título
+correto nas 4 rotas principais). Detalhes completos em D-032 (`.claude/docs/decisoes.md`).
+
+**Ação humana pendente (não é código):** registrar o domínio de produção em Firebase Console →
+Authentication → Settings → Authorized domains, para o login Google não quebrar. Ninguém testou
+login real em produção ainda.
+
+Comportamento deployado é idêntico ao já validado localmente (C1+C6, camada nova sem consumidor) —
+`/catalogo` ainda lê do array estático. A feature 007 completa só fica visível em produção depois de
+C8 (catálogo migra pro repository) + deploy novo + C11 (validação humana completa).
+
+---
+
+## Nota (2026-07-26) — C6 executado (Haiku, meu worktree) e aprovado — primeira tarefa de frontend
+
+Prompt `.claude/docs/design/plans/C6-product-repository-mock.md` escrito seguindo o molde exato de
+`OrderRepository`/`MockOrderRepository` (B5/B6), com duas decisões novas já resolvidas no prompt:
+`supplierId` do "fornecedor atual" sempre via parâmetro no construtor (nunca singleton), e
+`update()`/`remove()` do mock replicam a checagem de dono do backend (404 se não existe, 403 se não é
+do dono) em vez de só simular o caminho feliz.
+
+**Execução:** commit `34dd865` (Haiku). Criou `product-repository.ts` (porta + `ProductNotFoundError`/
+`ProductForbiddenError`), `mock-product-repository.ts` (seed default = 24 produtos mapeados de
+`priceInCents`→`priceCents`), contract test reutilizável, e testes do mock (seed default, isolamento,
+autorização). **Desvio do prompt, avaliado e aceito:** o prompt pedia o teste de `ProductForbiddenError`
+dentro do contract test reutilizável (com um parâmetro `supplierId` extra em `makeRepo`); o Haiku
+moveu esse teste para o arquivo específico do mock, argumentando que exigir um seed de "produto de
+outro fornecedor" não generaliza bem pra futuras implementações do contrato (`HttpProductRepository`,
+C7, que não tem conceito de seed via construtor). Concordei — é uma correção de design, não um corte
+de escopo: o `ProductForbiddenError` continua testado (2 casos, `update`/`remove`), só que no lugar
+mais apropriado.
+
+**Revisão D-012 feita por mim, independente:** `git show --stat` confirma escopo exato (só a camada
+nova, nenhum arquivo de produção tocado); leitura completa dos 4 arquivos linha a linha; `npm test`
+(front/) rodado de novo — 311/311 verde; `tsc --noEmit` exit 0; lint só o warning preexistente.
+**C6 APROVADA** (commit `34dd865`).
+
+Próximo passo: C7 (`HttpProductRepository`, dep: C6 concluída).
+
+---
+
+## Nota (2026-07-26) — C5 executado (sessão de backend) e aprovado — thread C fecha o lado back (C2-C5)
+
+**Execução:** commit `2e861d2` (Haiku, sem fix de revisão — código bate literalmente com o prompt).
+`ordersGetHandler` estendido com branch `scope=fornecedor` (innerJoin `orderItems`+`products`
+filtrando por `supplierId=uid`), resto da função (mapeamento, validação `OrderSchema`) intocado;
+`index.ts` não foi tocado, como especificado (`/orders/*` já exigia auth pra tudo).
+
+**Revisão D-012 feita por mim, independente:** `git show --stat`/diff confirma escopo exato (só
+`orders.ts` + teste novo) e código idêntico ao prompt; `npm test` (back/) rodado de novo — 55/55
+verde; `tsc --noEmit` exit 0. A sessão de backend também investigou um cenário de vazamento
+(pedido com itens de fornecedores diferentes) e confirmou por leitura do código que é impossível por
+construção — `POST /orders` já valida `fornecedor divergente` por item contra um único
+`supplierId` declarado no pedido (thread P), então um pedido nunca tem itens de mais de um
+fornecedor. **C5 APROVADA** (commit `2e861d2`, branch/worktree do back — ainda não pushed).
+
+**Thread C — lado backend (C2, C3, C4, C5) fechado.** Todas aprovadas via D-012, nenhum push ainda
+(por escolha explícita, esperando o resto da thread). Próximo passo: **C6-C10 são frontend** (porta
+`ProductRepository`, `HttpProductRepository`, migração de `/catalogo`/`/produto/[slug]`,
+`CatalogoTab.tsx` no painel do fornecedor, sync do `MarketProvider`) — responsabilidade desta sessão
+(frontend), não da sessão de backend. **C11** (deploy real + validação humana) é coordenador+cliente,
+não agente. Nenhuma tarefa de backend pendente na thread C por enquanto.
+
+---
+
+## Nota (2026-07-26) — C4 executado (sessão de backend) e aprovado
+
+Prompt `.claude/docs/design/plans/C4-products-crud.md` escrito com o código exato dos 3 handlers
+(`POST`/`PUT`/`DELETE /products`) e do novo bloco de `index.ts`, incluindo a decisão de slug (cliente
+sempre envia, servidor não gera/deriva/verifica unicidade — fora de escopo) já resolvida no prompt.
+
+**Execução:** commit `93e7f55` (Haiku, sem fix de revisão necessário). Autorização por dono (404 se
+não existe, 403 se não é do uid, nunca o contrário); despublicar/republicar via `PUT active`;
+`DELETE` remove de verdade. 12 testes novos. **Acerto do próprio Haiku, não desvio:** o código literal
+do prompt fazia `ProductSchema.parse(savedRows[0])` direto, mas o Drizzle retorna `null` pra `badge`
+(coluna nullable) enquanto `ProductSchema.badge` é `z.string().optional()` (não aceita `null`) — sem
+`badge ?? undefined`, criar/editar produto sem badge quebraria. O Haiku adicionou essa conversão nos
+dois handlers (`POST`/`PUT`), confirmado funcionando pelo teste sem badge.
+
+**Revisão D-012 feita por mim, independente:** `git show --stat`/diff completo confirma escopo exato
+e código batendo com o prompt (mais o fix do badge, correto); leitura completa do arquivo de teste
+(12 casos, cobertura bate com os critérios de aceite); `npm test` (back/) rodado de novo — 51/51
+verde; `tsc --noEmit` exit 0. **C4 APROVADA** (commit `93e7f55`, branch/worktree do back — ainda não
+pushed).
+
+Próximo passo: C5 (`GET /orders?scope=fornecedor`) já em execução sequencial pela sessão de backend
+(mesmo worktree, coordenado pra não conflitar com C4 em `index.ts`).
+
+---
+
+## Nota (2026-07-26) — C3 executado (sessão de backend) e aprovado
+
+Prompt `.claude/docs/design/plans/C3-products-get-scope-fornecedor.md` escrito com a decisão de
+arquitetura já resolvida (middleware condicional em `index.ts`, mesmo path `/products` distinguido
+por query string, sem inventar rota separada) e enviado pra "[BA] Master session".
+
+**Execução:** commit `70b9ee0` (Haiku) + `627a86a` (fix cosmético da sessão de backend — import de
+`Env`/`AppContext` padronizado pra `../env`, sem efeito funcional). `GET /products` sem `scope` filtra
+`active=true`; `GET /products?scope=fornecedor` autenticado retorna todos os produtos do uid
+(ativos+inativos). Testes cobrem 401 sem token, 401 token inválido, 200 com token válido, regressão
+dos 24 produtos públicos.
+
+**Revisão D-012 feita por mim, independente:** `git show --stat`/diff completo dos 2 commits confirma
+escopo exato (`back/src/index.ts`, `back/src/routes/products.ts`, `back/test/products.get.test.ts`,
+nada em `front/`/`packages/contracts/`); código bate literalmente com o especificado no prompt;
+`npm test` (back/) rodado de novo — 39/39 verde; `tsc --noEmit` exit 0. **C3 APROVADA** (commits
+`70b9ee0` + `627a86a`, branch/worktree do back — ainda não pushed).
+
+Próximo passo: C4 (back — `POST`/`PUT`/`DELETE /products`) e C5 (back — `GET /orders?scope=fornecedor`),
+ambas dependem de C3 (concluída) e podem rodar em paralelo (arquivos diferentes). **Pausado aqui por
+instrução explícita do Romario — aguardando ele retomar.**
+
+---
+
+## Nota (2026-07-26) — C2 executado (sessão de backend, worktree blissful-lamport-ccb562) e aprovado
+
+Disparei C2 pra "[BA] Master session" (thread separada, worktree `blissful-lamport-ccb562`) via
+`send_message` — não é subagente meu, é sessão top-level irmã. Antes de despachar, achei bloqueio
+real: aquele worktree estava numa branch (`Romir/folder-analysis-070a4b`) sem a migração pra npm
+workspaces nem o commit de C1 (`32a4ae7`) — divergência resolvida por merge da minha branch
+(`Romir/master-session-restart-535624`) na branch do back, feito pela própria sessão de backend
+antes de disparar o Haiku (confirmei depois com `git merge-base --is-ancestor`).
+
+**Execução:** commit `c4ae8dd` (Haiku, schema `products.ts` estendido + migrations 0003 gerada por
+`drizzle-kit` + 0004 backfill dos 24 produtos). **Bug real achado na revisão da sessão de backend**
+(commit `46f4d05`, fix): a migration 0003 listava as colunas novas também no `SELECT` da tabela
+antiga — SQLite não erra nesse caso, reinterpreta o identificador não resolvido como literal string
+(`"name"` → `'name'`), mascarado pela 0004 que sobrescrevia tudo em seguida. Registrado como sensor
+em `.claude/docs/decisoes.md` (D-031) — vale para qualquer migration futura que recrie tabela.
+
+**Revisão D-012 feita por mim, de forma independente (não só o relatório da outra sessão):**
+`git show --stat`/diff dos dois commits confirma escopo exato (nada em `front/`/`packages/contracts/`);
+`npm test` (back/) rodado de novo — 35/35 verde; `tsc --noEmit` exit 0; reproduzi a cadeia de
+migrations 0000→0004 com `sqlite3` puro, isolada — 24 produtos, zero linha com `name`/`brand`
+vazio/literal; spot-check de p1/h2/c4 contra `front/src/lib/products.ts` bate. **C2 APROVADA**
+(commits `c4ae8dd` + `46f4d05`, branch/worktree do back — ainda não pushed, por escolha explícita,
+esperando o resto da thread C).
+
+Próximo passo: C3 (back — `GET /products` filtra `active` + `GET /products?scope=fornecedor`),
+depende de C2 (concluída). Ainda não disparado.
+
+---
+
+## Nota (2026-07-26) — C1 executado e aprovado (thread C, feature 007)
+
+Prompt `.claude/docs/design/plans/C1-products-contract.md` escrito e disparado via agente Haiku.
+Achou uma divergência real não coberta no prompt: `front/src/lib/products.ts` usa `priceInCents`,
+mas `back/src/schema/products.ts`/`back/src/routes/orders.ts` (já em produção desde a thread P) usam
+`priceCents` — parou e perguntou em vez de adivinhar. Resolvido: contrato segue o backend
+(`priceCents`), já que é o lado que já está deployado; a migração do front pro nome novo é escopo de
+C8, não de C1.
+
+Revisão D-012 feita pela sessão-mãe (não só o relatório do executor): `git show --stat 32a4ae7`
+confirma escopo exato (só `packages/contracts/src/{product.ts,index.ts,__tests__/product.test.ts}`,
+nada em `back/`/`front/`); `npm test` rodado de novo por conta própria — 15/15 verde (4 novos +
+11 preexistentes de `order.test.ts`); `npx tsc --noEmit` exit 0. **C1 APROVADO (commit `32a4ae7`).**
+
+Próximo passo: C2 (back — schema `products` estendido + migrations 0003/0004), depende de C1
+(concluído). Ainda não disparado.
+
+---
+
+## Nota (2026-07-25) — Plano de implementação da feature 007 (Catálogo do Fornecedor) escrito
+
+A "[FR]Master session" avisou por cross-session-message que a spec da feature 007 (Catálogo do
+Fornecedor: CRUD de produtos + sync do painel) foi aprovada em bloco (commits `e39b329` → `7227f4b`
+→ `f96d54d`, `.claude/docs/design/specs/spec-catalogo-fornecedor-produtos.md`), com 6 decisões de
+escopo confirmadas pelo cliente. **Descoberta importante:** este worktree (`eloquent-montalcini-2dff41`)
+está sendo compartilhado entre esta sessão e a Master session, commitando na mesma branch de forma
+intercalada — risco real de edição concorrente, registrado explicitamente no plano novo como cuidado
+extra (checar `git log --oneline` antes de cada commit desta thread).
+
+**Plano escrito:** `.claude/docs/design/plans/C-catalogo-fornecedor-breakdown.md` (11 tarefas, C1-C11,
+mesmo formato/rigor de B-backend-pedidos-breakdown.md e P-backend-produtos-breakdown.md — interfaces
+canônicas DRY, grafo de dependências, constraints globais, verificação D-008). Achado da sessão-mãe
+que a spec não cobria: `front/src/lib/order-adapters.ts` (`orderToDirectOrder`) já existe como bridge
+otimista client-side (materializa `DirectOrder` só na memória do navegador que fez a compra, chamado
+em `checkout/page.tsx`) — não persiste entre sessões, é exatamente o buraco que `GET
+/orders?scope=fornecedor` (RN-007-05) fecha de verdade. Documentado como decisão a tomar (não
+adivinhada) na tarefa C10.
+
+Índice atualizado em `.claude/docs/design/plans/README.md`. Ainda **não disparada nenhuma execução**
+(nenhum agente Haiku rodou) — só o plano foi escrito. Registro nesta nota + o arquivo do plano ainda
+não commitados no momento em que esta entrada foi escrita.
+
+---
+
+## Nota (2026-07-25) — Arquivo de infra enriquecido com a arquitetura completa
+
+`.claude/docs/infra/arquitetura-firebase-cloudflare.md` (renomeado de
+`cloudflare-workers-limites-custos.md`) ganhou, além dos limites/custos do Workers Paid já
+registrados, a documentação da arquitetura atual completa: visão geral (diagrama em texto),
+componentes e responsabilidades (Firebase Auth, Firestore `users/{uid}`, Worker+Container do front,
+Worker+D1 do back), os 6 fluxos reais de conexão entre módulos (login, leitura/escrita de perfil,
+chamada à API, validação de JWT, persistência em D1, roteamento do container), requisitos de
+segurança (JWT stateless sem SDK admin, Firestore Rules D-013, CORS por regex, ausência de secrets
+hoje, domínios autorizados pendentes), rede (sem VPC, D1 sem endpoint público, WAF/DDoS automático
+da Cloudflare) e disponibilidade (backend sem SPOF conhecido; frontend com SPOF real e consciente —
+`max_instances: 1` + `sleepAfter: 10m`, aceitável no estágio atual, primeiro ponto a revisar se
+tráfego crescer). Referencia `decisoes.md` para o raciocínio completo de cada decisão (D-010,
+D-026, D-027, D-013, D-029/D-030) em vez de duplicar.
+
+Nenhuma mudança de código — só documentação, seguindo o mesmo raciocínio das notas anteriores desta
+sessão (verificar antes de agir, registrar o estado real).
+
+---
+
+## Marco (2026-07-25) — Workers Paid CONFIRMADO ativo; último bloqueio do H-010 removido
+
+Romario habilitou o plano pago do Workers (US$ 5/mês) no dashboard da Cloudflare — pré-requisito
+humano que faltava para o deploy real do H-010 (frontend via Cloudflare Containers), documentado
+como pendente desde a execução do H-010 (ver estado abaixo, 2026-07-24).
+
+**Confirmado nesta sessão, sem depender só da palavra do cliente:** `wrangler whoami` mostrou o
+token com escopos `containers (write)`/`cloudchamber (write)`; mais decisivo, `wrangler containers
+list` retornou `No containers found` — resposta limpa, sem o erro de paywall que a API da
+Cloudflare devolve quando Containers é chamado num plano Free. Verificação read-only, nenhum deploy
+feito ainda.
+
+**Novo arquivo de referência:** `.claude/docs/infra/arquitetura-firebase-cloudflare.md` (renomeado
+de `cloudflare-workers-limites-custos.md` depois de virar o doc de arquitetura completo, ver nota
+2026-07-25 mais recente abaixo) — limites incluídos no plano pago e preços de excedente (D1,
+Durable Objects, KV, Queues, Logpush, Pages Functions), transcritos do dashboard de billing colado
+pelo Romario. Inclui uma seção do que o projeto já usa hoje (D1 real, Durable Objects via Container
+do front) e sinais de alerta para checar **antes** de qualquer tarefa que escale uso desses recursos
+(subir `max_instances`, seed grande no D1, ligar KV/Queues/Logpush). Qualquer sessão futura que
+mexer em infra Cloudflare deve consultar esse arquivo antes de agir.
+
+**Próximo passo (não decidido ainda):** decidir com o cliente se já dispara o deploy real
+(`wrangler deploy` do front + smoke test, mesmo padrão de B9/P3) ou se fica só confirmado por
+enquanto.
+
+---
+
+## Nota (2026-07-25) — Revisão de arquitetura pelo Gemini (Firebase): 3 pontos checados, nenhuma ação imediata
+
+Romario pediu revisão da arquitetura (Firebase Auth + backend Cloudflare Workers/D1 + frontend
+Cloudflare Containers) ao agente Gemini integrado ao Firebase. Ele reportou 3 pontos; cada um foi
+checado contra o código/estado real antes de agir (nenhuma mudança feita — só registro):
+
+1. **Domínios autorizados do Firebase Auth** — alerta correto em tese, mas **prematuro**: o
+   frontend ainda não tem deploy de produção (H-010 só validado localmente via Docker, esperando o
+   cliente ativar Workers Paid plan). `front/wrangler.jsonc` não tem `route`/domínio customizado
+   ainda. Não há hoje nenhum domínio de produção fora dos 3 já autorizados
+   (`localhost`/`fraldinha-livre.firebaseapp.com`/`fraldinha-livre.web.app`) para adicionar. **Vira
+   ação real só no momento do deploy** — quando o domínio final (workers.dev ou customizado)
+   existir, precisa ser adicionado em Firebase Console → Authentication → Settings → Authorized
+   domains. Não há tooling MCP disponível para ler a lista atual de domínios autorizados
+   diretamente.
+2. **Validação stateless do JWT no Worker** — **já implementado exatamente assim**, não é lacuna:
+   `back/src/middleware/auth.ts` usa `jose` (`createRemoteJWKSet` + `jwtVerify` contra o JWKS
+   público do Firebase), sem SDK admin, sem sessão em banco. Confirmado: zero dependência
+   `firebase-admin` no `back/package.json`. Resolvido desde a fatia B3 (2026-07-19).
+3. **Backend escrevendo no Firestore via service account** — **não se aplica à arquitetura atual**:
+   confirmado por grep que `back/src` não tem nenhuma referência a Firestore. Todas as escritas de
+   perfil (CNPJ/razão social/endereço) são client-side, via SDK do Firebase em
+   `front/src/contexts/auth-context.tsx`, protegidas por `firestore.rules` (só o dono do `uid`
+   escreve no próprio doc) — decisão consciente, não descuido. A recomendação do Gemini só passa a
+   valer se um dia decidirmos mover escritas de dados para o Worker.
+
+**Pendência real gerada por esta revisão:** nenhuma ação de código agora. Item 1 fica anotado como
+dependência do H-010 (deploy do frontend) — lembrar de registrar o domínio final nos Authorized
+domains do Firebase Auth quando o deploy acontecer.
+
+---
+
+## Estado atual (2026-07-24) — H-010: deploy do frontend via Cloudflare Containers (local, DONE)
+
+**Decisão de plataforma do frontend mudou de novo: Cloudflare Workers + adapter OpenNext (D-029)
+foi ABANDONADO em favor de Cloudflare Containers.** Sequência que levou até aqui, nesta mesma
+branch/worktree:
+
+1. **Migração para npm workspaces** (`front/` + `packages/contracts`, commits `1462da7`+`59164ed`)
+   — resolveu de vez o bug antigo `Module not found: Can't resolve '@contracts'` que travava
+   qualquer build de produção do front (Turbopack não atravessava a fronteira do monorepo sem
+   symlink real). Ganho **permanente e independente** da escolha de plataforma abaixo — não foi
+   revertido.
+2. **Tentativa do adapter OpenNext (Task 2 do plano original) travou num bug DIFERENTE e mais
+   sério**, já com workspaces resolvido: `EvalError: Code generation from strings disallowed for
+   this context`, disparado pelo Firestore (`@firebase/firestore` → `@grpc/proto-loader` →
+   `protobufjs`, que usa `new Function()` em runtime — proibido no sandbox V8 do Workers).
+   Confirmado como bug real e aberto do ecossistema: GitHub issue
+   `opennextjs/opennextjs-cloudflare#1301`, sem fix oficial, reproduzido exatamente (mesmo stack
+   trace) no nosso build. **App usa Firestore de verdade** (perfil do usuário via
+   `getDoc`/`setDoc`/`updateDoc` em `auth-context.tsx`/`onboarding/page.tsx`), não é hipotético.
+3. **Comparação de plataforma reaberta** (Romario pediu, por causa do bug do Firestore + questão
+   de segurança WAF/DDoS que ele não queria perder saindo da Cloudflare). Opções avaliadas:
+   `firebase/firestore/lite` (troca de SDK, mesma API pras 3 funções usadas, sem `onSnapshot`),
+   **Cloudflare Containers** (GA desde abril/2026 — Node.js completo, sem sandbox V8, elimina a
+   classe inteira do bug), Firebase App Hosting, e um relatório externo propondo Google Cloud Run
+   (com a Cloudflare só como CDN/WAF na frente). Verificação cruzada entre as duas sessões:
+   Cloudflare Containers resolve o mesmo problema que Cloud Run resolveria, sem sair da conta
+   Cloudflare (custo: Workers Paid, US$5/mês, ativado manualmente pelo cliente); o WAF/DDoS da
+   Cloudflare protege qualquer origem (self-hosted ou serverless), então não trava a escolha.
+4. **Decisão: Cloudflare Containers.** Nova spec (`spec-deploy-frontend-cloudflare-containers.md`,
+   `c2952b2`) + plano (`H-010-deploy-frontend-cloudflare-containers.md`, `1f6a8e8`) escritos,
+   substituindo o plano antigo de adapter OpenNext (`deploy-frontend-cloudflare-breakdown.md`,
+   agora obsoleto — Task 1 dele, CORS do backend, segue válida e já commitada; Task 2/3 dele não se
+   aplicam mais).
+
+**Execução (commit `a6848e5`), REVISADA por mim de forma independente (não só o relatório do
+executor nem o da sessão de backend):**
+- `front/next.config.ts`: `output: "standalone"` + `outputFileTracingRoot` = raiz do monorepo
+  (mesmo valor de `turbopack.root`, evita warning de inconsistência).
+- `front/Dockerfile` (novo): multi-stage `node:22-alpine`, builda a partir da raiz do monorepo,
+  copia `.next/standalone/front` (caminho verificado com build real — o standalone aninha por
+  `front/` por causa do `outputFileTracingRoot`).
+- `front/src/container-worker.ts` (novo): Worker fino (`Container` + `getRandom` de
+  `@cloudflare/containers`) que roteia pro container.
+- `front/wrangler.jsonc`: reescrito para `containers` + Durable Object binding (era config do
+  adapter OpenNext).
+- `front/tsconfig.worker.json` (novo): isola os tipos do worker do resto do app Next;
+  `front/tsconfig.json`/`eslint.config.mjs` excluem `container-worker.ts`.
+- `front/package.json` + lockfile raiz: `@opennextjs/cloudflare` removido, `@cloudflare/containers`
+  + `@cloudflare/workers-types` adicionados; scripts `preview`/`deploy` do adapter removidos,
+  `cf:deploy` novo.
+- **`back/` e `packages/contracts/` sem NENHUM diff** — confirmado por `git diff --stat` entre os
+  commits (não só grep no relatório).
+
+**Verificação própria desta sessão (refeita do zero, não reaproveitando relatório de ninguém):**
+`npm run lint` (exit 0, 1 warning pré-existente em `supplier-mock.ts`, não tocado aqui), `npm test`
+(298/298), `npx tsc --noEmit -p tsconfig.worker.json` (exit 0), `docker build --no-cache` completo
+do zero + `docker run` numa porta isolada + smoke test manual das 4 rotas (`/`, `/catalogo`,
+`/login`, `/minha-conta`) → todas `200`, logs limpos, **sem** o `EvalError`. Containers de teste e
+imagens removidos ao final (`docker rm`/`docker rmi`).
+
+**Duas correções técnicas que a sessão de backend fez sobre a spec original** (ambas verificadas
+antes de escrever o prompt, documentadas no H-010): o campo do wrangler é `max_instances` (não
+`instances`, nome antigo usado na spec); o caminho exato do standalone (`.next/standalone/front/`)
+foi confirmado com build real antes do Dockerfile, não assumido.
+
+**Pendente (fora do escopo desta fatia, mesmo padrão de B9/P3):** deploy real (`wrangler deploy`)
+depende do **Workers Paid plan (US$5/mês)** ativado manualmente pelo cliente no dashboard da
+Cloudflare — nenhum agente pode fazer isso. Até lá, o front segue sem deploy de produção, só
+validado localmente (Docker).
+
+Ver [[infra-google-cloud]] (memória de sessão, já atualizada com Containers) e D-029 em
+`.claude/docs/decisoes.md` (precisa de emenda formal registrando a troca OpenNext→Containers —
+pendente de próxima sessão, não bloqueia o H-010).
+
+---
+
+## Estado anterior (2026-07-23) — Task 4: Perfil do Fornecedor documentado
 
 **Perfil do Fornecedor (feature descrita na Task 4) IMPLEMENTADO e DOCUMENTADO.** Fatia do escopo 006 (backend) que captura dados do fornecedor (CNPJ/razão social/nome fantasia/endereço) em `users/{uid}` via Firestore, editáveis numa nova aba `PerfilTab.tsx` no painel do fornecedor. Commits: `cd5a67f` (isValidCNPJ + UserProfile), `dc2f696` (PerfilTab.tsx + testes), `8804685` (wired na dashboard). Suite 298/298 verde, `tsc`/`lint` limpos.
 

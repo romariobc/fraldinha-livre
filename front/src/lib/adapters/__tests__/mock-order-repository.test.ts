@@ -215,6 +215,117 @@ describe('MockOrderRepository', () => {
     expect(list2After.length).toBe(list2.length) // repo2 inalterado
   })
 
+  it('listForSupplier() filtra pedidos por supplierId', async () => {
+    // Criar orders com different suppliers
+    const orders = [
+      {
+        id: 'ord-sup-a-1',
+        uid: 'mock-uid-ana',
+        type: 'compra-direta' as const,
+        status: 'aguardando' as const,
+        product: 'Produto A',
+        quantity: 1,
+        unit: 'un' as const,
+        price: 100,
+        supplierId: 'sup-a',
+        supplierName: 'Fornecedor A',
+        deliveryAddress: {
+          logradouro: 'Rua A',
+          numero: '1',
+          bairro: 'Bairro A',
+          cidade: 'Cidade A',
+          estado: 'SP',
+          cep: '00000-000',
+        },
+        createdAt: mockNow(),
+        items: [],
+      },
+      {
+        id: 'ord-sup-b-1',
+        uid: 'mock-uid-ana',
+        type: 'compra-direta' as const,
+        status: 'aguardando' as const,
+        product: 'Produto B',
+        quantity: 1,
+        unit: 'un' as const,
+        price: 100,
+        supplierId: 'sup-b',
+        supplierName: 'Fornecedor B',
+        deliveryAddress: {
+          logradouro: 'Rua B',
+          numero: '2',
+          bairro: 'Bairro B',
+          cidade: 'Cidade B',
+          estado: 'RJ',
+          cep: '11111-111',
+        },
+        createdAt: mockNow(),
+        items: [],
+      },
+      {
+        id: 'ord-sup-a-2',
+        uid: 'mock-uid-ana',
+        type: 'compra-direta' as const,
+        status: 'confirmado' as const,
+        product: 'Produto A2',
+        quantity: 2,
+        unit: 'cx' as const,
+        price: 200,
+        supplierId: 'sup-a',
+        supplierName: 'Fornecedor A',
+        deliveryAddress: {
+          logradouro: 'Rua A2',
+          numero: '3',
+          bairro: 'Bairro A2',
+          cidade: 'Cidade A2',
+          estado: 'MG',
+          cep: '22222-222',
+        },
+        createdAt: mockNow(),
+        items: [],
+      },
+    ]
+
+    const repo = new MockOrderRepository({ now: mockNow, idFactory: mockIdFactory, seed: orders, supplierId: 'sup-a' })
+    const result = await repo.listForSupplier()
+
+    expect(result.length).toBe(2)
+    expect(result.every((o) => o.supplierId === 'sup-a')).toBe(true)
+    expect(result.map((o) => o.id)).toEqual(['ord-sup-a-1', 'ord-sup-a-2'])
+  })
+
+  it('listForSupplier() sem supplierId definido retorna array vazio', async () => {
+    const orders = [
+      {
+        id: 'ord-1',
+        uid: 'mock-uid-ana',
+        type: 'compra-direta' as const,
+        status: 'aguardando' as const,
+        product: 'Produto',
+        quantity: 1,
+        unit: 'un' as const,
+        price: 100,
+        supplierId: 'sup-1',
+        supplierName: 'Fornecedor',
+        deliveryAddress: {
+          logradouro: 'Rua',
+          numero: '1',
+          bairro: 'Bairro',
+          cidade: 'Cidade',
+          estado: 'SP',
+          cep: '00000-000',
+        },
+        createdAt: mockNow(),
+        items: [],
+      },
+    ]
+
+    const repo = new MockOrderRepository({ now: mockNow, idFactory: mockIdFactory, seed: orders })
+    const result = await repo.listForSupplier()
+
+    expect(result.length).toBe(0)
+  })
+
   // Contract tests with empty seed
   runOrderRepositoryContract('MockOrderRepository (empty seed)', () =>
     new MockOrderRepository({ now: mockNow, idFactory: mockIdFactory, seed: [] })

@@ -12,6 +12,13 @@ export class HttpOrderRepository implements OrderRepository {
     return OrderListSchema.parse(json)
   }
 
+  async listForSupplier(): Promise<Order[]> {
+    const res = await apiFetch('/orders?scope=fornecedor')
+    if (!res.ok) throw new Error(`Failed to list supplier orders: HTTP ${res.status}`)
+    const json = await res.json()
+    return OrderListSchema.parse(json)
+  }
+
   async create(req: CreateOrderRequest): Promise<Order> {
     const res = await apiFetch('/orders', { method: 'POST', body: JSON.stringify(req) })
     if (!res.ok) throw new Error(`Failed to create order: HTTP ${res.status}`)

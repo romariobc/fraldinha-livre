@@ -80,6 +80,19 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | P1 | back/: schema products + migrations + seed + GET /products | 1 | APROVADO (commits 6a0c9f4, ed1e9bb, 7d08f46) via D-012 — incidente de commit no repo errado corrigido; ressalva do seed resolvida com teste-sensor |
 | P2 | back/: POST /orders revalida preco/existencia/fornecedor | 1 | APROVADO (commit 256d22a) via D-012 |
 | P3 | Deploy real do Worker + migrations remotas + validação humana (fatia 2 = Produtos) | 1 | FECHADO (2026-07-23) — produção validada pelo cliente (checkout completo), registro em feature_list.json/integration-guide.md feito |
+| H-010 | Deploy do frontend via Cloudflare Containers (substitui adapter OpenNext, spec commit c2952b2) | — | PRONTO para disparo (2026-07-25) — 2 correções da sessão-mãe sobre a spec: `max_instances` (não `instances`) e caminho do standalone verificado com build real |
+| C (breakdown) | Catálogo do Fornecedor: CRUD de produtos + sync do painel (feature 007) — C1..C11 | 1 | breakdown APROVADO (2026-07-25); prompts C1..Cn a escrever no disparo |
+| C1 | packages/contracts: ProductSchema/CreateProductRequestSchema/UpdateProductRequestSchema | 1 | APROVADO (commit 32a4ae7) via D-012 — 15/15 testes verdes, tsc 0, escopo confere |
+| C2 | back/: schema products estendido + migrations 0003/0004 | 1 | APROVADO (commits c4ae8dd + 46f4d05, executado pela sessao de backend) via D-012 — bug de migration achado e corrigido (D-031), 35/35 testes verdes, sqlite3 isolado confirma 24 produtos |
+| C3 | back/: GET /products filtra active + GET /products?scope=fornecedor | 1 | APROVADO (commits 70b9ee0 + 627a86a, executado pela sessao de backend) via D-012 — 39/39 testes verdes, tsc 0, escopo confere |
+| C4 | back/: POST/PUT/DELETE /products com autorizacao por dono | 1 | APROVADO (commit 93e7f55, executado pela sessao de backend) via D-012 — 51/51 testes verdes, tsc 0, fix de badge null->undefined feito pelo proprio Haiku e confirmado |
+| C5 | back/: GET /orders?scope=fornecedor filtra pedidos por produtos do fornecedor | 1 | APROVADO (commit 2e861d2, executado pela sessao de backend) via D-012 — 55/55 testes verdes, tsc 0, codigo identico ao prompt. Thread C fecha o lado backend (C2-C5) |
+| C6 | front/: ProductRepository (porta) + MockProductRepository + contract test | 1 | APROVADO (commit 34dd865) via D-012 — 311/311 testes verdes, tsc 0, desvio de design aceito (teste de ProductForbiddenError movido do contract pro mock-specific) |
+| C7 | front/: HttpProductRepository | 1 | APROVADO (commit 1543b08) via D-012 — 325/325 testes verdes, tsc 0, zero import de zod direto, codigo identico ao prompt |
+| C8 | front/: /catalogo e /produto/[slug] migram para ProductRepository | 1 | APROVADO (commit 8e41af4) via D-012 + verificacao visual obrigatoria no navegador (maior risco da fatia) — 340/340 testes verdes, tsc 0, build ok, catalogo/produto/404 confirmados de verdade |
+| C9 | front/: CatalogoTab no painel do fornecedor (CRUD de produtos) | 1 | APROVADO (commit bb86c2d) via D-012 — 340/340 testes verdes (revalidado apos C8 commitar), tsc 0, codigo bate com o prompt |
+| C10 | front/: MarketProvider carrega pedidos diretos via GET /orders?scope=fornecedor | 1 | APROVADO (commits 70ea477 + e571f21) via D-012 — codigo de producao bate com o prompt, mas teste de modo backend era decoy (nao setava a flag nem mockava dados); corrigido por mim, 351/351 verde apos o fix. Thread C fecha o codigo (C1-C10), falta so C11 (deploy+validacao humana) |
+| C11 | Deploy real + validacao humana | 1 | EM ANDAMENTO (D-033, 2026-07-26) — migrations remotas aplicadas, back+front deployados, NEXT_PUBLIC_USE_BACKEND ligado, bug de badge null encontrado e corrigido em producao. Falta: autorizar dominio no Firebase Auth + validacao humana completa no navegador (login real, CRUD, checkout) |
 
 **Ordem de execucao (D-011):** H-002 → H-005 → [H-006 limpeza para main] → H-004 → H-003 → 006 backend.
 

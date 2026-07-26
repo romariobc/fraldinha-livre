@@ -30,16 +30,24 @@ vi.mock('@/contexts/cart-context', () => ({
   useCart: vi.fn(),
 }))
 
+// Mock products context
+vi.mock('@/contexts/products-context', () => ({
+  useProducts: vi.fn(),
+}))
+
 import { useParams, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { useCart } from '@/contexts/cart-context'
+import { useProducts } from '@/contexts/products-context'
 import { toast } from 'sonner'
 import ProductPage from '../page'
+import { PRODUCTS } from '@/lib/products'
 
 const mockUseParams = vi.mocked(useParams)
 const mockUseRouter = vi.mocked(useRouter)
 const mockUseAuth = vi.mocked(useAuth)
 const mockUseCart = vi.mocked(useCart)
+const mockUseProducts = vi.mocked(useProducts)
 const mockToast = vi.mocked(toast)
 
 
@@ -64,6 +72,8 @@ describe('ProductPage', () => {
       role: null,
       loading: false,
       signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
       signOutUser: vi.fn(),
       updateProfile: vi.fn(),
     })
@@ -76,6 +86,11 @@ describe('ProductPage', () => {
       removeItem: vi.fn(),
       updateQty: vi.fn(),
       clear: vi.fn(),
+    })
+    mockUseProducts.mockReturnValue({
+      products: PRODUCTS,
+      loading: false,
+      error: null,
     })
   })
 
@@ -137,6 +152,20 @@ describe('ProductPage', () => {
     })
   })
 
+  describe('Loading state', () => {
+    it('should show loading message when loading is true', () => {
+      mockUseProducts.mockReturnValue({
+        products: [],
+        loading: true,
+        error: null,
+      })
+
+      render(<ProductPage />)
+
+      expect(screen.getByText('Carregando produto...')).toBeInTheDocument()
+    })
+  })
+
   describe('Deslogado + Adicionar à sacola', () => {
     it('should redirect to login when not logged in', async () => {
       mockUseAuth.mockReturnValue({
@@ -145,6 +174,8 @@ describe('ProductPage', () => {
         role: null,
         loading: false,
         signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
         signOutUser: vi.fn(),
         updateProfile: vi.fn(),
       })
@@ -168,6 +199,8 @@ describe('ProductPage', () => {
         role: 'comprador',
         loading: false,
         signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
         signOutUser: vi.fn(),
         updateProfile: vi.fn(),
       })
@@ -212,6 +245,8 @@ describe('ProductPage', () => {
         role: 'comprador',
         loading: false,
         signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
         signOutUser: vi.fn(),
         updateProfile: vi.fn(),
       })
@@ -250,6 +285,8 @@ describe('ProductPage', () => {
         role: 'comprador',
         loading: false,
         signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
         signOutUser: vi.fn(),
         updateProfile: vi.fn(),
       })
@@ -292,6 +329,8 @@ describe('ProductPage', () => {
         role: null,
         loading: false,
         signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
         signOutUser: vi.fn(),
         updateProfile: vi.fn(),
       })
@@ -312,6 +351,8 @@ describe('ProductPage', () => {
         role: 'comprador',
         loading: false,
         signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
         signOutUser: vi.fn(),
         updateProfile: vi.fn(),
       })
@@ -350,6 +391,8 @@ describe('ProductPage', () => {
         role: 'comprador',
         loading: false,
         signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
         signOutUser: vi.fn(),
         updateProfile: vi.fn(),
       })

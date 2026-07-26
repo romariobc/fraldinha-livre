@@ -47,6 +47,8 @@ function mockAuth(profile: typeof BASE_PROFILE | null) {
     role: 'fornecedor',
     loading: false,
     signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
     signOutUser: vi.fn(),
     updateProfile: mockUpdateProfile,
   })

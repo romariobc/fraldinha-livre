@@ -182,6 +182,82 @@ describe('HttpOrderRepository - Parte A: comportamento específico de HTTP', () 
       expect(orders).toHaveLength(0)
     })
   })
+
+  describe('listForSupplier()', () => {
+    it('chama GET /orders?scope=fornecedor', async () => {
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify([]), { status: 200 })
+      )
+
+      const repo = new HttpOrderRepository()
+      await repo.listForSupplier()
+
+      expect(fetchMock).toHaveBeenCalledOnce()
+      const [url] = fetchMock.mock.calls[0]
+      expect(url).toBe('/orders?scope=fornecedor')
+    })
+
+    it('retorna array de Order parseado', async () => {
+      const mockOrders: Order[] = [
+        {
+          id: 'ord-1',
+          uid: 'uid-1',
+          type: 'compra-direta',
+          status: 'aguardando',
+          createdAt: new Date().toISOString(),
+          product: 'Produto 1',
+          quantity: 5,
+          unit: 'un',
+          price: 1000,
+          supplierId: 'sup-1',
+          supplierName: 'Fornecedor 1',
+          deliveryAddress: {
+            logradouro: 'Rua 1',
+            numero: '1',
+            bairro: 'Bairro',
+            cidade: 'Cidade',
+            estado: 'SP',
+            cep: '12345-678',
+          },
+          items: [],
+        },
+      ]
+
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify(mockOrders), { status: 200 })
+      )
+
+      const repo = new HttpOrderRepository()
+      const result = await repo.listForSupplier()
+
+      expect(Array.isArray(result)).toBe(true)
+      expect(result).toHaveLength(1)
+      expect(result[0].id).toBe('ord-1')
+    })
+
+    it('envia Authorization: Bearer <token>', async () => {
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify([]), { status: 200 })
+      )
+
+      const repo = new HttpOrderRepository()
+      await repo.listForSupplier()
+
+      expect(fetchMock).toHaveBeenCalledOnce()
+      const [, init] = fetchMock.mock.calls[0]
+      const headers = new Headers(init?.headers)
+      expect(headers.get('Authorization')).toBe('Bearer test-token')
+    })
+
+    it('com status não-OK lança erro descritivo', async () => {
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: 'server error' }), { status: 500 })
+      )
+
+      const repo = new HttpOrderRepository()
+      await expect(repo.listForSupplier()).rejects.toThrow('Failed to list supplier orders: HTTP 500')
+    })
+  })
 })
 
 // ============================================================================

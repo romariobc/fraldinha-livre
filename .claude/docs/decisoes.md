@@ -437,3 +437,396 @@ símbolo. **How to apply:** asset em `public/assets/img/cegonha.png` (589×366, 
 próprio); `next/image` com width=589 height=366 e `w-auto` para não distorcer. Verificado por render
 (Playwright: landing+login), lint e build exit 0. O resto do protótipo (leilão reverso) segue como
 referência da Fase 2, NÃO implementado (gate D-014).
+
+## D-029 — Emenda a D-027: frontend tambem vai para Cloudflare; Firebase fica so como servico de auth (2026-07-23) — VIGENTE EM PARTE (superada no "como" pela D-030; o "onde" — front+back na Cloudflare, Firebase so auth — continua valendo)
+
+Com o backend (D-026/D-027) ja em producao na Cloudflare (Workers + D1), avaliamos onde hospedar o
+frontend Next.js: manter no ecossistema Google (Firebase App Hosting, GA desde abril/2025, com SSR via
+Cloud Run e o SDK `FirebaseServerApp` para sincronizar auth em paginas server-rendered) ou levar tambem
+para a Cloudflare (Workers + adapter OpenNext).
+
+**Decisao: front + back na Cloudflare. Firebase deixa de ser candidato a hospedagem e vira SOMENTE
+servico de autenticacao** (Firebase Auth, como ja e desde D-010/005a).
+
+**Por que Cloudflare ganhou:**
+- **Correcao tecnica (2026-07-24, achada na revisao do rascunho pela sessao de backend/deploy):** a
+  formulacao original desta secao dizia que "CORS e eliminado na raiz" por front e back estarem na mesma
+  nuvem. **Isso estava errado** — CORS e sobre origem (protocolo+host+porta), nao sobre "mesma conta/nuvem".
+  O plano usa DOIS Workers com hostnames diferentes (`fraldinha-livre-frontend.workers.dev` vs
+  `fraldinha-livre-backend.workers.dev`): toda chamada feita pelo NAVEGADOR (client components, a maioria
+  do trafego hoje) continua exigindo CORS normal, exatamente como ja exige hoje — vai precisar so de uma
+  regex nova na config de CORS do backend para aceitar a origem de producao (e as preview URLs) do front.
+  **O que realmente se ganha** estando na mesma conta/plataforma: simplificacao operacional (um so
+  `wrangler`/pipeline/console/conector MCP), nao eliminacao de CORS. Service Bindings eliminariam CORS
+  so para chamadas SERVIDOR-A-SERVIDOR (SSR do front chamando o backend direto via RPC interno) — isso
+  nao existe hoje porque o app e majoritariamente client-side (Firebase Auth no browser).
+- **Cloudflare tambem descontinuou Pages em favor de Workers + Static Assets** — o caminho oficial hoje
+  para Next.js na Cloudflare e o adapter OpenNext (`@opennextjs/cloudflare`), mantido pela propria
+  Cloudflare, com suporte a SSR/App Router/PPR.
+- **Custo:** Firebase App Hosting tem piso pago (~US$9,37/mes); Cloudflare Workers tem tier gratuito mais
+  generoso — coerente com D-001 (custo minimo).
+- **Uma so plataforma de deploy/observabilidade** para front+back (um `wrangler`/pipeline, um conector
+  MCP `cloudflare-bindings`), em vez de dois consoles (Firebase + Cloudflare) para um dev solo manter.
+- **O que se perde (aceito conscientemente):** o `FirebaseServerApp` do Firebase App Hosting sincroniza
+  auth em SSR de forma mais "pronta"; na Cloudflare isso continua manual (`user.getIdToken()` +
+  middleware/contexto propro, como ja e feito hoje). Custo aceitavel porque o auth ja funciona assim.
+
+**Consequencia de infra (superset da D-027):** a partir de agora sao duas nuvens **por funcao**, nao mais
+por "front vs dados": **Google/Firebase = so identidade** (Auth); **Cloudflare = front + API + dados**
+(Workers para o Next.js via OpenNext, Workers+Hono para a API, D1 para persistencia). Vercel, Azure e
+Cloudflare Pages seguem descartados (Pages por estar em descontinuacao na propria Cloudflare).
+
+**Why:** consolidar a operacao em uma unica plataforma (um pipeline, um console, um conector MCP) custa
+menos em dinheiro e em superficie de infra do que a integracao SSR-nativa do Firebase App Hosting entrega
+de conveniencia — CORS entre front e back segue necessario nos dois cenarios (Google+Cloudflare ou
+Cloudflare+Cloudflare) e NAO e criterio de decisao aqui.
+
+**How to apply:** ao especificar/implementar o deploy do frontend, usar Cloudflare Workers + adapter
+OpenNext (nao Cloudflare Pages, nao Firebase Hosting/App Hosting). Firebase, daqui em diante, so entra em
+specs/docs como "Auth" — nunca como candidato a hospedagem de front. A config de CORS do backend
+(`back/src/index.ts`, hoje restrita a `localhost`) vai precisar de uma regex nova para a origem de producao
+do front e para as preview URLs geradas por Workers Builds — isso e trabalho obrigatorio do spec de
+deploy, nao uma consequencia automatica de estar na mesma nuvem.
+
+**ATUALIZACAO (2026-07-24):** o mecanismo desta decisao (Workers + adapter OpenNext) foi abandonado — ver
+D-030. O "onde" desta D-029 (front+back na Cloudflare, Firebase so como auth) continua vigente; o "como"
+(qual produto Cloudflare hospeda o front) mudou de Workers+OpenNext para Containers.
+
+## D-030 — Frontend migra de Workers+OpenNext para Cloudflare Containers (2026-07-24) — VIGENTE (emenda D-029)
+
+Com a fatia 1 de deploy do frontend (D-029) em execucao, a Task 2 do plano (adapter
+`@opennextjs/cloudflare`) travou num bug diferente do que qualquer tentativa de config resolveria: o app
+usa **Firestore de verdade** (perfil do usuario via `getDoc`/`setDoc`/`updateDoc` em
+`auth-context.tsx`/`onboarding/page.tsx`, D-010/007a) — e `@firebase/firestore` puxa `@grpc/proto-loader`
+-> `protobufjs`, que gera codigo em runtime via `new Function()`. Isso e **proibido pelo sandbox V8 dos
+Workers** (`EvalError: Code generation from strings disallowed for this context`), nao um erro de
+configuracao. Confirmado como bug real e sem fix oficial: issue
+`opennextjs/opennextjs-cloudflare#1301` (aberta 2026-07-01), reproduzida com o stack trace identico no
+build deste projeto.
+
+**Opcoes avaliadas antes de decidir** (a pedido do cliente, que nao queria perder a camada de
+seguranca/WAF-DDoS da Cloudflare nem reabrir mao de duas nuvens sem necessidade):
+
+1. **`firebase/firestore/lite`** — troca de SDK (mesma API para `getDoc`/`setDoc`/`updateDoc`, que e tudo
+   que o app usa; sem `onSnapshot`/persistencia offline/bundles, que o app tambem nao usa). Resolveria o
+   bug trocando 3 arquivos, mas e mudanca de codigo de aplicacao, nao so de infra.
+2. **Cloudflare Containers** (GA desde abril/2026) — um Worker fino roteia pra um container Docker com
+   **Node.js completo, sem sandbox V8** — elimina a CLASSE do bug (nao so o caso do Firestore), sem sair
+   da conta Cloudflare. Custo: exige o Workers Paid plan (US$5/mes), acima do tier gratuito puro do
+   Workers.
+3. **Firebase App Hosting** — reabriria D-029 por completo (front no Google), ja descartado antes por
+   custo (piso Blaze ~US$9,37/mes) e por nao ser "verified adapter" do Next 16 (mesma categoria de risco
+   que o Cloudflare, nao vantagem exclusiva do Google).
+4. **Google Cloud Run + Cloudflare so como CDN/WAF na frente** (relatorio externo trazido pelo cliente) —
+   revisado e refutado em pontos especificos (custo do Cloud Run tambem exige billing account/cartao
+   mesmo no free tier, igual ao Firebase Blaze — o relatorio aplicava o crivo so numa opcao; a arquitetura
+   real do app e client-side/CORS via browser, nao "API Key entre container e Workers" como o relatorio
+   descrevia; secao inteira sobre IA/LLM/Vertex/LangChain sem nenhuma base no roadmap real do projeto).
+   Achado tecnico correto do relatorio: Cloud Run tambem resolveria o EvalError (Node completo, sem
+   sandbox) — so que trocando de provedor em vez de ficar na mesma conta. Achado adicional confirmado:
+   o WAF/DDoS da Cloudflare protege QUALQUER origem (self-hosted ou serverless, doc oficial confirma) —
+   entao a preocupacao do cliente com seguranca **nao trava** a escolha entre Cloudflare e Google; ela e
+   ortogonal.
+
+**Decisao: Cloudflare Containers.** Resolve o bug (Node completo), fica na mesma conta/plataforma que o
+backend (mantendo o espirito original da D-029 — um `wrangler`/console/MCP), e o WAF/DDoS que o cliente
+valoriza nao depende dessa escolha de qualquer forma. Custo (US$5/mes do Workers Paid) e aceito como
+prerequisito, ativado manualmente pelo cliente no dashboard (mesmo padrao humano de B9/P3).
+
+**Mudanca tecnica:** `front/next.config.ts` ganha `output: "standalone"` + `outputFileTracingRoot` (raiz
+do monorepo, mesmo valor de `turbopack.root`, ja existente). `front/Dockerfile` (novo, multi-stage
+`node:22-alpine`) builda a partir da raiz do monorepo e copia `.next/standalone/front` (caminho
+confirmado com build real). `front/src/container-worker.ts` (novo) e um Worker fino
+(`Container`+`getRandom` de `@cloudflare/containers`) que roteia pro container. `front/wrangler.jsonc`
+reescrito para `containers` + Durable Object binding (era config do adapter). `@opennextjs/cloudflare`
+removido das dependencias; `@cloudflare/containers`+`@cloudflare/workers-types` adicionados.
+`back/`/`packages/contracts/` sem nenhuma mudanca.
+
+**Verificado (duas sessoes, de forma independente):** `docker build --no-cache` do zero + `docker run` +
+smoke test das 4 rotas principais (`/`, `/catalogo`, `/login`, `/minha-conta`) — todas `200`, logs limpos,
+sem `EvalError`. Suite 298/298, `tsc`/`lint` limpos. Spec: `spec-deploy-frontend-cloudflare-containers.md`.
+Plano: `H-010-deploy-frontend-cloudflare-containers.md`. Execucao: commit `a6848e5`.
+
+**Why:** o bug do Firestore e estrutural (sandbox V8 x codegen em runtime), nao contornavel por config;
+entre as alternativas que resolvem, Containers e a unica que nao reintroduz uma segunda nuvem nem paga o
+piso do Firebase Blaze, e a preocupacao de seguranca do cliente (WAF/DDoS) nao e afetada pela escolha
+entre Cloudflare e Google de qualquer forma — reduzindo a decisao a custo (US$5/mes aceito) + maturidade
+operacional (Containers GA ha poucos meses; ponto de atencao futuro, nao bloqueante).
+
+**How to apply:** especificar/implementar o deploy do frontend usa Cloudflare Containers, nao o adapter
+OpenNext (que fica obsoleto para este app especifico — nao generalizavel: apps que nao usam Firestore
+completo continuam podendo usar OpenNext sem esse bug). `firebase/firestore/lite` NAO foi adotado — se
+o bug do Firestore reaparecer em outro contexto, reavaliar essa opcao antes de assumir Containers como
+unica saida. Deploy real (`wrangler deploy`) depende do Workers Paid plan ativado manualmente pelo
+cliente — pendente, fora do escopo de agente.
+
+## D-031 — Sensor: migrations D1/SQLite que adicionam colunas via recriacao de tabela nao podem listar as colunas novas no SELECT da tabela antiga (2026-07-26) — VIGENTE
+
+Achado durante a revisao D-012 da tarefa C2 (thread C, feature 007) pela sessao de backend
+(`blissful-lamport-ccb562`), verificado de forma independente por mim (sqlite3 puro, cadeia completa
+0000→0004): `drizzle-kit generate` recria a tabela `products` (unico jeito de adicionar colunas
+`NOT NULL DEFAULT` em SQLite/D1) com um `INSERT INTO __new_products(...) SELECT ... FROM products`.
+A saida gerada listava **as colunas novas tambem no SELECT da tabela antiga**, que ainda nao as tinha.
+
+**O bug:** SQLite nao lanca erro nesse caso. Por uma peculiaridade legada do parser, um identificador
+entre aspas duplas que nao resolve para nenhuma coluna real (`"name"` quando a tabela de origem nao
+tem coluna `name`) e silenciosamente reinterpretado como **literal string** (`'name'`) em vez de erro
+de coluna inexistente. Resultado: a coluna nova era preenchida com o **nome literal da propria
+coluna** (`'name'`, `'brand'`, etc.) em vez do `DEFAULT ''`/`DEFAULT 0` declarado no `CREATE TABLE`.
+
+**Por que os testes nao pegaram:** a migration seguinte (0004, backfill) sobrescrevia essas 24 linhas
+logo depois, mascarando o problema. Se a 0004 falhasse, fosse pulada, ou se a tabela tivesse linhas
+sem backfill correspondente, ficaria lixo (`'name'` literal) em produção sem nenhum erro visivel.
+
+**Fix:** restringir a lista do `SELECT` da migration gerada as colunas que a tabela antiga **de fato
+tem** (`id`/`price_cents`/`supplier_id`, nesse caso) — nao a lista completa nova. Isso deixa o SQLite
+aplicar os `DEFAULT` da `CREATE TABLE` corretamente para as colunas que nao existiam na tabela de
+origem. Commit do fix: `46f4d05` (branch `Romir/folder-analysis-070a4b`).
+
+**Why:** `drizzle-kit generate` produz SQL sintaticamente valido mas semanticamente errado nesse caso
+especifico (colunas novas no SELECT da origem) — nao e um erro de configuracao do projeto, e uma
+peculiaridade do gerador que so aparece quando se adiciona coluna `NOT NULL` via recriacao de tabela
+(caminho obrigatorio no SQLite, que nao tem `ALTER TABLE ADD COLUMN NOT NULL` sem default aplicado
+retroativamente do jeito esperado em todos os casos).
+
+**How to apply:** toda migration gerada por `drizzle-kit generate` que **recria a tabela** (visivel
+pelo padrao `CREATE TABLE __new_<nome>` + `INSERT INTO __new_<nome> SELECT ... FROM <nome>` +
+`DROP TABLE`/`RENAME TO`) precisa ter o `SELECT` da migration **lido e conferido a mao** antes de
+aceitar como "gerada, nao escrita a mao" — conferir que a lista de colunas do `SELECT` bate exatamente
+com as colunas que a tabela **antiga** tinha, nunca com a lista completa da tabela nova. Sensor
+minimo: apos aplicar a migration num D1/sqlite de teste isolado (sem o backfill seguinte ainda),
+`SELECT` as colunas novas e confirmar que o valor bate com o `DEFAULT` declarado (string vazia/0/etc.),
+nao com o proprio nome da coluna como string literal.
+
+## D-032 — Marco: primeiro deploy real do frontend em producao (Cloudflare Containers) (2026-07-26) — VIGENTE (fecha o pendente do H-010/D-030)
+
+`npx wrangler@4.86.0 deploy` executado a partir de `front/` (worktree `eloquent-montalcini-2dff41`,
+commit `849587e`). Primeiro deploy real do Worker de frontend — ate aqui H-010 (D-030) so tinha sido
+validado localmente via Docker, esperando o cliente ativar o Workers Paid plan (confirmado ativo em
+2026-07-25, ver marco anterior).
+
+**Resultado:** aplicacao de container `fraldinha-livre-frontend-frontendcontainer` criada (Application
+ID `a03c1835-448f-4452-84b1-968d184a5a63`, imagem `022f30d2`). Worker no ar em
+`https://fraldinha-livre-frontend.romariobc.workers.dev`. Smoke test confirmado (nao so o retorno do
+comando): `/`, `/catalogo`, `/login`, `/minha-conta` todos `200`, `<title>Fraldinha Livre</title>`
+presente no HTML (nao e pagina de erro disfarçada de 200).
+
+**Escopo do que foi deployado:** o codigo do front nesse commit inclui C1 (contrato `Product`) e C6
+(`ProductRepository`/`MockProductRepository`, camada isolada sem consumidor) — nenhum dos dois muda
+comportamento visivel; `/catalogo` continua lendo do array estatico `PRODUCTS` (migracao pro
+repository e C8, ainda nao executada). Ou seja, este deploy sobe a infraestrutura nova (Containers)
+com o comportamento **identico** ao que já estava validado localmente — nao e o deploy da feature 007
+completa, que so fecha em C11.
+
+**Pendencia gerada por este deploy (acao humana, nao de agente):** registrar
+`fraldinha-livre-frontend.romariobc.workers.dev` em Firebase Console → Authentication → Settings →
+Authorized domains, senao o login Google quebra em produção (item já previsto na revisão de
+arquitetura do Gemini, 2026-07-25, "vira ação real só no momento do deploy" — momento é agora).
+
+**Why:** o usuario pediu explicitamente para disparar o deploy agora, independente do restante da
+thread C (C7-C11) ainda em andamento — o backend do catalogo (C2-C5) fica retido no worktree do back
+sem push, sem afetar este deploy (o front deployado nao chama nenhum endpoint novo ainda).
+
+**How to apply:** deploys futuros do front (`wrangler deploy`) a partir daqui sao incrementais sobre
+esta base — cada tarefa de frontend aprovada da thread C (C7-C10) pode gerar um novo deploy sem
+reabrir esta decisao. C11 (fim da thread C) e quando o comportamento do catalogo de fato muda em
+produção — validacao humana completa (login real, CRUD de produto, checkout) acontece la, nao aqui.
+
+## D-033 — C11 executado: migrations remotas + deploy real (back+front) + bug de badge null encontrado e corrigido em produção (2026-07-26) — VIGENTE
+
+A pedido explicito do Romario ("aplique as migrations e redeploy que eu sigo"), executei o C11
+(deploy real da feature 007, thread C completa: C1-C10 todas aprovadas antes disso).
+
+**Passos executados, nesta ordem:**
+1. `wrangler d1 migrations list --remote` (check nao-destrutivo) confirmou exatamente 0003+0004
+   pendentes, nada inesperado.
+2. `wrangler d1 migrations apply --remote` — aplicadas com sucesso. Confirmado por query direta:
+   24 produtos, 0 linhas vazias (D-031 funcionou).
+3. Deploy do backend (`wrangler deploy`, worktree `blissful-lamport-ccb562`) — versao
+   `fd487cb3-3513-4e19-95d4-6c28adcdf4ed`. Smoke test: `GET /products` 200 (24, todos active),
+   `?scope=fornecedor`/`POST /products`/`GET /orders?scope=fornecedor` sem token → 401.
+4. Deploy do frontend (`wrangler deploy`, worktree `eloquent-montalcini-2dff41`) — primeiro redeploy
+   desde D-032.
+
+**Achado crítico durante a verificação (não pulado — por isso o C11 exige navegador de verdade, não
+só smoke test de curl):** o frontend redeployado nunca tinha `NEXT_PUBLIC_USE_BACKEND=true`
+configurado em nenhum lugar (nem Dockerfile, nem `.env.production` — o build sempre rodou em modo
+mock desde o D-032 original). Ou seja, a feature 007 nunca esteve de fato testada contra o backend
+real até este momento. **Corrigido:** criado `front/.env.production` (committed, exceção no
+`.gitignore` — `NEXT_PUBLIC_*` é público por design) com `NEXT_PUBLIC_USE_BACKEND=true` +
+`NEXT_PUBLIC_BACKEND_URL`. Confirmado via build Docker local isolado que o valor é embutido no
+bundle antes de redeployar de verdade.
+
+**Segundo achado, este sim um bug real de produção (só apareceu agora porque foi a primeira vez que
+o front chamou o backend de verdade):** `GET /products` (`back/src/routes/products.ts`,
+`productsGetHandler`) retornava linhas do D1 direto via `c.json(rows)`, sem normalizar `badge`
+(coluna nullable — Drizzle retorna `null`, não `undefined`). `ProductSchema.badge` é
+`z.string().optional()`, que aceita `undefined` mas **rejeita `null` explícito** — o front
+(`HttpProductRepository`/`ProductsProvider`) quebrava ao validar a resposta, mostrando "Erro ao
+carregar catálogo" pro usuário real. A mesma normalização (`badge ?? undefined`) já tinha sido
+aplicada em `POST`/`PUT` desde C4 — só faltava em `GET`, e nenhum teste (back ou front) pegava isso
+porque nenhum validava a resposta inteira contra `ProductListSchema`, só campos pontuais. **Fix**
+(commit `b1611c4`, branch `Romir/folder-analysis-070a4b`): função `normalizeBadge` aplicada nas duas
+branches de `productsGetHandler`; 2 testes novos que validam a resposta completa contra o schema
+(sensor pra essa classe de bug não voltar). Redeployado o backend com o fix; confirmado no navegador
+(aba nova, sem cache) que `/catalogo` e `/produto/[slug]` carregam de verdade via backend, badges
+corretos, textos acentuados corretos (checagem de encoding que parecia suspeita na 1a olhada era só
+artefato de exibição do terminal local, não dado real — confirmado lendo os bytes/codepoints).
+
+**Pendências que continuam do usuário (não mudou):** autorizar o domínio no Firebase Auth (D-032,
+ainda não confirmado se foi feito); validação humana completa no navegador (login real com Google,
+CRUD de produto pelo fornecedor, checkout ponta a ponta) — isso é o passo humano final do C11, ainda
+não executado.
+
+## D-034 — Login mobile (redirect) + e-mail/senha habilitado de verdade + 2 fornecedores de teste (2026-07-26) — VIGENTE
+
+Romario reportou usuário Android sem opção de login Google (WebView/mobile bloqueia
+`signInWithPopup`), trouxe diagnóstico do Gemini, e pediu 2 correções + dados de teste.
+
+**Fix 1 — login Google em mobile:** `auth-context.tsx` detecta mobile via
+`navigator.userAgent` (`/Mobi|Android|iPhone|iPad/i`) e usa `signInWithRedirect` nesse caso,
+`signInWithPopup` no desktop (inalterado). `getRedirectResult(auth)` adicionado só para capturar
+erro do redirect — `onAuthStateChanged` já existente resolve a sessão nos dois fluxos, sem
+duplicar lógica de perfil/role.
+
+**Fix 2 — login/cadastro por e-mail e senha:** Romario afirmou que "a tela já existia, bastava
+habilitar" — **verificado e não era esse o caso**: `/login` tinha os campos `disabled` com aviso
+"Disponível em breve (feature 005b)"; `/cadastro` era form estático (`action="#"`, sem `onSubmit`,
+sem state, Server Component) — nenhuma chamada ao Firebase Auth existia. Perguntei antes de
+prosseguir (mudava o escopo do segundo pedido, criar fornecedores de teste, que dependia disso).
+Implementado: `signInEmail`/`signUpEmail` no `auth-context.tsx`
+(`signInWithEmailAndPassword`/`createUserWithEmailAndPassword`); conta nova sem doc em
+`users/{uid}` cai no `/onboarding` já existente pra escolher o papel — reusa o mesmo fluxo do login
+Google, não duplica essa decisão. `firebaseAuthErrorMessage` (`lib/utils.ts`) traduz códigos comuns
+de erro pra pt-BR. `/cadastro` convertido pra client component; os campos decorativos
+(CPF/telefone/CEP/bairro/endereço) que nunca estiveram conectados a nada foram **removidos** — mantê-los
+seria pior (usuário preenche, nada é salvo, sem aviso). 6 mocks de teste de `AuthContextType`
+atualizados.
+
+**2 fornecedores de teste criados de verdade** (via Browser tool, usando o próprio fluxo novo — que
+também serviu de teste end-to-end real do fix 2):
+- `fornecedor.teste1@fraldinhalivre.com.br` / `Teste123!` — nome "Distribuidora Sul Teste"
+- `fornecedor.teste2@fraldinhalivre.com.br` / `Teste123!` — nome "Baby Stock SP Teste"
+
+Ambos passaram pelo onboarding real (escolheram "Sou Fornecedor"), role gravada no Firestore de
+verdade, painel do fornecedor confirmado funcionando (aba 📦 Catálogo visível, CRUD de produtos
+disponível). CNPJ/razão social/endereço da aba Perfil **não foram preenchidos** — ficam em branco
+até alguém preencher via `/fornecedor/painel` → aba Perfil, não é obrigatório pra testar o CRUD de
+catálogo.
+
+**Verificado antes de aprovar:** `npm test` 351/351 (com os mocks corrigidos), `tsc --noEmit` exit
+0. Deploy `297df1bc`. Criação das 2 contas confirmada com `get_page_text` mostrando o painel do
+fornecedor renderizado (não só o retorno HTTP do submit).
+
+**Why:** o pedido original assumia que a tela de e-mail/senha já funcionava — verificar antes de
+"habilitar" evitou implementar em cima de uma suposição errada (não havia nada pra habilitar, era
+construir do zero os handlers). Criar as contas pelo próprio fluxo novo (em vez de via Firebase
+Admin/MCP, que não tem uma ferramenta de criar usuário) serviu de verificação real do fix, não só
+suposição de que funcionaria.
+
+**How to apply:** login por e-mail/senha agora é um caminho de autenticação real e suportado, não
+mais "em breve" — qualquer nova tela de auth deve considerar os dois provedores (Google + e-mail/
+senha). As 2 contas de teste ficam disponíveis pra qualquer sessão futura testar o fluxo de
+fornecedor sem depender de uma conta Google real.
+
+**Why:** deploy real é o único jeito de expor a classe de bug (mismatch de contrato entre camadas
+testadas independentemente) que nenhuma revisão D-012 anterior — por mais rigorosa que fosse com
+testes automatizados — conseguiria pegar, porque cada lado (back/front) só testava contra fixtures
+próprias, nunca uma integração de verdade.
+
+**How to apply:** sempre que uma tarefa futura mexer em qualquer campo `nullable` no D1/Drizzle que
+o contrato declara como `.optional()` (não `.nullable()`), checar se o handler que lê e retorna via
+`c.json()` normaliza `null`→`undefined` — e adicionar um teste que valida a resposta completa contra
+o `*Schema`/`*ListSchema` compartilhado, não só propriedades pontuais. Antes de aprovar qualquer
+tarefa que liga front↔back de verdade pela primeira vez, produção deve ser verificada no navegador
+com uma aba nova (sem cache/console history de navegações anteriores) — o console pode acumular
+mensagens de erro de antes do fix e confundir a leitura.
+
+## D-035 — Login mobile via redirect ainda quebrava (storage de terceiro); fix de proxying do handler do Firebase (2026-07-26) — VIGENTE (segue D-034, ainda com pendência humana)
+
+O fix de D-034 (`signInWithRedirect` em mobile) não resolveu de verdade: usuário Android relatou
+"autorizo no Google, o app volta pra `/login` como se nada tivesse acontecido, sem erro". Consultei
+o Gemini (assistente do Firebase Console), que confirmou a causa raiz e propôs a correção oficial —
+prompt e resposta registrados fora deste arquivo (conversa com Romario), resumo aqui.
+
+**Causa raiz confirmada:** `authDomain` do projeto (`fraldinha-livre.firebaseapp.com`) é uma origem
+diferente do domínio real do app (`fraldinha-livre-frontend.romariobc.workers.dev`, Cloudflare
+Containers, não Firebase Hosting). O SDK do Firebase recupera o resultado do
+`signInWithRedirect` via storage (IndexedDB/cookies) associado ao `authDomain`, acessado como
+"third-party" a partir do domínio real do app — exatamente o tipo de acesso que Safari ITP, Chrome
+mobile e WebViews de app vêm bloqueando silenciosamente. Resultado: a autenticação com o Google
+completa de verdade do lado do Google, mas o app nunca recupera o resultado.
+
+**Fix aplicado — "Proxying" (opção oficial da doc do Firebase que NÃO exige DNS customizado):**
+1. `front/next.config.ts`: `rewrites()` faz proxy transparente de `/__/auth/:path*` pro handler real
+   (`https://fraldinha-livre.firebaseapp.com/__/auth/:path*`) — do ponto de vista do navegador, a
+   requisição é same-origin (mesmo domínio do app), não mais third-party.
+2. `front/.env.production.local` (**não** `.env.production`): `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+   passa a ser o domínio real do app em produção. Teve que ser `.env.production.local`
+   especificamente — `.env.production` teria sido **sombreado** por `front/.env.local` (que já
+   define esse valor pro dev local e tem prioridade maior no Next.js: `.env.production.local` >
+   `.env.local` > `.env.production` > `.env`). Isso já aconteceu uma vez com `NEXT_PUBLIC_BACKEND_URL`
+   em D-033 — não repetir, checar sempre a precedência quando uma var já existe em `.env.local`.
+
+**Verificado antes do deploy real (não só assumido que funcionaria):** build Docker local isolado —
+`authDomain` correto (`fraldinha-livre-frontend.romariobc.workers.dev`, não mais
+`fraldinha-livre.firebaseapp.com`) confirmado embutido no bundle (`grep` no chunk JS); `/__/auth/handler`
+respondendo com o HTML real do Firebase (`fireauth.oauthhelper.widget`), não um 404 do Next — testado
+local (container isolado) e depois em produção depois do deploy, os dois batendo.
+
+**Pendência humana obrigatória, NÃO automatizável (bloqueia o fix funcionar de verdade):** o Google
+Cloud Console (não o Firebase Console) precisa que o OAuth Client ID do provider Google seja
+atualizado com:
+- **Origens JavaScript autorizadas:** adicionar `https://fraldinha-livre-frontend.romariobc.workers.dev`
+- **URIs de redirecionamento autorizados:** adicionar
+  `https://fraldinha-livre-frontend.romariobc.workers.dev/__/auth/handler`
+
+Sem isso, o Google pode rejeitar o redirect_uri (novo, apontando pro domínio do app em vez do
+`firebaseapp.com`) — o proxy por si só não basta, precisa do OAuth Client aceitar essa origem/URI.
+Enquanto essa ação não for confirmada pelo Romario, o login Google em mobile **continua não
+confiável** — o código está certo, falta a configuração do lado do Google Cloud.
+
+**Alternativa mencionada pelo Gemini, não implementada:** Google Identity Services (GIS) client-side
+(`accounts.google.com/gsi/client` + `GoogleAuthProvider.credential`/`signInWithCredential`), que não
+depende de iframe/redirect do Firebase — imune a esse bloqueio de storage por construção. Mais
+robusta a longo prazo, mas é uma reescrita do fluxo de login (não um ajuste de config) — fora de
+escopo desta correção pontual, registrado aqui como opção futura se o proxying não se provar
+suficiente em todos os navegadores mobile.
+
+**Why:** proxying foi escolhido sobre GIS por ser a correção mínima (config, não reescrita de UI) e
+sobre authDomain customizado com DNS próprio por não exigir controle de DNS que este projeto não
+tem hoje (domínio é `*.workers.dev`, gerenciado pela Cloudflare, não um domínio próprio registrado).
+
+**How to apply:** qualquer decisão futura de login social (novo provider OAuth, Apple/Facebook/etc.)
+neste app deve considerar de antemão que `authDomain` ≠ domínio real do app é a causa-raiz padrão
+de "funciona no desktop, quebra no mobile" — não assumir que `signInWithRedirect` sozinho resolve,
+sempre checar o proxying (ou GIS) junto. Antes de declarar qualquer fix de auth mobile "concluído",
+confirmar com o usuário que ele testou em um celular real — testes daqui (navegador automatizado,
+sem conta Google real) não substituem essa validação.
+
+---
+
+## D-036 — C11 fechado: login mobile confirmado pelo usuário em Android real; validação humana completa da thread C (2026-07-26) — VIGENTE
+
+Romario confirmou (após a propagação do OAuth Client ID no Google Cloud Console, pendência deixada
+em D-035) que testou o login Google no Android de verdade e funcionou — autorizou no Google e voltou
+autenticado no app. Essa era a última pendência humana bloqueando o fechamento de **C11** (deploy real
++ migrations remotas + validação humana completa no navegador, thread C — feature 007, Catálogo do
+Fornecedor).
+
+**Estado de produção confirmado:**
+- Frontend: `https://fraldinha-livre-frontend.romariobc.workers.dev`, deploy `a56ec67b`,
+  `NEXT_PUBLIC_USE_BACKEND=true`, proxy de auth mobile (D-035) ativo.
+- Backend: `https://fraldinha-livre-backend.romariobc.workers.dev`, com o fix de `badge null` (D-033,
+  commit `b1611c4`).
+- Login Google confirmado funcionando em desktop (validado em C11/D-033) e agora em mobile Android
+  (D-035 + esta confirmação).
+
+**Why:** sem confirmação humana explícita de teste real (não simulação/navegador automatizado), C11
+não podia ser marcado como concluído — login mobile era a última peça sem prova executável direta do
+usuário, conforme a própria lição registrada em D-035.
+
+**How to apply:** feature 007 e C11 fecham como concluídos em `feature_list.json`/`progresso.md`.
+Próximo: avisar a sessão do backend (worktree `blissful-lamport-ccb562`, branch
+`Romir/folder-analysis-070a4b`) que é hora de consolidar as duas branches (frontend
+`Romir/master-session-restart-535624` + backend) num PR único para `main`.

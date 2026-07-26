@@ -10,8 +10,9 @@ import PedidosDiretosTab from '@/components/fornecedor/PedidosDiretosTab'
 import OfertasMercadoTab from '@/components/fornecedor/OfertasMercadoTab'
 import LogisticaTab      from '@/components/fornecedor/LogisticaTab'
 import PerfilTab         from '@/components/fornecedor/PerfilTab'
+import CatalogoTab       from '@/components/fornecedor/CatalogoTab'
 
-type TabKey = 'diretos' | 'ofertas' | 'logistica' | 'perfil'
+type TabKey = 'diretos' | 'ofertas' | 'logistica' | 'catalogo' | 'perfil'
 
 export default function FornecedorPainelPage() {
   const router = useRouter()
@@ -19,7 +20,7 @@ export default function FornecedorPainelPage() {
 
   // Hooks SEMPRE devem ser chamados na mesma ordem, antes de qualquer early return
   const [activeTab, setActiveTab] = useState<TabKey>('diretos')
-  const { directOrders, offers, handleConfirmarDireto, handleRecusarDireto } = useMarket()
+  const { directOrders, directOrdersLoading, directOrdersError, offers, handleConfirmarDireto, handleRecusarDireto } = useMarket()
 
   // Guarda client-side: redireciona deslogado para /login?redirect=/fornecedor/painel
   // (endurecimento SSR com session cookie fica para deploy/006 — D-010)
@@ -145,6 +146,12 @@ export default function FornecedorPainelPage() {
                   🚚 Logística
                 </TabsTrigger>
                 <TabsTrigger
+                  value="catalogo"
+                  className="rounded-none px-5 py-3 text-sm font-semibold flex-none whitespace-nowrap"
+                >
+                  📦 Catálogo
+                </TabsTrigger>
+                <TabsTrigger
                   value="perfil"
                   className="rounded-none px-5 py-3 text-sm font-semibold flex-none whitespace-nowrap"
                 >
@@ -155,17 +162,26 @@ export default function FornecedorPainelPage() {
 
             <div className="pt-6">
               <TabsContent value="diretos">
-                <PedidosDiretosTab
-                  orders={directOrders}
-                  onConfirmar={handleConfirmarDireto}
-                  onRecusar={handleRecusarDireto}
-                />
+                {directOrdersLoading ? (
+                  <div className="flex items-center justify-center py-16 text-brand-muted">Carregando pedidos...</div>
+                ) : directOrdersError ? (
+                  <div className="flex items-center justify-center py-16 text-red-600">{directOrdersError}</div>
+                ) : (
+                  <PedidosDiretosTab
+                    orders={directOrders}
+                    onConfirmar={handleConfirmarDireto}
+                    onRecusar={handleRecusarDireto}
+                  />
+                )}
               </TabsContent>
               <TabsContent value="ofertas">
                 <OfertasMercadoTab />
               </TabsContent>
               <TabsContent value="logistica">
                 <LogisticaTab />
+              </TabsContent>
+              <TabsContent value="catalogo">
+                <CatalogoTab />
               </TabsContent>
               <TabsContent value="perfil">
                 <PerfilTab />

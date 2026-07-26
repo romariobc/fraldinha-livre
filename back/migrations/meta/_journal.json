@@ -15,6 +15,20 @@
       "when": 1784762991478,
       "tag": "0001_slow_sabretooth",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1785045606308,
+      "tag": "0002_graceful_wolf_cub",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1785045766505,
+      "tag": "0003_magical_fallen_one",
+      "breakpoints": true
     }
   ]
 }

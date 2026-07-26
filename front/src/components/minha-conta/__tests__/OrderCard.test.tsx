@@ -113,6 +113,8 @@ describe('OrderCard', () => {
     mockUseMarket.mockReturnValue({
       marketOrders: [],
       directOrders: [],
+      directOrdersLoading: false,
+      directOrdersError: null,
       offers: [],
       declinedIds: new Set(),
       handleEnviarOferta: vi.fn(),
@@ -272,6 +274,8 @@ describe('OrderCard', () => {
       mockUseMarket.mockReturnValue({
         marketOrders: [],
         directOrders: [],
+        directOrdersLoading: false,
+        directOrdersError: null,
         offers: [],
         declinedIds: new Set(),
         handleEnviarOferta: vi.fn(),
@@ -313,6 +317,8 @@ describe('OrderCard', () => {
       mockUseMarket.mockReturnValue({
         marketOrders: [],
         directOrders: [],
+        directOrdersLoading: false,
+        directOrdersError: null,
         offers: [],
         declinedIds: new Set(),
         handleEnviarOferta: vi.fn(),

@@ -1,0 +1,35 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "fraldinha-livre-frontend",
+  "main": "src/container-worker.ts",
+  "compatibility_date": "2026-05-03",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
+  },
+  "containers": [
+    {
+      "class_name": "FrontendContainer",
+      "image": "./Dockerfile",
+      "image_build_context": "..",
+      "max_instances": 1
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "FRONTEND_CONTAINER",
+        "class_name": "FrontendContainer"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["FrontendContainer"]
+    }
+  ]
+}

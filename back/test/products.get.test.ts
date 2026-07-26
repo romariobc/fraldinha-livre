@@ -8,6 +8,7 @@ import { productsGetHandler } from '../src/routes/products'
 import { products } from '../src/schema/products'
 import type { Env, AppContext } from '../src/env'
 import app from '../src/index'
+import { ProductListSchema } from '../../packages/contracts/src/product'
 
 describe('GET /products', () => {
   let testProductId: string
@@ -28,7 +29,7 @@ describe('GET /products', () => {
       slug: 'produto-teste-despublicado',
       categoria: 'teste',
       descricao: 'Descrição de teste',
-      atributos: {},
+      atributos: { faixaPeso: '5-9 kg', genero: 'unissex', absorcao: 'ate 12 horas', tecnologia: 'teste' },
       priceCents: 9999,
       active: false,
     })
@@ -131,5 +132,32 @@ describe('GET /products', () => {
 
     expect(Array.isArray(body)).toBe(true)
     expect(body).toHaveLength(24)
+  })
+
+  // Sensor: a maioria dos 24 produtos do seed nao tem badge (D1/D drizzle retorna
+  // `null`, nao `undefined`). Sem normalizar, ProductListSchema.parse rejeita —
+  // e nenhum teste anterior pegava isso porque so checava propriedades pontuais,
+  // nunca validava a resposta inteira contra o contrato (achado do deploy real, C11).
+  it('GET /products sem scope → resposta inteira valida contra ProductListSchema (produtos sem badge inclusos)', async () => {
+    const request = new Request('http://localhost/products')
+    const response = await app.fetch(request, env)
+    const body = await response.json()
+
+    expect(() => ProductListSchema.parse(body)).not.toThrow()
+
+    const parsed = ProductListSchema.parse(body)
+    const semBadge = parsed.filter((p) => p.badge === undefined)
+    expect(semBadge.length).toBeGreaterThan(0)
+  })
+
+  it('GET /products?scope=fornecedor com token valido → resposta valida contra ProductListSchema', async () => {
+    const testApp = createTestApp()
+    const request = new Request('http://localhost/products?scope=fornecedor', {
+      headers: { Authorization: 'Bearer token-uid-fornecedor-teste' },
+    })
+    const response = await testApp.fetch(request, env)
+    const body = await response.json()
+
+    expect(() => ProductListSchema.parse(body)).not.toThrow()
   })
 })

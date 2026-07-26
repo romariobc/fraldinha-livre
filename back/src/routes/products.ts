@@ -23,6 +23,14 @@ function generateUUID(): string {
 // GET /products — publico, so active=true (RN-007-04).
 // GET /products?scope=fornecedor — autenticado (uid do middleware condicional em index.ts),
 // retorna TODOS os produtos do uid (ativos + inativos), sem filtro de active.
+// Drizzle/D1 retorna `null` para a coluna nullable `badge`; o contrato (ProductSchema)
+// usa `z.string().optional()`, que aceita `undefined` mas rejeita `null` explicito.
+// Mesma normalizacao ja aplicada em POST/PUT (C4) — aqui faltava, e so aparece com
+// dados reais que tem produtos sem badge (a maioria do seed backfillado, D-031).
+function normalizeBadge<T extends { badge: string | null }>(row: T): Omit<T, 'badge'> & { badge?: string } {
+  return { ...row, badge: row.badge ?? undefined }
+}
+
 export const productsGetHandler = async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>) => {
   const db = drizzle(c.env.DB)
   const scope = c.req.query('scope')
@@ -33,11 +41,11 @@ export const productsGetHandler = async (c: Context<{ Bindings: Env; Variables: 
       return c.json({ error: 'unauthorized' }, 401)
     }
     const rows = await db.select().from(products).where(eq(products.supplierId, uid)).all()
-    return c.json(rows)
+    return c.json(rows.map(normalizeBadge))
   }
 
   const rows = await db.select().from(products).where(eq(products.active, true)).all()
-  return c.json(rows)
+  return c.json(rows.map(normalizeBadge))
 }
 
 // POST /products — cria produto do fornecedor autenticado. supplierId/active/id sempre

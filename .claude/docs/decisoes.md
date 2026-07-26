@@ -597,3 +597,37 @@ com as colunas que a tabela **antiga** tinha, nunca com a lista completa da tabe
 minimo: apos aplicar a migration num D1/sqlite de teste isolado (sem o backfill seguinte ainda),
 `SELECT` as colunas novas e confirmar que o valor bate com o `DEFAULT` declarado (string vazia/0/etc.),
 nao com o proprio nome da coluna como string literal.
+
+## D-032 — Marco: primeiro deploy real do frontend em producao (Cloudflare Containers) (2026-07-26) — VIGENTE (fecha o pendente do H-010/D-030)
+
+`npx wrangler@4.86.0 deploy` executado a partir de `front/` (worktree `eloquent-montalcini-2dff41`,
+commit `849587e`). Primeiro deploy real do Worker de frontend — ate aqui H-010 (D-030) so tinha sido
+validado localmente via Docker, esperando o cliente ativar o Workers Paid plan (confirmado ativo em
+2026-07-25, ver marco anterior).
+
+**Resultado:** aplicacao de container `fraldinha-livre-frontend-frontendcontainer` criada (Application
+ID `a03c1835-448f-4452-84b1-968d184a5a63`, imagem `022f30d2`). Worker no ar em
+`https://fraldinha-livre-frontend.romariobc.workers.dev`. Smoke test confirmado (nao so o retorno do
+comando): `/`, `/catalogo`, `/login`, `/minha-conta` todos `200`, `<title>Fraldinha Livre</title>`
+presente no HTML (nao e pagina de erro disfarçada de 200).
+
+**Escopo do que foi deployado:** o codigo do front nesse commit inclui C1 (contrato `Product`) e C6
+(`ProductRepository`/`MockProductRepository`, camada isolada sem consumidor) — nenhum dos dois muda
+comportamento visivel; `/catalogo` continua lendo do array estatico `PRODUCTS` (migracao pro
+repository e C8, ainda nao executada). Ou seja, este deploy sobe a infraestrutura nova (Containers)
+com o comportamento **identico** ao que já estava validado localmente — nao e o deploy da feature 007
+completa, que so fecha em C11.
+
+**Pendencia gerada por este deploy (acao humana, nao de agente):** registrar
+`fraldinha-livre-frontend.romariobc.workers.dev` em Firebase Console → Authentication → Settings →
+Authorized domains, senao o login Google quebra em produção (item já previsto na revisão de
+arquitetura do Gemini, 2026-07-25, "vira ação real só no momento do deploy" — momento é agora).
+
+**Why:** o usuario pediu explicitamente para disparar o deploy agora, independente do restante da
+thread C (C7-C11) ainda em andamento — o backend do catalogo (C2-C5) fica retido no worktree do back
+sem push, sem afetar este deploy (o front deployado nao chama nenhum endpoint novo ainda).
+
+**How to apply:** deploys futuros do front (`wrangler deploy`) a partir daqui sao incrementais sobre
+esta base — cada tarefa de frontend aprovada da thread C (C7-C10) pode gerar um novo deploy sem
+reabrir esta decisao. C11 (fim da thread C) e quando o comportamento do catalogo de fato muda em
+produção — validacao humana completa (login real, CRUD de produto, checkout) acontece la, nao aqui.

@@ -1,5 +1,21 @@
 # Progresso — fraldinha-livre
 
+## Marco (2026-07-26) — Frontend em PRODUÇÃO por trás de PLACEHOLDER pendente de acao humana (D-032)
+
+`wrangler deploy` real executado a pedido explícito do Romario. Worker no ar:
+**https://fraldinha-livre-frontend.romariobc.workers.dev**. Smoke test confirmado (200 + título
+correto nas 4 rotas principais). Detalhes completos em D-032 (`.claude/docs/decisoes.md`).
+
+**Ação humana pendente (não é código):** registrar o domínio de produção em Firebase Console →
+Authentication → Settings → Authorized domains, para o login Google não quebrar. Ninguém testou
+login real em produção ainda.
+
+Comportamento deployado é idêntico ao já validado localmente (C1+C6, camada nova sem consumidor) —
+`/catalogo` ainda lê do array estático. A feature 007 completa só fica visível em produção depois de
+C8 (catálogo migra pro repository) + deploy novo + C11 (validação humana completa).
+
+---
+
 ## Nota (2026-07-26) — C6 executado (Haiku, meu worktree) e aprovado — primeira tarefa de frontend
 
 Prompt `.claude/docs/design/plans/C6-product-repository-mock.md` escrito seguindo o molde exato de

@@ -1,5 +1,29 @@
 # Progresso — fraldinha-livre
 
+## Nota (2026-07-26) — C3 executado (sessão de backend) e aprovado
+
+Prompt `.claude/docs/design/plans/C3-products-get-scope-fornecedor.md` escrito com a decisão de
+arquitetura já resolvida (middleware condicional em `index.ts`, mesmo path `/products` distinguido
+por query string, sem inventar rota separada) e enviado pra "[BA] Master session".
+
+**Execução:** commit `70b9ee0` (Haiku) + `627a86a` (fix cosmético da sessão de backend — import de
+`Env`/`AppContext` padronizado pra `../env`, sem efeito funcional). `GET /products` sem `scope` filtra
+`active=true`; `GET /products?scope=fornecedor` autenticado retorna todos os produtos do uid
+(ativos+inativos). Testes cobrem 401 sem token, 401 token inválido, 200 com token válido, regressão
+dos 24 produtos públicos.
+
+**Revisão D-012 feita por mim, independente:** `git show --stat`/diff completo dos 2 commits confirma
+escopo exato (`back/src/index.ts`, `back/src/routes/products.ts`, `back/test/products.get.test.ts`,
+nada em `front/`/`packages/contracts/`); código bate literalmente com o especificado no prompt;
+`npm test` (back/) rodado de novo — 39/39 verde; `tsc --noEmit` exit 0. **C3 APROVADA** (commits
+`70b9ee0` + `627a86a`, branch/worktree do back — ainda não pushed).
+
+Próximo passo: C4 (back — `POST`/`PUT`/`DELETE /products`) e C5 (back — `GET /orders?scope=fornecedor`),
+ambas dependem de C3 (concluída) e podem rodar em paralelo (arquivos diferentes). **Pausado aqui por
+instrução explícita do Romario — aguardando ele retomar.**
+
+---
+
 ## Nota (2026-07-26) — C2 executado (sessão de backend, worktree blissful-lamport-ccb562) e aprovado
 
 Disparei C2 pra "[BA] Master session" (thread separada, worktree `blissful-lamport-ccb562`) via

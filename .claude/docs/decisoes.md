@@ -437,3 +437,125 @@ símbolo. **How to apply:** asset em `public/assets/img/cegonha.png` (589×366, 
 próprio); `next/image` com width=589 height=366 e `w-auto` para não distorcer. Verificado por render
 (Playwright: landing+login), lint e build exit 0. O resto do protótipo (leilão reverso) segue como
 referência da Fase 2, NÃO implementado (gate D-014).
+
+## D-029 — Emenda a D-027: frontend tambem vai para Cloudflare; Firebase fica so como servico de auth (2026-07-23) — VIGENTE EM PARTE (superada no "como" pela D-030; o "onde" — front+back na Cloudflare, Firebase so auth — continua valendo)
+
+Com o backend (D-026/D-027) ja em producao na Cloudflare (Workers + D1), avaliamos onde hospedar o
+frontend Next.js: manter no ecossistema Google (Firebase App Hosting, GA desde abril/2025, com SSR via
+Cloud Run e o SDK `FirebaseServerApp` para sincronizar auth em paginas server-rendered) ou levar tambem
+para a Cloudflare (Workers + adapter OpenNext).
+
+**Decisao: front + back na Cloudflare. Firebase deixa de ser candidato a hospedagem e vira SOMENTE
+servico de autenticacao** (Firebase Auth, como ja e desde D-010/005a).
+
+**Por que Cloudflare ganhou:**
+- **Correcao tecnica (2026-07-24, achada na revisao do rascunho pela sessao de backend/deploy):** a
+  formulacao original desta secao dizia que "CORS e eliminado na raiz" por front e back estarem na mesma
+  nuvem. **Isso estava errado** — CORS e sobre origem (protocolo+host+porta), nao sobre "mesma conta/nuvem".
+  O plano usa DOIS Workers com hostnames diferentes (`fraldinha-livre-frontend.workers.dev` vs
+  `fraldinha-livre-backend.workers.dev`): toda chamada feita pelo NAVEGADOR (client components, a maioria
+  do trafego hoje) continua exigindo CORS normal, exatamente como ja exige hoje — vai precisar so de uma
+  regex nova na config de CORS do backend para aceitar a origem de producao (e as preview URLs) do front.
+  **O que realmente se ganha** estando na mesma conta/plataforma: simplificacao operacional (um so
+  `wrangler`/pipeline/console/conector MCP), nao eliminacao de CORS. Service Bindings eliminariam CORS
+  so para chamadas SERVIDOR-A-SERVIDOR (SSR do front chamando o backend direto via RPC interno) — isso
+  nao existe hoje porque o app e majoritariamente client-side (Firebase Auth no browser).
+- **Cloudflare tambem descontinuou Pages em favor de Workers + Static Assets** — o caminho oficial hoje
+  para Next.js na Cloudflare e o adapter OpenNext (`@opennextjs/cloudflare`), mantido pela propria
+  Cloudflare, com suporte a SSR/App Router/PPR.
+- **Custo:** Firebase App Hosting tem piso pago (~US$9,37/mes); Cloudflare Workers tem tier gratuito mais
+  generoso — coerente com D-001 (custo minimo).
+- **Uma so plataforma de deploy/observabilidade** para front+back (um `wrangler`/pipeline, um conector
+  MCP `cloudflare-bindings`), em vez de dois consoles (Firebase + Cloudflare) para um dev solo manter.
+- **O que se perde (aceito conscientemente):** o `FirebaseServerApp` do Firebase App Hosting sincroniza
+  auth em SSR de forma mais "pronta"; na Cloudflare isso continua manual (`user.getIdToken()` +
+  middleware/contexto propro, como ja e feito hoje). Custo aceitavel porque o auth ja funciona assim.
+
+**Consequencia de infra (superset da D-027):** a partir de agora sao duas nuvens **por funcao**, nao mais
+por "front vs dados": **Google/Firebase = so identidade** (Auth); **Cloudflare = front + API + dados**
+(Workers para o Next.js via OpenNext, Workers+Hono para a API, D1 para persistencia). Vercel, Azure e
+Cloudflare Pages seguem descartados (Pages por estar em descontinuacao na propria Cloudflare).
+
+**Why:** consolidar a operacao em uma unica plataforma (um pipeline, um console, um conector MCP) custa
+menos em dinheiro e em superficie de infra do que a integracao SSR-nativa do Firebase App Hosting entrega
+de conveniencia — CORS entre front e back segue necessario nos dois cenarios (Google+Cloudflare ou
+Cloudflare+Cloudflare) e NAO e criterio de decisao aqui.
+
+**How to apply:** ao especificar/implementar o deploy do frontend, usar Cloudflare Workers + adapter
+OpenNext (nao Cloudflare Pages, nao Firebase Hosting/App Hosting). Firebase, daqui em diante, so entra em
+specs/docs como "Auth" — nunca como candidato a hospedagem de front. A config de CORS do backend
+(`back/src/index.ts`, hoje restrita a `localhost`) vai precisar de uma regex nova para a origem de producao
+do front e para as preview URLs geradas por Workers Builds — isso e trabalho obrigatorio do spec de
+deploy, nao uma consequencia automatica de estar na mesma nuvem.
+
+**ATUALIZACAO (2026-07-24):** o mecanismo desta decisao (Workers + adapter OpenNext) foi abandonado — ver
+D-030. O "onde" desta D-029 (front+back na Cloudflare, Firebase so como auth) continua vigente; o "como"
+(qual produto Cloudflare hospeda o front) mudou de Workers+OpenNext para Containers.
+
+## D-030 — Frontend migra de Workers+OpenNext para Cloudflare Containers (2026-07-24) — VIGENTE (emenda D-029)
+
+Com a fatia 1 de deploy do frontend (D-029) em execucao, a Task 2 do plano (adapter
+`@opennextjs/cloudflare`) travou num bug diferente do que qualquer tentativa de config resolveria: o app
+usa **Firestore de verdade** (perfil do usuario via `getDoc`/`setDoc`/`updateDoc` em
+`auth-context.tsx`/`onboarding/page.tsx`, D-010/007a) — e `@firebase/firestore` puxa `@grpc/proto-loader`
+-> `protobufjs`, que gera codigo em runtime via `new Function()`. Isso e **proibido pelo sandbox V8 dos
+Workers** (`EvalError: Code generation from strings disallowed for this context`), nao um erro de
+configuracao. Confirmado como bug real e sem fix oficial: issue
+`opennextjs/opennextjs-cloudflare#1301` (aberta 2026-07-01), reproduzida com o stack trace identico no
+build deste projeto.
+
+**Opcoes avaliadas antes de decidir** (a pedido do cliente, que nao queria perder a camada de
+seguranca/WAF-DDoS da Cloudflare nem reabrir mao de duas nuvens sem necessidade):
+
+1. **`firebase/firestore/lite`** — troca de SDK (mesma API para `getDoc`/`setDoc`/`updateDoc`, que e tudo
+   que o app usa; sem `onSnapshot`/persistencia offline/bundles, que o app tambem nao usa). Resolveria o
+   bug trocando 3 arquivos, mas e mudanca de codigo de aplicacao, nao so de infra.
+2. **Cloudflare Containers** (GA desde abril/2026) — um Worker fino roteia pra um container Docker com
+   **Node.js completo, sem sandbox V8** — elimina a CLASSE do bug (nao so o caso do Firestore), sem sair
+   da conta Cloudflare. Custo: exige o Workers Paid plan (US$5/mes), acima do tier gratuito puro do
+   Workers.
+3. **Firebase App Hosting** — reabriria D-029 por completo (front no Google), ja descartado antes por
+   custo (piso Blaze ~US$9,37/mes) e por nao ser "verified adapter" do Next 16 (mesma categoria de risco
+   que o Cloudflare, nao vantagem exclusiva do Google).
+4. **Google Cloud Run + Cloudflare so como CDN/WAF na frente** (relatorio externo trazido pelo cliente) —
+   revisado e refutado em pontos especificos (custo do Cloud Run tambem exige billing account/cartao
+   mesmo no free tier, igual ao Firebase Blaze — o relatorio aplicava o crivo so numa opcao; a arquitetura
+   real do app e client-side/CORS via browser, nao "API Key entre container e Workers" como o relatorio
+   descrevia; secao inteira sobre IA/LLM/Vertex/LangChain sem nenhuma base no roadmap real do projeto).
+   Achado tecnico correto do relatorio: Cloud Run tambem resolveria o EvalError (Node completo, sem
+   sandbox) — so que trocando de provedor em vez de ficar na mesma conta. Achado adicional confirmado:
+   o WAF/DDoS da Cloudflare protege QUALQUER origem (self-hosted ou serverless, doc oficial confirma) —
+   entao a preocupacao do cliente com seguranca **nao trava** a escolha entre Cloudflare e Google; ela e
+   ortogonal.
+
+**Decisao: Cloudflare Containers.** Resolve o bug (Node completo), fica na mesma conta/plataforma que o
+backend (mantendo o espirito original da D-029 — um `wrangler`/console/MCP), e o WAF/DDoS que o cliente
+valoriza nao depende dessa escolha de qualquer forma. Custo (US$5/mes do Workers Paid) e aceito como
+prerequisito, ativado manualmente pelo cliente no dashboard (mesmo padrao humano de B9/P3).
+
+**Mudanca tecnica:** `front/next.config.ts` ganha `output: "standalone"` + `outputFileTracingRoot` (raiz
+do monorepo, mesmo valor de `turbopack.root`, ja existente). `front/Dockerfile` (novo, multi-stage
+`node:22-alpine`) builda a partir da raiz do monorepo e copia `.next/standalone/front` (caminho
+confirmado com build real). `front/src/container-worker.ts` (novo) e um Worker fino
+(`Container`+`getRandom` de `@cloudflare/containers`) que roteia pro container. `front/wrangler.jsonc`
+reescrito para `containers` + Durable Object binding (era config do adapter). `@opennextjs/cloudflare`
+removido das dependencias; `@cloudflare/containers`+`@cloudflare/workers-types` adicionados.
+`back/`/`packages/contracts/` sem nenhuma mudanca.
+
+**Verificado (duas sessoes, de forma independente):** `docker build --no-cache` do zero + `docker run` +
+smoke test das 4 rotas principais (`/`, `/catalogo`, `/login`, `/minha-conta`) — todas `200`, logs limpos,
+sem `EvalError`. Suite 298/298, `tsc`/`lint` limpos. Spec: `spec-deploy-frontend-cloudflare-containers.md`.
+Plano: `H-010-deploy-frontend-cloudflare-containers.md`. Execucao: commit `a6848e5`.
+
+**Why:** o bug do Firestore e estrutural (sandbox V8 x codegen em runtime), nao contornavel por config;
+entre as alternativas que resolvem, Containers e a unica que nao reintroduz uma segunda nuvem nem paga o
+piso do Firebase Blaze, e a preocupacao de seguranca do cliente (WAF/DDoS) nao e afetada pela escolha
+entre Cloudflare e Google de qualquer forma — reduzindo a decisao a custo (US$5/mes aceito) + maturidade
+operacional (Containers GA ha poucos meses; ponto de atencao futuro, nao bloqueante).
+
+**How to apply:** especificar/implementar o deploy do frontend usa Cloudflare Containers, nao o adapter
+OpenNext (que fica obsoleto para este app especifico — nao generalizavel: apps que nao usam Firestore
+completo continuam podendo usar OpenNext sem esse bug). `firebase/firestore/lite` NAO foi adotado — se
+o bug do Firestore reaparecer em outro contexto, reavaliar essa opcao antes de assumir Containers como
+unica saida. Deploy real (`wrangler deploy`) depende do Workers Paid plan ativado manualmente pelo
+cliente — pendente, fora do escopo de agente.

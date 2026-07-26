@@ -62,4 +62,69 @@ describe('CORS', () => {
 
     expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull()
   })
+
+  it('origin de producao do front (workers.dev) e permitida', async () => {
+    const request = new Request('http://localhost/orders', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://fraldinha-livre-frontend.romariobc.workers.dev',
+        'Access-Control-Request-Method': 'GET',
+        'Access-Control-Request-Headers': 'authorization',
+      },
+    })
+    const response = await app.fetch(request, env)
+
+    expect(response.status).toBe(204)
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe(
+      'https://fraldinha-livre-frontend.romariobc.workers.dev',
+    )
+  })
+
+  it('preview URL do Workers Builds (prefixo de branch) e permitida', async () => {
+    const request = new Request('http://localhost/orders', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://minha-branch-fraldinha-livre-frontend.romariobc.workers.dev',
+        'Access-Control-Request-Method': 'GET',
+        'Access-Control-Request-Headers': 'authorization',
+      },
+    })
+    const response = await app.fetch(request, env)
+
+    expect(response.status).toBe(204)
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe(
+      'https://minha-branch-fraldinha-livre-frontend.romariobc.workers.dev',
+    )
+  })
+
+  it('preview URL do Workers Builds (prefixo de versao) e permitida', async () => {
+    const request = new Request('http://localhost/orders', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://abc1234-fraldinha-livre-frontend.romariobc.workers.dev',
+        'Access-Control-Request-Method': 'GET',
+        'Access-Control-Request-Headers': 'authorization',
+      },
+    })
+    const response = await app.fetch(request, env)
+
+    expect(response.status).toBe(204)
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe(
+      'https://abc1234-fraldinha-livre-frontend.romariobc.workers.dev',
+    )
+  })
+
+  it('dominio parecido mas nao exato (sufixo extra) continua rejeitado', async () => {
+    const request = new Request('http://localhost/orders', {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://fraldinha-livre-frontend.romariobc.workers.dev.evil.com',
+        'Access-Control-Request-Method': 'GET',
+        'Access-Control-Request-Headers': 'authorization',
+      },
+    })
+    const response = await app.fetch(request, env)
+
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBeNull()
+  })
 })

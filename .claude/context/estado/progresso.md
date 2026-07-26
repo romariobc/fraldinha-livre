@@ -1,6 +1,205 @@
 # Progresso — fraldinha-livre
 
-## Estado atual (2026-07-23) — Task 4: Perfil do Fornecedor documentado
+## Nota (2026-07-26) — C1 executado e aprovado (thread C, feature 007)
+
+Prompt `.claude/docs/design/plans/C1-products-contract.md` escrito e disparado via agente Haiku.
+Achou uma divergência real não coberta no prompt: `front/src/lib/products.ts` usa `priceInCents`,
+mas `back/src/schema/products.ts`/`back/src/routes/orders.ts` (já em produção desde a thread P) usam
+`priceCents` — parou e perguntou em vez de adivinhar. Resolvido: contrato segue o backend
+(`priceCents`), já que é o lado que já está deployado; a migração do front pro nome novo é escopo de
+C8, não de C1.
+
+Revisão D-012 feita pela sessão-mãe (não só o relatório do executor): `git show --stat 32a4ae7`
+confirma escopo exato (só `packages/contracts/src/{product.ts,index.ts,__tests__/product.test.ts}`,
+nada em `back/`/`front/`); `npm test` rodado de novo por conta própria — 15/15 verde (4 novos +
+11 preexistentes de `order.test.ts`); `npx tsc --noEmit` exit 0. **C1 APROVADO (commit `32a4ae7`).**
+
+Próximo passo: C2 (back — schema `products` estendido + migrations 0003/0004), depende de C1
+(concluído). Ainda não disparado.
+
+---
+
+## Nota (2026-07-25) — Plano de implementação da feature 007 (Catálogo do Fornecedor) escrito
+
+A "[FR]Master session" avisou por cross-session-message que a spec da feature 007 (Catálogo do
+Fornecedor: CRUD de produtos + sync do painel) foi aprovada em bloco (commits `e39b329` → `7227f4b`
+→ `f96d54d`, `.claude/docs/design/specs/spec-catalogo-fornecedor-produtos.md`), com 6 decisões de
+escopo confirmadas pelo cliente. **Descoberta importante:** este worktree (`eloquent-montalcini-2dff41`)
+está sendo compartilhado entre esta sessão e a Master session, commitando na mesma branch de forma
+intercalada — risco real de edição concorrente, registrado explicitamente no plano novo como cuidado
+extra (checar `git log --oneline` antes de cada commit desta thread).
+
+**Plano escrito:** `.claude/docs/design/plans/C-catalogo-fornecedor-breakdown.md` (11 tarefas, C1-C11,
+mesmo formato/rigor de B-backend-pedidos-breakdown.md e P-backend-produtos-breakdown.md — interfaces
+canônicas DRY, grafo de dependências, constraints globais, verificação D-008). Achado da sessão-mãe
+que a spec não cobria: `front/src/lib/order-adapters.ts` (`orderToDirectOrder`) já existe como bridge
+otimista client-side (materializa `DirectOrder` só na memória do navegador que fez a compra, chamado
+em `checkout/page.tsx`) — não persiste entre sessões, é exatamente o buraco que `GET
+/orders?scope=fornecedor` (RN-007-05) fecha de verdade. Documentado como decisão a tomar (não
+adivinhada) na tarefa C10.
+
+Índice atualizado em `.claude/docs/design/plans/README.md`. Ainda **não disparada nenhuma execução**
+(nenhum agente Haiku rodou) — só o plano foi escrito. Registro nesta nota + o arquivo do plano ainda
+não commitados no momento em que esta entrada foi escrita.
+
+---
+
+## Nota (2026-07-25) — Arquivo de infra enriquecido com a arquitetura completa
+
+`.claude/docs/infra/arquitetura-firebase-cloudflare.md` (renomeado de
+`cloudflare-workers-limites-custos.md`) ganhou, além dos limites/custos do Workers Paid já
+registrados, a documentação da arquitetura atual completa: visão geral (diagrama em texto),
+componentes e responsabilidades (Firebase Auth, Firestore `users/{uid}`, Worker+Container do front,
+Worker+D1 do back), os 6 fluxos reais de conexão entre módulos (login, leitura/escrita de perfil,
+chamada à API, validação de JWT, persistência em D1, roteamento do container), requisitos de
+segurança (JWT stateless sem SDK admin, Firestore Rules D-013, CORS por regex, ausência de secrets
+hoje, domínios autorizados pendentes), rede (sem VPC, D1 sem endpoint público, WAF/DDoS automático
+da Cloudflare) e disponibilidade (backend sem SPOF conhecido; frontend com SPOF real e consciente —
+`max_instances: 1` + `sleepAfter: 10m`, aceitável no estágio atual, primeiro ponto a revisar se
+tráfego crescer). Referencia `decisoes.md` para o raciocínio completo de cada decisão (D-010,
+D-026, D-027, D-013, D-029/D-030) em vez de duplicar.
+
+Nenhuma mudança de código — só documentação, seguindo o mesmo raciocínio das notas anteriores desta
+sessão (verificar antes de agir, registrar o estado real).
+
+---
+
+## Marco (2026-07-25) — Workers Paid CONFIRMADO ativo; último bloqueio do H-010 removido
+
+Romario habilitou o plano pago do Workers (US$ 5/mês) no dashboard da Cloudflare — pré-requisito
+humano que faltava para o deploy real do H-010 (frontend via Cloudflare Containers), documentado
+como pendente desde a execução do H-010 (ver estado abaixo, 2026-07-24).
+
+**Confirmado nesta sessão, sem depender só da palavra do cliente:** `wrangler whoami` mostrou o
+token com escopos `containers (write)`/`cloudchamber (write)`; mais decisivo, `wrangler containers
+list` retornou `No containers found` — resposta limpa, sem o erro de paywall que a API da
+Cloudflare devolve quando Containers é chamado num plano Free. Verificação read-only, nenhum deploy
+feito ainda.
+
+**Novo arquivo de referência:** `.claude/docs/infra/arquitetura-firebase-cloudflare.md` (renomeado
+de `cloudflare-workers-limites-custos.md` depois de virar o doc de arquitetura completo, ver nota
+2026-07-25 mais recente abaixo) — limites incluídos no plano pago e preços de excedente (D1,
+Durable Objects, KV, Queues, Logpush, Pages Functions), transcritos do dashboard de billing colado
+pelo Romario. Inclui uma seção do que o projeto já usa hoje (D1 real, Durable Objects via Container
+do front) e sinais de alerta para checar **antes** de qualquer tarefa que escale uso desses recursos
+(subir `max_instances`, seed grande no D1, ligar KV/Queues/Logpush). Qualquer sessão futura que
+mexer em infra Cloudflare deve consultar esse arquivo antes de agir.
+
+**Próximo passo (não decidido ainda):** decidir com o cliente se já dispara o deploy real
+(`wrangler deploy` do front + smoke test, mesmo padrão de B9/P3) ou se fica só confirmado por
+enquanto.
+
+---
+
+## Nota (2026-07-25) — Revisão de arquitetura pelo Gemini (Firebase): 3 pontos checados, nenhuma ação imediata
+
+Romario pediu revisão da arquitetura (Firebase Auth + backend Cloudflare Workers/D1 + frontend
+Cloudflare Containers) ao agente Gemini integrado ao Firebase. Ele reportou 3 pontos; cada um foi
+checado contra o código/estado real antes de agir (nenhuma mudança feita — só registro):
+
+1. **Domínios autorizados do Firebase Auth** — alerta correto em tese, mas **prematuro**: o
+   frontend ainda não tem deploy de produção (H-010 só validado localmente via Docker, esperando o
+   cliente ativar Workers Paid plan). `front/wrangler.jsonc` não tem `route`/domínio customizado
+   ainda. Não há hoje nenhum domínio de produção fora dos 3 já autorizados
+   (`localhost`/`fraldinha-livre.firebaseapp.com`/`fraldinha-livre.web.app`) para adicionar. **Vira
+   ação real só no momento do deploy** — quando o domínio final (workers.dev ou customizado)
+   existir, precisa ser adicionado em Firebase Console → Authentication → Settings → Authorized
+   domains. Não há tooling MCP disponível para ler a lista atual de domínios autorizados
+   diretamente.
+2. **Validação stateless do JWT no Worker** — **já implementado exatamente assim**, não é lacuna:
+   `back/src/middleware/auth.ts` usa `jose` (`createRemoteJWKSet` + `jwtVerify` contra o JWKS
+   público do Firebase), sem SDK admin, sem sessão em banco. Confirmado: zero dependência
+   `firebase-admin` no `back/package.json`. Resolvido desde a fatia B3 (2026-07-19).
+3. **Backend escrevendo no Firestore via service account** — **não se aplica à arquitetura atual**:
+   confirmado por grep que `back/src` não tem nenhuma referência a Firestore. Todas as escritas de
+   perfil (CNPJ/razão social/endereço) são client-side, via SDK do Firebase em
+   `front/src/contexts/auth-context.tsx`, protegidas por `firestore.rules` (só o dono do `uid`
+   escreve no próprio doc) — decisão consciente, não descuido. A recomendação do Gemini só passa a
+   valer se um dia decidirmos mover escritas de dados para o Worker.
+
+**Pendência real gerada por esta revisão:** nenhuma ação de código agora. Item 1 fica anotado como
+dependência do H-010 (deploy do frontend) — lembrar de registrar o domínio final nos Authorized
+domains do Firebase Auth quando o deploy acontecer.
+
+---
+
+## Estado atual (2026-07-24) — H-010: deploy do frontend via Cloudflare Containers (local, DONE)
+
+**Decisão de plataforma do frontend mudou de novo: Cloudflare Workers + adapter OpenNext (D-029)
+foi ABANDONADO em favor de Cloudflare Containers.** Sequência que levou até aqui, nesta mesma
+branch/worktree:
+
+1. **Migração para npm workspaces** (`front/` + `packages/contracts`, commits `1462da7`+`59164ed`)
+   — resolveu de vez o bug antigo `Module not found: Can't resolve '@contracts'` que travava
+   qualquer build de produção do front (Turbopack não atravessava a fronteira do monorepo sem
+   symlink real). Ganho **permanente e independente** da escolha de plataforma abaixo — não foi
+   revertido.
+2. **Tentativa do adapter OpenNext (Task 2 do plano original) travou num bug DIFERENTE e mais
+   sério**, já com workspaces resolvido: `EvalError: Code generation from strings disallowed for
+   this context`, disparado pelo Firestore (`@firebase/firestore` → `@grpc/proto-loader` →
+   `protobufjs`, que usa `new Function()` em runtime — proibido no sandbox V8 do Workers).
+   Confirmado como bug real e aberto do ecossistema: GitHub issue
+   `opennextjs/opennextjs-cloudflare#1301`, sem fix oficial, reproduzido exatamente (mesmo stack
+   trace) no nosso build. **App usa Firestore de verdade** (perfil do usuário via
+   `getDoc`/`setDoc`/`updateDoc` em `auth-context.tsx`/`onboarding/page.tsx`), não é hipotético.
+3. **Comparação de plataforma reaberta** (Romario pediu, por causa do bug do Firestore + questão
+   de segurança WAF/DDoS que ele não queria perder saindo da Cloudflare). Opções avaliadas:
+   `firebase/firestore/lite` (troca de SDK, mesma API pras 3 funções usadas, sem `onSnapshot`),
+   **Cloudflare Containers** (GA desde abril/2026 — Node.js completo, sem sandbox V8, elimina a
+   classe inteira do bug), Firebase App Hosting, e um relatório externo propondo Google Cloud Run
+   (com a Cloudflare só como CDN/WAF na frente). Verificação cruzada entre as duas sessões:
+   Cloudflare Containers resolve o mesmo problema que Cloud Run resolveria, sem sair da conta
+   Cloudflare (custo: Workers Paid, US$5/mês, ativado manualmente pelo cliente); o WAF/DDoS da
+   Cloudflare protege qualquer origem (self-hosted ou serverless), então não trava a escolha.
+4. **Decisão: Cloudflare Containers.** Nova spec (`spec-deploy-frontend-cloudflare-containers.md`,
+   `c2952b2`) + plano (`H-010-deploy-frontend-cloudflare-containers.md`, `1f6a8e8`) escritos,
+   substituindo o plano antigo de adapter OpenNext (`deploy-frontend-cloudflare-breakdown.md`,
+   agora obsoleto — Task 1 dele, CORS do backend, segue válida e já commitada; Task 2/3 dele não se
+   aplicam mais).
+
+**Execução (commit `a6848e5`), REVISADA por mim de forma independente (não só o relatório do
+executor nem o da sessão de backend):**
+- `front/next.config.ts`: `output: "standalone"` + `outputFileTracingRoot` = raiz do monorepo
+  (mesmo valor de `turbopack.root`, evita warning de inconsistência).
+- `front/Dockerfile` (novo): multi-stage `node:22-alpine`, builda a partir da raiz do monorepo,
+  copia `.next/standalone/front` (caminho verificado com build real — o standalone aninha por
+  `front/` por causa do `outputFileTracingRoot`).
+- `front/src/container-worker.ts` (novo): Worker fino (`Container` + `getRandom` de
+  `@cloudflare/containers`) que roteia pro container.
+- `front/wrangler.jsonc`: reescrito para `containers` + Durable Object binding (era config do
+  adapter OpenNext).
+- `front/tsconfig.worker.json` (novo): isola os tipos do worker do resto do app Next;
+  `front/tsconfig.json`/`eslint.config.mjs` excluem `container-worker.ts`.
+- `front/package.json` + lockfile raiz: `@opennextjs/cloudflare` removido, `@cloudflare/containers`
+  + `@cloudflare/workers-types` adicionados; scripts `preview`/`deploy` do adapter removidos,
+  `cf:deploy` novo.
+- **`back/` e `packages/contracts/` sem NENHUM diff** — confirmado por `git diff --stat` entre os
+  commits (não só grep no relatório).
+
+**Verificação própria desta sessão (refeita do zero, não reaproveitando relatório de ninguém):**
+`npm run lint` (exit 0, 1 warning pré-existente em `supplier-mock.ts`, não tocado aqui), `npm test`
+(298/298), `npx tsc --noEmit -p tsconfig.worker.json` (exit 0), `docker build --no-cache` completo
+do zero + `docker run` numa porta isolada + smoke test manual das 4 rotas (`/`, `/catalogo`,
+`/login`, `/minha-conta`) → todas `200`, logs limpos, **sem** o `EvalError`. Containers de teste e
+imagens removidos ao final (`docker rm`/`docker rmi`).
+
+**Duas correções técnicas que a sessão de backend fez sobre a spec original** (ambas verificadas
+antes de escrever o prompt, documentadas no H-010): o campo do wrangler é `max_instances` (não
+`instances`, nome antigo usado na spec); o caminho exato do standalone (`.next/standalone/front/`)
+foi confirmado com build real antes do Dockerfile, não assumido.
+
+**Pendente (fora do escopo desta fatia, mesmo padrão de B9/P3):** deploy real (`wrangler deploy`)
+depende do **Workers Paid plan (US$5/mês)** ativado manualmente pelo cliente no dashboard da
+Cloudflare — nenhum agente pode fazer isso. Até lá, o front segue sem deploy de produção, só
+validado localmente (Docker).
+
+Ver [[infra-google-cloud]] (memória de sessão, já atualizada com Containers) e D-029 em
+`.claude/docs/decisoes.md` (precisa de emenda formal registrando a troca OpenNext→Containers —
+pendente de próxima sessão, não bloqueia o H-010).
+
+---
+
+## Estado anterior (2026-07-23) — Task 4: Perfil do Fornecedor documentado
 
 **Perfil do Fornecedor (feature descrita na Task 4) IMPLEMENTADO e DOCUMENTADO.** Fatia do escopo 006 (backend) que captura dados do fornecedor (CNPJ/razão social/nome fantasia/endereço) em `users/{uid}` via Firestore, editáveis numa nova aba `PerfilTab.tsx` no painel do fornecedor. Commits: `cd5a67f` (isValidCNPJ + UserProfile), `dc2f696` (PerfilTab.tsx + testes), `8804685` (wired na dashboard). Suite 298/298 verde, `tsc`/`lint` limpos.
 

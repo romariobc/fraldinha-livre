@@ -213,6 +213,59 @@ estoque são fatias seguintes.
 **Stack:** Hono (rotas) · Drizzle ORM + drizzle-kit (D1, migrations versionadas) · Wrangler (dev local +
 deploy) · `firebase-auth-cloudflare-workers`/`jose` (verificação do token) · `packages/contracts` (Zod).
 
+---
+
+## 13. Decisão (2026-07-23) — Frontend também vai para Cloudflare (Workers + OpenNext)
+
+Com a fatia 1 do backend em produção (B9, §12), avaliamos onde hospedar o **frontend** Next.js: manter no
+Google (Firebase App Hosting, GA desde abril/2025) ou levar também para a Cloudflare (Workers + adapter
+OpenNext). **Decisão: front + back na Cloudflare.** Firebase deixa de ser candidato a hospedagem e vira
+**somente** serviço de autenticação (papel que já tinha desde 005a/D-010).
+
+**Correção técnica (2026-07-24, achada na revisão do rascunho pela sessão de backend/deploy):** uma versão
+anterior desta seção afirmava que estar na mesma nuvem "elimina CORS na raiz". **Isso estava errado** — CORS
+é sobre origem (protocolo+host+porta), não sobre "mesma conta/nuvem". O plano usa **dois Workers com
+hostnames diferentes** (`fraldinha-livre-frontend.workers.dev` vs `fraldinha-livre-backend.workers.dev`):
+toda chamada feita pelo **navegador** (client components, a maioria do tráfego hoje) continua exigindo CORS
+normal — vai precisar só de uma regex nova na config de CORS do backend (`back/src/index.ts`, hoje restrita
+a `localhost`) para aceitar a origem de produção e as preview URLs do front. Service Bindings eliminariam
+CORS somente para chamadas **servidor-a-servidor** (SSR do front chamando o backend direto via RPC interno)
+— isso não existe hoje porque o app é majoritariamente client-side (Firebase Auth no browser).
+
+**Razão decisiva (corrigida):** consolidar front+back numa única plataforma simplifica operação (um só
+`wrangler`/pipeline/console/conector MCP), não elimina CORS. Some a isso: Cloudflare descontinuou Pages a
+favor de Workers + Static Assets (o caminho oficial pra Next.js na Cloudflare hoje é o adapter OpenNext);
+Firebase App Hosting tem piso pago (~US$9,37/mês) contra o tier gratuito mais generoso do Workers.
+
+**O que se perde, aceito conscientemente:** o `FirebaseServerApp` do Firebase App Hosting sincroniza auth em
+SSR de forma mais pronta; na Cloudflare isso segue manual (`user.getIdToken()` + middleware/contexto
+próprio, como já é feito hoje) — custo aceitável porque o auth já funciona assim.
+
+Registrado como **D-029** (emenda a D-001/D-027) no log de decisões. Detalhe completo:
+`.claude/docs/decisoes.md#d-029`.
+
+## 14. Decisão (2026-07-24) — Mecanismo do §13 muda de Workers+OpenNext para Cloudflare Containers
+
+O adapter `@opennextjs/cloudflare` do §13 travou num bug estrutural, não contornável por config: o app
+usa Firestore de verdade (perfil do usuário, D-010/007a), e `@firebase/firestore` → `@grpc/proto-loader`
+→ `protobufjs` gera código em runtime via `new Function()` — proibido pelo sandbox V8 dos Workers
+(`EvalError`). Bug real e aberto do ecossistema (`opennextjs/opennextjs-cloudflare#1301`), reproduzido
+com o stack trace idêntico neste projeto.
+
+Reavaliadas 4 opções (`firebase/firestore/lite`, Cloudflare Containers, Firebase App Hosting, Google
+Cloud Run + Cloudflare como CDN/WAF) — detalhe completo, incluindo a refutação ponto a ponto de um
+relatório externo que propunha Cloud Run, em `.claude/docs/decisoes.md#d-030`. **Decisão: Cloudflare
+Containers** (GA desde abril/2026) — Node.js completo, sem sandbox V8, elimina a classe do bug sem sair
+da conta Cloudflare. Achado relevante: o WAF/DDoS da Cloudflare protege qualquer origem (self-hosted ou
+serverless), então a preocupação do cliente com segurança não trava essa escolha entre Cloudflare e
+Google — o trade-off real ficou reduzido a custo (Workers Paid, US$5/mês) + maturidade operacional
+(Containers GA há poucos meses).
+
+O "onde" do §13 (front+back na Cloudflare, Firebase só como auth) continua vigente; só o "como" (produto
+Cloudflare específico) mudou. Verificado (duas sessões, independentemente): `docker build --no-cache` +
+smoke test das 4 rotas principais, todas `200`, sem `EvalError`; `back/`/`packages/contracts` sem diff.
+Registrado como **D-030** (emenda D-029) no log de decisões.
+
 ## 11. Referências
 
 - Estado do front: `front/src/lib/ports/`, `front/src/lib/adapters/`, `front/src/contexts/orders-context.tsx`,

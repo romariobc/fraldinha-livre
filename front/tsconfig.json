@@ -21,8 +21,8 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@contracts": ["../packages/contracts/src/index.ts"],
-      "@contracts/*": ["../packages/contracts/src/*"]
+      "@contracts": ["../node_modules/@fraldinha-livre/contracts/src/index.ts"],
+      "@contracts/*": ["../node_modules/@fraldinha-livre/contracts/src/*"]
     }
   },
   "include": [
@@ -33,5 +33,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "src/container-worker.ts"]
 }

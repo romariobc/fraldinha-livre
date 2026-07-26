@@ -1,5 +1,30 @@
 # Progresso — fraldinha-livre
 
+## Nota (2026-07-26) — C4 executado (sessão de backend) e aprovado
+
+Prompt `.claude/docs/design/plans/C4-products-crud.md` escrito com o código exato dos 3 handlers
+(`POST`/`PUT`/`DELETE /products`) e do novo bloco de `index.ts`, incluindo a decisão de slug (cliente
+sempre envia, servidor não gera/deriva/verifica unicidade — fora de escopo) já resolvida no prompt.
+
+**Execução:** commit `93e7f55` (Haiku, sem fix de revisão necessário). Autorização por dono (404 se
+não existe, 403 se não é do uid, nunca o contrário); despublicar/republicar via `PUT active`;
+`DELETE` remove de verdade. 12 testes novos. **Acerto do próprio Haiku, não desvio:** o código literal
+do prompt fazia `ProductSchema.parse(savedRows[0])` direto, mas o Drizzle retorna `null` pra `badge`
+(coluna nullable) enquanto `ProductSchema.badge` é `z.string().optional()` (não aceita `null`) — sem
+`badge ?? undefined`, criar/editar produto sem badge quebraria. O Haiku adicionou essa conversão nos
+dois handlers (`POST`/`PUT`), confirmado funcionando pelo teste sem badge.
+
+**Revisão D-012 feita por mim, independente:** `git show --stat`/diff completo confirma escopo exato
+e código batendo com o prompt (mais o fix do badge, correto); leitura completa do arquivo de teste
+(12 casos, cobertura bate com os critérios de aceite); `npm test` (back/) rodado de novo — 51/51
+verde; `tsc --noEmit` exit 0. **C4 APROVADA** (commit `93e7f55`, branch/worktree do back — ainda não
+pushed).
+
+Próximo passo: C5 (`GET /orders?scope=fornecedor`) já em execução sequencial pela sessão de backend
+(mesmo worktree, coordenado pra não conflitar com C4 em `index.ts`).
+
+---
+
 ## Nota (2026-07-26) — C3 executado (sessão de backend) e aprovado
 
 Prompt `.claude/docs/design/plans/C3-products-get-scope-fornecedor.md` escrito com a decisão de

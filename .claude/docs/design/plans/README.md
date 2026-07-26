@@ -92,6 +92,7 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | C8 | front/: /catalogo e /produto/[slug] migram para ProductRepository | 1 | APROVADO (commit 8e41af4) via D-012 + verificacao visual obrigatoria no navegador (maior risco da fatia) — 340/340 testes verdes, tsc 0, build ok, catalogo/produto/404 confirmados de verdade |
 | C9 | front/: CatalogoTab no painel do fornecedor (CRUD de produtos) | 1 | APROVADO (commit bb86c2d) via D-012 — 340/340 testes verdes (revalidado apos C8 commitar), tsc 0, codigo bate com o prompt |
 | C10 | front/: MarketProvider carrega pedidos diretos via GET /orders?scope=fornecedor | 1 | APROVADO (commits 70ea477 + e571f21) via D-012 — codigo de producao bate com o prompt, mas teste de modo backend era decoy (nao setava a flag nem mockava dados); corrigido por mim, 351/351 verde apos o fix. Thread C fecha o codigo (C1-C10), falta so C11 (deploy+validacao humana) |
+| C11 | Deploy real + validacao humana | 1 | EM ANDAMENTO (D-033, 2026-07-26) — migrations remotas aplicadas, back+front deployados, NEXT_PUBLIC_USE_BACKEND ligado, bug de badge null encontrado e corrigido em producao. Falta: autorizar dominio no Firebase Auth + validacao humana completa no navegador (login real, CRUD, checkout) |
 
 **Ordem de execucao (D-011):** H-002 → H-005 → [H-006 limpeza para main] → H-004 → H-003 → 006 backend.
 

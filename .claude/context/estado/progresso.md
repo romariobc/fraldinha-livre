@@ -1,5 +1,19 @@
 # Progresso — fraldinha-livre
 
+## Marco (2026-07-26) — Login mobile + e-mail/senha habilitado + 2 fornecedores de teste (D-034)
+
+Fix do login Google em mobile (`signInWithRedirect`, achado real de usuário Android). Verificado
+(não assumido) que o login por e-mail/senha NÃO estava funcional apesar da tela existir — implementado
+de verdade (`signInEmail`/`signUpEmail`, reusa `/onboarding` já existente). 2 contas de fornecedor de
+teste criadas via o próprio fluxo novo, confirmadas funcionando (painel + aba Catálogo visíveis):
+
+- `fornecedor.teste1@fraldinhalivre.com.br` / `Teste123!`
+- `fornecedor.teste2@fraldinhalivre.com.br` / `Teste123!`
+
+Detalhes completos em D-034. Deploy `297df1bc`, 351/351 testes verdes.
+
+---
+
 ## Marco (2026-07-26) — C11 executado: migrations remotas + deploy real + bug de produção encontrado e corrigido (D-033)
 
 A pedido do Romario ("aplique as migrations e redeploy que eu sigo"): migrations 0003+0004 aplicadas

@@ -678,6 +678,57 @@ ainda não confirmado se foi feito); validação humana completa no navegador (l
 CRUD de produto pelo fornecedor, checkout ponta a ponta) — isso é o passo humano final do C11, ainda
 não executado.
 
+## D-034 — Login mobile (redirect) + e-mail/senha habilitado de verdade + 2 fornecedores de teste (2026-07-26) — VIGENTE
+
+Romario reportou usuário Android sem opção de login Google (WebView/mobile bloqueia
+`signInWithPopup`), trouxe diagnóstico do Gemini, e pediu 2 correções + dados de teste.
+
+**Fix 1 — login Google em mobile:** `auth-context.tsx` detecta mobile via
+`navigator.userAgent` (`/Mobi|Android|iPhone|iPad/i`) e usa `signInWithRedirect` nesse caso,
+`signInWithPopup` no desktop (inalterado). `getRedirectResult(auth)` adicionado só para capturar
+erro do redirect — `onAuthStateChanged` já existente resolve a sessão nos dois fluxos, sem
+duplicar lógica de perfil/role.
+
+**Fix 2 — login/cadastro por e-mail e senha:** Romario afirmou que "a tela já existia, bastava
+habilitar" — **verificado e não era esse o caso**: `/login` tinha os campos `disabled` com aviso
+"Disponível em breve (feature 005b)"; `/cadastro` era form estático (`action="#"`, sem `onSubmit`,
+sem state, Server Component) — nenhuma chamada ao Firebase Auth existia. Perguntei antes de
+prosseguir (mudava o escopo do segundo pedido, criar fornecedores de teste, que dependia disso).
+Implementado: `signInEmail`/`signUpEmail` no `auth-context.tsx`
+(`signInWithEmailAndPassword`/`createUserWithEmailAndPassword`); conta nova sem doc em
+`users/{uid}` cai no `/onboarding` já existente pra escolher o papel — reusa o mesmo fluxo do login
+Google, não duplica essa decisão. `firebaseAuthErrorMessage` (`lib/utils.ts`) traduz códigos comuns
+de erro pra pt-BR. `/cadastro` convertido pra client component; os campos decorativos
+(CPF/telefone/CEP/bairro/endereço) que nunca estiveram conectados a nada foram **removidos** — mantê-los
+seria pior (usuário preenche, nada é salvo, sem aviso). 6 mocks de teste de `AuthContextType`
+atualizados.
+
+**2 fornecedores de teste criados de verdade** (via Browser tool, usando o próprio fluxo novo — que
+também serviu de teste end-to-end real do fix 2):
+- `fornecedor.teste1@fraldinhalivre.com.br` / `Teste123!` — nome "Distribuidora Sul Teste"
+- `fornecedor.teste2@fraldinhalivre.com.br` / `Teste123!` — nome "Baby Stock SP Teste"
+
+Ambos passaram pelo onboarding real (escolheram "Sou Fornecedor"), role gravada no Firestore de
+verdade, painel do fornecedor confirmado funcionando (aba 📦 Catálogo visível, CRUD de produtos
+disponível). CNPJ/razão social/endereço da aba Perfil **não foram preenchidos** — ficam em branco
+até alguém preencher via `/fornecedor/painel` → aba Perfil, não é obrigatório pra testar o CRUD de
+catálogo.
+
+**Verificado antes de aprovar:** `npm test` 351/351 (com os mocks corrigidos), `tsc --noEmit` exit
+0. Deploy `297df1bc`. Criação das 2 contas confirmada com `get_page_text` mostrando o painel do
+fornecedor renderizado (não só o retorno HTTP do submit).
+
+**Why:** o pedido original assumia que a tela de e-mail/senha já funcionava — verificar antes de
+"habilitar" evitou implementar em cima de uma suposição errada (não havia nada pra habilitar, era
+construir do zero os handlers). Criar as contas pelo próprio fluxo novo (em vez de via Firebase
+Admin/MCP, que não tem uma ferramenta de criar usuário) serviu de verificação real do fix, não só
+suposição de que funcionaria.
+
+**How to apply:** login por e-mail/senha agora é um caminho de autenticação real e suportado, não
+mais "em breve" — qualquer nova tela de auth deve considerar os dois provedores (Google + e-mail/
+senha). As 2 contas de teste ficam disponíveis pra qualquer sessão futura testar o fluxo de
+fornecedor sem depender de uma conta Google real.
+
 **Why:** deploy real é o único jeito de expor a classe de bug (mismatch de contrato entre camadas
 testadas independentemente) que nenhuma revisão D-012 anterior — por mais rigorosa que fosse com
 testes automatizados — conseguiria pegar, porque cada lado (back/front) só testava contra fixtures

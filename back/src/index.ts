@@ -26,6 +26,18 @@ app.use(
 
 app.get('/health', (c) => c.json({ ok: true }))
 
+// Middleware condicional: /products so exige auth quando scope=fornecedor esta presente.
+// GET /products (sem scope) continua publico - NAO pode virar 401 por engano.
+app.use('/products', async (c, next) => {
+  if (c.req.query('scope') !== 'fornecedor') {
+    return next()
+  }
+  const authMiddleware = createAuthMiddleware((token) =>
+    verifyFirebaseIdToken(token, c.env.FIREBASE_PROJECT_ID),
+  )
+  return authMiddleware(c, next)
+})
+
 app.get('/products', productsGetHandler)
 
 // Middleware de autenticação para /orders/*

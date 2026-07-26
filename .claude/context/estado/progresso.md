@@ -1,5 +1,52 @@
 # Progresso — fraldinha-livre
 
+## Nota (2026-07-25) — Arquivo de infra enriquecido com a arquitetura completa
+
+`.claude/docs/infra/arquitetura-firebase-cloudflare.md` (renomeado de
+`cloudflare-workers-limites-custos.md`) ganhou, além dos limites/custos do Workers Paid já
+registrados, a documentação da arquitetura atual completa: visão geral (diagrama em texto),
+componentes e responsabilidades (Firebase Auth, Firestore `users/{uid}`, Worker+Container do front,
+Worker+D1 do back), os 6 fluxos reais de conexão entre módulos (login, leitura/escrita de perfil,
+chamada à API, validação de JWT, persistência em D1, roteamento do container), requisitos de
+segurança (JWT stateless sem SDK admin, Firestore Rules D-013, CORS por regex, ausência de secrets
+hoje, domínios autorizados pendentes), rede (sem VPC, D1 sem endpoint público, WAF/DDoS automático
+da Cloudflare) e disponibilidade (backend sem SPOF conhecido; frontend com SPOF real e consciente —
+`max_instances: 1` + `sleepAfter: 10m`, aceitável no estágio atual, primeiro ponto a revisar se
+tráfego crescer). Referencia `decisoes.md` para o raciocínio completo de cada decisão (D-010,
+D-026, D-027, D-013, D-029/D-030) em vez de duplicar.
+
+Nenhuma mudança de código — só documentação, seguindo o mesmo raciocínio das notas anteriores desta
+sessão (verificar antes de agir, registrar o estado real).
+
+---
+
+## Marco (2026-07-25) — Workers Paid CONFIRMADO ativo; último bloqueio do H-010 removido
+
+Romario habilitou o plano pago do Workers (US$ 5/mês) no dashboard da Cloudflare — pré-requisito
+humano que faltava para o deploy real do H-010 (frontend via Cloudflare Containers), documentado
+como pendente desde a execução do H-010 (ver estado abaixo, 2026-07-24).
+
+**Confirmado nesta sessão, sem depender só da palavra do cliente:** `wrangler whoami` mostrou o
+token com escopos `containers (write)`/`cloudchamber (write)`; mais decisivo, `wrangler containers
+list` retornou `No containers found` — resposta limpa, sem o erro de paywall que a API da
+Cloudflare devolve quando Containers é chamado num plano Free. Verificação read-only, nenhum deploy
+feito ainda.
+
+**Novo arquivo de referência:** `.claude/docs/infra/arquitetura-firebase-cloudflare.md` (renomeado
+de `cloudflare-workers-limites-custos.md` depois de virar o doc de arquitetura completo, ver nota
+2026-07-25 mais recente abaixo) — limites incluídos no plano pago e preços de excedente (D1,
+Durable Objects, KV, Queues, Logpush, Pages Functions), transcritos do dashboard de billing colado
+pelo Romario. Inclui uma seção do que o projeto já usa hoje (D1 real, Durable Objects via Container
+do front) e sinais de alerta para checar **antes** de qualquer tarefa que escale uso desses recursos
+(subir `max_instances`, seed grande no D1, ligar KV/Queues/Logpush). Qualquer sessão futura que
+mexer em infra Cloudflare deve consultar esse arquivo antes de agir.
+
+**Próximo passo (não decidido ainda):** decidir com o cliente se já dispara o deploy real
+(`wrangler deploy` do front + smoke test, mesmo padrão de B9/P3) ou se fica só confirmado por
+enquanto.
+
+---
+
 ## Nota (2026-07-25) — Revisão de arquitetura pelo Gemini (Firebase): 3 pontos checados, nenhuma ação imediata
 
 Romario pediu revisão da arquitetura (Firebase Auth + backend Cloudflare Workers/D1 + frontend

@@ -40,10 +40,11 @@ identidade de fornecedor real existe no sistema ainda**. Sem resolver `uid↔sup
 qualquer CRUD de produto ficaria "de quem?" sem resposta, e o sync do painel (pedidos reais filtrados)
 continuaria impossível.
 
-## Decisões de escopo (PROPOSTAS — pendente de aprovação do cliente)
+## Decisões de escopo
 
-Diferente das specs anteriores (fatia 1/2), esta ainda não passou por brainstorming com o cliente.
-As decisões abaixo são a proposta desta sessão, para aprovação antes de qualquer plano de
+Diferente das specs anteriores (fatia 1/2), esta ainda não passou por um brainstorming completo com o
+cliente. O item 4 (despublicar) já foi decidido com o cliente em 2026-07-25; os demais (1, 2, 3, 5, 6)
+seguem como **proposta desta sessão**, pendentes de confirmação antes de qualquer plano de
 implementação:
 
 1. **`supplierId` = `uid` do Firebase, sem gerar um ID novo.** O jeito mais simples de resolver a
@@ -60,11 +61,13 @@ implementação:
    já provado em `OrderRepository` (B5-B8).
 3. **`Product` entra em `packages/contracts`** (deixado de fora na fatia 2 por YAGNI — agora tem
    consumidor de verdade nos dois lados, front e back).
-4. **Remoção de produto é DELETE físico, não soft-delete/despublicar.** Seguro porque `order_items`
-   já denormaliza `productName`/`unitPrice` no momento da compra (confirmado no schema) — pedidos
-   antigos não dependem da linha em `products` continuar existindo. Se o cliente preferir permitir
-   "pausar" um produto sem apagar (ex.: fora de estoque temporário), isso é uma decisão de produto
-   separada — marcada como pergunta aberta abaixo, não decidida por mim.
+4. **Produto tem DOIS estados de remoção: despublicar (reversível) e deletar (definitivo).**
+   Decidido com o cliente (2026-07-25): despublicar é o caminho padrão — barato de implementar (só um
+   campo `active`) e evita perda de dado por engano (preço/descrição/histórico de edição preservados,
+   fornecedor pode reativar). Deletar (físico) continua existindo para quando o fornecedor realmente
+   quer remover de vez. Seguro nos dois casos porque `order_items` já denormaliza
+   `productName`/`unitPrice` no momento da compra (confirmado no schema) — pedidos antigos não
+   dependem da linha em `products` continuar existindo ou ativa.
 5. **Estoque (`quantity`) é um campo editável pelo fornecedor, não um contador transacional.** Decremento
    automático no checkout, concorrência, "esgotado" — fica para a fatia de Estoque, já registrada
    separadamente no backlog (D-026/progresso.md). Aqui, `quantity` é só um dado que o fornecedor digita
@@ -75,10 +78,6 @@ implementação:
    "histórico" no painel é a mesma lista com filtro de status (`entregue`/`confirmado` vs. em
    andamento), não uma feature de dados separada.
 
-**Pergunta aberta para o cliente (não decidida nesta proposta):** produtos podem ser "despublicados"
-(ficam invisíveis no catálogo, mas não são apagados), ou remover é sempre definitivo? Isso muda o
-critério de aceite de "remover" e o modelo de dados (precisaria de um campo `active`/`published`).
-
 ## Arquitetura
 
 ```
@@ -87,17 +86,24 @@ back/                                         front/
     id, price_cents, supplier_id (existentes)     mesmo molde de order-repository.ts)
     + name, brand, size, quantity, slug,        src/lib/adapters/http-product-repository.ts (NOVO)
       categoria, descricao, atributos (JSON),   src/lib/adapters/mock-product-repository.ts (NOVO)
-      badge (nullable)                          src/app/(main)/catalogo/* migra de
+      badge (nullable), active (NOVO, bool)     src/app/(main)/catalogo/* migra de
   migrations/0003_products_full.sql               PRODUCTS (array estatico) para o repository
     (gerada por drizzle-kit generate,           src/components/fornecedor/CatalogoTab.tsx (NOVO)
-     ALTER TABLE adiciona as colunas novas)        formulario de criar/editar/remover produto
-  src/routes/products.ts (ESTENDIDO)           src/components/fornecedor/PedidosDiretosTab.tsx
-    GET /products (existente, publico)           OfertasMercadoTab.tsx (MODIFICADOS: consomem
-    POST /products (NOVO, auth obrigatoria,       lista filtrada por supplierId, nao mais o
-      supplierId = uid do token, nunca do body)   array global MOCK_*)
-    PUT /products/:id (NOVO, auth + dono)        src/contexts/market-context.tsx (MODIFICADO:
-    DELETE /products/:id (NOVO, auth + dono)       busca via API real, nao MOCK_DIRECT_ORDERS/
-  src/routes/orders.ts (MODIFICADO)               MOCK_MARKET_ORDERS/MOCK_OFFERS)
+     ALTER TABLE adiciona as colunas novas)        formulario de criar/editar/remover produto;
+  src/routes/products.ts (ESTENDIDO)               toggle "Despublicar/Republicar" + acao "Excluir"
+    GET /products (existente, publico,          src/components/fornecedor/PedidosDiretosTab.tsx
+      so active=true)                             OfertasMercadoTab.tsx (MODIFICADOS: consomem
+    GET /products?scope=fornecedor (NOVO,          lista filtrada por supplierId, nao mais o
+      auth, retorna TODOS os proprios,             array global MOCK_*)
+      ativos e despublicados)                   src/contexts/market-context.tsx (MODIFICADO:
+    POST /products (NOVO, auth obrigatoria,        busca via API real, nao MOCK_DIRECT_ORDERS/
+      supplierId = uid do token, nunca do body,    MOCK_MARKET_ORDERS/MOCK_OFFERS)
+      active=true por padrao)
+    PUT /products/:id (NOVO, auth + dono,
+      inclui alternar `active`)
+    DELETE /products/:id (NOVO, auth + dono,
+      remocao FISICA e definitiva)
+  src/routes/orders.ts (MODIFICADO)
     GET /orders?scope=fornecedor (NOVO,
       filtra por supplier_id = uid do token,
       usado pro "sync do painel" + historico)
@@ -128,17 +134,22 @@ packages/contracts/src/product.ts (NOVO)
   do token. Divergência → **403** `produto nao pertence a este fornecedor`. Produto inexistente →
   **404**.
 - **RN-007-03** — Preço em centavos (`priceCents`), mesmo padrão de `orders`/`order_items` (D-009).
-- **RN-007-04** — `GET /products` continua público (RN-P1 da fatia 2, inalterada) — agora retorna o
-  schema completo (nome/marca/descrição/etc.), não só `{id, priceCents, supplierId}`.
+- **RN-007-04** — `GET /products` (público, catálogo do comprador) retorna só `active = true` —
+  produtos despublicados não aparecem, mas continuam existindo. `GET /products?scope=fornecedor`
+  (autenticado) retorna **todos** os produtos do próprio fornecedor, ativos e despublicados, pra ele
+  poder gerenciar/reativar.
 - **RN-007-05** — `GET /orders?scope=fornecedor`: exige auth; retorna só pedidos cujos `order_items`
   referenciam produtos com `supplier_id === uid` do token. Sem esse parâmetro, `GET /orders` continua
   se comportando como hoje (pedidos do **comprador** autenticado — RN-02 da fatia 1, inalterada).
-- **RN-007-06** — Remover um produto (`DELETE`) não afeta pedidos já existentes — `order_items` já
-  denormaliza `productName`/`unitPrice` no momento da compra (confirmado: `back/src/schema/orders.ts`),
-  então o histórico de vendas continua íntegro mesmo depois do produto sair do catálogo.
+- **RN-007-06** — Despublicar (`active: false` via `PUT`) e deletar (`DELETE`) NÃO afetam pedidos já
+  existentes — `order_items` já denormaliza `productName`/`unitPrice` no momento da compra (confirmado:
+  `back/src/schema/orders.ts`), então o histórico de vendas continua íntegro nos dois casos.
 - **RN-007-07** — Migração de `/catalogo`: se o `ProductRepository` (HTTP) falhar (erro de rede, 5xx),
   a página mostra estado de erro explícito — **nunca** cai silenciosamente de volta pro array estático
   antigo (mesmo veto de "catch-all silencioso" já registrado na memória do projeto).
+- **RN-007-08** — Produto novo nasce com `active: true` por padrão (`POST /products` não aceita
+  `active` no body — mesma disciplina de `supplierId`: campo definido pelo servidor na criação, só
+  editável depois via `PUT`).
 
 ## Modelo de dados (D1)
 
@@ -153,6 +164,7 @@ ALTER TABLE products ADD COLUMN categoria TEXT NOT NULL DEFAULT 'fraldas-descart
 ALTER TABLE products ADD COLUMN descricao TEXT NOT NULL DEFAULT '';
 ALTER TABLE products ADD COLUMN atributos TEXT NOT NULL DEFAULT '{}'; -- JSON serializado
 ALTER TABLE products ADD COLUMN badge TEXT; -- nullable
+ALTER TABLE products ADD COLUMN active INTEGER NOT NULL DEFAULT 1; -- boolean (0/1), despublicar
 ```
 ```sql
 -- migrations/0004_backfill_products_seed.sql
@@ -167,10 +179,11 @@ serializa/desserializa via `mode: 'json'` no schema, mesmo padrão comum em proj
 
 | Método | Rota | Auth | Resp OK | Erros |
 |---|---|---|---|---|
-| GET | `/products` | Não | `200 Product[]` (schema completo) | — |
-| POST | `/products` | Sim | `201 Product` | `401`, `400` (Zod) |
-| PUT | `/products/:id` | Sim (dono) | `200 Product` | `401`, `403` (não é dono), `404`, `400` (Zod) |
-| DELETE | `/products/:id` | Sim (dono) | `204` | `401`, `403` (não é dono), `404` |
+| GET | `/products` | Não | `200 Product[]` (só `active=true`) | — |
+| GET | `/products?scope=fornecedor` | Sim | `200 Product[]` (todos do próprio fornecedor, ativos e não) | `401` |
+| POST | `/products` | Sim | `201 Product` (`active: true`) | `401`, `400` (Zod) |
+| PUT | `/products/:id` | Sim (dono) | `200 Product` (inclui alternar `active`) | `401`, `403` (não é dono), `404`, `400` (Zod) |
+| DELETE | `/products/:id` | Sim (dono) | `204` (remoção física e definitiva) | `401`, `403` (não é dono), `404` |
 | GET | `/orders?scope=fornecedor` | Sim | `200 Order[]` (filtrado por supplierId) | `401` |
 
 ## Fluxos e estados
@@ -180,17 +193,22 @@ serializa/desserializa via `mode: 'json'` no schema, mesmo padrão comum em proj
 - **Fornecedor edita produto:** mesma aba, form pré-preenchido → `PUT /products/:id` → catálogo
   reflete a mudança (preço, descrição, etc.) na próxima carga (sem necessidade de invalidação
   em tempo real nesta fatia).
-- **Fornecedor remove produto:** confirmação (Dialog, mesmo padrão de cancelamento de pedido em
-  D-025) → `DELETE /products/:id` → some do catálogo; pedidos antigos que o referenciam continuam
-  íntegros (RN-007-06).
+- **Fornecedor despublica produto:** toggle "Despublicar" na lista/form → `PUT /products/:id`
+  (`active: false`) → some do `/catalogo` público, mas continua listado (marcado como "despublicado")
+  na própria aba Catálogo do fornecedor, com opção de "Republicar" (`active: true` de volta).
+- **Fornecedor remove produto definitivamente:** confirmação (Dialog, mesmo padrão de cancelamento de
+  pedido em D-025, texto deixando claro que é irreversível) → `DELETE /products/:id` → some de vez;
+  pedidos antigos que o referenciam continuam íntegros (RN-007-06).
 - **Painel carrega pedidos reais:** `MarketProvider` passa a buscar via `GET /orders?scope=fornecedor`
   em vez dos arrays mock — loading/erro explícitos (RN-007-07), mesmo padrão do `OrdersProvider`.
 
 ## Testes
 
 - `back/test/products.crud.test.ts` (novo): `POST` cria com `supplierId` = uid do token (ignora
-  `supplierId` do body se enviado); `PUT`/`DELETE` por não-dono → 403; por dono → 200/204; recurso
-  inexistente → 404; sem token → 401 nos três.
+  `supplierId` do body se enviado) e `active: true` por padrão (ignora `active` do body na criação —
+  RN-007-08); `PUT`/`DELETE` por não-dono → 403; por dono → 200/204; recurso inexistente → 404; sem
+  token → 401 nos três. `PUT` com `active: false` → produto some de `GET /products` mas aparece em
+  `GET /products?scope=fornecedor`; `PUT` com `active: true` de volta → reaparece no público.
 - `back/test/orders.scope-fornecedor.test.ts` (novo): `GET /orders?scope=fornecedor` retorna só
   pedidos cujo produto pertence ao uid autenticado; sem o parâmetro, comportamento de comprador
   inalterado (regressão).
@@ -206,8 +224,10 @@ serializa/desserializa via `mode: 'json'` no schema, mesmo padrão comum em proj
 
 - [ ] Fornecedor autenticado consegue **adicionar, editar e remover** produtos do próprio catálogo
       (painel → aba Catálogo nova) — critério literal da feature 007.
-- [ ] Produto criado/editado/removido por um fornecedor reflete em `/catalogo` (comprador) sem
-      intervenção manual.
+- [ ] Fornecedor consegue **despublicar e republicar** um produto sem perdê-lo (fica invisível no
+      catálogo público, mas continua editável/reativável no próprio painel).
+- [ ] Produto criado/editado/removido/despublicado por um fornecedor reflete em `/catalogo` (comprador)
+      sem intervenção manual.
 - [ ] `supplierId` nunca é aceito do body em `POST /products` — sempre o uid do token.
 - [ ] `PUT`/`DELETE` de produto de outro fornecedor → 403, nunca 200.
 - [ ] Painel do fornecedor mostra **só** os próprios pedidos diretos/ofertas (`GET
@@ -224,8 +244,6 @@ serializa/desserializa via `mode: 'json'` no schema, mesmo padrão comum em proj
 - **Estoque transacional** (decremento no checkout, controle de concorrência, "esgotado") — fatia
   futura separada, já registrada no backlog. `quantity` aqui é só campo editável, não contador
   automático.
-- **Despublicar sem remover** (soft-delete/`active` flag) — depende da resposta à pergunta aberta
-  acima; se aprovado, adiciona campo e critério de aceite antes do plano de implementação.
 - **Migração/aposentadoria dos produtos órfãos `sup-001`..`sup-004`** — ficam como estão, sem conta
   Firebase real por trás; decisão de limpeza fica para outra sessão.
 - **Notificação ao fornecedor de novo pedido, ao comprador de mudança de preço/remoção** — feature 010
@@ -241,6 +259,7 @@ serializa/desserializa via `mode: 'json'` no schema, mesmo padrão comum em proj
 | Migração de `/catalogo` (leitura síncrona → async) introduzir regressão de UX (flash de loading, SEO de página estática perdido) | Mesmo padrão já resolvido em B8 (`OrdersProvider`) — skeleton explícito; revisão humana no navegador antes de aprovar. |
 | Fornecedor cadastra produto com dados incompletos/inválidos (preço negativo, nome vazio) | Validação Zod no `CreateProductRequestSchema` (compartilhado), servidor rejeita 400 — mesma disciplina de `CreateOrderRequestSchema`. |
 | `atributos` como JSON solto no D1 permitir dado malformado sem detectar | Zod valida o objeto completo antes de serializar — nunca grava JSON arbitrário não validado. |
+| Fornecedor confundir "despublicar" com "excluir" (ou vice-versa) e perder produto sem querer | UI distingue claramente as duas ações (toggle reversível vs. botão de exclusão com confirmação explicitando "definitivo, não pode desfazer"). |
 | Produtos órfãos (`sup-001`..`sup-004`) confundirem QA/cliente achando que são fornecedores reais | Documentado aqui e no critério de aceite — mesma disciplina da nota de escopo do Perfil do Fornecedor. |
 
 ## Referências

@@ -1,5 +1,30 @@
 # Progresso — fraldinha-livre
 
+## Nota (2026-07-25) — Plano de implementação da feature 007 (Catálogo do Fornecedor) escrito
+
+A "[FR]Master session" avisou por cross-session-message que a spec da feature 007 (Catálogo do
+Fornecedor: CRUD de produtos + sync do painel) foi aprovada em bloco (commits `e39b329` → `7227f4b`
+→ `f96d54d`, `.claude/docs/design/specs/spec-catalogo-fornecedor-produtos.md`), com 6 decisões de
+escopo confirmadas pelo cliente. **Descoberta importante:** este worktree (`eloquent-montalcini-2dff41`)
+está sendo compartilhado entre esta sessão e a Master session, commitando na mesma branch de forma
+intercalada — risco real de edição concorrente, registrado explicitamente no plano novo como cuidado
+extra (checar `git log --oneline` antes de cada commit desta thread).
+
+**Plano escrito:** `.claude/docs/design/plans/C-catalogo-fornecedor-breakdown.md` (11 tarefas, C1-C11,
+mesmo formato/rigor de B-backend-pedidos-breakdown.md e P-backend-produtos-breakdown.md — interfaces
+canônicas DRY, grafo de dependências, constraints globais, verificação D-008). Achado da sessão-mãe
+que a spec não cobria: `front/src/lib/order-adapters.ts` (`orderToDirectOrder`) já existe como bridge
+otimista client-side (materializa `DirectOrder` só na memória do navegador que fez a compra, chamado
+em `checkout/page.tsx`) — não persiste entre sessões, é exatamente o buraco que `GET
+/orders?scope=fornecedor` (RN-007-05) fecha de verdade. Documentado como decisão a tomar (não
+adivinhada) na tarefa C10.
+
+Índice atualizado em `.claude/docs/design/plans/README.md`. Ainda **não disparada nenhuma execução**
+(nenhum agente Haiku rodou) — só o plano foi escrito. Registro nesta nota + o arquivo do plano ainda
+não commitados no momento em que esta entrada foi escrita.
+
+---
+
 ## Nota (2026-07-25) — Arquivo de infra enriquecido com a arquitetura completa
 
 `.claude/docs/infra/arquitetura-firebase-cloudflare.md` (renomeado de

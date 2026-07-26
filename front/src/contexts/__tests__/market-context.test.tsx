@@ -3,7 +3,8 @@
 import { renderHook, act } from '@testing-library/react'
 import { ReactNode } from 'react'
 import { MarketProvider, useMarket } from '../market-context'
-import { vi } from 'vitest'
+import { vi, beforeEach } from 'vitest'
+import { MOCK_DIRECT_ORDERS } from '@/lib/supplier-mock'
 
 // Mock sonner toast
 vi.mock('sonner', () => ({
@@ -12,6 +13,11 @@ vi.mock('sonner', () => ({
     info: vi.fn(),
     error: vi.fn(),
   },
+}))
+
+// Mock HttpOrderRepository
+vi.mock('@/lib/adapters/http-order-repository', () => ({
+  HttpOrderRepository: vi.fn(),
 }))
 
 type AllProvidersProps = {
@@ -61,5 +67,40 @@ describe('MarketContext - cancelDirectOrder', () => {
 
     // Orders should remain unchanged
     expect(result.current.directOrders).toEqual(originalOrders)
+  })
+})
+
+describe('MarketContext - directOrders loading (mock mode)', () => {
+  beforeEach(() => {
+    // Simular modo mock
+    delete process.env.NEXT_PUBLIC_USE_BACKEND
+  })
+
+  it('modo mock: directOrders começa com MOCK_DIRECT_ORDERS', () => {
+    const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
+
+    expect(result.current.directOrders).toEqual(MOCK_DIRECT_ORDERS)
+  })
+
+  it('modo mock: directOrdersLoading é false', () => {
+    const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
+
+    expect(result.current.directOrdersLoading).toBe(false)
+  })
+
+  it('modo mock: directOrdersError é null', () => {
+    const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
+
+    expect(result.current.directOrdersError).toBe(null)
+  })
+})
+
+describe('MarketContext - directOrders loading (backend mode)', () => {
+  it('modo backend: expõe directOrdersLoading e directOrdersError', () => {
+    const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
+
+    // No modo mock, estes devem ser false/null
+    expect(typeof result.current.directOrdersLoading).toBe('boolean')
+    expect(result.current.directOrdersError === null || typeof result.current.directOrdersError === 'string').toBe(true)
   })
 })

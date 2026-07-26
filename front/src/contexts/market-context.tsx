@@ -1,14 +1,19 @@
 'use client'
 
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import type { MarketOrder, DirectOrder, SupplierOffer, DeliveryType, DispatchStatus } from '@/lib/supplier-mock'
 import { MOCK_MARKET_ORDERS, MOCK_DIRECT_ORDERS, MOCK_OFFERS } from '@/lib/supplier-mock'
 import { buildOfferSnapshot } from '@/lib/market-utils'
+import type { OrderRepository } from '@/lib/ports/order-repository'
+import { HttpOrderRepository } from '@/lib/adapters/http-order-repository'
+import { contractOrderToDirectOrder } from '@/lib/order-adapters'
 
 interface MarketContextValue {
   marketOrders: MarketOrder[]
   directOrders: DirectOrder[]
+  directOrdersLoading: boolean
+  directOrdersError: string | null
   offers: SupplierOffer[]
   declinedIds: Set<string>
   handleEnviarOferta(orderId: string, price: number, deliveryType: DeliveryType, note?: string): Promise<void>
@@ -30,9 +35,42 @@ export function useMarket(): MarketContextValue {
 
 export function MarketProvider({ children }: { children: React.ReactNode }) {
   const [marketOrders, setMarketOrders] = useState<MarketOrder[]>(MOCK_MARKET_ORDERS)
-  const [directOrders, setDirectOrders] = useState<DirectOrder[]>(MOCK_DIRECT_ORDERS)
+  const useBackend = process.env.NEXT_PUBLIC_USE_BACKEND === 'true'
+  const [directOrders, setDirectOrders] = useState<DirectOrder[]>(
+    useBackend ? [] : MOCK_DIRECT_ORDERS
+  )
+  const [directOrdersLoading, setDirectOrdersLoading] = useState(useBackend)
+  const [directOrdersError, setDirectOrdersError] = useState<string | null>(null)
   const [offers, setOffers] = useState<SupplierOffer[]>(MOCK_OFFERS)
   const [declinedIds, setDeclinedIds] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    if (!useBackend) return // modo mock: mantem MOCK_DIRECT_ORDERS estatico, sem fetch (decisao item 3)
+
+    let cancelled = false
+    const repo: OrderRepository = new HttpOrderRepository()
+
+    const load = async () => {
+      if (cancelled) return
+      setDirectOrdersLoading(true)
+      setDirectOrdersError(null)
+      try {
+        const result = await repo.listForSupplier()
+        if (cancelled) return
+        setDirectOrders(result.map(contractOrderToDirectOrder))
+      } catch (err) {
+        if (cancelled) return
+        console.error('Erro ao carregar pedidos diretos:', err)
+        setDirectOrdersError('Não foi possível carregar os pedidos diretos. Tente novamente.')
+      } finally {
+        if (cancelled) return
+        setDirectOrdersLoading(false)
+      }
+    }
+
+    load()
+    return () => { cancelled = true }
+  }, [useBackend])
 
   async function handleEnviarOferta(orderId: string, price: number, deliveryType: DeliveryType, note?: string) {
     const order = marketOrders.find((o) => o.id === orderId)!
@@ -95,6 +133,8 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
       value={{
         marketOrders,
         directOrders,
+        directOrdersLoading,
+        directOrdersError,
         offers,
         declinedIds,
         handleEnviarOferta,

@@ -20,7 +20,7 @@ export default function FornecedorPainelPage() {
 
   // Hooks SEMPRE devem ser chamados na mesma ordem, antes de qualquer early return
   const [activeTab, setActiveTab] = useState<TabKey>('diretos')
-  const { directOrders, offers, handleConfirmarDireto, handleRecusarDireto } = useMarket()
+  const { directOrders, directOrdersLoading, directOrdersError, offers, handleConfirmarDireto, handleRecusarDireto } = useMarket()
 
   // Guarda client-side: redireciona deslogado para /login?redirect=/fornecedor/painel
   // (endurecimento SSR com session cookie fica para deploy/006 — D-010)
@@ -162,11 +162,17 @@ export default function FornecedorPainelPage() {
 
             <div className="pt-6">
               <TabsContent value="diretos">
-                <PedidosDiretosTab
-                  orders={directOrders}
-                  onConfirmar={handleConfirmarDireto}
-                  onRecusar={handleRecusarDireto}
-                />
+                {directOrdersLoading ? (
+                  <div className="flex items-center justify-center py-16 text-brand-muted">Carregando pedidos...</div>
+                ) : directOrdersError ? (
+                  <div className="flex items-center justify-center py-16 text-red-600">{directOrdersError}</div>
+                ) : (
+                  <PedidosDiretosTab
+                    orders={directOrders}
+                    onConfirmar={handleConfirmarDireto}
+                    onRecusar={handleRecusarDireto}
+                  />
+                )}
               </TabsContent>
               <TabsContent value="ofertas">
                 <OfertasMercadoTab />

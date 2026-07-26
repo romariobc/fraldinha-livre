@@ -2,6 +2,7 @@ import type { Order, CreateOrderRequest } from '@contracts'
 
 export interface OrderRepository {
   list(): Promise<Order[]>
+  listForSupplier(): Promise<Order[]>
   create(req: CreateOrderRequest): Promise<Order>
   cancel(orderId: string): Promise<Order>
 }

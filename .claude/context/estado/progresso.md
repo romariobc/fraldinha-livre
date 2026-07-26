@@ -1,5 +1,29 @@
 # Progresso — fraldinha-livre
 
+## Nota (2026-07-26) — C5 executado (sessão de backend) e aprovado — thread C fecha o lado back (C2-C5)
+
+**Execução:** commit `2e861d2` (Haiku, sem fix de revisão — código bate literalmente com o prompt).
+`ordersGetHandler` estendido com branch `scope=fornecedor` (innerJoin `orderItems`+`products`
+filtrando por `supplierId=uid`), resto da função (mapeamento, validação `OrderSchema`) intocado;
+`index.ts` não foi tocado, como especificado (`/orders/*` já exigia auth pra tudo).
+
+**Revisão D-012 feita por mim, independente:** `git show --stat`/diff confirma escopo exato (só
+`orders.ts` + teste novo) e código idêntico ao prompt; `npm test` (back/) rodado de novo — 55/55
+verde; `tsc --noEmit` exit 0. A sessão de backend também investigou um cenário de vazamento
+(pedido com itens de fornecedores diferentes) e confirmou por leitura do código que é impossível por
+construção — `POST /orders` já valida `fornecedor divergente` por item contra um único
+`supplierId` declarado no pedido (thread P), então um pedido nunca tem itens de mais de um
+fornecedor. **C5 APROVADA** (commit `2e861d2`, branch/worktree do back — ainda não pushed).
+
+**Thread C — lado backend (C2, C3, C4, C5) fechado.** Todas aprovadas via D-012, nenhum push ainda
+(por escolha explícita, esperando o resto da thread). Próximo passo: **C6-C10 são frontend** (porta
+`ProductRepository`, `HttpProductRepository`, migração de `/catalogo`/`/produto/[slug]`,
+`CatalogoTab.tsx` no painel do fornecedor, sync do `MarketProvider`) — responsabilidade desta sessão
+(frontend), não da sessão de backend. **C11** (deploy real + validação humana) é coordenador+cliente,
+não agente. Nenhuma tarefa de backend pendente na thread C por enquanto.
+
+---
+
 ## Nota (2026-07-26) — C4 executado (sessão de backend) e aprovado
 
 Prompt `.claude/docs/design/plans/C4-products-crud.md` escrito com o código exato dos 3 handlers

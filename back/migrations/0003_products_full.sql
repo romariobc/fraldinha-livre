@@ -15,7 +15,7 @@ CREATE TABLE `__new_products` (
 	`active` integer DEFAULT true NOT NULL
 );
 --> statement-breakpoint
-INSERT INTO `__new_products`("id", "price_cents", "supplier_id", "name", "brand", "size", "quantity", "slug", "categoria", "descricao", "atributos", "badge", "active") SELECT "id", "price_cents", "supplier_id", "name", "brand", "size", "quantity", "slug", "categoria", "descricao", "atributos", "badge", "active" FROM `products`;--> statement-breakpoint
+INSERT INTO `__new_products`("id", "price_cents", "supplier_id") SELECT "id", "price_cents", "supplier_id" FROM `products`;--> statement-breakpoint
 DROP TABLE `products`;--> statement-breakpoint
 ALTER TABLE `__new_products` RENAME TO `products`;--> statement-breakpoint
 PRAGMA foreign_keys=ON;

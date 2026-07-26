@@ -1,5 +1,34 @@
 # Progresso — fraldinha-livre
 
+## Nota (2026-07-26) — C2 executado (sessão de backend, worktree blissful-lamport-ccb562) e aprovado
+
+Disparei C2 pra "[BA] Master session" (thread separada, worktree `blissful-lamport-ccb562`) via
+`send_message` — não é subagente meu, é sessão top-level irmã. Antes de despachar, achei bloqueio
+real: aquele worktree estava numa branch (`Romir/folder-analysis-070a4b`) sem a migração pra npm
+workspaces nem o commit de C1 (`32a4ae7`) — divergência resolvida por merge da minha branch
+(`Romir/master-session-restart-535624`) na branch do back, feito pela própria sessão de backend
+antes de disparar o Haiku (confirmei depois com `git merge-base --is-ancestor`).
+
+**Execução:** commit `c4ae8dd` (Haiku, schema `products.ts` estendido + migrations 0003 gerada por
+`drizzle-kit` + 0004 backfill dos 24 produtos). **Bug real achado na revisão da sessão de backend**
+(commit `46f4d05`, fix): a migration 0003 listava as colunas novas também no `SELECT` da tabela
+antiga — SQLite não erra nesse caso, reinterpreta o identificador não resolvido como literal string
+(`"name"` → `'name'`), mascarado pela 0004 que sobrescrevia tudo em seguida. Registrado como sensor
+em `.claude/docs/decisoes.md` (D-031) — vale para qualquer migration futura que recrie tabela.
+
+**Revisão D-012 feita por mim, de forma independente (não só o relatório da outra sessão):**
+`git show --stat`/diff dos dois commits confirma escopo exato (nada em `front/`/`packages/contracts/`);
+`npm test` (back/) rodado de novo — 35/35 verde; `tsc --noEmit` exit 0; reproduzi a cadeia de
+migrations 0000→0004 com `sqlite3` puro, isolada — 24 produtos, zero linha com `name`/`brand`
+vazio/literal; spot-check de p1/h2/c4 contra `front/src/lib/products.ts` bate. **C2 APROVADA**
+(commits `c4ae8dd` + `46f4d05`, branch/worktree do back — ainda não pushed, por escolha explícita,
+esperando o resto da thread C).
+
+Próximo passo: C3 (back — `GET /products` filtra `active` + `GET /products?scope=fornecedor`),
+depende de C2 (concluída). Ainda não disparado.
+
+---
+
 ## Nota (2026-07-26) — C1 executado e aprovado (thread C, feature 007)
 
 Prompt `.claude/docs/design/plans/C1-products-contract.md` escrito e disparado via agente Haiku.

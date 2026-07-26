@@ -559,3 +559,41 @@ completo continuam podendo usar OpenNext sem esse bug). `firebase/firestore/lite
 o bug do Firestore reaparecer em outro contexto, reavaliar essa opcao antes de assumir Containers como
 unica saida. Deploy real (`wrangler deploy`) depende do Workers Paid plan ativado manualmente pelo
 cliente — pendente, fora do escopo de agente.
+
+## D-031 — Sensor: migrations D1/SQLite que adicionam colunas via recriacao de tabela nao podem listar as colunas novas no SELECT da tabela antiga (2026-07-26) — VIGENTE
+
+Achado durante a revisao D-012 da tarefa C2 (thread C, feature 007) pela sessao de backend
+(`blissful-lamport-ccb562`), verificado de forma independente por mim (sqlite3 puro, cadeia completa
+0000→0004): `drizzle-kit generate` recria a tabela `products` (unico jeito de adicionar colunas
+`NOT NULL DEFAULT` em SQLite/D1) com um `INSERT INTO __new_products(...) SELECT ... FROM products`.
+A saida gerada listava **as colunas novas tambem no SELECT da tabela antiga**, que ainda nao as tinha.
+
+**O bug:** SQLite nao lanca erro nesse caso. Por uma peculiaridade legada do parser, um identificador
+entre aspas duplas que nao resolve para nenhuma coluna real (`"name"` quando a tabela de origem nao
+tem coluna `name`) e silenciosamente reinterpretado como **literal string** (`'name'`) em vez de erro
+de coluna inexistente. Resultado: a coluna nova era preenchida com o **nome literal da propria
+coluna** (`'name'`, `'brand'`, etc.) em vez do `DEFAULT ''`/`DEFAULT 0` declarado no `CREATE TABLE`.
+
+**Por que os testes nao pegaram:** a migration seguinte (0004, backfill) sobrescrevia essas 24 linhas
+logo depois, mascarando o problema. Se a 0004 falhasse, fosse pulada, ou se a tabela tivesse linhas
+sem backfill correspondente, ficaria lixo (`'name'` literal) em produção sem nenhum erro visivel.
+
+**Fix:** restringir a lista do `SELECT` da migration gerada as colunas que a tabela antiga **de fato
+tem** (`id`/`price_cents`/`supplier_id`, nesse caso) — nao a lista completa nova. Isso deixa o SQLite
+aplicar os `DEFAULT` da `CREATE TABLE` corretamente para as colunas que nao existiam na tabela de
+origem. Commit do fix: `46f4d05` (branch `Romir/folder-analysis-070a4b`).
+
+**Why:** `drizzle-kit generate` produz SQL sintaticamente valido mas semanticamente errado nesse caso
+especifico (colunas novas no SELECT da origem) — nao e um erro de configuracao do projeto, e uma
+peculiaridade do gerador que so aparece quando se adiciona coluna `NOT NULL` via recriacao de tabela
+(caminho obrigatorio no SQLite, que nao tem `ALTER TABLE ADD COLUMN NOT NULL` sem default aplicado
+retroativamente do jeito esperado em todos os casos).
+
+**How to apply:** toda migration gerada por `drizzle-kit generate` que **recria a tabela** (visivel
+pelo padrao `CREATE TABLE __new_<nome>` + `INSERT INTO __new_<nome> SELECT ... FROM <nome>` +
+`DROP TABLE`/`RENAME TO`) precisa ter o `SELECT` da migration **lido e conferido a mao** antes de
+aceitar como "gerada, nao escrita a mao" — conferir que a lista de colunas do `SELECT` bate exatamente
+com as colunas que a tabela **antiga** tinha, nunca com a lista completa da tabela nova. Sensor
+minimo: apos aplicar a migration num D1/sqlite de teste isolado (sem o backfill seguinte ainda),
+`SELECT` as colunas novas e confirmar que o valor bate com o `DEFAULT` declarado (string vazia/0/etc.),
+nao com o proprio nome da coluna como string literal.

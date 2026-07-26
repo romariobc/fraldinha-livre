@@ -89,6 +89,8 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | C5 | back/: GET /orders?scope=fornecedor filtra pedidos por produtos do fornecedor | 1 | APROVADO (commit 2e861d2, executado pela sessao de backend) via D-012 — 55/55 testes verdes, tsc 0, codigo identico ao prompt. Thread C fecha o lado backend (C2-C5) |
 | C6 | front/: ProductRepository (porta) + MockProductRepository + contract test | 1 | APROVADO (commit 34dd865) via D-012 — 311/311 testes verdes, tsc 0, desvio de design aceito (teste de ProductForbiddenError movido do contract pro mock-specific) |
 | C7 | front/: HttpProductRepository | 1 | APROVADO (commit 1543b08) via D-012 — 325/325 testes verdes, tsc 0, zero import de zod direto, codigo identico ao prompt |
+| C8 | front/: /catalogo e /produto/[slug] migram para ProductRepository | 1 | APROVADO (commit 8e41af4) via D-012 + verificacao visual obrigatoria no navegador (maior risco da fatia) — 340/340 testes verdes, tsc 0, build ok, catalogo/produto/404 confirmados de verdade |
+| C9 | front/: CatalogoTab no painel do fornecedor (CRUD de produtos) | 1 | APROVADO (commit bb86c2d) via D-012 — 340/340 testes verdes (revalidado apos C8 commitar), tsc 0, codigo bate com o prompt |
 
 **Ordem de execucao (D-011):** H-002 → H-005 → [H-006 limpeza para main] → H-004 → H-003 → 006 backend.
 

@@ -1,5 +1,48 @@
 # Progresso — fraldinha-livre
 
+## Nota (2026-07-26) — C8 e C9 executadas em paralelo (Haiku) e aprovadas
+
+Disparei C8 (`/catalogo`+`/produto/[slug]` migram pro `ProductRepository` — **maior risco da
+fatia**) e C9 (`CatalogoTab.tsx` no painel do fornecedor) simultaneamente, arquivos diferentes, sem
+conflito. **Achado de coordenação:** os dois agentes rodando ao mesmo tempo no mesmo worktree
+deixaram a working tree "suja" durante a execução — o `npm test` que a C9 rodou por conta própria viu
+2 falhas transitórias causadas pelo WIP não-commitado da C8 no momento (não um bug real da C9).
+Confirmei isso rodando a suíte de novo eu mesma DEPOIS que as duas commitaram, limpo: 340/340 verde.
+**Lição pra próximas paralelizações no mesmo worktree:** não confiar no `npm test` que um executor
+roda enquanto outro ainda está com WIP não-commitado — sempre revalidar depois que ambos commitarem.
+
+**C8 (commit `8e41af4`):** alargou `Brand`/`Size`/`Badge`/`ProductCategory` (e também
+`ProductAtributos.genero`, decisão extra do Haiku não pedida explicitamente no prompt, mas consistente
+com a mesma razão — aceitei) de unions literais fechadas pra `string`, já que produtos reais de
+fornecedor (CRUD, C4) não ficam restritos aos valores do seed antigo. Fallback seguro de badge em
+`ProductCard.tsx` (nunca renderiza classe `"undefined"`). Criou `ProductsProvider`/`useProducts`
+(`front/src/contexts/products-context.tsx`), carregando via `ProductRepository` sem gating de auth
+(rota pública). `/catalogo` e `/produto/[slug]` migrados, com loading/erro explícitos.
+
+**C9 (commit `bb86c2d`):** `CatalogoTab.tsx` completo (lista, criar/editar, despublicar/republicar,
+excluir com `Dialog` de confirmação D-025), repositório instanciado direto no componente (decisão de
+escopo mínimo, sem provider novo), slug gerado automaticamente do nome, preço reais→centavos sem
+float.
+
+**Revisão D-012 feita por mim, independente, depois das duas commitarem (estado limpo):**
+`git show --stat`/diff completo dos 2 commits — código bate com o especificado nos dois prompts;
+leitura integral de `CatalogoTab.tsx` e `products-context.tsx`; `npm test` — 340/340 verde;
+`tsc --noEmit` exit 0; `lint` só o warning preexistente; **`npm run build`** — sucesso, lista de rotas
+intacta (`/catalogo`, `/produto/[slug]`, `/fornecedor/painel` todas presentes).
+
+**Verificação visual OBRIGATÓRIA de C8 (maior risco, feita no navegador de verdade, não só
+testes):** subi o dev server (`preview_start`), limpei cache `.next` stale que causava 404 falso
+(problema de cache, não do código), naveguei em `/catalogo` (24 produtos reais carregados via
+`MockProductRepository`, badges/preços/paginação corretos), `/produto/pampers-supersec-pants-p`
+(detalhe completo correto), e `/produto/nao-existe-xyz` (mensagem "produto não encontrado" correta,
+sem falso-positivo durante loading). **C8 e C9 APROVADAS.**
+
+Próximo passo: **C10** (`MarketProvider` sync real via `GET /orders?scope=fornecedor`, dep: C7+C5,
+ambas concluídas) — última tarefa de código da thread antes de C11 (deploy+validação humana,
+coordenador+cliente).
+
+---
+
 ## Nota (2026-07-26) — C7 executado (Haiku) e aprovado
 
 Prompt `.claude/docs/design/plans/C7-http-product-repository.md` escrito seguindo exatamente o molde

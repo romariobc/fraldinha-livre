@@ -741,3 +741,65 @@ o `*Schema`/`*ListSchema` compartilhado, não só propriedades pontuais. Antes d
 tarefa que liga front↔back de verdade pela primeira vez, produção deve ser verificada no navegador
 com uma aba nova (sem cache/console history de navegações anteriores) — o console pode acumular
 mensagens de erro de antes do fix e confundir a leitura.
+
+## D-035 — Login mobile via redirect ainda quebrava (storage de terceiro); fix de proxying do handler do Firebase (2026-07-26) — VIGENTE (segue D-034, ainda com pendência humana)
+
+O fix de D-034 (`signInWithRedirect` em mobile) não resolveu de verdade: usuário Android relatou
+"autorizo no Google, o app volta pra `/login` como se nada tivesse acontecido, sem erro". Consultei
+o Gemini (assistente do Firebase Console), que confirmou a causa raiz e propôs a correção oficial —
+prompt e resposta registrados fora deste arquivo (conversa com Romario), resumo aqui.
+
+**Causa raiz confirmada:** `authDomain` do projeto (`fraldinha-livre.firebaseapp.com`) é uma origem
+diferente do domínio real do app (`fraldinha-livre-frontend.romariobc.workers.dev`, Cloudflare
+Containers, não Firebase Hosting). O SDK do Firebase recupera o resultado do
+`signInWithRedirect` via storage (IndexedDB/cookies) associado ao `authDomain`, acessado como
+"third-party" a partir do domínio real do app — exatamente o tipo de acesso que Safari ITP, Chrome
+mobile e WebViews de app vêm bloqueando silenciosamente. Resultado: a autenticação com o Google
+completa de verdade do lado do Google, mas o app nunca recupera o resultado.
+
+**Fix aplicado — "Proxying" (opção oficial da doc do Firebase que NÃO exige DNS customizado):**
+1. `front/next.config.ts`: `rewrites()` faz proxy transparente de `/__/auth/:path*` pro handler real
+   (`https://fraldinha-livre.firebaseapp.com/__/auth/:path*`) — do ponto de vista do navegador, a
+   requisição é same-origin (mesmo domínio do app), não mais third-party.
+2. `front/.env.production.local` (**não** `.env.production`): `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+   passa a ser o domínio real do app em produção. Teve que ser `.env.production.local`
+   especificamente — `.env.production` teria sido **sombreado** por `front/.env.local` (que já
+   define esse valor pro dev local e tem prioridade maior no Next.js: `.env.production.local` >
+   `.env.local` > `.env.production` > `.env`). Isso já aconteceu uma vez com `NEXT_PUBLIC_BACKEND_URL`
+   em D-033 — não repetir, checar sempre a precedência quando uma var já existe em `.env.local`.
+
+**Verificado antes do deploy real (não só assumido que funcionaria):** build Docker local isolado —
+`authDomain` correto (`fraldinha-livre-frontend.romariobc.workers.dev`, não mais
+`fraldinha-livre.firebaseapp.com`) confirmado embutido no bundle (`grep` no chunk JS); `/__/auth/handler`
+respondendo com o HTML real do Firebase (`fireauth.oauthhelper.widget`), não um 404 do Next — testado
+local (container isolado) e depois em produção depois do deploy, os dois batendo.
+
+**Pendência humana obrigatória, NÃO automatizável (bloqueia o fix funcionar de verdade):** o Google
+Cloud Console (não o Firebase Console) precisa que o OAuth Client ID do provider Google seja
+atualizado com:
+- **Origens JavaScript autorizadas:** adicionar `https://fraldinha-livre-frontend.romariobc.workers.dev`
+- **URIs de redirecionamento autorizados:** adicionar
+  `https://fraldinha-livre-frontend.romariobc.workers.dev/__/auth/handler`
+
+Sem isso, o Google pode rejeitar o redirect_uri (novo, apontando pro domínio do app em vez do
+`firebaseapp.com`) — o proxy por si só não basta, precisa do OAuth Client aceitar essa origem/URI.
+Enquanto essa ação não for confirmada pelo Romario, o login Google em mobile **continua não
+confiável** — o código está certo, falta a configuração do lado do Google Cloud.
+
+**Alternativa mencionada pelo Gemini, não implementada:** Google Identity Services (GIS) client-side
+(`accounts.google.com/gsi/client` + `GoogleAuthProvider.credential`/`signInWithCredential`), que não
+depende de iframe/redirect do Firebase — imune a esse bloqueio de storage por construção. Mais
+robusta a longo prazo, mas é uma reescrita do fluxo de login (não um ajuste de config) — fora de
+escopo desta correção pontual, registrado aqui como opção futura se o proxying não se provar
+suficiente em todos os navegadores mobile.
+
+**Why:** proxying foi escolhido sobre GIS por ser a correção mínima (config, não reescrita de UI) e
+sobre authDomain customizado com DNS próprio por não exigir controle de DNS que este projeto não
+tem hoje (domínio é `*.workers.dev`, gerenciado pela Cloudflare, não um domínio próprio registrado).
+
+**How to apply:** qualquer decisão futura de login social (novo provider OAuth, Apple/Facebook/etc.)
+neste app deve considerar de antemão que `authDomain` ≠ domínio real do app é a causa-raiz padrão
+de "funciona no desktop, quebra no mobile" — não assumir que `signInWithRedirect` sozinho resolve,
+sempre checar o proxying (ou GIS) junto. Antes de declarar qualquer fix de auth mobile "concluído",
+confirmar com o usuário que ele testou em um celular real — testes daqui (navegador automatizado,
+sem conta Google real) não substituem essa validação.

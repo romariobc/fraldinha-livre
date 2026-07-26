@@ -1,5 +1,30 @@
 # Progresso — fraldinha-livre
 
+## Marco (2026-07-26) — Fix real do login mobile (proxying authDomain) — falta 1 passo humano (D-035)
+
+O fix de D-034 (`signInWithRedirect`) não resolveu — usuário Android continuou sem conseguir logar
+(autoriza no Google, volta pra `/login` sem erro). Consultei o Gemini (Firebase Console), causa raiz
+confirmada: `authDomain` (`fraldinha-livre.firebaseapp.com`) é origem diferente do domínio real do
+app (`workers.dev`) — mobile bloqueia o storage de terceiro que o Firebase usa pra recuperar o
+resultado do redirect.
+
+**Fix aplicado (proxying, sem DNS customizado):** `next.config.ts` faz rewrite de `/__/auth/*` pro
+handler real do Firebase; `authDomain` de produção passa a ser o domínio do app
+(`front/.env.production.local` — teve que ser esse arquivo específico, não `.env.production`, por
+causa de precedência do Next.js com `.env.local`). Verificado com build Docker local + produção real
+antes de fechar: `authDomain` correto no bundle, `/__/auth/handler` responde com o handler real do
+Firebase nos dois ambientes. Deploy `a56ec67b`.
+
+**⚠️ Pendência humana obrigatória, ainda não confirmada:** Romario precisa atualizar o OAuth Client
+ID do provider Google no **Google Cloud Console** (não Firebase Console) — adicionar a origem JS
+`https://fraldinha-livre-frontend.romariobc.workers.dev` e o redirect URI
+`https://fraldinha-livre-frontend.romariobc.workers.dev/__/auth/handler`. **Sem isso o login mobile
+ainda não funciona de verdade** — o código está certo, falta essa configuração do lado do Google.
+
+Detalhes completos em D-035.
+
+---
+
 ## Marco (2026-07-26) — Login mobile + e-mail/senha habilitado + 2 fornecedores de teste (D-034)
 
 Fix do login Google em mobile (`signInWithRedirect`, achado real de usuário Android). Verificado

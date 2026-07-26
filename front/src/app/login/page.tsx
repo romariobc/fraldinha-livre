@@ -4,14 +4,14 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/auth-context'
-import { safeRedirect } from '@/lib/utils'
+import { safeRedirect, firebaseAuthErrorMessage } from '@/lib/utils'
 
 export default function LoginPage() {
   return (
@@ -37,8 +37,10 @@ function LoginPageSkeleton() {
 function LoginPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { signInGoogle, user, role, loading } = useAuth()
+  const { signInGoogle, signInEmail, user, role, loading } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
   // Roteamento pos-login (RN-06, D-013): quando o auth resolveu (loading=false) e ha usuario,
   // decide o destino pelo papel ja carregado do Firestore.
@@ -67,6 +69,19 @@ function LoginPageContent() {
     } catch (error) {
       console.error('Erro ao fazer login com Google:', error)
       toast.error('Erro ao fazer login com Google')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function handleEmailSignIn(e: FormEvent) {
+    e.preventDefault()
+    try {
+      setIsLoading(true)
+      await signInEmail(email, password)
+      // onAuthStateChanged dispara automaticamente apos o login
+    } catch (error) {
+      toast.error(firebaseAuthErrorMessage(error))
     } finally {
       setIsLoading(false)
     }
@@ -140,7 +155,7 @@ function LoginPageContent() {
           </Link>
         </p>
 
-        <form className="flex flex-col gap-5" onSubmit={(e) => e.preventDefault()}>
+        <form className="flex flex-col gap-5" onSubmit={handleEmailSignIn}>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="email" className="text-sm font-semibold text-brand-text">
               E-mail
@@ -150,12 +165,11 @@ function LoginPageContent() {
               type="email"
               placeholder="seu@email.com"
               autoComplete="email"
-              disabled
-              className="border-2 border-slate-200 rounded-xl bg-slate-50 focus-visible:border-primary focus-visible:ring-0 text-brand-text placeholder:text-slate-400 opacity-50 cursor-not-allowed"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="border-2 border-slate-200 rounded-xl focus-visible:border-primary focus-visible:ring-0 text-brand-text placeholder:text-slate-400"
             />
-            <p className="text-xs text-brand-muted">
-              Disponível em breve (feature 005b)
-            </p>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -167,8 +181,10 @@ function LoginPageContent() {
               type="password"
               placeholder="••••••••"
               autoComplete="current-password"
-              disabled
-              className="border-2 border-slate-200 rounded-xl bg-slate-50 focus-visible:border-primary focus-visible:ring-0 text-brand-text opacity-50 cursor-not-allowed"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="border-2 border-slate-200 rounded-xl focus-visible:border-primary focus-visible:ring-0 text-brand-text"
             />
           </div>
 
@@ -185,11 +201,11 @@ function LoginPageContent() {
           </div>
 
           <Button
-            type="button"
-            disabled
-            className="w-full rounded-xl py-6 bg-primary hover:bg-primary-dark font-display font-bold text-base text-white transition-colors opacity-50 cursor-not-allowed"
+            type="submit"
+            disabled={isLoading}
+            className="w-full rounded-xl py-6 bg-primary hover:bg-primary-dark font-display font-bold text-base text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Entrar na conta →
+            {isLoading ? 'Entrando...' : 'Entrar na conta →'}
           </Button>
 
           <div className="flex items-center gap-3 text-xs text-brand-muted">

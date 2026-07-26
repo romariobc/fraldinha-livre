@@ -1,11 +1,52 @@
 // src/app/cadastro/page.tsx
+'use client'
+
+import { useEffect, useState, type FormEvent } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { useAuth } from '@/contexts/auth-context'
+import { firebaseAuthErrorMessage } from '@/lib/utils'
 
 export default function CadastroPage() {
+  const router = useRouter()
+  const { signUpEmail, user, role, loading } = useAuth()
+  const [isLoading, setIsLoading] = useState(false)
+  const [nome, setNome] = useState('')
+  const [email, setEmail] = useState('')
+  const [senha, setSenha] = useState('')
+
+  // Mesmo roteamento pos-auth do /login (RN-06, D-013): sem papel -> onboarding;
+  // com papel -> destino direto. Cobre tanto conta nova (role ainda null) quanto
+  // usuario que ja tinha conta e caiu aqui por engano.
+  useEffect(() => {
+    if (loading || !user) return
+    if (role === null) {
+      router.push('/onboarding')
+    } else if (role === 'fornecedor') {
+      router.push('/fornecedor/painel')
+    } else {
+      router.push('/minha-conta')
+    }
+  }, [loading, user, role, router])
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    try {
+      setIsLoading(true)
+      await signUpEmail(email, senha, nome)
+      // onAuthStateChanged dispara automaticamente; o useEffect acima leva pro onboarding
+    } catch (error) {
+      toast.error(firebaseAuthErrorMessage(error))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen grid md:grid-cols-2">
 
@@ -75,68 +116,37 @@ export default function CadastroPage() {
           </Link>
         </p>
 
-        <form className="flex flex-col gap-4" action="#" method="post">
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           {/* Nome */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="nome" className="text-sm font-semibold text-brand-text">Nome completo</Label>
-            <Input id="nome" type="text" placeholder="Seu nome completo" autoComplete="name"
+            <Input id="nome" type="text" placeholder="Seu nome completo" autoComplete="name" required
+              value={nome} onChange={(e) => setNome(e.target.value)}
               className="border-2 border-slate-200 rounded-xl bg-slate-50 focus-visible:border-primary focus-visible:ring-0 text-brand-text placeholder:text-slate-400" />
           </div>
 
           {/* Email */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="email" className="text-sm font-semibold text-brand-text">E-mail</Label>
-            <Input id="email" type="email" placeholder="seu@email.com" autoComplete="email"
-              className="border-2 border-slate-200 rounded-xl bg-slate-50 focus-visible:border-primary focus-visible:ring-0 text-brand-text placeholder:text-slate-400" />
-          </div>
-
-          {/* CPF + Telefone */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="cpf" className="text-sm font-semibold text-brand-text">CPF</Label>
-              <Input id="cpf" type="text" placeholder="000.000.000-00" autoComplete="off"
-                className="border-2 border-slate-200 rounded-xl bg-slate-50 focus-visible:border-primary focus-visible:ring-0 text-brand-text placeholder:text-slate-400" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="telefone" className="text-sm font-semibold text-brand-text">Telefone</Label>
-              <Input id="telefone" type="tel" placeholder="(00) 00000-0000" autoComplete="tel"
-                className="border-2 border-slate-200 rounded-xl bg-slate-50 focus-visible:border-primary focus-visible:ring-0 text-brand-text placeholder:text-slate-400" />
-            </div>
-          </div>
-
-          {/* CEP + Bairro */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="cep" className="text-sm font-semibold text-brand-text">CEP</Label>
-              <Input id="cep" type="text" placeholder="00000-000" autoComplete="postal-code"
-                className="border-2 border-slate-200 rounded-xl bg-slate-50 focus-visible:border-primary focus-visible:ring-0 text-brand-text placeholder:text-slate-400" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="bairro" className="text-sm font-semibold text-brand-text">Bairro</Label>
-              <Input id="bairro" type="text" placeholder="Seu bairro"
-                className="border-2 border-slate-200 rounded-xl bg-slate-50 focus-visible:border-primary focus-visible:ring-0 text-brand-text placeholder:text-slate-400" />
-            </div>
-          </div>
-
-          {/* Endereço */}
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="endereco" className="text-sm font-semibold text-brand-text">Endereço completo</Label>
-            <Input id="endereco" type="text" placeholder="Rua, número, complemento" autoComplete="street-address"
+            <Input id="email" type="email" placeholder="seu@email.com" autoComplete="email" required
+              value={email} onChange={(e) => setEmail(e.target.value)}
               className="border-2 border-slate-200 rounded-xl bg-slate-50 focus-visible:border-primary focus-visible:ring-0 text-brand-text placeholder:text-slate-400" />
           </div>
 
           {/* Senha */}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="senha" className="text-sm font-semibold text-brand-text">Senha</Label>
-            <Input id="senha" type="password" placeholder="Mínimo 8 caracteres" autoComplete="new-password"
+            <Input id="senha" type="password" placeholder="Mínimo 6 caracteres" autoComplete="new-password" required minLength={6}
+              value={senha} onChange={(e) => setSenha(e.target.value)}
               className="border-2 border-slate-200 rounded-xl bg-slate-50 focus-visible:border-primary focus-visible:ring-0 text-brand-text" />
           </div>
 
           <Button
             type="submit"
-            className="w-full rounded-xl py-6 bg-accent hover:bg-accent-dark font-display font-bold text-base text-white transition-colors mt-1"
+            disabled={isLoading}
+            className="w-full rounded-xl py-6 bg-accent hover:bg-accent-dark font-display font-bold text-base text-white transition-colors mt-1 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            ✨ Criar minha conta grátis
+            {isLoading ? 'Criando conta...' : '✨ Criar minha conta grátis'}
           </Button>
 
           <p className="text-xs text-center text-brand-muted leading-relaxed">

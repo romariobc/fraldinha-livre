@@ -151,6 +151,8 @@ describe('CatalogoTab (fornecedor)', () => {
       role: 'fornecedor',
       loading: false,
       signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
       signOutUser: vi.fn(),
       updateProfile: vi.fn(),
     })

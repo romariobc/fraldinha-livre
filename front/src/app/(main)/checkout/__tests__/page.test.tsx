@@ -61,6 +61,8 @@ function authValue(overrides: Partial<ReturnType<typeof useAuth>> = {}): ReturnT
     role: 'comprador',
     loading: false,
     signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
     signOutUser: vi.fn(),
     updateProfile: vi.fn(),
     ...overrides,

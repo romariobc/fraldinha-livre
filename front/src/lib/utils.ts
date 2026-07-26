@@ -9,6 +9,27 @@ export function formatPrice(cents: number): string {
   return `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`
 }
 
+/** Traduz codigos de erro do Firebase Auth (login/cadastro por e-mail/senha) pra mensagens em pt-BR. */
+export function firebaseAuthErrorMessage(error: unknown): string {
+  const code = error instanceof Error && 'code' in error ? (error as { code: string }).code : ''
+  switch (code) {
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+      return 'E-mail ou senha incorretos.'
+    case 'auth/email-already-in-use':
+      return 'Este e-mail já está cadastrado. Faça login ou use outro e-mail.'
+    case 'auth/weak-password':
+      return 'Senha muito curta — use pelo menos 6 caracteres.'
+    case 'auth/invalid-email':
+      return 'E-mail inválido.'
+    case 'auth/too-many-requests':
+      return 'Muitas tentativas. Aguarde um pouco antes de tentar de novo.'
+    default:
+      return 'Não foi possível concluir. Tente novamente.'
+  }
+}
+
 /**
  * Valida um CPF brasileiro:
  * - Remove caracteres não dígitos

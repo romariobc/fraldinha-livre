@@ -1,7 +1,16 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, signInWithPopup, signInWithRedirect, getRedirectResult, signOut } from 'firebase/auth';
+import {
+  onAuthStateChanged,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile as updateFirebaseAuthProfile,
+  signOut,
+} from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '@/lib/firebase';
 
@@ -41,6 +50,8 @@ interface AuthContextType {
   role: UserRole | null;
   loading: boolean;
   signInGoogle: () => Promise<void>;
+  signInEmail: (email: string, password: string) => Promise<void>;
+  signUpEmail: (email: string, password: string, name: string) => Promise<void>;
   signOutUser: () => Promise<void>;
   updateProfile: (patch: Partial<UserProfile>) => Promise<void>;
 }
@@ -114,6 +125,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInEmail = async (email: string, password: string) => {
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      // onAuthStateChanged dispara automaticamente apos o login
+    } catch (error) {
+      console.error('Erro ao fazer login com e-mail/senha:', error);
+      throw error;
+    }
+  };
+
+  const signUpEmail = async (email: string, password: string, name: string) => {
+    try {
+      const credential = await createUserWithEmailAndPassword(auth, email, password);
+      if (name.trim()) {
+        await updateFirebaseAuthProfile(credential.user, { displayName: name.trim() });
+      }
+      // Sem doc em users/{uid} ainda - onAuthStateChanged (acima) resolve role=null,
+      // e a pagina /onboarding (ja existente, mesmo fluxo do login Google) grava o
+      // papel escolhido. Nao duplicar essa decisao aqui.
+    } catch (error) {
+      console.error('Erro ao criar conta com e-mail/senha:', error);
+      throw error;
+    }
+  };
+
   const signOutUser = async () => {
     try {
       await signOut(auth);
@@ -152,6 +188,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     role,
     loading,
     signInGoogle,
+    signInEmail,
+    signUpEmail,
     signOutUser,
     updateProfile,
   };

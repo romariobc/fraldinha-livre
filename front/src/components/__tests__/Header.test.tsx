@@ -51,6 +51,8 @@ describe('Header', () => {
         role: null,
         loading: false,
         signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
         signOutUser: mockSignOutUser,
         updateProfile: vi.fn(),
       })
@@ -106,6 +108,8 @@ describe('Header', () => {
         role: null,
         loading: false,
         signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
         signOutUser: mockSignOutUser,
         updateProfile: vi.fn(),
       })
@@ -153,6 +157,8 @@ describe('Header', () => {
         role: null,
         loading: false,
         signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
         signOutUser: mockSignOutUser,
         updateProfile: vi.fn(),
       })
@@ -332,6 +338,8 @@ describe('Header', () => {
         role: null,
         loading: false,
         signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
         signOutUser: mockSignOutUser,
         updateProfile: vi.fn(),
       })
@@ -391,6 +399,8 @@ describe('Header', () => {
         role: null,
         loading: false,
         signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
         signOutUser: mockSignOutUser,
         updateProfile: vi.fn(),
       })

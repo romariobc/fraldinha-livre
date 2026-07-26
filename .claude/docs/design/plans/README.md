@@ -82,6 +82,7 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | P3 | Deploy real do Worker + migrations remotas + validação humana (fatia 2 = Produtos) | 1 | FECHADO (2026-07-23) — produção validada pelo cliente (checkout completo), registro em feature_list.json/integration-guide.md feito |
 | H-010 | Deploy do frontend via Cloudflare Containers (substitui adapter OpenNext, spec commit c2952b2) | — | PRONTO para disparo (2026-07-25) — 2 correções da sessão-mãe sobre a spec: `max_instances` (não `instances`) e caminho do standalone verificado com build real |
 | C (breakdown) | Catálogo do Fornecedor: CRUD de produtos + sync do painel (feature 007) — C1..C11 | 1 | breakdown APROVADO (2026-07-25); prompts C1..Cn a escrever no disparo |
+| C1 | packages/contracts: ProductSchema/CreateProductRequestSchema/UpdateProductRequestSchema | 1 | APROVADO (commit 32a4ae7) via D-012 — 15/15 testes verdes, tsc 0, escopo confere |
 
 **Ordem de execucao (D-011):** H-002 → H-005 → [H-006 limpeza para main] → H-004 → H-003 → 006 backend.
 

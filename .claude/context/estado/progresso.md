@@ -1,5 +1,24 @@
 # Progresso — fraldinha-livre
 
+## Nota (2026-07-26) — C1 executado e aprovado (thread C, feature 007)
+
+Prompt `.claude/docs/design/plans/C1-products-contract.md` escrito e disparado via agente Haiku.
+Achou uma divergência real não coberta no prompt: `front/src/lib/products.ts` usa `priceInCents`,
+mas `back/src/schema/products.ts`/`back/src/routes/orders.ts` (já em produção desde a thread P) usam
+`priceCents` — parou e perguntou em vez de adivinhar. Resolvido: contrato segue o backend
+(`priceCents`), já que é o lado que já está deployado; a migração do front pro nome novo é escopo de
+C8, não de C1.
+
+Revisão D-012 feita pela sessão-mãe (não só o relatório do executor): `git show --stat 32a4ae7`
+confirma escopo exato (só `packages/contracts/src/{product.ts,index.ts,__tests__/product.test.ts}`,
+nada em `back/`/`front/`); `npm test` rodado de novo por conta própria — 15/15 verde (4 novos +
+11 preexistentes de `order.test.ts`); `npx tsc --noEmit` exit 0. **C1 APROVADO (commit `32a4ae7`).**
+
+Próximo passo: C2 (back — schema `products` estendido + migrations 0003/0004), depende de C1
+(concluído). Ainda não disparado.
+
+---
+
 ## Nota (2026-07-25) — Plano de implementação da feature 007 (Catálogo do Fornecedor) escrito
 
 A "[FR]Master session" avisou por cross-session-message que a spec da feature 007 (Catálogo do

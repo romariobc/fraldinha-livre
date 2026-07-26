@@ -25,6 +25,7 @@ function generateUUID(): string {
 
 /**
  * GET /orders — retorna pedidos filtrados por uid do token.
+ * Suporta ?scope=fornecedor para retornar pedidos dos produtos do fornecedor autenticado.
  * Valida cada order contra OrderSchema antes de responder.
  */
 export const ordersGetHandler = async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>) => {
@@ -36,13 +37,31 @@ export const ordersGetHandler = async (c: Context<{ Bindings: Env; Variables: Ap
 
   try {
     const db = drizzle(c.env.DB)
+    const scope = c.req.query('scope')
 
-    // Busca orders do uid
-    const userOrders = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.uid, uid))
-      .all()
+    let userOrders
+    if (scope === 'fornecedor') {
+      // Busca order_items cujo product_id pertence a um produto do uid autenticado (fornecedor).
+      const matchingItems = await db
+        .select({ orderId: orderItems.orderId })
+        .from(orderItems)
+        .innerJoin(products, eq(orderItems.productId, products.id))
+        .where(eq(products.supplierId, uid))
+        .all()
+
+      const orderIds = [...new Set(matchingItems.map((row) => row.orderId))]
+      userOrders =
+        orderIds.length > 0
+          ? await db.select().from(orders).where(inArray(orders.id, orderIds)).all()
+          : []
+    } else {
+      // Comportamento existente (comprador) — inalterado.
+      userOrders = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.uid, uid))
+        .all()
+    }
 
     // Para cada order, busca seus items
     const result = await Promise.all(

@@ -1,5 +1,26 @@
 # Progresso — fraldinha-livre
 
+## Nota (2026-07-26) — C7 executado (Haiku) e aprovado
+
+Prompt `.claude/docs/design/plans/C7-http-product-repository.md` escrito seguindo exatamente o molde
+de `HttpOrderRepository` (fetch via `apiFetch`, mapeamento 404→`ProductNotFoundError`/
+403→`ProductForbiddenError`, contract test com fake fetch stateful).
+
+**Execução:** commit `1543b08` (Haiku, sem desvio — código idêntico ao prompt). 5 operações
+implementadas; 14 testes novos (Parte A: auth header + mapeamento de status; Parte B: contract test
+reutilizável de C6 rodando contra o fake fetch).
+
+**Revisão D-012 feita por mim, independente:** `git show --stat` confirma escopo exato (só os 2
+arquivos novos, nada de produção tocado); leitura completa dos 2 arquivos linha a linha — bate
+exatamente com o prompt; `npm test` (front/) rodado de novo — 325/325 verde; `tsc --noEmit` exit 0;
+`grep "from 'zod'"` no arquivo novo — nada encontrado. **C7 APROVADA** (commit `1543b08`).
+
+Próximo passo: C8 (front — `/catalogo` e `/produto/[slug]` migram pro `ProductRepository`, **maior
+risco da fatia**, revisão humana no navegador obrigatória antes de aprovar) e C9 (front —
+`CatalogoTab.tsx` no painel do fornecedor) podem rodar em paralelo depois de C7 (páginas diferentes).
+
+---
+
 ## Marco (2026-07-26) — Frontend em PRODUÇÃO por trás de PLACEHOLDER pendente de acao humana (D-032)
 
 `wrangler deploy` real executado a pedido explícito do Romario. Worker no ar:

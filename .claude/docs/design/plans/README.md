@@ -84,6 +84,7 @@ Arquivos alterados, resultado de cada verificacao, pendencias.
 | C (breakdown) | Catálogo do Fornecedor: CRUD de produtos + sync do painel (feature 007) — C1..C11 | 1 | breakdown APROVADO (2026-07-25); prompts C1..Cn a escrever no disparo |
 | C1 | packages/contracts: ProductSchema/CreateProductRequestSchema/UpdateProductRequestSchema | 1 | APROVADO (commit 32a4ae7) via D-012 — 15/15 testes verdes, tsc 0, escopo confere |
 | C2 | back/: schema products estendido + migrations 0003/0004 | 1 | APROVADO (commits c4ae8dd + 46f4d05, executado pela sessao de backend) via D-012 — bug de migration achado e corrigido (D-031), 35/35 testes verdes, sqlite3 isolado confirma 24 produtos |
+| C3 | back/: GET /products filtra active + GET /products?scope=fornecedor | 1 | APROVADO (commits 70b9ee0 + 627a86a, executado pela sessao de backend) via D-012 — 39/39 testes verdes, tsc 0, escopo confere |
 
 **Ordem de execucao (D-011):** H-002 → H-005 → [H-006 limpeza para main] → H-004 → H-003 → 006 backend.
 

@@ -4,6 +4,13 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-07-19",
   "compatibility_flags": ["nodejs_compat"],
+  // zod e importado por packages/contracts/src/*.ts (fora de back/), que so tem seu
+  // proprio node_modules populado num install feito a partir da raiz do monorepo/workspace.
+  // O build da Cloudflare instala so back/ (Diretorio raiz), entao esse alias forca a
+  // resolucao pro zod ja instalado em back/node_modules, independente de onde o import parte.
+  "alias": {
+    "zod": "./node_modules/zod"
+  },
   "observability": {
     "enabled": false,
     "head_sampling_rate": 1,

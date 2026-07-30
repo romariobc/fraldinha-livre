@@ -22,9 +22,28 @@ vi.mock('@/lib/adapters/http-order-repository', () => ({
   HttpOrderRepository: vi.fn(),
 }))
 
+// Mock useAuth — MarketProvider so busca listForSupplier() pro fornecedor logado
+vi.mock('@/contexts/auth-context', () => ({
+  useAuth: vi.fn(),
+}))
+
 import { HttpOrderRepository } from '@/lib/adapters/http-order-repository'
+import { useAuth } from '@/contexts/auth-context'
 
 const mockedHttpOrderRepository = vi.mocked(HttpOrderRepository)
+const mockUseAuth = vi.mocked(useAuth)
+
+const FORNECEDOR_LOGADO = {
+  user: { uid: 'sup-1', email: 'fornecedor@test.com', displayName: 'Fornecedor Test' },
+  profile: null,
+  role: 'fornecedor' as const,
+  loading: false,
+  signInGoogle: vi.fn(),
+  signInEmail: vi.fn(),
+  signUpEmail: vi.fn(),
+  signOutUser: vi.fn(),
+  updateProfile: vi.fn(),
+}
 
 function makeFakeRepo(overrides: Partial<OrderRepository>): OrderRepository {
   return {
@@ -68,6 +87,12 @@ type AllProvidersProps = {
 function AllProviders({ children }: AllProvidersProps) {
   return <MarketProvider>{children}</MarketProvider>
 }
+
+beforeEach(() => {
+  // Default: fornecedor logado, pra nao quebrar os testes que ja assumiam isso
+  // implicitamente antes do gate por auth existir. Testes do gate sobrescrevem.
+  mockUseAuth.mockReturnValue(FORNECEDOR_LOGADO)
+})
 
 describe('MarketContext - cancelDirectOrder', () => {
   it('should cancel a direct order by changing status to cancelado', () => {
@@ -179,5 +204,52 @@ describe('MarketContext - directOrders loading (backend mode)', () => {
       'Não foi possível carregar os pedidos diretos. Tente novamente.'
     )
     expect(result.current.directOrders).toEqual([])
+  })
+
+  it('modo backend: visitante anonimo (sem user) nao chama listForSupplier', async () => {
+    mockUseAuth.mockReturnValue({ ...FORNECEDOR_LOGADO, user: null, role: null })
+    const listForSupplierMock = vi.fn().mockResolvedValue([fakeContractOrder])
+    mockedHttpOrderRepository.mockImplementation(
+      () => makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository
+    )
+
+    const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
+
+    await waitFor(() => expect(result.current.directOrdersLoading).toBe(false))
+
+    expect(listForSupplierMock).not.toHaveBeenCalled()
+    expect(result.current.directOrders).toEqual([])
+    expect(result.current.directOrdersError).toBeNull()
+  })
+
+  it('modo backend: comprador logado (role != fornecedor) nao chama listForSupplier', async () => {
+    mockUseAuth.mockReturnValue({
+      ...FORNECEDOR_LOGADO,
+      user: { uid: 'comp-1', email: 'comprador@test.com', displayName: 'Comprador Test' },
+      role: 'comprador',
+    })
+    const listForSupplierMock = vi.fn().mockResolvedValue([fakeContractOrder])
+    mockedHttpOrderRepository.mockImplementation(
+      () => makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository
+    )
+
+    const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
+
+    await waitFor(() => expect(result.current.directOrdersLoading).toBe(false))
+
+    expect(listForSupplierMock).not.toHaveBeenCalled()
+  })
+
+  it('modo backend: aguarda auth resolver (loading=true) antes de decidir se busca', () => {
+    mockUseAuth.mockReturnValue({ ...FORNECEDOR_LOGADO, loading: true })
+    const listForSupplierMock = vi.fn().mockResolvedValue([fakeContractOrder])
+    mockedHttpOrderRepository.mockImplementation(
+      () => makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository
+    )
+
+    const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
+
+    expect(listForSupplierMock).not.toHaveBeenCalled()
+    expect(result.current.directOrdersLoading).toBe(true)
   })
 })

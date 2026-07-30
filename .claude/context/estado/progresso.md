@@ -1,5 +1,41 @@
 # Progresso — fraldinha-livre
 
+## Marco (2026-07-29) — Blueprint de arquitetura + bug critico de producao achado e corrigido (D-037)
+
+Pedido do Romario: gerar um documento visual da arquitetura completa (front+back) e
+atacar os pontos faltantes do projeto, deixando gateway de pagamento e leilao
+reverso por ultimo — prioridade e colocar o projeto no ar pra testes de usabilidade
+real antes do pagamento, visando o beta.
+
+**Blueprint salvo:** `.claude/docs/infra/blueprint-arquitetura-2026-07-29.html`
+(diagrama de arquitetura, inventario de rotas/portas, status por feature, lista do
+que falta).
+
+**Higiene de infra:** branches remotas ja mergeadas deletadas
+(`Romir/folder-analysis-070a4b`, `Romir/master-session-restart-535624`);
+`front/package.json` `engines.node` corrigido pra `>=22.0.0` (alinhado com o
+Dockerfile); campo `traces` invalido removido de `back/wrangler.jsonc` (warning
+cosmetico em todo build).
+
+**QA manual em producao encontrou um bug real e serio (D-037):** a aba "Pedidos
+Diretos" do painel do fornecedor sempre falhava, inclusive pra um fornecedor de
+teste de verdade logado. Diagnosticado com evidencia direta (ID Token real via
+REST do Firebase + curl direto no backend, provando que o backend estava correto) —
+causa era `MarketProvider` disparando `listForSupplier()` sem esperar o Firebase
+restaurar a sessao nem checar se havia usuario logado, mesma classe de bug ja
+corrigida antes em `OrdersProvider` (B9) mas nunca replicada aqui. Corrigido
+(commit `c858264`): gate por `useAuth()` (`authLoading` + `user` + `role`), loading
+exposto virou valor derivado. 4 testes novos, suite 354/354, build ok.
+
+**Tracker corrigido:** feature 005b (email/senha) marcada `done` — ja estava
+implementada (D-034) mas o tracker dizia `todo`. Feature 006 (backend da loja)
+marcada `done` — o escopo restante foi entregue via 007 (thread C).
+
+Detalhes completos em D-037. Deploy em andamento (push feito, aguardando o
+container do frontend reciclar).
+
+---
+
 ## Marco (2026-07-26) — PR #12 mergeado na main; thread C (feature 007) consolidada ponta a ponta
 
 A sessão de frontend (`Romir/master-session-restart-535624`) mesclou o backend (C2-C5, este worktree)

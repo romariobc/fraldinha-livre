@@ -830,3 +830,60 @@ usuário, conforme a própria lição registrada em D-035.
 Próximo: avisar a sessão do backend (worktree `blissful-lamport-ccb562`, branch
 `Romir/folder-analysis-070a4b`) que é hora de consolidar as duas branches (frontend
 `Romir/master-session-restart-535624` + backend) num PR único para `main`.
+
+---
+
+## D-037 — Bug de produção: MarketProvider sem gate de auth quebrava Pedidos Diretos do fornecedor (2026-07-29) — VIGENTE
+
+Pedido do Romario: blueprint visual da arquitetura completa (salvo em
+`.claude/docs/infra/blueprint-arquitetura-2026-07-29.html`) e ataque aos pontos
+faltantes do projeto, deixando gateway de pagamento e leilão reverso por último —
+prioridade é colocar front+back no ar para testes de usabilidade real antes do
+pagamento, visando um beta.
+
+**QA manual em produção encontrou um bug real e sério**, não pego por nenhuma revisão
+anterior: a aba "Pedidos Diretos" do painel do fornecedor sempre falhava
+("Não foi possível carregar os pedidos diretos"), inclusive para um fornecedor de
+teste **de verdade, logado corretamente** (`fornecedor.teste1@fraldinhalivre.com.br`).
+
+**Diagnóstico, feito com evidência direta (não suposição):**
+1. Obtive um ID Token real da conta de teste via REST do Firebase
+   (`identitytoolkit.googleapis.com/v1/accounts:signInWithPassword`) e chamei o
+   backend em produção direto com `curl` — `GET /orders?scope=fornecedor` com esse
+   token retornou **200**, provando que o backend está correto.
+2. Isso isolou o bug no frontend. `api-client.ts` usa
+   `auth.currentUser?.getIdToken()` — síncrono no momento da chamada. Se
+   `auth.currentUser` ainda for `null` (Firebase não terminou de restaurar a sessão),
+   a chamada sai **sem header Authorization**, e o backend corretamente devolve 401.
+3. `MarketProvider` (que envolve TODO o route group `(main)`, inclusive páginas
+   públicas) disparava `listForSupplier()` incondicionalmente no mount do provider —
+   sem esperar `onAuthStateChanged` resolver, e sem checar se havia usuário logado.
+   Resultado: 401 garantido tanto para visitante anônimo quanto para fornecedor de
+   verdade (a corrida de fato acontece).
+
+Essa é **exatamente a mesma classe de bug já corrigida em B9** (`OrdersProvider`
+chamando `list()` antes do Firebase restaurar sessão, commit `95879f9`, registrado na
+nota da feature 006) — só que nunca foi replicada em `MarketProvider` quando ele foi
+migrado para dados reais (C10).
+
+**Fix (commit `c858264`):** `useAuth()` em `MarketProvider`; o efeito só dispara após
+`authLoading` resolver e só para `user` com `role === 'fornecedor'`. O
+`directOrdersLoading` exposto virou um valor derivado (não `setState` síncrono no
+corpo do efeito, pra não violar a regra de lint `react-hooks/set-state-in-effect`
+que pegou essa tentativa inicial). 4 testes novos cobrindo visitante anônimo,
+comprador logado, e espera por `authLoading`. Suite 354/354, tsc/lint limpos, build
+de produção ok.
+
+**Why:** o teste de `GET /orders?scope=fornecedor` existente
+(`orders.scope-fornecedor.test.ts`) só cobria o caso negativo (sem token → 401) e
+usava um app de teste próprio com `app.use('*', ...)`, não o `src/index.ts` real —
+por isso nunca teria pego esse bug de qualquer forma, já que o bug era 100% do lado
+do frontend, num provider que nenhum teste de contexto testava com estado de auth
+não-resolvido.
+
+**How to apply:** qualquer provider que envolva rotas públicas E dependa de
+`auth.currentUser` deve gatear o efeito por `authLoading` + presença de `user` (e
+`role`, quando aplicável) — não só por `useBackend`. Ao criar um novo provider
+autenticado, checar primeiro se ele está montado acima de páginas públicas (como
+`MarketProvider` está) antes de assumir que "só roda pra quem está na página certa"
+é suficiente.

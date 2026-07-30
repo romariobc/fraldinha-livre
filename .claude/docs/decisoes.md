@@ -887,3 +887,44 @@ não-resolvido.
 autenticado, checar primeiro se ele está montado acima de páginas públicas (como
 `MarketProvider` está) antes de assumir que "só roda pra quem está na página certa"
 é suficiente.
+
+---
+
+## D-037b — Frontend nunca teve Git integration na Cloudflare; deploy real revelou 2 gaps a mais (2026-07-30) — VIGENTE
+
+Ao tentar confirmar o fix acima em produção, o bundle nunca mudava mesmo após 3
+pushes. Investigação (não suposição — checado no dashboard a pedido):
+
+1. **`fraldinha-livre-frontend` nunca teve repositório Git conectado na Cloudflare.**
+   O botão de "Repositório Git" mostrava "Conectar", não um repo já ligado — todo
+   deploy anterior (H-010, 2026-07-24) foi manual via CLI, de uma máquina de dev.
+   Nenhum push desta sessão jamais teve chance de disparar nada. Corrigido pelo
+   Romario no dashboard (conectou o repo, branch `main`, diretório raiz `front`,
+   deploy command `npx wrangler deploy`, path includes `front/**` — mesmo padrão do
+   backend).
+2. **Primeira build de verdade (commit `a1f45c5`) revelou um segundo gap**, mascarado
+   desde sempre pelo mesmo motivo: `next build` falhava prerenderizando `/_not-found`
+   com `Firebase: Error (auth/invalid-api-key)`. `front/.env.production` (commitado)
+   nunca teve as vars `NEXT_PUBLIC_FIREBASE_*` — só existiam em `front/.env.local`
+   (gitignored, por worktree). Todo deploy manual anterior rodava numa máquina que já
+   tinha esse `.env.local`, então o gap nunca apareceu antes de uma build a partir de
+   um clone limpo de verdade.
+
+**Fix:** vars `NEXT_PUBLIC_FIREBASE_{API_KEY,PROJECT_ID,STORAGE_BUCKET,
+MESSAGING_SENDER_ID,APP_ID,MEASUREMENT_ID}` adicionadas a `front/.env.production`
+(mesmos valores do dev — não há conflito com `.env.local` que justifique
+`.env.production.local`, diferente do `authDomain` em D-035). Validado com
+`docker build` local do `front/Dockerfile` antes de commitar: build limpo, 19 rotas,
+smoke test (`/` e `/catalogo`, HTTP 200) — só depois disso o commit foi feito.
+
+**Why:** os dois problemas (sem Git integration, `.env.production` incompleto)
+convivem há semanas sem serem notados porque a única forma de deploy até agora era
+manual, de uma máquina de dev com todo o contexto local (`.env.local`) presente.
+Automatizar o deploy foi o que expôs os dois de uma vez.
+
+**How to apply:** qualquer Worker novo (front ou back) precisa ter a Git integration
+conferida explicitamente no dashboard antes de assumir que push = deploy. Variáveis
+`NEXT_PUBLIC_*` de produção precisam estar 100% em `.env.production`/
+`.env.production.local` (nunca depender de `.env.local` estar presente) — o teste
+real disso é buildar a partir de um clone limpo (ou `docker build` local), não do
+worktree de dev que já tem tudo.

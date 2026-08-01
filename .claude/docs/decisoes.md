@@ -928,3 +928,54 @@ conferida explicitamente no dashboard antes de assumir que push = deploy. Variá
 `.env.production.local` (nunca depender de `.env.local` estar presente) — o teste
 real disso é buildar a partir de um clone limpo (ou `docker build` local), não do
 worktree de dev que já tem tudo.
+
+---
+
+## D-038 — GitHub Secret Scanning flagrou NEXT_PUBLIC_FIREBASE_API_KEY commitada; resolvido (2026-07-30) — VIGENTE
+
+O GitHub Secret Scanning abriu o alerta #1 (`publicly_leaked=true`) pra
+`NEXT_PUBLIC_FIREBASE_API_KEY` em `front/.env.production:18`, commitada no fix do
+D-037b (commit `2e79da0`). A sessão do backend verificou via `gh api
+repos/romariobc/fraldinha-livre/secret-scanning/alerts` que o alerta era real (não
+o e-mail de notificação inventando) antes de escalar.
+
+**Contexto:** é a chave web pública do Firebase — por design da própria Google, não
+é um segredo tradicional; o controle de acesso real é via Firebase Security Rules +
+restrição de API opcional no Google Cloud Console. Mas a regra do harness
+(`o-que-nunca-fazer.md`) sobre não commitar credencial é incondicional, e o scanner
+do GitHub não distingue essa nuance — o alerta era legítimo de ser tratado mesmo
+sabendo que o risco real é baixo.
+
+**Resolução:**
+1. Romario restringiu a chave no Google Cloud Console: **Application restrictions**
+   → HTTP referrer (`fraldinha-livre-frontend.romariobc.workers.dev/*` +
+   `localhost:3000/*`); **API restrictions** → limitado a Identity Toolkit / Token
+   Service / Firebase Installations. Isso fecha o risco real (a chave não funciona
+   fora desses referrers/APIs mesmo que alguém a copie).
+2. A sessão do backend resolveu o alerta #1 no GitHub via `gh api`
+   (`state=resolved`, `resolution=false_positive`), com nota explicando a natureza
+   pública da chave + a restrição aplicada.
+3. **Nenhuma mudança de código foi feita** — decidimos manter o valor em
+   `front/.env.production` (removê-lo quebraria o build git-integrado da Cloudflare,
+   o mesmo bug do D-037b, já que o build não tem acesso a `.env.local`).
+4. **Reescrita de histórico do git foi descartada** — risco real baixo uma vez a
+   chave restringida; reescrever é destrutivo demais pro ganho, e o repo é
+   compartilhado por duas sessões coordenando (risco de quebrar a branch da outra
+   sessão sem aviso).
+
+**Pendência em aberto, sem urgência:** migrar `NEXT_PUBLIC_FIREBASE_*` de
+`front/.env.production` (arquivo commitado) pra "Build Environment Variables" do
+Worker no dashboard Cloudflare (Settings → Environment Variables → Build) evitaria
+o alerta reaparecer em commits futuros que toquem esse arquivo. Não é obrigatório
+dado que a chave já está restrita — decisão de quando/se fazer fica em aberto.
+
+**Why:** a chave em si nunca foi o problema real (é pública por design) — o valor
+de tratar o alerta como legítimo foi confirmar que a restrição de acesso (a
+mitigação que realmente importa) estava ausente, e corrigir isso. Silenciar o
+scanner sem restringir a chave primeiro teria sido a ordem errada.
+
+**How to apply:** toda `NEXT_PUBLIC_FIREBASE_API_KEY` (ou chave pública equivalente)
+commitada deve ter a restrição de referrer/API configurada no Google Cloud Console
+antes — não depois — de qualquer decisão sobre manter/mover/remover do repo. Alertas
+do GitHub Secret Scanning em chaves NEXT_PUBLIC_* pedem essa verificação, não
+pânico — mas exigem verificação de verdade (`gh api`), não assumir que é ruído.

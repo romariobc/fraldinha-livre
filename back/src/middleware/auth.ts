@@ -14,7 +14,7 @@ const JWKS = createRemoteJWKSet(
 /**
  * Verificador testável de JWT — recebe um token e retorna uid ou null se inválido.
  */
-export type VerifyTokenFn = (token: string) => Promise<{ uid: string } | null>
+export type VerifyTokenFn = (token: string) => Promise<{ uid: string; email?: string } | null>
 
 /**
  * Middleware de autenticação por Firebase ID Token, testável por injeção de verificador.
@@ -37,6 +37,9 @@ export const createAuthMiddleware = (verifyToken: VerifyTokenFn) => {
     }
 
     c.set('uid', verified.uid)
+    if (verified.email) {
+      c.set('email', verified.email)
+    }
     await next()
   }
 }
@@ -48,7 +51,7 @@ export const createAuthMiddleware = (verifyToken: VerifyTokenFn) => {
 export const verifyFirebaseIdToken = async (
   token: string,
   projectId: string,
-): Promise<{ uid: string } | null> => {
+): Promise<{ uid: string; email?: string } | null> => {
   try {
     // Verifica assinatura, issuer, audience e expiration (JWKS reutilizado do escopo do módulo)
     const verified = await jwtVerify(token, JWKS, {
@@ -62,7 +65,9 @@ export const verifyFirebaseIdToken = async (
       return null
     }
 
-    return { uid }
+    const email = typeof verified.payload.email === 'string' ? verified.payload.email : undefined
+
+    return { uid, email }
   } catch {
     // Token inválido, expirado, forjado, etc. → não esconder em try/catch silencioso
     // se quisermos debug, adicionar logging aqui (não fazer nesta tarefa)

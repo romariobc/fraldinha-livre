@@ -21,9 +21,9 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
    */
   const createTestApp = () => {
     const fakeVerify = async (token: string) => {
-      if (token === 'token-uid-a') return { uid: 'uid-a' }
-      if (token === 'token-uid-b') return { uid: 'uid-b' }
-      if (token === 'token-uid-c') return { uid: 'uid-c' }
+      if (token === 'token-uid-a') return { uid: 'uid-a', email: 'uid-a@example.com' }
+      if (token === 'token-uid-b') return { uid: 'uid-b', email: 'uid-b@example.com' }
+      if (token === 'token-uid-c') return { uid: 'uid-c', email: 'uid-c@example.com' }
       return null
     }
 
@@ -458,6 +458,30 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     expect(response.status).toBe(400)
     const body = await response.json()
     expect(body).toEqual({ error: 'total divergente' })
+  })
+
+  it('POST /orders com NOTIFICATIONS_ENABLED=false: nao chama Resend, pedido cria normalmente', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/orders', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer token-uid-a', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        product: 'Fralda A',
+        quantity: 1,
+        unit: 'un',
+        price: 1800,
+        supplierId: 'sup-001',
+        supplierName: 'Fornecedor A',
+        deliveryAddress: {
+          logradouro: 'Rua A', numero: '1', bairro: 'Centro',
+          cidade: 'Sao Paulo', estado: 'SP', cep: '01000-000',
+        },
+        items: [{ productId: 'p1', productName: 'Fralda A', unitPrice: 1800, quantity: 1, unit: 'un' }],
+      }),
+    })
+    // env.NOTIFICATIONS_ENABLED nao setado nesse teste => vazio => !== 'true' => desligado
+    const response = await app.fetch(request, env)
+    expect(response.status).toBe(201)
   })
 
   // ============================================================

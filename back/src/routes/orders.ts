@@ -6,6 +6,7 @@ import { orders, orderItems } from '../schema/orders'
 import { products } from '../schema/products'
 import type { Env, AppContext } from '../env'
 import { ZodError } from 'zod'
+import { notifySupplierOfNewOrder, sendViaResend } from '../lib/notifications'
 
 /**
  * Gera um UUID v4 usando a API de crypto disponível (Workers/Node).
@@ -206,6 +207,27 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
 
     // Grava tudo num único batch (atomicidade RN-03)
     await db.batch([orderInsert, ...itemInserts])
+
+    // Notifica o fornecedor (best-effort — nunca afeta a resposta, RN-02 da spec H-011)
+    const notificationItems = createRequest.items.map((item) => ({
+      productName: item.productName,
+      quantity: item.quantity,
+      unit: item.unit,
+    }))
+    await notifySupplierOfNewOrder(
+      {
+        supplierEmail: productRows[0]?.supplierEmail,
+        orderId,
+        items: notificationItems,
+        // `?? 0` e' so pro TS (createRequest.price ja foi validado como definido
+        // no early-return acima) — nunca e' 0 de verdade nesse ponto do fluxo.
+        totalCents: createRequest.price ?? 0,
+      },
+      {
+        notificationsEnabled: c.env.NOTIFICATIONS_ENABLED === 'true',
+        sendEmail: (emailParams) => sendViaResend(emailParams, c.env.RESEND_API_KEY),
+      },
+    )
 
     // Busca a order e items para retornar
     const savedOrderList = await db.select().from(orders).where(eq(orders.id, orderId)).all()

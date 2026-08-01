@@ -49,3 +49,4 @@ Arquivos de codigo, decisoes (D-NNN), outros specs.
 | [spec-backend-produtos-cloudflare.md](spec-backend-produtos-cloudflare.md) | 006 (fatia 2) — backend de produtos (revalida preco/existencia/fornecedor) | APROVADA (2026-07-22) |
 | [spec-perfil-fornecedor.md](spec-perfil-fornecedor.md) | 006 (fatia — perfil do fornecedor no Firestore) | IMPLEMENTADA (2026-07-23) |
 | [spec-catalogo-fornecedor-produtos.md](spec-catalogo-fornecedor-produtos.md) | 007 — cadastro de produtos + sync do painel + historico do fornecedor | APROVADA (2026-07-25) |
+| [spec-fornecedor-notificacao-email.md](spec-fornecedor-notificacao-email.md) | 010 (fatia pedidos diretos) — notificacao por email ao fornecedor, atras de flag ate haver dominio | rascunho (2026-07-30) |

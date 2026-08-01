@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { Hono } from 'hono'
 import { drizzle } from 'drizzle-orm/d1'
+import { eq } from 'drizzle-orm'
 import { env } from 'cloudflare:workers'
 import { applyD1Migrations } from 'cloudflare:test'
 import { createAuthMiddleware } from '../src/middleware/auth'
@@ -58,7 +59,7 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
    */
   const createTestApp = () => {
     const fakeVerify = async (token: string) => {
-      if (token === 'token-uid-fornecedor-teste') return { uid: 'uid-fornecedor-teste' }
+      if (token === 'token-uid-fornecedor-teste') return { uid: 'uid-fornecedor-teste', email: 'fornecedor-teste@example.com' }
       return null
     }
 
@@ -171,6 +172,35 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
     expect(body.name).toBe('Produto Completo')
     expect(body.slug).toBe(slugUnique)
     expect(body.priceCents).toBe(1500)
+  })
+
+  it('POST /products grava supplier_email a partir do claim email do token', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/products', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer token-uid-fornecedor-teste',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: 'Produto Com Email',
+        brand: 'Marca Teste',
+        size: 'M',
+        quantity: 10,
+        priceCents: 1500,
+        slug: 'produto-com-email',
+        categoria: 'teste',
+        descricao: 'Descrição',
+        atributos: { faixaPeso: 'P', genero: 'unissex', absorcao: 'A', tecnologia: 'T' },
+      }),
+    })
+    const response = await app.fetch(request, env)
+    expect(response.status).toBe(201)
+    const body = (await response.json()) as { id: string }
+
+    const db = drizzle(env.DB)
+    const rows = await db.select().from(products).where(eq(products.id, body.id)).all()
+    expect(rows[0].supplierEmail).toBe('fornecedor-teste@example.com')
   })
 
   // ===== PUT /products/:id =====

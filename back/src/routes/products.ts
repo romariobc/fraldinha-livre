@@ -56,6 +56,7 @@ export const productsPostHandler = async (c: Context<{ Bindings: Env; Variables:
   if (!uid) {
     return c.json({ error: 'unauthorized' }, 401)
   }
+  const supplierEmail = c.get('email')
 
   try {
     const body = await c.req.json()
@@ -67,6 +68,7 @@ export const productsPostHandler = async (c: Context<{ Bindings: Env; Variables:
     await db.insert(products).values({
       id,
       supplierId: uid,
+      supplierEmail,
       active: true,
       priceCents: createRequest.priceCents,
       name: createRequest.name,

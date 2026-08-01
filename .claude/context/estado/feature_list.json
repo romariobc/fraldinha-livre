@@ -93,9 +93,9 @@
       "id": "010",
       "titulo": "Notificacoes (push/email)",
       "fase": 2,
-      "status": "todo",
+      "status": "in_progress",
       "criterio_aceite": "Fornecedor recebe notificacao quando novo pedido chega; comprador recebe quando oferta e aceita",
-      "notas": "Depende de 005 e 006. Notificacoes de pedidos diretos (loja) podem ser antecipadas para a fase 1 se necessario"
+      "notas": "Depende de 005 e 006. FATIA EMAIL/LOJA ENTREGUE (H-011, 2026-07-30, spec-fornecedor-notificacao-email.md): fornecedor recebe email quando chega pedido direto, atras da flag NOTIFICATIONS_ENABLED (desligada — sem dominio verificado no Resend ainda, D-037b). Codigo revisado via D-012 (63/63 testes, tsc limpo). Falta: 010b (push, exige service worker/VAPID do zero) e notificacao de oferta aceita (leilao, bloqueada junto com 008/D-014). Pendencia operacional: `wrangler secret put RESEND_API_KEY` antes de ativar de verdade."
     },
     {
       "id": "011",

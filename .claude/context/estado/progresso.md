@@ -1,5 +1,39 @@
 # Progresso — fraldinha-livre
 
+## Marco (2026-07-30) — Feature 010 (fatia loja): notificacao por email ao fornecedor (H-011)
+
+Sequencia completa spec-driven: brainstorming (canal email vs push, provedor,
+descoberta de que sem dominio proprio o Resend so envia pra enderecos de teste
+dele) → spec aprovada (`spec-fornecedor-notificacao-email.md`) → plano H-011 →
+execucao por subagente Haiku → revisao independente (D-012).
+
+**Entrega:** fornecedor recebe email quando um pedido direto chega, atras da flag
+`NOTIFICATIONS_ENABLED` (desligada por padrao — ativa quando houver dominio
+verificado). Middleware de auth agora carrega o claim `email` do token Firebase;
+`products.supplier_email` capturado na criacao do produto; modulo
+`back/src/lib/notifications.ts` best-effort (nunca bloqueia o pedido).
+
+**Revisao D-012 achou 2 problemas reais**, ambos corrigidos antes do push:
+1. Commit da Tarefa 1 (middleware) faltando — gap do proprio prompt H-011, nao da
+   execucao.
+2. `npm run db:generate` colidiu com uma migration `0004` ja existente (hand-written,
+   nunca rastreada pelo journal do drizzle-kit) — renomeado pra `0005`, journal
+   corrigido, suite revalidada (63/63).
+
+Tambem nesta sessao: **D-038** registra o fechamento de um alerta real do GitHub
+Secret Scanning (NEXT_PUBLIC_FIREBASE_API_KEY commitada) — chave restrita no GCP
+Console pelo Romario, alerta resolvido pela sessao do backend, sem mudanca de
+codigo necessaria.
+
+Detalhes completos em `.claude/docs/design/plans/README.md` (entrada H-011) e
+`spec-fornecedor-notificacao-email.md`.
+
+**Pendente pra ativar de verdade:** `wrangler secret put RESEND_API_KEY` (manual,
+fora do escopo do H-011) + dominio proprio verificado no Resend + virar
+`NOTIFICATIONS_ENABLED` pra `"true"`.
+
+---
+
 ## Marco (2026-07-29) — Blueprint de arquitetura + bug critico de producao achado e corrigido (D-037)
 
 Pedido do Romario: gerar um documento visual da arquitetura completa (front+back) e

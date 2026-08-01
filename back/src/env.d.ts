@@ -9,6 +9,10 @@ declare global {
       TEST_MIGRATIONS: D1Migration[]
       /** Firebase project ID para verificação de tokens. */
       FIREBASE_PROJECT_ID: string
+      /** Liga o envio real de e-mail via Resend. Desligada ate haver dominio verificado (D-037b/spec). */
+      NOTIFICATIONS_ENABLED: string
+      /** Secret — nunca commitar. `wrangler secret put RESEND_API_KEY`. */
+      RESEND_API_KEY: string
     }
   }
 }
@@ -22,5 +26,6 @@ export type Env = Cloudflare.Env
 export interface AppContext {
   Variables: {
     uid: string
+    email?: string
   }
 }

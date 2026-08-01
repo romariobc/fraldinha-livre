@@ -1,0 +1,1 @@
+ALTER TABLE `products` ADD `supplier_email` text;

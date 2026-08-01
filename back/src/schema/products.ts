@@ -13,5 +13,6 @@ export const products = sqliteTable('products', {
   descricao: text('descricao').notNull().default(''),
   atributos: text('atributos', { mode: 'json' }).notNull().default('{}'),
   badge: text('badge'),
+  supplierEmail: text('supplier_email'),
   active: integer('active', { mode: 'boolean' }).notNull().default(true),
 })

@@ -32,6 +32,7 @@
   // RESEND_API_KEY e' secret (wrangler secret put RESEND_API_KEY), nunca commitado aqui.
   "vars": {
     "FIREBASE_PROJECT_ID": "fraldinha-livre",
-    "NOTIFICATIONS_ENABLED": "false"
+    "NOTIFICATIONS_ENABLED": "false",
+    "ADMIN_UID": "KOQclmb5eshfkufioK03ayRh6Fi2"
   }
 }

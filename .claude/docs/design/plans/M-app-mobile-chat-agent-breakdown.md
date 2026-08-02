@@ -91,6 +91,7 @@ export interface ChatCompletionTool {
 }
 
 export interface ChatCompletionToolCall {
+  id: string // correlaciona com ChatCompletionMessage.toolCallId na resposta da tool
   name: string
   arguments: Record<string, unknown>
 }
@@ -103,6 +104,7 @@ export interface ChatCompletionResult {
 export interface ChatCompletionMessage {
   role: 'system' | 'user' | 'assistant' | 'tool'
   content: string
+  toolCallId?: string // obrigatorio quando role === 'tool' (id do ChatCompletionToolCall correspondente)
 }
 
 export type RunChatCompletion = (
@@ -147,43 +149,65 @@ M1/M2/M3 sao independentes entre si (podem rodar em paralelo). M4 depende dos tr
 - **Commit:** `feat(contracts): schema Zod de ChatRequest/ChatResponse (thread M)`
 
 ### M2 — `back/`: adapter Workers AI (`RunChatCompletion`)  [dep: —]
-- **Formato CONFIRMADO na documentacao da Cloudflare (2026-08-02, `workers-ai/function-calling/` e a
-  pagina do modelo) — nao e suposicao:** `tools` e um array **plano** (sem o wrapper `{type:'function',
-  function:{...}}}` do padrao OpenAI): cada item e `{ name, description, parameters }` (`parameters` e
-  JSON Schema). A resposta traz `response.tool_calls[]`, cada item `{ name, arguments }` (`arguments` ja
-  vem como objeto, nao string). Para devolver o resultado de uma tool pro modelo numa proxima chamada, a
-  mensagem tem `role: 'tool'` e `content` com o resultado (a doc usa `JSON.stringify(res)`); a mensagem
-  do assistant que precedeu isso tem `content: JSON.stringify(selected_tool)` (o tool call em si, nao um
-  texto livre) — **essa parte do loop e responsabilidade de M4**, M2 so precisa aceitar `role: 'tool'`
-  como um dos roles validos e repassar `content` como veio.
-  **Nao confirmado (fora do escopo de M2):** o formato exato de envio de foto/imagem pra este modelo
-  especifico nao ficou claro na documentacao disponivel — **M2 nao implementa envio de imagem**, so
-  texto + tools. Isso fica para quando a foto for de fato integrada (dentro de M4 ou um refinamento
-  futuro), com verificacao empirica (chamada real, já que o binding Workers AI acessa a conta real mesmo
-  em dev local) antes de fechar esse pedaço.
+- **Formato CONFIRMADO no pacote `@cloudflare/workers-types` instalado (fonte mais confiavel que a doc
+  generica — 2026-08-02, `node_modules/@cloudflare/workers-types/index.ts`, tipos
+  `Ai_Cf_Meta_Llama_4_Scout_17B_16E_Instruct_Messages`/`_Output`), especifico deste modelo:**
+  `tools` no INPUT aceita tanto o formato plano `{name, description, parameters}` quanto o formato
+  aninhado `{type, function:{...}}}` (union) — usar o formato plano, mais simples. **No OUTPUT, porem,
+  `tool_calls[]` vem SEMPRE aninhado:** cada item e `{ id?, type?, function?: { name?, arguments? } }` —
+  o nome e os argumentos ficam dentro de `call.function`, NAO em `call.name`/`call.arguments` direto (a
+  doc generica de function-calling mostra o formato plano no output, mas isso e de um modelo diferente e
+  mais antigo, `@hf/nousresearch/hermes-2-pro-mistral-7b` — NAO se aplica ao llama-4-scout). Tambem ha um
+  `id` por tool call, usado pra correlacionar quando a mensagem de resposta da tool volta pro modelo (a
+  mensagem de input aceita `tool_call_id?: string`) — por isso a interface `ChatCompletionToolCall` tem
+  `id` e `ChatCompletionMessage` tem `toolCallId?`.
+  **Bonus confirmado no mesmo lugar (nao e mais "nao confirmado"):** o formato de imagem para este
+  modelo e `content` como array de partes `{ type, text?, image_url?: { url } }`, `url` sendo uma data
+  URI (`data:image/jpeg;base64,...`) — padrao OpenAI-compatible. Isso **ainda nao entra no escopo de
+  M2** (M2 continua so texto+tools), mas fica registrado pra quando a foto for integrada (M4 ou
+  refinamento futuro) nao precisar mais adivinhar nem verificar empiricamente — o tipo ja confirma.
 - **Create:**
   - `back/src/lib/chat-completion.ts` — os tipos da secao "Interfaces canonicas" acima, mais:
     ```ts
+    interface WorkersAiChatCompletionResponse {
+      response?: string
+      tool_calls?: { id?: string; function?: { name?: string; arguments?: Record<string, unknown> } }[]
+    }
+
     export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
       return async (messages, tools) => {
-        const response = await ai.run('@cf/meta/llama-4-scout-17b-16e-instruct', {
-          messages: messages.map((m) => ({ role: m.role, content: m.content })),
-          tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
-        })
-        const toolCalls = (response.tool_calls ?? []).map((call) => ({
-          name: call.name,
-          arguments: call.arguments as Record<string, unknown>,
-        }))
+        const response = (await ai.run(
+          '@cf/meta/llama-4-scout-17b-16e-instruct',
+          {
+            messages: messages.map((m) => ({ role: m.role, content: m.content, tool_call_id: m.toolCallId })),
+            tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
+          } as AiModels['@cf/meta/llama-4-scout-17b-16e-instruct']['inputs'],
+        )) as unknown as WorkersAiChatCompletionResponse
+
+        const toolCalls = (response.tool_calls ?? [])
+          .filter((call) => call.function?.name)
+          .map((call) => ({
+            id: call.id ?? '',
+            name: call.function!.name!,
+            arguments: (call.function!.arguments ?? {}) as Record<string, unknown>,
+          }))
+
         return { text: response.response ?? null, toolCalls }
       }
     }
     ```
-  - `back/src/lib/chat-completion.test.ts` — teste de UNIDADE (sem chamar IA real): injete um `Ai` fake
-    (objeto com `run: vi.fn().mockResolvedValue({ response: 'oi', tool_calls: [{ name: 'search_products',
-    arguments: { query: 'fralda' } }] })`) e confirme que `createWorkersAiChatCompletion`: (a) chama
-    `ai.run` com o nome do modelo certo e `tools` no formato plano (sem wrapper); (b) traduz a resposta
-    pra `ChatCompletionResult` com `text`/`toolCalls` no formato canonico da interface; (c) com
-    `tool_calls` ausente/undefined na resposta fake, retorna `toolCalls: []` (nao quebra).
+    O `as AiModels[...]['inputs']`/`as unknown as WorkersAiChatCompletionResponse` sao necessarios porque
+    o tipo `AiModels['@cf/meta/llama-4-scout-17b-16e-instruct']` do pacote instalado tem overloads mais
+    estritos que nao casam 1:1 com este shape simplificado — isso e esperado, nao e sinal de erro; NAO
+    tente eliminar esses casts reescrevendo a chamada de outra forma.
+  - `back/test/chat-completion.test.ts` — teste de UNIDADE (sem chamar IA real): injete um `Ai` fake
+    (objeto com `run: vi.fn().mockResolvedValue({ response: 'oi', tool_calls: [{ id: 'call_1', function:
+    { name: 'search_products', arguments: { query: 'fralda' } } }] })`) e confirme que
+    `createWorkersAiChatCompletion`: (a) chama `ai.run` com o nome do modelo certo e `tools` no formato
+    plano (sem wrapper); (b) traduz a resposta pra `ChatCompletionResult` com `toolCalls` no formato
+    canonico `{id, name, arguments}` (desaninhado de `function`); (c) com `tool_calls` ausente/undefined
+    na resposta fake, retorna `toolCalls: []` (nao quebra); (d) com um item de `tool_calls` sem
+    `function.name` (mal formado), esse item e ignorado (nao quebra, nao aparece no resultado).
 - **Modify:** `back/wrangler.jsonc` — adicionar o binding:
   ```jsonc
   "ai": {
@@ -324,7 +348,7 @@ M1/M2/M3 sao independentes entre si (podem rodar em paralelo). M4 depende dos tr
           for (const call of result.toolCalls) {
             messages.push({ role: 'assistant', content: JSON.stringify(call) })
             const toolResult = await runDataTool(db, call.name, call.arguments)
-            messages.push({ role: 'tool', content: JSON.stringify(toolResult) })
+            messages.push({ role: 'tool', content: JSON.stringify(toolResult), toolCallId: call.id })
           }
         }
 

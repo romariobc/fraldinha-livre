@@ -444,11 +444,15 @@ M1/M2/M3 sao independentes entre si (podem rodar em paralelo). M4 depende dos tr
     convertido pra data URL base64 no client antes de enviar), estado local do historico completo
     (array `ChatMessage[]` do `@contracts`), chama `POST /chat/message` via `apiFetch` (mesmo helper de
     `front/src/lib/api-client.ts` que ja injeta o Bearer token — nao reescrever).
-  - `front/src/components/assistente/ChatUI.test.tsx` — renderiza, digita mensagem, envia, mocka
-    `apiFetch` retornando `{type:'text', content:'...'}` e confirma que a mensagem aparece na lista;
-    mocka erro de rede/500 e confirma que aparece a mensagem de sistema com opcao de retry (sem perder o
-    historico ja digitado).
-- **DoD:** `npm test` (front) verde incluindo `ChatUI.test.tsx`; `tsc`/lint/build exit 0; rota
+  - `front/src/components/assistente/__tests__/ChatUI.test.tsx` (padrao real do projeto e
+    `__tests__/`, nao co-localizado — conferido contra `admin/__tests__/AdminOrdersTab.test.tsx`) —
+    renderiza, digita mensagem, envia, mocka `apiFetch` retornando `{type:'text', content:'...'}` e
+    confirma que a mensagem aparece na lista; resposta `type:'action'` mostra mensagem informativa (M6
+    ainda nao intercepta); mocka erro de rede e HTTP nao-ok e confirma que aparece a mensagem de sistema
+    com opcao de retry (sem perder o historico ja digitado).
+  - `front/src/app/(main)/assistente/__tests__/page.test.tsx` — gate de acesso (loading/deslogado/
+    logado), mesmo padrao de `src/app/admin/__tests__/page.test.tsx`.
+- **DoD:** `npm test` (front) verde incluindo os testes novos; `tsc`/lint/build exit 0; rota
   `/assistente` redireciona deslogado, renderiza logado (verificar no navegador antes de fechar — maior
   risco de UI da fatia, mesmo cuidado que C8 teve).
 - **Commit:** `feat(front): rota /assistente protegida + ChatUI (thread M)`

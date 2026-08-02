@@ -1,0 +1,30 @@
+import { z } from 'zod'
+
+export const ChatMessageSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string().min(1),
+})
+export type ChatMessage = z.infer<typeof ChatMessageSchema>
+
+export const ChatRequestSchema = z.object({
+  messages: z.array(ChatMessageSchema).min(1),
+  image: z.string().optional(),
+})
+export type ChatRequest = z.infer<typeof ChatRequestSchema>
+
+export const ChatTextResponseSchema = z.object({
+  type: z.literal('text'),
+  content: z.string(),
+})
+export type ChatTextResponse = z.infer<typeof ChatTextResponseSchema>
+
+export const ChatActionResponseSchema = z.object({
+  type: z.literal('action'),
+  action: z.literal('select_product'),
+  productId: z.string(),
+  quantity: z.number().int().positive(),
+})
+export type ChatActionResponse = z.infer<typeof ChatActionResponseSchema>
+
+export const ChatResponseSchema = z.union([ChatTextResponseSchema, ChatActionResponseSchema])
+export type ChatResponse = z.infer<typeof ChatResponseSchema>

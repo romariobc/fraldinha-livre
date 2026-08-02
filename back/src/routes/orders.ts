@@ -55,6 +55,11 @@ export const ordersGetHandler = async (c: Context<{ Bindings: Env; Variables: Ap
         orderIds.length > 0
           ? await db.select().from(orders).where(inArray(orders.id, orderIds)).all()
           : []
+    } else if (scope === 'admin') {
+      if (uid !== c.env.ADMIN_UID) {
+        return c.json({ error: 'forbidden' }, 403)
+      }
+      userOrders = await db.select().from(orders).all()
     } else {
       // Comportamento existente (comprador) — inalterado.
       userOrders = await db

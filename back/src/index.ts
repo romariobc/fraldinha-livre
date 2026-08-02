@@ -26,10 +26,11 @@ app.use(
 
 app.get('/health', (c) => c.json({ ok: true }))
 
-// Middleware para /products: GET sem scope=fornecedor eh publico; qualquer outro metodo
-// (POST) ou GET com scope=fornecedor exige auth.
+// Middleware para /products: GET sem scope=fornecedor nem scope=admin eh publico; qualquer outro metodo
+// (POST) ou GET com scope=fornecedor ou scope=admin exige auth.
 app.use('/products', async (c, next) => {
-  const isPublicGet = c.req.method === 'GET' && c.req.query('scope') !== 'fornecedor'
+  const scope = c.req.query('scope')
+  const isPublicGet = c.req.method === 'GET' && scope !== 'fornecedor' && scope !== 'admin'
   if (isPublicGet) {
     return next()
   }

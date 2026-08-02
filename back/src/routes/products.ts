@@ -35,6 +35,18 @@ export const productsGetHandler = async (c: Context<{ Bindings: Env; Variables: 
   const db = drizzle(c.env.DB)
   const scope = c.req.query('scope')
 
+  if (scope === 'admin') {
+    const uid = c.get('uid')
+    if (!uid) {
+      return c.json({ error: 'unauthorized' }, 401)
+    }
+    if (uid !== c.env.ADMIN_UID) {
+      return c.json({ error: 'forbidden' }, 403)
+    }
+    const rows = await db.select().from(products).all()
+    return c.json(rows.map(normalizeBadge))
+  }
+
   if (scope === 'fornecedor') {
     const uid = c.get('uid')
     if (!uid) {

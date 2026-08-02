@@ -120,43 +120,48 @@ function FilterBody({ filters, onChange, onClear }: CatalogFiltersProps) {
   )
 }
 
-export default function CatalogFilters({ filters, onChange, onClear }: CatalogFiltersProps) {
+// Sidebar fixa para telas lg+ (1024px+). Renderizar no máximo 1x por página —
+// já cuida da própria visibilidade via `hidden lg:block`, mas o componente
+// não sabe se está sendo renderizado em duplicidade em outro lugar da página.
+export function CatalogFiltersDesktopSidebar({ filters, onChange, onClear }: CatalogFiltersProps) {
   return (
-    <>
-      {/* Desktop sidebar (lg+) */}
-      <aside className="hidden lg:block w-[280px] flex-shrink-0">
-        <div className="bg-white rounded-card shadow-card p-6 sticky top-24">
-          <p className="font-display font-extrabold text-base text-brand-text mb-6">Filtros</p>
-          <FilterBody filters={filters} onChange={onChange} onClear={onClear} />
-        </div>
-      </aside>
-
-      {/* Mobile/Tablet trigger + Sheet */}
-      <div className="lg:hidden">
-        <Sheet>
-          <SheetTrigger
-            render={
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-primary text-primary-dark font-display font-bold text-sm hover:bg-primary-light transition-colors">
-                <SlidersHorizontal size={16} />
-                Filtrar
-                {hasActiveFilters(filters) && (
-                  <span className="w-5 h-5 rounded-full bg-primary text-white text-[10px] font-black flex items-center justify-center">
-                    !
-                  </span>
-                )}
-              </button>
-            }
-          />
-          <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl overflow-y-auto">
-            <SheetHeader className="mb-6">
-              <SheetTitle className="font-display font-extrabold text-brand-text text-left">
-                Filtros
-              </SheetTitle>
-            </SheetHeader>
-            <FilterBody filters={filters} onChange={onChange} onClear={onClear} />
-          </SheetContent>
-        </Sheet>
+    <aside className="hidden lg:block w-[280px] flex-shrink-0">
+      <div className="bg-white rounded-card shadow-card p-6 sticky top-24">
+        <p className="font-display font-extrabold text-base text-brand-text mb-6">Filtros</p>
+        <FilterBody filters={filters} onChange={onChange} onClear={onClear} />
       </div>
-    </>
+    </aside>
+  )
+}
+
+// Botão + Sheet (bottom drawer) para telas abaixo de lg. Renderizar no máximo
+// 1x por página — mesma ressalva do componente acima.
+export function CatalogFiltersMobileTrigger({ filters, onChange, onClear }: CatalogFiltersProps) {
+  return (
+    <div className="lg:hidden">
+      <Sheet>
+        <SheetTrigger
+          render={
+            <button className="flex items-center gap-2 px-4 py-2.5 rounded-full border-2 border-primary text-primary-dark font-display font-bold text-sm hover:bg-primary-light transition-colors">
+              <SlidersHorizontal size={16} />
+              Filtrar
+              {hasActiveFilters(filters) && (
+                <span className="w-5 h-5 rounded-full bg-primary text-white text-[10px] font-black flex items-center justify-center">
+                  !
+                </span>
+              )}
+            </button>
+          }
+        />
+        <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl overflow-y-auto">
+          <SheetHeader className="mb-6">
+            <SheetTitle className="font-display font-extrabold text-brand-text text-left">
+              Filtros
+            </SheetTitle>
+          </SheetHeader>
+          <FilterBody filters={filters} onChange={onChange} onClear={onClear} />
+        </SheetContent>
+      </Sheet>
+    </div>
   )
 }

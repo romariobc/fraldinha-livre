@@ -163,4 +163,23 @@ describe('CatalogoPage', () => {
       expect(productCards.length).toBeGreaterThan(0)
     })
   })
+
+  describe('Filtros — sem duplicação (regressão)', () => {
+    it('renderiza o botão "Filtrar" (gatilho mobile) uma única vez', () => {
+      render(<CatalogoPage />)
+
+      // Bug real: page.tsx renderizava <CatalogFilters/> duas vezes (uma pro
+      // gatilho mobile, outra pra sidebar desktop), e cada instância trazia
+      // seu próprio botão "Filtrar" — duplicava em telas < lg, mesmo com o
+      // componente já sendo responsivo via CSS. Fix: CatalogFiltersDesktopSidebar
+      // e CatalogFiltersMobileTrigger, cada um renderizado 1x.
+      expect(screen.getAllByRole('button', { name: /Filtrar/ })).toHaveLength(1)
+    })
+
+    it('renderiza o bloco "Filtros" (sidebar/sheet) uma única vez', () => {
+      render(<CatalogoPage />)
+
+      expect(screen.getAllByText('Filtros')).toHaveLength(1)
+    })
+  })
 })

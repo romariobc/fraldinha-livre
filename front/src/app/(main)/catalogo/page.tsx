@@ -10,7 +10,7 @@ import { useCart } from '@/contexts/cart-context'
 import { useProducts } from '@/contexts/products-context'
 import { isProfileComplete } from '@/lib/utils'
 import ProductCard from '@/components/catalogo/ProductCard'
-import CatalogFilters from '@/components/catalogo/CatalogFilters'
+import { CatalogFiltersDesktopSidebar, CatalogFiltersMobileTrigger } from '@/components/catalogo/CatalogFilters'
 import Pagination from '@/components/catalogo/Pagination'
 import OfferModal from '@/components/catalogo/OfferModal'
 
@@ -125,8 +125,8 @@ function CatalogoContent() {
           </div>
 
           {/* Mobile: filtrar button acima do grid */}
-          <div className="lg:hidden mb-4">
-            <CatalogFilters
+          <div className="mb-4">
+            <CatalogFiltersMobileTrigger
               filters={filters}
               onChange={updateFilter}
               onClear={clearFilters}
@@ -137,7 +137,7 @@ function CatalogoContent() {
           <div className="flex gap-8 items-start">
 
             {/* Sidebar desktop */}
-            <CatalogFilters
+            <CatalogFiltersDesktopSidebar
               filters={filters}
               onChange={updateFilter}
               onClear={clearFilters}

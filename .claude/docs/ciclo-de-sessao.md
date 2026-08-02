@@ -32,6 +32,14 @@ harness). Nao sao "lidos por tarefa" — sao o chao.
 
 ```
    ┌─────────────────────────── INICIO ───────────────────────────┐
+   │ 0. Checar staleness ANTES de confiar no proprio checkout:     │
+   │    `git fetch && git log --oneline HEAD..origin/main | wc -l` │
+   │    Se > 0 (e principalmente se for dezenas+ de commits), os   │
+   │    arquivos abaixo (passos 1-2) sao uma FOTO CONGELADA do     │
+   │    momento em que este worktree/branch nasceu — nao o estado  │
+   │    atual do projeto. Rebasear/atualizar (ou pelo menos avisar │
+   │    o usuario da defasagem) antes de tratar progresso.md/      │
+   │    feature_list.json como fonte de verdade.                   │
    │ 1. Ler context/estado/progresso.md   (onde a ultima parou)    │
    │ 2. Ler context/estado/feature_list.json (proxima feature todo)│
    │ 3. Ler a spec/plano da feature (se ja existir)                │
@@ -154,6 +162,15 @@ ideia/pedido
 
 ## 7. Divergencias e lacunas conhecidas
 
+- **RESOLVIDO (2026-08-02, D-040):** o ciclo nao mandava checar defasagem do worktree
+  contra `origin/main` antes de confiar em `progresso.md`/`feature_list.json` — uma
+  sessao (branch `Romir/fraldinha-livre-app-strategy-309c5a`, worktree criado la pelo
+  PR #9) seguiu o passo 1-2 corretamente, mas o worktree ja nascia ~120 commits atras
+  do `main` real, entao o "estado do projeto" que ela leu (D-001 a D-029, front "sem
+  deploy publico") estava obsoleto havia semanas — faltavam D-030 a D-039, a feature
+  010 (notificacoes), a 012 (painel admin) e todo o deploy real de producao. O trabalho
+  dela (spec da feature 018, chat-agent de compra) e tecnicamente solido e nao precisou
+  ser refeito — so precisava de um passo 0 que agora existe. Ver D-040 em `decisoes.md`.
 - ~~`chatsessions/` nao existe no repo.~~ **RESOLVIDO (2026-07-17):** `.claude/context/chatsessions/`
   materializado (README com formato/indice + 1a entrada). A D-006 agora e fiel. Registrar ali toda
   sessao significativa (decisao/spec/plano/marco).

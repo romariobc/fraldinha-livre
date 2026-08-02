@@ -1036,3 +1036,55 @@ aceitáveis para essa escala, mas qualquer novo `scope=` em rota autenticada
 do backend precisa checar explicitamente se o middleware que decide
 "público vs. autenticado" já cobre esse valor novo — o gap do
 `isPublicGet` nesta feature é exatamente esse tipo de erro por omissão.
+
+---
+
+## D-040 — Ciclo de sessão não checava defasagem do worktree contra `origin/main`; corrigido (2026-08-02) — VIGENTE
+
+Numa sessão paralela ("Estratégia app Fraldinha Livre", branch
+`Romir/fraldinha-livre-app-strategy-309c5a`, worktree
+`fraldinha-livre-app-strategy-309c5a`), o usuário pediu para eu analisar o
+handoff que aquela sessão produziu sobre a integração de um chat-agent de
+compra (feature 018, spec em `spec-app-mobile-chat-agent.md`). O handoff
+continha afirmações desatualizadas: "D-001 a D-029" como se fosse o log
+inteiro (hoje vai até D-039), "front sem deploy público ainda" (na verdade
+deployado desde D-037b), sem menção às features 010/012 já entregues.
+
+**Causa raiz, confirmada via `git log --oneline main..HEAD` /
+`git merge-base`:** o worktree daquela sessão nasceu no commit `f9186e0`
+(merge do PR #9, `Romir/folder-analysis-070a4b`) — **120 commits atrás** do
+`main` atual. A sessão seguiu corretamente os passos 1-2 do ciclo (leu
+`progresso.md` e `feature_list.json`), mas esses arquivos, dentro do
+worktree dela, são a foto congelada de quando o worktree nasceu — o ciclo
+documentado em `ciclo-de-sessao.md` nunca instruía checar isso antes de
+tratá-los como estado atual do projeto.
+
+**O trabalho em si (spec da feature 018) é tecnicamente sólido** — segue os
+padrões do projeto (porta+adapter, contract tests, reaproveita o checkout
+existente S5a/S5b em vez de reimplementar, YAGNI: chat stateless sem tabela
+nova, alternativas descartadas documentadas com motivo). Não precisou ser
+refeito, só re-sincronizado.
+
+**Fix:** `ciclo-de-sessao.md` §2 (bloco INICIO) e `CLAUDE.md` (checklist
+"Antes de qualquer tarefa") ganharam um passo 0 — `git fetch && git log
+--oneline HEAD..origin/main | wc -l` — antes de qualquer leitura de
+`progresso.md`/`feature_list.json`. Sessão do chat-agent avisada diretamente
+(mensagem inter-sessão) para rebasear/atualizar antes de prosseguir pro
+`writing-plans`.
+
+**Why:** o ciclo de sessão pressupunha implicitamente que todo worktree
+nasce "recente" — verdade na maior parte do projeto até agora, mas falsa
+assim que sessões de longa duração (estratégia/exploração) ficam abertas
+por semanas enquanto outras sessões continuam entregando features na
+`main`. Sem esse passo 0, qualquer sessão nessa situação acumula um
+handoff cada vez mais errado sem perceber, porque os próprios arquivos que
+deveriam alertar (`progresso.md`/`feature_list.json`) são as vítimas da
+mesma defasagem.
+
+**How to apply:** toda sessão, ao iniciar, roda o passo 0 antes de confiar
+em `progresso.md`/`feature_list.json`. Se a contagem for grande (dezenas+),
+tratar esses arquivos como desatualizados e ou (a) atualizar o
+worktree/branch antes de continuar, ou (b) pelo menos avisar o usuário da
+defasagem antes de agir com base neles. Vale especialmente para sessões que
+ficam abertas por muito tempo em modo exploração/estratégia sem commitar
+com frequência.

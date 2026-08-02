@@ -103,7 +103,6 @@ export interface ChatCompletionResult {
 export interface ChatCompletionMessage {
   role: 'system' | 'user' | 'assistant' | 'tool'
   content: string
-  toolName?: string // preenchido quando role === 'tool' (qual tool gerou este resultado)
 }
 
 export type RunChatCompletion = (
@@ -148,20 +147,20 @@ M1/M2/M3 sao independentes entre si (podem rodar em paralelo). M4 depende dos tr
 - **Commit:** `feat(contracts): schema Zod de ChatRequest/ChatResponse (thread M)`
 
 ### M2 — `back/`: adapter Workers AI (`RunChatCompletion`)  [dep: —]
-- **Passo 0 (fazer ANTES de escrever codigo):** a forma exata do parametro `tools` e do campo
-  `tool_calls[]` que o `@cf/meta/llama-4-scout-17b-16e-instruct` aceita/retorna via `env.AI.run()` deve
-  ser CONFERIDA contra a documentacao atual da Cloudflare antes de implementar — nao assumir. Use a
-  ferramenta de busca de documentacao da Cloudflare (MCP `search_cloudflare_documentation`, ou
-  `https://developers.cloudflare.com/workers-ai/function-calling/` e
-  `https://developers.cloudflare.com/workers-ai/models/llama-4-scout-17b-16e-instruct/`) e confirme:
-  (a) o formato de cada item de `tools` (esperado: `{ type: 'function', function: { name, description,
-  parameters } }`, padrao OpenAI — mas CONFIRME, o doc pode ter mudado); (b) o formato de cada item de
-  `tool_calls[]` na resposta (esperado: `{ name, arguments }` ou `{ function: { name, arguments } }` —
-  CONFIRME o nome exato do campo); (c) como uma foto entra em `messages` (mensagem com `content` como
-  array `[{type:'text',...},{type:'image_url',...}]`, padrao OpenAI-compatible, ou um campo `image`
-  separado do payload — CONFIRME). Se a doc atual divergir do que está assumido abaixo, ajuste a
-  implementação do adapter para bater com a doc real — a INTERFACE `RunChatCompletion` (que M4 consome)
-  não muda, só o corpo de `createWorkersAiChatCompletion`.
+- **Formato CONFIRMADO na documentacao da Cloudflare (2026-08-02, `workers-ai/function-calling/` e a
+  pagina do modelo) — nao e suposicao:** `tools` e um array **plano** (sem o wrapper `{type:'function',
+  function:{...}}}` do padrao OpenAI): cada item e `{ name, description, parameters }` (`parameters` e
+  JSON Schema). A resposta traz `response.tool_calls[]`, cada item `{ name, arguments }` (`arguments` ja
+  vem como objeto, nao string). Para devolver o resultado de uma tool pro modelo numa proxima chamada, a
+  mensagem tem `role: 'tool'` e `content` com o resultado (a doc usa `JSON.stringify(res)`); a mensagem
+  do assistant que precedeu isso tem `content: JSON.stringify(selected_tool)` (o tool call em si, nao um
+  texto livre) — **essa parte do loop e responsabilidade de M4**, M2 so precisa aceitar `role: 'tool'`
+  como um dos roles validos e repassar `content` como veio.
+  **Nao confirmado (fora do escopo de M2):** o formato exato de envio de foto/imagem pra este modelo
+  especifico nao ficou claro na documentacao disponivel — **M2 nao implementa envio de imagem**, so
+  texto + tools. Isso fica para quando a foto for de fato integrada (dentro de M4 ou um refinamento
+  futuro), com verificacao empirica (chamada real, já que o binding Workers AI acessa a conta real mesmo
+  em dev local) antes de fechar esse pedaço.
 - **Create:**
   - `back/src/lib/chat-completion.ts` — os tipos da secao "Interfaces canonicas" acima, mais:
     ```ts
@@ -169,25 +168,22 @@ M1/M2/M3 sao independentes entre si (podem rodar em paralelo). M4 depende dos tr
       return async (messages, tools) => {
         const response = await ai.run('@cf/meta/llama-4-scout-17b-16e-instruct', {
           messages: messages.map((m) => ({ role: m.role, content: m.content })),
-          tools: tools.map((t) => ({
-            type: 'function',
-            function: { name: t.name, description: t.description, parameters: t.parameters },
-          })),
+          tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
         })
         const toolCalls = (response.tool_calls ?? []).map((call) => ({
           name: call.name,
-          arguments: typeof call.arguments === 'string' ? JSON.parse(call.arguments) : call.arguments,
+          arguments: call.arguments as Record<string, unknown>,
         }))
         return { text: response.response ?? null, toolCalls }
       }
     }
     ```
-    Ajuste os nomes de campo (`response.tool_calls`, `call.name`, `call.arguments`) conforme confirmado
-    no Passo 0 — o que NÃO pode mudar é a assinatura `RunChatCompletion` (M4 depende dela).
   - `back/src/lib/chat-completion.test.ts` — teste de UNIDADE (sem chamar IA real): injete um `Ai` fake
-    (objeto com `run: vi.fn().mockResolvedValue({ response: 'oi', tool_calls: [...] })` — ajuste o mock
-    para o formato confirmado no Passo 0) e confirme que `createWorkersAiChatCompletion` traduz
-    corretamente pra `ChatCompletionResult` (`text`/`toolCalls` no formato canonico da interface).
+    (objeto com `run: vi.fn().mockResolvedValue({ response: 'oi', tool_calls: [{ name: 'search_products',
+    arguments: { query: 'fralda' } }] })`) e confirme que `createWorkersAiChatCompletion`: (a) chama
+    `ai.run` com o nome do modelo certo e `tools` no formato plano (sem wrapper); (b) traduz a resposta
+    pra `ChatCompletionResult` com `text`/`toolCalls` no formato canonico da interface; (c) com
+    `tool_calls` ausente/undefined na resposta fake, retorna `toolCalls: []` (nao quebra).
 - **Modify:** `back/wrangler.jsonc` — adicionar o binding:
   ```jsonc
   "ai": {
@@ -302,9 +298,9 @@ M1/M2/M3 sao independentes entre si (podem rodar em paralelo). M4 depende dos tr
           { role: 'system', content: SYSTEM_PROMPT },
           ...parsed.data.messages.map((m) => ({ role: m.role, content: m.content })),
         ]
-        if (parsed.data.image) {
-          messages.push({ role: 'user', content: `[foto anexada em base64]\n${parsed.data.image}` })
-        }
+        // Envio de foto ainda NAO implementado aqui (M2 nao confirmou o formato de imagem do
+        // modelo) — `parsed.data.image`, quando presente, e ignorado nesta fatia; resolver com
+        // verificacao empirica antes de ligar de fato (ver nota de M2).
 
         for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
           const result = await runChatCompletion(messages, TOOLS)
@@ -325,10 +321,10 @@ M1/M2/M3 sao independentes entre si (podem rodar em paralelo). M4 depende dos tr
             return c.json(response, 200)
           }
 
-          messages.push({ role: 'assistant', content: result.text ?? '' })
           for (const call of result.toolCalls) {
+            messages.push({ role: 'assistant', content: JSON.stringify(call) })
             const toolResult = await runDataTool(db, call.name, call.arguments)
-            messages.push({ role: 'tool', toolName: call.name, content: JSON.stringify(toolResult) })
+            messages.push({ role: 'tool', content: JSON.stringify(toolResult) })
           }
         }
 

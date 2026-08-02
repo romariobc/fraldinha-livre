@@ -35,16 +35,22 @@ o repo principal. Se não bater, PARAR e relatar antes de continuar.
   - `back/src/env.d.ts` — como a interface `Env` é declarada (dentro de `declare global { namespace
     Cloudflare { interface Env { ... } } }`, não uma interface solta). Adicionar o binding novo dentro
     dessa mesma estrutura, não criar uma segunda declaração.
-- **Formato real da Workers AI, já confirmado na documentação oficial da Cloudflare (não precisa
-  reconferir):**
-  - `tools` no input de `env.AI.run()` é um array **plano**: cada item é `{ name, description,
-    parameters }` (sem nenhum wrapper `{type:'function', function:{...}}}` estilo OpenAI).
-  - A resposta traz `response.tool_calls[]`, cada item já `{ name, arguments }` com `arguments` como
-    objeto (não string — não precisa `JSON.parse`).
+- **Formato real da Workers AI PARA ESTE MODELO ESPECÍFICO, confirmado direto no pacote
+  `@cloudflare/workers-types` instalado (`node_modules/@cloudflare/workers-types/index.ts`, tipos
+  `Ai_Cf_Meta_Llama_4_Scout_17B_16E_Instruct_Messages`/`_Output`) — fonte mais confiável que a doc
+  genérica de function-calling, que mostra outro modelo mais antigo:**
+  - `tools` no input de `env.AI.run()` aceita tanto o formato **plano** `{ name, description,
+    parameters }` quanto o aninhado `{type, function:{...}}}` (união) — **use o formato plano**, mais
+    simples.
+  - **No OUTPUT, porém, `response.tool_calls[]` vem SEMPRE aninhado:** cada item é `{ id?, type?,
+    function?: { name?, arguments? } }` — o nome e os argumentos ficam dentro de `call.function`, **NÃO**
+    em `call.name`/`call.arguments` direto. Há também um `id` por chamada, usado para correlacionar
+    quando o resultado da tool volta pro modelo (a mensagem de input aceita `tool_call_id?: string`).
   - O texto final vem em `response.response` (string).
-  - **Fora do escopo desta tarefa:** o formato exato de envio de foto/imagem para este modelo
-    específico não está claramente documentado. Esta tarefa **não implementa envio de imagem** — só
-    texto e tools. Não tente adivinhar ou inventar um formato de imagem aqui.
+  - **Formato de imagem, também confirmado no mesmo lugar (fora do escopo desta tarefa, mas documentado
+    pra depois):** `content` de uma mensagem pode ser um array de partes `{ type, text?, image_url?: {
+    url } }`, `url` sendo uma data URI (`data:image/jpeg;base64,...`). Esta tarefa **não implementa
+    envio de imagem** — só texto e tools; isso fica para M4 ou um refinamento futuro.
 
 ## Tarefas (nesta ordem)
 
@@ -58,6 +64,7 @@ export interface ChatCompletionTool {
 }
 
 export interface ChatCompletionToolCall {
+  id: string // correlaciona com ChatCompletionMessage.toolCallId na resposta da tool
   name: string
   arguments: Record<string, unknown>
 }
@@ -70,6 +77,7 @@ export interface ChatCompletionResult {
 export interface ChatCompletionMessage {
   role: 'system' | 'user' | 'assistant' | 'tool'
   content: string
+  toolCallId?: string // obrigatorio quando role === 'tool' (id do ChatCompletionToolCall correspondente)
 }
 
 export type RunChatCompletion = (
@@ -77,22 +85,37 @@ export type RunChatCompletion = (
   tools: ChatCompletionTool[],
 ) => Promise<ChatCompletionResult>
 
+interface WorkersAiChatCompletionResponse {
+  response?: string
+  tool_calls?: { id?: string; function?: { name?: string; arguments?: Record<string, unknown> } }[]
+}
+
 export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
   return async (messages, tools) => {
-    const response = await ai.run('@cf/meta/llama-4-scout-17b-16e-instruct', {
-      messages: messages.map((m) => ({ role: m.role, content: m.content })),
-      tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
-    })
+    const response = (await ai.run(
+      '@cf/meta/llama-4-scout-17b-16e-instruct',
+      {
+        messages: messages.map((m) => ({ role: m.role, content: m.content, tool_call_id: m.toolCallId })),
+        tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
+      } as AiModels['@cf/meta/llama-4-scout-17b-16e-instruct']['inputs'],
+    )) as unknown as WorkersAiChatCompletionResponse
 
-    const toolCalls = (response.tool_calls ?? []).map((call) => ({
-      name: call.name,
-      arguments: call.arguments as Record<string, unknown>,
-    }))
+    const toolCalls = (response.tool_calls ?? [])
+      .filter((call) => call.function?.name)
+      .map((call) => ({
+        id: call.id ?? '',
+        name: call.function!.name!,
+        arguments: (call.function!.arguments ?? {}) as Record<string, unknown>,
+      }))
 
     return { text: response.response ?? null, toolCalls }
   }
 }
 ```
+Os casts (`as AiModels[...]['inputs']`, `as unknown as WorkersAiChatCompletionResponse`) são
+necessários porque os overloads do tipo `AiModels[...]` do pacote instalado são mais estritos que este
+shape simplificado — isso é esperado, não é sinal de erro; não tente eliminá-los reescrevendo a chamada
+de outra forma.
 
 Comentários no arquivo: **não adicione nenhum** — o código já é autoexplicativo. O tipo `Ai` vem dos
 tipos gerados pelo `@cloudflare/workers-types`/`wrangler types` (já é uma devDependency do `back/`,
@@ -125,7 +148,7 @@ describe('createWorkersAiChatCompletion', () => {
     expect(run).toHaveBeenCalledWith(
       '@cf/meta/llama-4-scout-17b-16e-instruct',
       {
-        messages: [{ role: 'user', content: 'ola' }],
+        messages: [{ role: 'user', content: 'ola', tool_call_id: undefined }],
         tools: [
           {
             name: 'search_products',
@@ -137,17 +160,17 @@ describe('createWorkersAiChatCompletion', () => {
     )
   })
 
-  it('traduz response.response e response.tool_calls para o formato canonico', async () => {
+  it('traduz response.response e response.tool_calls (aninhado em function) para o formato canonico', async () => {
     const run = vi.fn().mockResolvedValue({
       response: 'achei um produto',
-      tool_calls: [{ name: 'search_products', arguments: { query: 'fralda M' } }],
+      tool_calls: [{ id: 'call_1', function: { name: 'search_products', arguments: { query: 'fralda M' } } }],
     })
     const runChatCompletion = createWorkersAiChatCompletion({ run } as unknown as Ai)
 
     const result = await runChatCompletion([{ role: 'user', content: 'fralda M' }], SAMPLE_TOOLS)
 
     expect(result.text).toBe('achei um produto')
-    expect(result.toolCalls).toEqual([{ name: 'search_products', arguments: { query: 'fralda M' } }])
+    expect(result.toolCalls).toEqual([{ id: 'call_1', name: 'search_products', arguments: { query: 'fralda M' } }])
   })
 
   it('com tool_calls ausente na resposta, retorna toolCalls vazio (nao quebra)', async () => {
@@ -166,6 +189,18 @@ describe('createWorkersAiChatCompletion', () => {
     const result = await runChatCompletion([{ role: 'user', content: 'oi' }], [])
 
     expect(result.text).toBeNull()
+  })
+
+  it('com item de tool_calls sem function.name (mal formado), ignora esse item', async () => {
+    const run = vi.fn().mockResolvedValue({
+      response: null,
+      tool_calls: [{ id: 'call_1', function: {} }, { id: 'call_2', function: { name: 'search_products', arguments: {} } }],
+    })
+    const runChatCompletion = createWorkersAiChatCompletion({ run } as unknown as Ai)
+
+    const result = await runChatCompletion([{ role: 'user', content: 'oi' }], [])
+
+    expect(result.toolCalls).toEqual([{ id: 'call_2', name: 'search_products', arguments: {} }])
   })
 })
 ```
@@ -203,7 +238,7 @@ Não crie uma segunda `interface Env` nem duplique a estrutura — edite a que j
 ## Testes e verificação (D-008)
 
 Dentro de `back/`, nesta ordem:
-1. `npm test` — todos os testes verdes, incluindo os 4 casos novos de `chat-completion.test.ts`
+1. `npm test` — todos os testes verdes, incluindo os 5 casos novos de `chat-completion.test.ts`
    (`orders.*`, `products.*`, `cors.*`, `notifications.*` continuam passando sem nenhuma mudança — esta
    tarefa não toca nesses arquivos).
 2. `npx tsc --noEmit` — sem erro de tipo (isso confirma que o tipo `Ai` foi resolvido corretamente após
@@ -219,7 +254,7 @@ verdade na 3ª tentativa, PARE e relate o obstáculo exato.
 
 - [ ] `back/src/lib/chat-completion.ts` criado, exatamente como especificado no passo 1 (sem comentários
       supérfluos).
-- [ ] `back/test/chat-completion.test.ts` com os 4 casos do passo 2, todos verdes.
+- [ ] `back/test/chat-completion.test.ts` com os 5 casos do passo 2, todos verdes.
 - [ ] `back/wrangler.jsonc` tem o binding `ai: { binding: "AI" }`.
 - [ ] `npx wrangler types` rodado; tipos gerados atualizados e commitados.
 - [ ] `back/src/env.d.ts` — `Env` (dentro de `Cloudflare.Env`) tem o campo `AI: Ai`.

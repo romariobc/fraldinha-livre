@@ -288,8 +288,8 @@ M1/M2/M3 sao independentes entre si (podem rodar em paralelo). M4 depende dos tr
     ```ts
     import { drizzle } from 'drizzle-orm/d1'
     import type { Context } from 'hono'
-    import { ChatRequestSchema } from '@fraldinha-livre/contracts'
-    import type { ChatResponse } from '@fraldinha-livre/contracts'
+    import { ChatRequestSchema } from '../../../packages/contracts/src/chat'
+    import type { ChatResponse } from '../../../packages/contracts/src/chat'
     import type { RunChatCompletion, ChatCompletionMessage, ChatCompletionTool } from '../lib/chat-completion'
     import { searchProducts, getProduct } from '../lib/chat-tools'
     import type { Env } from '../env'

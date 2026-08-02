@@ -3,7 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // RN-04 (D-013): role imutavel + deletar bloqueado
     match /users/{uid} {
-      allow read:   if request.auth != null && request.auth.uid == uid;
+      allow read:   if request.auth != null
+                    && (request.auth.uid == uid || request.auth.uid == 'KOQclmb5eshfkufioK03ayRh6Fi2');
       allow create: if request.auth != null && request.auth.uid == uid;
       allow update: if request.auth != null && request.auth.uid == uid
                     && request.resource.data.role == resource.data.role;

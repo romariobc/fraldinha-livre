@@ -137,7 +137,7 @@ M1/M2/M3 sao independentes entre si (podem rodar em paralelo). M4 depende dos tr
 ### M1 — `packages/contracts`: schema Zod de chat  [dep: —]
 - **Create:**
   - `packages/contracts/src/chat.ts` (schema acima, exato).
-  - `packages/contracts/src/chat.test.ts` — casos: `ChatRequestSchema` aceita `{messages:[{role:'user',content:'oi'}]}`
+  - `packages/contracts/src/__tests__/chat.test.ts` — casos: `ChatRequestSchema` aceita `{messages:[{role:'user',content:'oi'}]}`
     sem `image`; aceita com `image` string; rejeita `messages` vazio; rejeita `role` fora de
     `user`/`assistant`. `ChatResponseSchema` faz parse correto de um `{type:'text', content:'...'}` e de
     um `{type:'action', action:'select_product', productId:'p1', quantity:2}`; rejeita `quantity` <= 0;
@@ -240,8 +240,8 @@ M1/M2/M3 sao independentes entre si (podem rodar em paralelo). M4 depende dos tr
     ```ts
     import { drizzle } from 'drizzle-orm/d1'
     import type { Context } from 'hono'
-    import { ChatRequestSchema } from '@contracts/chat'
-    import type { ChatResponse } from '@contracts/chat'
+    import { ChatRequestSchema } from '@fraldinha-livre/contracts'
+    import type { ChatResponse } from '@fraldinha-livre/contracts'
     import type { RunChatCompletion, ChatCompletionMessage, ChatCompletionTool } from '../lib/chat-completion'
     import { searchProducts, getProduct } from '../lib/chat-tools'
     import type { Env } from '../env'

@@ -109,9 +109,9 @@
       "id": "012",
       "titulo": "Painel administrativo da plataforma",
       "fase": 2,
-      "status": "todo",
+      "status": "done",
       "criterio_aceite": "Admin consegue ver todos os usuarios, pedidos e ofertas; pode intervir em disputas",
-      "notas": "Escopo a definir; depende de 005 e 006"
+      "notas": "Escopo fechado via brainstorming (D-039): admin unico hardcoded (UID fixo), read-only, sem disputas (fora de escopo ate leilao ser reativado). H-012 executado, revisado (D-012) e deployado (2026-08-02). Pendente futuro se necessario: multiplos admins, acoes de gestao, intervencao em disputas"
     },
     {
       "id": "013",

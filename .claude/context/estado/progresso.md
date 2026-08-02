@@ -1,5 +1,40 @@
 # Progresso — fraldinha-livre
 
+## Marco (2026-08-02) — Feature 012: painel administrativo read-only (H-012)
+
+Sequencia completa spec-driven: brainstorming fechou o escopo que o backlog
+deixava "a definir" (admin unico hardcoded via UID fixo, sem sistema de
+papeis novo; "disputas" cortado — nao existe sistema disso hoje; "ofertas"
+= produtos do catalogo; somente leitura, sem acoes de gestao) → spec
+aprovada (`spec-painel-admin.md`) → plano `H-012` → execucao por subagente
+Haiku (TDD real, 9 commits) → revisao independente da sessao-mae (D-012).
+
+**Entrega:** `/admin` no front, gateado pelo UID fixo
+`KOQclmb5eshfkufioK03ayRh6Fi2`, com 3 abas — Usuarios (Firestore direto),
+Pedidos e Produtos (`GET /orders`/`GET /products` com `scope=admin` novo no
+backend, gated por `uid === ADMIN_UID`). Regra nova do Firestore liberando
+leitura da colecao `users` pro UID admin, **deployada em producao**
+(autorizada explicitamente pelo Romario).
+
+**Achado real durante a execucao:** o middleware de `/products` tratava
+`scope=admin` como rota publica (so excluia `scope=fornecedor`) — corrigido
+junto, senao teria vazado a lista completa de produtos sem exigir token.
+
+**Revisao D-012** (independente do relatorio do subagente): git show --stat
+dos 9 commits, leitura linha a linha dos handlers e da regra do Firestore,
+reexecucao propria de toda a verificacao — back 69/69, front 364/364, lint
+0 erros, tsc 0 erros nos dois lados, build de producao ok. Regra do
+Firestore validada por sintaxe antes do deploy e conferida ao vivo depois.
+
+Detalhes completos em D-039, `.claude/docs/design/plans/H-012-painel-admin.md`
+e `spec-painel-admin.md`.
+
+**Pendente:** deploy normal do codigo (front/back) via push na `main` —
+Git integration ja configurada desde D-037b, dispara build automatico.
+Sem pendencia de validacao humana no navegador registrada ainda.
+
+---
+
 ## Marco (2026-07-30) — Feature 010 (fatia loja): notificacao por email ao fornecedor (H-011)
 
 Sequencia completa spec-driven: brainstorming (canal email vs push, provedor,

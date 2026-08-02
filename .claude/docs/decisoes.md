@@ -979,3 +979,60 @@ commitada deve ter a restrição de referrer/API configurada no Google Cloud Con
 antes — não depois — de qualquer decisão sobre manter/mover/remover do repo. Alertas
 do GitHub Secret Scanning em chaves NEXT_PUBLIC_* pedem essa verificação, não
 pânico — mas exigem verificação de verdade (`gh api`), não assumir que é ruído.
+
+---
+
+## D-039 — Feature 012 (painel admin) entregue: read-only, admin único hardcoded (2026-08-02) — VIGENTE
+
+Brainstorming fechou o escopo do que o backlog deixava "a definir": admin é um
+UID fixo (`KOQclmb5eshfkufioK03ayRh6Fi2`, conta `romariobc@gmail.com`), sem
+sistema de papéis novo; "intervir em disputas" cortado (não existe sistema de
+disputas — só faria sentido no leilão reverso, que está desativado por flag);
+"ofertas" interpretado como produtos do catálogo; escopo somente leitura, sem
+nenhuma ação de gestão. Spec em `spec-painel-admin.md`, plano em
+`H-012-painel-admin.md`.
+
+**Arquitetura:** reaproveita mecanismos já existentes em vez de criar
+infraestrutura nova — Firestore lido direto pelo client SDK do front (aba
+Usuários) e as rotas `GET /orders`/`GET /products` já existentes ganham um
+`scope=admin`, gated por `uid === ADMIN_UID` (403 se não bater, 401 sem
+token). Sem credencial de service account, sem papel `admin` no sistema.
+
+**Execução:** subagente Haiku seguiu as 11 tarefas do H-012 com TDD real, um
+commit por tarefa. **Achado real durante a implementação:** o middleware de
+`/products` em `back/src/index.ts` tratava qualquer `scope` diferente de
+`'fornecedor'` como rota pública — `scope=admin` teria vazado a lista completa
+de produtos (ativos e inativos) sem exigir token nenhum, se não fosse
+corrigido junto (`isPublicGet` agora exclui `scope === 'admin'` também).
+
+**Revisão da sessão-mãe (D-012), independente do relatório:** `git show
+--stat` dos 9 commits, leitura linha a linha dos handlers
+(`orders.ts`/`products.ts`/`index.ts`) e da regra nova do `firestore.rules`,
+e reexecução própria de tudo — back 69/69, front 364/364, lint 0 erros (1
+warning pré-existente, não relacionado), tsc 0 erros nos dois lados, build de
+produção ok com `/admin` prerendered como página estática. Regra do Firestore
+validada de novo via `mcp__firebase__firebase_validate_security_rules` antes
+do deploy, e conferida contra o Firestore ao vivo depois
+(`firebase_get_security_rules`) — idêntica à commitada.
+
+**Deploy:** `firestore.rules` deployado em produção via
+`npx firebase deploy --only firestore:rules` (autorizado explicitamente pelo
+Romario antes de rodar, por ser mudança de infraestrutura compartilhada).
+Backend e frontend com o código novo ainda dependem do deploy normal
+(Git integration já configurada desde D-037b — push na `main` dispara build).
+
+**Why:** o mesmo padrão de "escopo indefinido no backlog" que gerou trabalho
+refeito em features anteriores foi resolvido brainstormando ANTES de
+escrever qualquer spec — cortar "disputas" e "múltiplos admins" do escopo
+evitou construir infraestrutura (papel novo, fluxo de convite, sistema de
+disputas) que não tinha necessidade real hoje.
+
+**How to apply:** qualquer feature do backlog com `"notas": "Escopo a
+definir"` precisa de brainstorming completo antes da spec — não vale
+inferir escopo a partir só do `criterio_aceite`, que pode conter linguagem
+aspiracional (como "disputas") sem sistema nenhum por trás. Regras de
+segurança do Firestore que dependem de UID literal (admin único) são
+aceitáveis para essa escala, mas qualquer novo `scope=` em rota autenticada
+do backend precisa checar explicitamente se o middleware que decide
+"público vs. autenticado" já cobre esse valor novo — o gap do
+`isPublicGet` nesta feature é exatamente esse tipo de erro por omissão.

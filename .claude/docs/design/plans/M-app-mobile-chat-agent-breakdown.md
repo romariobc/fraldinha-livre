@@ -223,35 +223,63 @@ M1/M2/M3 sao independentes entre si (podem rodar em paralelo). M4 depende dos tr
 - **Commit:** `feat(back): adapter Workers AI para chat-completion com tool-use (thread M)`
 
 ### M3 — `back/`: tools de dados (`search_products`, `get_product`)  [dep: —]
+- **Regra de negocio (RN-007-04, mesma do `GET /products` publico):** as tools NUNCA retornam produto
+  despublicado (`active: false`) — o chat e uma superficie de comprador, mesma visibilidade do catalogo
+  publico. **Tambem nunca expoem `supplierEmail`/`supplierId`** — o resultado vira contexto de um prompt
+  de LLM (M4), vazar e-mail/id de fornecedor pra dentro do historico de conversa nao tem necessidade nem
+  e seguro. So as colunas que o agente precisa: `id`, `name`, `brand`, `size`, `priceCents`, `categoria`,
+  `descricao`, `quantity`.
 - **Create:**
   - `back/src/lib/chat-tools.ts`:
     ```ts
-    import { drizzle } from 'drizzle-orm/d1'
-    import { eq, or, like } from 'drizzle-orm'
+    import { and, eq, like, or } from 'drizzle-orm'
+    import type { drizzle } from 'drizzle-orm/d1'
     import { products } from '../schema/products'
-    import type { Env } from '../env'
+
+    const SEARCH_COLUMNS = {
+      id: products.id,
+      name: products.name,
+      brand: products.brand,
+      size: products.size,
+      priceCents: products.priceCents,
+      categoria: products.categoria,
+      descricao: products.descricao,
+      quantity: products.quantity,
+    }
 
     export async function searchProducts(db: ReturnType<typeof drizzle>, query: string) {
       const term = `%${query}%`
       return db
-        .select()
+        .select(SEARCH_COLUMNS)
         .from(products)
-        .where(or(like(products.name, term), like(products.brand, term), like(products.categoria, term)))
+        .where(
+          and(
+            eq(products.active, true),
+            or(like(products.name, term), like(products.brand, term), like(products.categoria, term)),
+          ),
+        )
         .all()
     }
 
     export async function getProduct(db: ReturnType<typeof drizzle>, productId: string) {
-      const rows = await db.select().from(products).where(eq(products.id, productId)).all()
+      const rows = await db
+        .select(SEARCH_COLUMNS)
+        .from(products)
+        .where(and(eq(products.id, productId), eq(products.active, true)))
+        .all()
       return rows[0] ?? null
     }
     ```
   - `back/test/chat-tools.test.ts` — mesmo padrao de `products.get.test.ts` (aplica migrations reais via
-    `applyD1Migrations`/`env.TEST_MIGRATIONS`, ja configurado). Casos: `searchProducts` com termo que
-    bate no nome de um produto real retorna >=1 resultado contendo esse produto; termo que nao bate em
-    nada retorna array vazio; `getProduct` com id real retorna o produto (`priceCents`/`supplierId`
-    presentes); `getProduct` com id inexistente retorna `null`.
-- **DoD:** `npm test` (back) verde incluindo `chat-tools.test.ts`; `tsc`/lint exit 0; nenhum arquivo de
-  `orders.ts`/`products.ts` (rotas) tocado — M3 so cria o arquivo novo de tools.
+    `applyD1Migrations`/`env.TEST_MIGRATIONS`, ja configurado, contra os 24 produtos reais do seed).
+    Casos: `searchProducts` com termo que bate no nome/marca de um produto real retorna >=1 resultado;
+    termo que nao bate em nada retorna array vazio; `searchProducts`/`getProduct` NUNCA retornam produto
+    despublicado (fixture extra `active: false`); resultado NUNCA inclui `supplierEmail`/`supplierId`;
+    `getProduct` com id real retorna o produto (`priceCents` presente); `getProduct` com id inexistente
+    retorna `null`.
+- **DoD:** `npm test` (back) verde incluindo `chat-tools.test.ts`; `tsc` exit 0 (`lint` nao existe em
+  `back/`, achado pre-existente ja confirmado em M1/M2); nenhum arquivo de `orders.ts`/`products.ts`
+  (rotas) tocado — M3 so cria o arquivo novo de tools.
 - **Commit:** `feat(back): tools search_products/get_product para o chat-agent (thread M)`
 
 ### M4 — `back/`: rota `POST /chat/message` (tool-loop)  [dep: M1, M2, M3]

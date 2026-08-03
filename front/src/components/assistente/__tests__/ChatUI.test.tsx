@@ -3,17 +3,73 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import ChatUI from '../ChatUI'
+import { PRODUCTS } from '@/lib/products'
 
 vi.mock('@/lib/api-client', () => ({ apiFetch: vi.fn() }))
 import { apiFetch } from '@/lib/api-client'
+
+let mockPush = vi.fn()
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
+
+vi.mock('@/contexts/auth-context', () => ({ useAuth: vi.fn() }))
+import { useAuth } from '@/contexts/auth-context'
+
+vi.mock('@/contexts/cart-context', () => ({ useCart: vi.fn() }))
+import { useCart } from '@/contexts/cart-context'
+
+vi.mock('@/contexts/products-context', () => ({ useProducts: vi.fn() }))
+import { useProducts } from '@/contexts/products-context'
 
 function jsonResponse(body: unknown, status = 200) {
   return { ok: status < 400, status, json: async () => body } as Response
 }
 
+const COMPLETE_PROFILE = {
+  role: 'comprador' as const,
+  name: 'Test User',
+  email: 'test@example.com',
+  cpf: '11144477735',
+  phone: '11999999999',
+  address: {
+    logradouro: 'Rua A',
+    numero: '123',
+    bairro: 'Bairro',
+    cidade: 'São Paulo',
+    estado: 'SP',
+    cep: '01234-567',
+  },
+}
+
 describe('ChatUI', () => {
+  let mockAddItem: ReturnType<typeof vi.fn>
+
   beforeEach(() => {
     vi.mocked(apiFetch).mockClear()
+    mockPush = vi.fn()
+    mockAddItem = vi.fn()
+
+    vi.mocked(useAuth).mockReturnValue({
+      user: { uid: 'user-1', email: 'test@example.com', displayName: 'Test User' },
+      profile: COMPLETE_PROFILE,
+      role: 'comprador',
+      loading: false,
+      signInGoogle: vi.fn(),
+      signInEmail: vi.fn(),
+      signUpEmail: vi.fn(),
+      signOutUser: vi.fn(),
+      updateProfile: vi.fn(),
+    })
+    vi.mocked(useCart).mockReturnValue({
+      items: [],
+      itemCount: 0,
+      subtotal: 0,
+      bySupplier: new Map(),
+      addItem: mockAddItem,
+      removeItem: vi.fn(),
+      updateQty: vi.fn(),
+      clear: vi.fn(),
+    })
+    vi.mocked(useProducts).mockReturnValue({ products: PRODUCTS, loading: false, error: null })
   })
 
   it('envia mensagem de texto e mostra a resposta do assistente', async () => {
@@ -34,7 +90,7 @@ describe('ChatUI', () => {
     expect(body.messages).toEqual([{ role: 'user', content: 'quero uma fralda' }])
   })
 
-  it('mostra a acao select_product como mensagem informativa (M6 ainda nao intercepta)', async () => {
+  it('acao select_product com produto real e perfil completo: adiciona ao carrinho e vai pro checkout', async () => {
     vi.mocked(apiFetch).mockResolvedValue(
       jsonResponse({ type: 'action', action: 'select_product', productId: 'p1', quantity: 2 }),
     )
@@ -44,7 +100,60 @@ describe('ChatUI', () => {
     await user.type(screen.getByPlaceholderText(/preciso de fralda/i), 'quero 2 do p1')
     await user.click(screen.getByLabelText('Enviar'))
 
-    await waitFor(() => expect(screen.getByText(/produto selecionado: p1/i)).toBeInTheDocument())
+    await waitFor(() =>
+      expect(mockAddItem).toHaveBeenCalledWith({
+        productId: 'p1',
+        productName: 'Supersec Pants P',
+        supplierId: 'sup-001',
+        supplierName: 'Distribuidora Sul',
+        unitPrice: 1800,
+        quantity: 2,
+        unit: 'un',
+      }),
+    )
+    expect(mockPush).toHaveBeenCalledWith('/checkout')
+  })
+
+  it('acao select_product com perfil incompleto: redireciona pro perfil, nao adiciona ao carrinho', async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { uid: 'user-1', email: 'test@example.com', displayName: 'Test User' },
+      profile: { ...COMPLETE_PROFILE, cpf: '' },
+      role: 'comprador',
+      loading: false,
+      signInGoogle: vi.fn(),
+      signInEmail: vi.fn(),
+      signUpEmail: vi.fn(),
+      signOutUser: vi.fn(),
+      updateProfile: vi.fn(),
+    })
+    vi.mocked(apiFetch).mockResolvedValue(
+      jsonResponse({ type: 'action', action: 'select_product', productId: 'p1', quantity: 1 }),
+    )
+    const user = userEvent.setup()
+    render(<ChatUI />)
+
+    await user.type(screen.getByPlaceholderText(/preciso de fralda/i), 'quero o p1')
+    await user.click(screen.getByLabelText('Enviar'))
+
+    await waitFor(() =>
+      expect(mockPush).toHaveBeenCalledWith('/minha-conta?tab=perfil&returnTo=/assistente'),
+    )
+    expect(mockAddItem).not.toHaveBeenCalled()
+  })
+
+  it('acao select_product com productId inexistente no catalogo local: mensagem informativa, sem carrinho nem redirect', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(
+      jsonResponse({ type: 'action', action: 'select_product', productId: 'produto-fantasma', quantity: 1 }),
+    )
+    const user = userEvent.setup()
+    render(<ChatUI />)
+
+    await user.type(screen.getByPlaceholderText(/preciso de fralda/i), 'quero o fantasma')
+    await user.click(screen.getByLabelText('Enviar'))
+
+    await waitFor(() => expect(screen.getByText(/não encontrei esse produto/i)).toBeInTheDocument())
+    expect(mockAddItem).not.toHaveBeenCalled()
+    expect(mockPush).not.toHaveBeenCalled()
   })
 
   it('em caso de erro de rede, mostra mensagem de erro com retry sem perder o historico', async () => {

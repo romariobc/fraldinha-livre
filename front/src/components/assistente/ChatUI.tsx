@@ -1,8 +1,15 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Send, Paperclip, RotateCcw } from 'lucide-react'
 import { apiFetch } from '@/lib/api-client'
+import { useCart } from '@/contexts/cart-context'
+import { useAuth } from '@/contexts/auth-context'
+import { useProducts } from '@/contexts/products-context'
+import { STORE_SUPPLIERS } from '@/lib/suppliers'
+import { isProfileComplete } from '@/lib/utils'
+import type { CartItem } from '@/lib/domain/cart'
 import type { ChatMessage, ChatResponse } from '@contracts'
 
 export default function ChatUI() {
@@ -12,6 +19,10 @@ export default function ChatUI() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
+  const cart = useCart()
+  const { profile } = useAuth()
+  const { products, loading: productsLoading } = useProducts()
 
   async function sendToBackend(messagesForRequest: ChatMessage[], image: string | null) {
     setSending(true)
@@ -28,15 +39,43 @@ export default function ChatUI() {
       const data = (await res.json()) as ChatResponse
       if (data.type === 'text') {
         setMessages((prev) => [...prev, { role: 'assistant', content: data.content }])
-      } else {
+        return
+      }
+
+      if (productsLoading) {
         setMessages((prev) => [
           ...prev,
-          {
-            role: 'assistant',
-            content: `Produto selecionado: ${data.productId} (quantidade ${data.quantity}). O redirecionamento para o checkout ainda não está ligado nesta fatia.`,
-          },
+          { role: 'assistant', content: 'Só um instante, ainda estou carregando o catálogo. Tenta de novo.' },
         ])
+        return
       }
+
+      const product = products.find((p) => p.id === data.productId)
+      if (!product) {
+        setMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: 'Não encontrei esse produto no catálogo agora. Pode tentar de novo?' },
+        ])
+        return
+      }
+
+      if (!isProfileComplete(profile)) {
+        router.push('/minha-conta?tab=perfil&returnTo=/assistente')
+        return
+      }
+
+      const supplier = STORE_SUPPLIERS.find((s) => s.id === product.supplierId)
+      const cartItem: CartItem = {
+        productId: product.id,
+        productName: `${product.name} ${product.size}`,
+        supplierId: product.supplierId,
+        supplierName: supplier?.name || 'Fornecedor desconhecido',
+        unitPrice: product.priceInCents,
+        quantity: data.quantity,
+        unit: 'un',
+      }
+      cart.addItem(cartItem)
+      router.push('/checkout')
     } catch {
       setError('Não foi possível falar com o assistente. Tente de novo.')
     } finally {

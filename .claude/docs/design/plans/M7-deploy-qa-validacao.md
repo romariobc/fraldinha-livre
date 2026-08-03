@@ -23,6 +23,29 @@ migration→deploy era crítica (deployar antes quebrava produção inteira com 
 importa**. O risco operacional desta fatia é baixo; o risco real é de *qualidade do modelo*, não de
 infra.
 
+## Progresso (2026-08-03)
+
+- ✅ Pré-requisito humano confirmado (Workers AI habilitado, catálogo de modelos visível).
+- ✅ **Passo 1 — Backend deployado.** Version ID `e38abc11`. Antes: rebase em `origin/main` (2 commits
+  de trás, só docs, sem tocar código/migrations) + revalidação pós-rebase (back 94/94, contracts 29/29).
+- ✅ **Passo 2 — Frontend deployado.** Version ID `65cca11d` (container). Encontrado e resolvido no
+  caminho: este worktree não tinha `front/.env.local`; os 3 arquivos achados em outros worktrees
+  divergiam da produção real (authDomain antigo, pré-D-035). A resposta certa não era nenhum desses —
+  eram `front/.env.production`/`.env.production.local`, **commitados de propósito** (whitelist no
+  `.gitignore`, `!front/.env.production*`), que este worktree já tinha, idênticos ao `main`. Confirmado
+  independentemente por 3 sessões antes de publicar. Ver D-041 (a registrar em `decisoes.md`) para o
+  relato completo — quase se repetiu o incidente do D-034/D-035 (login mobile) por engano de
+  investigação, não por bug de código.
+- ✅ **Passo 3 — Smoke test.** Backend: `/health` 200, `GET /products` 200×24, `GET /orders` sem token
+  401, `POST /chat/message` sem token 401 (5×) e com token inválido 401. Frontend: `/`, `/catalogo`,
+  `/login`, `/produto/[slug]`, `/assistente` todos 200. **Achado operacional (não bug):** o primeiro
+  request a uma rota nova after deploy (tanto `/chat/message` quanto `/assistente`) voltou 404/erro por
+  lag de propagação de edge — resolveu em segundos. Não confiar em smoke test único imediatamente após
+  publicar.
+- ⏳ **Passo 4 — QA manual (15 casos) — PENDENTE.** Requer navegador/celular real, é a próxima etapa.
+- ⏳ **Passo 5 — Registro final** (feature_list.json → done, decisoes.md, integration-guide.md) —
+  pendente até o QA fechar.
+
 ## Pré-requisito humano (BLOQUEANTE)
 
 **Confirmar que Workers AI está habilitado/disponível na conta Cloudflare do projeto.**

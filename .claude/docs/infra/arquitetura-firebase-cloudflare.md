@@ -112,6 +112,41 @@ entre as duas.
   precisa — o dia que precisar (ex.: chave de pagamento real), documentar aqui o nome da secret e
   onde ela é usada, nunca o valor.
 
+### 4.1 Ferramentas de auditoria/revisão de segurança disponíveis
+
+Levantamento feito em 2026-08-03 (sessão backend), antes de uma rodada de testes de segurança
+planejada após o trabalho da feature 018 (app mobile) fechar. Não é revisão em si — é inventário do
+que já dá pra usar quando a rodada começar.
+
+**GitHub (`gh api repos/romariobc/fraldinha-livre`):**
+- **Secret scanning:** `enabled`. **Push protection:** `enabled` — já provou valor no incidente da
+  `NEXT_PUBLIC_FIREBASE_API_KEY` (ver `decisoes.md`, resolvido 2026-08-01).
+- **Dependabot alerts:** `disabled` — gap real, candidato a ligar antes da rodada.
+- **Code scanning (CodeQL):** sem análise configurada — nenhum SAST rodando hoje no CI.
+
+**Dependências (`npm audit`, inventário pontual em 2026-08-03):**
+- `back/`: 8 vulnerabilidades (4 moderate, 4 high, 0 critical) — via `@cloudflare/vitest-pool-workers`/
+  `wrangler`/`drizzle-kit`/`esbuild`, todas devDependency de tooling (não código de produção).
+- `front/`: 13 (1 low, 3 moderate, 9 high, 0 critical) — mesma natureza aparente, não investigado se
+  toca o bundle de produção.
+
+**Skills do harness/projeto:**
+- `security-review` — revisão de segurança das mudanças pendentes na branch atual.
+- `review` / `/code-review` — revisão do diff local; `/code-review ultra` é multi-agente na nuvem
+  (paga, só o Romario pode disparar).
+- `cloudflare:cloudflare-one` / `cloudflare-one-migrations` — Zero Trust/WAF, se decidirmos endurecer
+  rede.
+- `cloudflare:turnstile-spin` — setup de CAPTCHA/anti-bot, se algum formulário precisar.
+
+**MCP autenticados com acesso real (não só documentação):**
+- `cloudflare-api` (search/docs/execute) — API REST completa da Cloudflare: WAF, rulesets, rate
+  limiting, DDoS, firewall — audita e ajusta regra de borda de verdade.
+- `cloudflare-bindings` — Workers, D1 (consulta read-only), KV, R2.
+- Firebase MCP — `firebase_get_security_rules`/`firebase_validate_security_rules` (Firestore/Storage/
+  RTDB) — audita as regras de acesso a dado direto, sem depender de leitura manual do
+  `firestore.rules`.
+- Browser (Claude_Browser) — testa fluxos reais (auth, CORS, XSS) contra o app rodando.
+
 ## 5. Rede
 
 - **Tudo HTTPS, sem VPC/rede privada.** Não há peering entre Cloudflare e Google — as duas nuvens só

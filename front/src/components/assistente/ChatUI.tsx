@@ -19,6 +19,7 @@ export default function ChatUI() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const lastSentImageRef = useRef<string | null>(null)
   const router = useRouter()
   const cart = useCart()
   const { profile } = useAuth()
@@ -84,18 +85,21 @@ export default function ChatUI() {
   }
 
   function handleSend() {
+    if (sending) return
     if (!input.trim() && !pendingImage) return
     const userMessage: ChatMessage = { role: 'user', content: input.trim() || '(foto anexada)' }
     const nextMessages = [...messages, userMessage]
     setMessages(nextMessages)
     setInput('')
     const image = pendingImage
+    lastSentImageRef.current = image
     setPendingImage(null)
     void sendToBackend(nextMessages, image)
   }
 
   function handleRetry() {
-    void sendToBackend(messages, null)
+    if (sending) return
+    void sendToBackend(messages, lastSentImageRef.current)
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {

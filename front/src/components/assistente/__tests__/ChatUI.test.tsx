@@ -1,5 +1,5 @@
 /// <reference types="vitest/globals" />
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import ChatUI from '../ChatUI'
@@ -182,5 +182,52 @@ describe('ChatUI', () => {
 
     await waitFor(() => expect(screen.getByText('ola de novo')).toBeInTheDocument())
     expect(vi.mocked(apiFetch).mock.calls).toHaveLength(2)
+  })
+
+  it('retry apos falha com foto anexada reenvia a MESMA foto (nao envia sem imagem silenciosamente)', async () => {
+    vi.mocked(apiFetch).mockRejectedValueOnce(new Error('network fail'))
+    const user = userEvent.setup()
+    const { container } = render(<ChatUI />)
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File(['bytes-da-foto'], 'fralda.jpg', { type: 'image/jpeg' })
+    fireEvent.change(fileInput, { target: { files: [file] } })
+    await waitFor(() => expect(screen.getByAltText('Foto anexada')).toBeInTheDocument())
+
+    await user.click(screen.getByLabelText('Enviar'))
+    await waitFor(() =>
+      expect(screen.getByText(/não foi possível falar com o assistente/i)).toBeInTheDocument(),
+    )
+
+    const firstBody = JSON.parse(vi.mocked(apiFetch).mock.calls[0][1]!.body as string)
+    expect(firstBody.image).toMatch(/^data:image\/jpeg;base64,/)
+
+    vi.mocked(apiFetch).mockResolvedValue(jsonResponse({ type: 'text', content: 'recebi a foto' }))
+    await user.click(screen.getByText(/tentar de novo/i))
+
+    await waitFor(() => expect(screen.getByText('recebi a foto')).toBeInTheDocument())
+    const retryBody = JSON.parse(vi.mocked(apiFetch).mock.calls[1][1]!.body as string)
+    expect(retryBody.image).toBe(firstBody.image)
+  })
+
+  it('Enter com envio em andamento nao dispara request concorrente', async () => {
+    let resolveFirst: (value: Response) => void = () => {}
+    vi.mocked(apiFetch).mockReturnValueOnce(
+      new Promise<Response>((resolve) => {
+        resolveFirst = resolve
+      }),
+    )
+    const user = userEvent.setup()
+    render(<ChatUI />)
+
+    const input = screen.getByPlaceholderText(/preciso de fralda/i)
+    await user.type(input, 'primeira{Enter}')
+    await waitFor(() => expect(vi.mocked(apiFetch)).toHaveBeenCalledTimes(1))
+
+    await user.type(input, 'segunda{Enter}')
+    expect(vi.mocked(apiFetch)).toHaveBeenCalledTimes(1)
+
+    resolveFirst(jsonResponse({ type: 'text', content: 'resposta da primeira' }))
+    await waitFor(() => expect(screen.getByText('resposta da primeira')).toBeInTheDocument())
   })
 })

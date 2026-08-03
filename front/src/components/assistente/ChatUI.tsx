@@ -10,11 +10,12 @@ import { useProducts } from '@/contexts/products-context'
 import { STORE_SUPPLIERS } from '@/lib/suppliers'
 import { isProfileComplete } from '@/lib/utils'
 import type { CartItem } from '@/lib/domain/cart'
+import { SUPPORTED_CHAT_IMAGE_TYPES } from '@contracts'
 import type { ChatMessage, ChatResponse } from '@contracts'
 
-// Mesma lista que ChatImageDataUrlSchema aceita no contrato. Estreitar o
+// Derivado da fonte unica do contrato — nao reescrever a lista aqui. Estreitar o
 // `accept` do input tambem faz o Safari converter HEIC do iPhone em JPEG.
-const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+const SUPPORTED_IMAGE_TYPES = SUPPORTED_CHAT_IMAGE_TYPES.map((type) => `image/${type}`)
 
 export default function ChatUI() {
   const [messages, setMessages] = useState<ChatMessage[]>([])

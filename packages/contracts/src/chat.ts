@@ -6,11 +6,19 @@ export const ChatMessageSchema = z.object({
 })
 export type ChatMessage = z.infer<typeof ChatMessageSchema>
 
+// Fonte unica dos formatos de foto aceitos. O front deriva daqui o `accept` do
+// input e a checagem de `file.type`; o schema deriva o regex do data URI. Manter
+// as duas pontas derivadas da MESMA lista torna a divergencia impossivel por
+// construcao — se divergissem, a foto voltaria a falhar em silencio.
+export const SUPPORTED_CHAT_IMAGE_TYPES = ['jpeg', 'jpg', 'png', 'webp'] as const
+
 // So data URI de imagem: o modelo nao aceita URL http, e aceitar uma aqui
 // significaria descartar a foto em silencio no meio do caminho.
 export const ChatImageDataUrlSchema = z
   .string()
-  .regex(/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/)
+  .regex(
+    new RegExp(`^data:image/(${SUPPORTED_CHAT_IMAGE_TYPES.join('|')});base64,[A-Za-z0-9+/=]+$`),
+  )
 
 export const ChatRequestSchema = z.object({
   messages: z.array(ChatMessageSchema).min(1),

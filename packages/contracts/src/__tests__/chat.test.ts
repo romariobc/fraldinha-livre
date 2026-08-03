@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ChatRequestSchema, ChatResponseSchema } from '../index'
+import { ChatRequestSchema, ChatResponseSchema, SUPPORTED_CHAT_IMAGE_TYPES } from '../index'
 
 describe('ChatRequestSchema', () => {
   it('aceita uma mensagem de usuario sem foto', () => {
@@ -35,6 +35,18 @@ describe('ChatRequestSchema', () => {
       image: 'https://exemplo.com/foto.jpg',
     })
     expect(result.success).toBe(false)
+  })
+
+  // Sensor da derivacao: se alguem acrescentar um tipo na lista e o regex nao
+  // acompanhar (ou vice-versa), este teste quebra antes de virar falha silenciosa.
+  it('todo tipo de SUPPORTED_CHAT_IMAGE_TYPES e aceito pelo schema', () => {
+    for (const type of SUPPORTED_CHAT_IMAGE_TYPES) {
+      const result = ChatRequestSchema.safeParse({
+        messages: [{ role: 'user', content: 'essa aqui' }],
+        image: `data:image/${type};base64,AAAA`,
+      })
+      expect(result.success, `tipo ${type} deveria ser aceito`).toBe(true)
+    }
   })
 
   it('rejeita data URI que nao e imagem', () => {

@@ -458,18 +458,32 @@ M1/M2/M3 sao independentes entre si (podem rodar em paralelo). M4 depende dos tr
 - **Commit:** `feat(front): rota /assistente protegida + ChatUI (thread M)`
 
 ### M6 — `front/`: intercepta acao `select_product` → carrinho + checkout  [dep: M4, M5]
+- **Fonte do produto: `useProducts()` (`ProductsContext`), NAO um fetch novo.** Ja carrega a lista real
+  via `ProductRepository`/`GET /products` — mesma fonte que o catalogo publico usa. `search_products`/
+  `get_product` (tools do backend, M3) foram desenhadas pra uso do MODELO, nao pro front consumir de
+  novo — o front ja tem a lista.
+- **Trava RN-06 (perfil completo) e OBRIGATORIA, nao opcional.** E a mesma regra que "Comprar agora" ja
+  aplica (`front/src/app/(main)/produto/[slug]/page.tsx`, `handleBuyNow`): se `isProfileComplete(profile)`
+  for falso, `router.push('/minha-conta?tab=perfil&returnTo=/assistente')` em vez de ir direto pro
+  checkout. Pular essa trava abriria um atalho que o resto do site nao permite.
 - **Modify:** `front/src/components/assistente/ChatUI.tsx` — ao receber uma resposta com
-  `response.type === 'action' && response.action === 'select_product'`: buscar o produto real (via
-  `ProductRepository`/`get_product` — reusar o repositorio ja existente de C6/C7, NAO duplicar
-  fetch), chamar `addItem` do cart-context (mesma funcao que "Comprar agora"/"Adicionar a sacola" ja
-  usam — copiar a chamada exata, nao inventar uma nova assinatura) com a quantidade vinda da acao, e
-  `router.push('/checkout')`.
-- **Modify:** `front/src/components/assistente/ChatUI.test.tsx` — caso novo: mocka `apiFetch` retornando
-  `{type:'action', action:'select_product', productId:'p1', quantity:2}`, confirma que `addItem` foi
-  chamado com o produto/quantidade certos e que `router.push` foi chamado com `/checkout`.
+  `response.type === 'action' && response.action === 'select_product'`: busca o produto em
+  `useProducts().products` pelo id; se nao achar (id inventado pelo modelo) ou a lista ainda estiver
+  `loading`, so mostra mensagem informativa (sem carrinho, sem redirect); se achar e o perfil estiver
+  completo, monta o `CartItem` (mesmos campos/formato de `handleBuyNow`: `productId`, `productName`
+  = `` `${product.name} ${product.size}` ``, `supplierId`, `supplierName` via `STORE_SUPPLIERS`,
+  `unitPrice` = `product.priceInCents`, `quantity` da acao, `unit: 'un'`), chama `cart.addItem`
+  (mesma funcao que "Comprar agora" ja usa) e `router.push('/checkout')`.
+- **Modify:** `front/src/components/assistente/__tests__/ChatUI.test.tsx` — precisa mockar
+  `next/navigation`, `useAuth`, `useCart`, `useProducts` (o componente passa a usar todos). O caso de M5
+  "mostra a acao como mensagem informativa" e SUBSTITUIDO (comportamento mudou de proposito) por: acao
+  com produto real (`p1`) e perfil completo → `addItem` certo + `router.push('/checkout')`; perfil
+  incompleto → redireciona pro perfil, NAO adiciona; `productId` inexistente → mensagem informativa, sem
+  carrinho nem redirect. Usar os mesmos dados reais de `produto/[slug]/__tests__/page.test.tsx`
+  (produto `p1`, fornecedor `sup-001`/`Distribuidora Sul`, CPF de teste `11144477735`).
 - **DoD:** `npm test` (front) verde; `tsc`/lint/build exit 0; **nenhum arquivo de checkout
   (`front/src/app/(main)/checkout/`, `checkout-context` ou equivalente) foi tocado** — so o cart-context
-  foi CONSUMIDO, nao modificado.
+  foi CONSUMIDO, nao modificado. O teste de gate de `page.test.tsx` (M5) continua verde sem alteracao.
 - **Commit:** `feat(front): chat-agent seleciona produto e abre o checkout existente (thread M)`
 
 ### M7 — Deploy real + validacao humana + QA manual  [dep: M4, M6]  (coordenador + cliente, NAO Haiku)

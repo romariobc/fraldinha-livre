@@ -63,9 +63,17 @@ export function createChatHandler(runChatCompletion: RunChatCompletion) {
     }
 
     const db = drizzle(c.env.DB)
+    const history: ChatCompletionMessage[] = parsed.data.messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }))
+    const lastIndex = history.length - 1
+    if (parsed.data.image && history[lastIndex].role === 'user') {
+      history[lastIndex] = { ...history[lastIndex], imageUrl: parsed.data.image }
+    }
     const messages: ChatCompletionMessage[] = [
       { role: 'system', content: SYSTEM_PROMPT },
-      ...parsed.data.messages.map((m) => ({ role: m.role, content: m.content })),
+      ...history,
     ]
 
     for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {

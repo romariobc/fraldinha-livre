@@ -96,6 +96,64 @@ describe('POST /chat/message', () => {
     expect(secondCallMessages.some((m: { role: string }) => m.role === 'tool')).toBe(true)
   })
 
+  it('request com image: a foto chega ao modelo anexada na ultima mensagem do usuario', async () => {
+    const run = vi.fn().mockResolvedValue({ text: 'vi a foto', toolCalls: [] })
+    const testApp = createTestApp(run)
+    const request = new Request('http://localhost/chat/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...AUTH_HEADER },
+      body: JSON.stringify({
+        messages: [
+          { role: 'user', content: 'oi' },
+          { role: 'assistant', content: 'ola' },
+          { role: 'user', content: 'que fralda e essa?' },
+        ],
+        image: 'data:image/jpeg;base64,AAAA',
+      }),
+    })
+    const response = await testApp.fetch(request, env)
+    expect(response.status).toBe(200)
+
+    const sentMessages = run.mock.calls[0][0]
+    const last = sentMessages[sentMessages.length - 1]
+    expect(last.role).toBe('user')
+    expect(last.content).toBe('que fralda e essa?')
+    expect(last.imageUrl).toBe('data:image/jpeg;base64,AAAA')
+    // so a mensagem do turno atual carrega a foto
+    expect(sentMessages.filter((m: { imageUrl?: string }) => m.imageUrl)).toHaveLength(1)
+  })
+
+  it('request sem image: nenhuma mensagem leva imageUrl', async () => {
+    const run = vi.fn().mockResolvedValue({ text: 'oi', toolCalls: [] })
+    const testApp = createTestApp(run)
+    const request = new Request('http://localhost/chat/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...AUTH_HEADER },
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'oi' }] }),
+    })
+    await testApp.fetch(request, env)
+
+    const sentMessages = run.mock.calls[0][0]
+    expect(sentMessages.every((m: { imageUrl?: string }) => m.imageUrl === undefined)).toBe(true)
+  })
+
+  it('image em formato invalido (URL http) e rejeitada com 400, nao ignorada', async () => {
+    const run = vi.fn()
+    const testApp = createTestApp(run)
+    const request = new Request('http://localhost/chat/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...AUTH_HEADER },
+      body: JSON.stringify({
+        messages: [{ role: 'user', content: 'essa aqui' }],
+        image: 'https://exemplo.com/foto.jpg',
+      }),
+    })
+    const response = await testApp.fetch(request, env)
+
+    expect(response.status).toBe(400)
+    expect(run).not.toHaveBeenCalled()
+  })
+
   it('tool select_product_for_purchase: para no primeiro select, devolve type action, 1 chamada', async () => {
     const run = vi.fn().mockResolvedValue({
       text: null,

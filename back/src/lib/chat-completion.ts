@@ -19,6 +19,7 @@ export interface ChatCompletionMessage {
   role: 'system' | 'user' | 'assistant' | 'tool'
   content: string
   toolCallId?: string // obrigatorio quando role === 'tool' (id do ChatCompletionToolCall correspondente)
+  imageUrl?: string // data URI; vira parte image_url no content multimodal
 }
 
 export type RunChatCompletion = (
@@ -31,12 +32,26 @@ interface WorkersAiChatCompletionResponse {
   tool_calls?: { id?: string; function?: { name?: string; arguments?: Record<string, unknown> } }[]
 }
 
+function toWorkersAiMessage(message: ChatCompletionMessage) {
+  const base = { role: message.role, tool_call_id: message.toolCallId }
+  if (!message.imageUrl) {
+    return { ...base, content: message.content }
+  }
+  return {
+    ...base,
+    content: [
+      { type: 'text', text: message.content },
+      { type: 'image_url', image_url: { url: message.imageUrl } },
+    ],
+  }
+}
+
 export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
   return async (messages, tools) => {
     const response = (await ai.run(
       '@cf/meta/llama-4-scout-17b-16e-instruct',
       {
-        messages: messages.map((m) => ({ role: m.role, content: m.content, tool_call_id: m.toolCallId })),
+        messages: messages.map(toWorkersAiMessage),
         tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
       } as AiModels['@cf/meta/llama-4-scout-17b-16e-instruct']['inputs'],
     )) as unknown as WorkersAiChatCompletionResponse

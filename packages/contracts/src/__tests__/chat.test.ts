@@ -17,6 +17,34 @@ describe('ChatRequestSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it('aceita png e webp como data URI', () => {
+    for (const image of ['data:image/png;base64,iVBORw0KGgo=', 'data:image/webp;base64,UklGRg==']) {
+      const result = ChatRequestSchema.safeParse({
+        messages: [{ role: 'user', content: 'essa aqui' }],
+        image,
+      })
+      expect(result.success).toBe(true)
+    }
+  })
+
+  // O modelo nao aceita URL http; se o schema deixasse passar, a foto seria
+  // descartada em silencio no meio do caminho em vez de dar erro.
+  it('rejeita URL http como imagem (falha alto, nao silenciosamente)', () => {
+    const result = ChatRequestSchema.safeParse({
+      messages: [{ role: 'user', content: 'essa aqui' }],
+      image: 'https://exemplo.com/foto.jpg',
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejeita data URI que nao e imagem', () => {
+    const result = ChatRequestSchema.safeParse({
+      messages: [{ role: 'user', content: 'essa aqui' }],
+      image: 'data:application/pdf;base64,JVBERi0=',
+    })
+    expect(result.success).toBe(false)
+  })
+
   it('rejeita messages vazio', () => {
     const result = ChatRequestSchema.safeParse({ messages: [] })
     expect(result.success).toBe(false)

@@ -6,9 +6,15 @@ export const ChatMessageSchema = z.object({
 })
 export type ChatMessage = z.infer<typeof ChatMessageSchema>
 
+// So data URI de imagem: o modelo nao aceita URL http, e aceitar uma aqui
+// significaria descartar a foto em silencio no meio do caminho.
+export const ChatImageDataUrlSchema = z
+  .string()
+  .regex(/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/)
+
 export const ChatRequestSchema = z.object({
   messages: z.array(ChatMessageSchema).min(1),
-  image: z.string().optional(),
+  image: ChatImageDataUrlSchema.optional(),
 })
 export type ChatRequest = z.infer<typeof ChatRequestSchema>
 

@@ -32,6 +32,32 @@ describe('createWorkersAiChatCompletion', () => {
     )
   })
 
+  it('mensagem com imageUrl vira content multimodal (text + image_url), nao string', async () => {
+    const run = vi.fn().mockResolvedValue({ response: 'vi a foto', tool_calls: [] })
+    const runChatCompletion = createWorkersAiChatCompletion({ run } as unknown as Ai)
+
+    await runChatCompletion(
+      [{ role: 'user', content: 'que fralda e essa?', imageUrl: 'data:image/jpeg;base64,AAAA' }],
+      [],
+    )
+
+    const [, input] = run.mock.calls[0]
+    expect(input.messages[0].content).toEqual([
+      { type: 'text', text: 'que fralda e essa?' },
+      { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,AAAA' } },
+    ])
+  })
+
+  it('mensagem sem imageUrl mantem content como string simples', async () => {
+    const run = vi.fn().mockResolvedValue({ response: 'oi', tool_calls: [] })
+    const runChatCompletion = createWorkersAiChatCompletion({ run } as unknown as Ai)
+
+    await runChatCompletion([{ role: 'user', content: 'oi' }], [])
+
+    const [, input] = run.mock.calls[0]
+    expect(input.messages[0].content).toBe('oi')
+  })
+
   it('traduz response.response e response.tool_calls (aninhado em function) para o formato canonico', async () => {
     const run = vi.fn().mockResolvedValue({
       response: 'achei um produto',

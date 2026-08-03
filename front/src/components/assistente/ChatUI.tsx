@@ -12,12 +12,17 @@ import { isProfileComplete } from '@/lib/utils'
 import type { CartItem } from '@/lib/domain/cart'
 import type { ChatMessage, ChatResponse } from '@contracts'
 
+// Mesma lista que ChatImageDataUrlSchema aceita no contrato. Estreitar o
+// `accept` do input tambem faz o Safari converter HEIC do iPhone em JPEG.
+const SUPPORTED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+
 export default function ChatUI() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [pendingImage, setPendingImage] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [imageError, setImageError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const lastSentImageRef = useRef<string | null>(null)
   const router = useRouter()
@@ -104,11 +109,17 @@ export default function ChatUI() {
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
+    e.target.value = ''
     if (!file) return
+    if (!SUPPORTED_IMAGE_TYPES.includes(file.type)) {
+      setPendingImage(null)
+      setImageError('Essa foto está num formato que não consigo ler. Use JPEG, PNG ou WebP.')
+      return
+    }
+    setImageError(null)
     const reader = new FileReader()
     reader.onload = () => setPendingImage(reader.result as string)
     reader.readAsDataURL(file)
-    e.target.value = ''
   }
 
   return (
@@ -150,11 +161,12 @@ export default function ChatUI() {
           <img src={pendingImage} alt="Foto anexada" className="h-16 rounded-card" />
         </div>
       )}
+      {imageError && <p className="px-4 pb-2 text-sm text-red-600">{imageError}</p>}
       <div className="flex items-center gap-2 border-t p-3">
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept={SUPPORTED_IMAGE_TYPES.join(',')}
           capture="environment"
           onChange={handleFileChange}
           className="hidden"

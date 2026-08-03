@@ -210,6 +210,18 @@ describe('ChatUI', () => {
     expect(retryBody.image).toBe(firstBody.image)
   })
 
+  it('foto em formato nao suportado (HEIC do iPhone): avisa claro e nao anexa', async () => {
+    const { container } = render(<ChatUI />)
+
+    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement
+    const heic = new File(['bytes'], 'IMG_0001.HEIC', { type: 'image/heic' })
+    fireEvent.change(fileInput, { target: { files: [heic] } })
+
+    await waitFor(() => expect(screen.getByText(/formato que não consigo ler/i)).toBeInTheDocument())
+    expect(screen.queryByAltText('Foto anexada')).not.toBeInTheDocument()
+    expect(vi.mocked(apiFetch)).not.toHaveBeenCalled()
+  })
+
   it('Enter com envio em andamento nao dispara request concorrente', async () => {
     let resolveFirst: (value: Response) => void = () => {}
     vi.mocked(apiFetch).mockReturnValueOnce(

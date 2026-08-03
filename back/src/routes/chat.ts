@@ -54,6 +54,13 @@ const TOOLS: ChatCompletionTool[] = [
 
 const MAX_TOOL_ITERATIONS = 4
 
+// O modelo pode terminar uma rodada de tool-use sem gerar texto (achado em
+// producao, 2026-08-03). Devolver content vazio quebraria duas coisas: a UI
+// mostraria uma bolha em branco, e o proximo turno reenviaria essa mensagem no
+// historico, que ChatMessageSchema (min(1)) rejeitaria com 400 — o servidor
+// travando a propria conversa. Nunca deixar um content vazio sair da rota.
+export const EMPTY_RESPONSE_FALLBACK = 'Desculpe, não entendi. Pode reformular?'
+
 export function createChatHandler(runChatCompletion: RunChatCompletion) {
   return async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>) => {
     const body = await c.req.json().catch(() => null)
@@ -91,7 +98,8 @@ export function createChatHandler(runChatCompletion: RunChatCompletion) {
       }
 
       if (result.toolCalls.length === 0) {
-        const response: ChatResponse = { type: 'text', content: result.text ?? '' }
+        const content = result.text?.trim() ? result.text : EMPTY_RESPONSE_FALLBACK
+        const response: ChatResponse = { type: 'text', content }
         return c.json(response, 200)
       }
 

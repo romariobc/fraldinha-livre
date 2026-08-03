@@ -4,7 +4,7 @@ import { drizzle } from 'drizzle-orm/d1'
 import { env } from 'cloudflare:workers'
 import { applyD1Migrations } from 'cloudflare:test'
 import { createAuthMiddleware } from '../src/middleware/auth'
-import { createChatHandler } from '../src/routes/chat'
+import { createChatHandler, EMPTY_RESPONSE_FALLBACK } from '../src/routes/chat'
 import type { Env, AppContext } from '../src/env'
 import type { RunChatCompletion } from '../src/lib/chat-completion'
 
@@ -69,6 +69,46 @@ describe('POST /chat/message', () => {
     expect(response.status).toBe(200)
     expect(body).toEqual({ type: 'text', content: 'oi! o que voce procura?' })
     expect(run).toHaveBeenCalledTimes(1)
+  })
+
+  it('modelo termina sem texto (result.text vazio/null): devolve fallback, nunca content vazio', async () => {
+    for (const text of [null, '', '   ']) {
+      const run = vi.fn().mockResolvedValue({ text, toolCalls: [] })
+      const testApp = createTestApp(run)
+      const request = new Request('http://localhost/chat/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...AUTH_HEADER },
+        body: JSON.stringify({ messages: [{ role: 'user', content: 'oi' }] }),
+      })
+      const response = await testApp.fetch(request, env)
+      const body = (await response.json()) as { content: string }
+
+      expect(response.status, `text=${JSON.stringify(text)}`).toBe(200)
+      expect(body.content.length, `text=${JSON.stringify(text)}`).toBeGreaterThan(0)
+    }
+  })
+
+  it('achado real de producao: resposta com content vazio no historico nao derruba o proximo turno com 400', async () => {
+    // Reproduz o bug exato visto em producao (2026-08-03): um turno anterior
+    // que teria devolvido content vazio (aqui ja simulado como fallback, pos-fix)
+    // volta no historico do turno seguinte. ChatMessageSchema exige min(1) —
+    // sem o fallback na origem, isso quebraria com 400 "payload invalido".
+    const run = vi.fn().mockResolvedValue({ text: 'tamanho G da Pampers, confere?', toolCalls: [] })
+    const testApp = createTestApp(run)
+    const request = new Request('http://localhost/chat/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...AUTH_HEADER },
+      body: JSON.stringify({
+        messages: [
+          { role: 'user', content: 'fralda pampers' },
+          { role: 'assistant', content: EMPTY_RESPONSE_FALLBACK },
+          { role: 'user', content: 'tamanho G' },
+        ],
+      }),
+    })
+    const response = await testApp.fetch(request, env)
+
+    expect(response.status).toBe(200)
   })
 
   it('1 rodada de tool de dados antes da resposta final: 2 chamadas, 2a recebe mensagem role=tool', async () => {

@@ -1,5 +1,57 @@
 # Progresso — fraldinha-livre
 
+## Marco (2026-08-02/03) — Sessão backend: incidente de segurança fechado + revisão D-012 de M1-M4 (feature 018)
+
+**Sincronização:** worktree estava 35 commits atrás de `origin/main` (D-037/D-037b, thread H-011/H-012,
+painel admin, etc. — nenhum autorado por esta sessão). `git merge origin/main`, fast-forward limpo,
+baseline reverificada (69/69 testes, tsc exit 0) antes de qualquer trabalho novo.
+
+**Incidente de segurança (GitHub Secret Scanning, alerta #1):** `NEXT_PUBLIC_FIREBASE_API_KEY` exposta
+em `front/.env.production:18` (commit `2e79da0`, D-037b). Verificado de forma independente via
+`gh api repos/romariobc/fraldinha-livre/secret-scanning/alerts` antes de agir (o e-mail encaminhado
+pelo Romario não foi seguido cegamente — o prompt embutido nele sugeria remediação mais agressiva
+que o caso real justificava). Avaliação técnica: é a chave web pública do Firebase, não um segredo
+tradicional — controle de acesso real é via Firebase Security Rules, não confidencialidade da chave.
+Mesmo assim, seguiu o guardrail do harness (nunca commitar segredo, mesmo de baixo risco):
+
+1. Romario restringiu a chave no Google Cloud Console (Application restrictions → HTTP referrer
+   `fraldinha-livre-frontend.romariobc.workers.dev/*` + `localhost:3000/*`; API restrictions →
+   Identity Toolkit/Token Service/Firebase Installations).
+2. Alerta #1 resolvido via `gh api` PATCH (`resolution: false_positive`, com nota explicando o
+   motivo + a restrição aplicada).
+3. Nenhuma mudança de código — remover o valor do arquivo quebraria o build git-integrado da
+   Cloudflare (mesmo bug do D-037b), e a chave já está restrita. Migração opcional pra "Build
+   Environment Variables" do dashboard Cloudflare fica como dívida de higiene, não urgente.
+4. Coordenado com a "[FR]Master session" antes/depois de agir — `front/.env.production` é domínio
+   deles, não mexi sem avisar. Pedido que registrem como decisão formal em `decisoes.md` (branch
+   deles está mais atual); não fiz essa entrada por aqui pra não precisar sincronizar só por isso.
+
+**Revisão D-012 de M1-M4 (thread M, feature 018 — chat-agent mobile, sessão "Estratégia app
+Fraldinha Livre", branch `Romir/fraldinha-livre-app-strategy-309c5a`):** revisão real, não só o
+relatório — fui direto no worktree deles (`fraldinha-livre-app-strategy-309c5a`), rodei suíte e tsc
+de novo (89/89, tsc limpo) e li o código de cada commit (`0dff234`/`e1c80c8`/`0a47359`/`4e1a4b9`/
+`6e52124`). Confirmado por leitura, não só aceito: `chat-tools.ts` exclui `supplierId`/`supplierEmail`
+das colunas retornadas e filtra `active=true` em `searchProducts`/`getProduct`; `/chat/*` está atrás
+do mesmo `createAuthMiddleware` de `/orders/*` (conferido no diff de `index.ts`); loop de tool-use
+limitado a `MAX_TOOL_ITERATIONS=4` (guardrail do harness contra loop sem limite). **APROVADO**, com
+1 achado não-bloqueante repassado: `select_product_for_purchase` não valida o `productId` alegado
+pelo modelo contra o catálogo antes de responder a action ao front (não é falha de segurança — o
+`POST /orders` já revalida tudo na escrita, thread P — mas pode gerar UX ruim se o modelo alucinar
+um id). Sugestão registrada, decisão de correção é da sessão dona do código.
+
+**Trabalho pausado, não retomado ainda:** brainstorming de subagentes customizados (`.claude/agents/`)
+pra formalizar o padrão de duas sessões Master (backend/frontend) que já vem sendo usado organicamente
+— ficou pausado no meio pelo incidente de segurança. Verificação prévia contra o harness de referência
+(`dev_flow_create_harness`) já feita: o padrão de sessão sequencial do harness não cobre múltiplas
+sessões Master em paralelo — é extensão específica deste projeto, a documentar como divergência
+(`ciclo-de-sessao.md` §7) quando o design for retomado, não como se already fosse regra do harness.
+
+**Próximo passo:** retomar o design dos 3 subagentes (`thread-dispatcher`/`d012-reviewer`/
+`project-state-keeper`) se o Romario quiser continuar; ou aguardar a sessão do app mobile avançar
+pro M7 (deploy) e a sessão de frontend dar o OK dela também.
+
+---
+
 ## Marco (2026-08-02) — Feature 012: painel administrativo read-only (H-012)
 
 Sequencia completa spec-driven: brainstorming fechou o escopo que o backlog

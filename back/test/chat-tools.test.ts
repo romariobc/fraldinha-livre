@@ -30,46 +30,78 @@ describe('searchProducts / getProduct (tools do chat-agent)', () => {
     })
   })
 
-  it('searchProducts: termo que bate no nome de um produto real retorna esse produto', async () => {
+  it('searchProducts: query livre que bate no nome de um produto real retorna esse produto', async () => {
     const db = drizzle(env.DB)
-    const results = await searchProducts(db, 'Supersec Pants')
+    const results = await searchProducts(db, { query: 'Supersec Pants' })
 
     expect(results.length).toBeGreaterThan(0)
     expect(results.some((p) => p.id === 'p1')).toBe(true)
     expect(results.every((p) => 'name' in p && 'brand' in p && 'priceCents' in p)).toBe(true)
   })
 
-  it('searchProducts: termo que bate na marca retorna produtos dessa marca', async () => {
+  it('searchProducts: query livre que bate na marca retorna produtos dessa marca', async () => {
     const db = drizzle(env.DB)
-    const results = await searchProducts(db, 'Huggies')
+    const results = await searchProducts(db, { query: 'Huggies' })
 
     expect(results.length).toBeGreaterThan(0)
     expect(results.every((p) => p.brand === 'Huggies')).toBe(true)
   })
 
-  it('searchProducts: termo que nao bate em nada retorna array vazio', async () => {
+  it('searchProducts: query livre que nao bate em nada retorna array vazio', async () => {
     const db = drizzle(env.DB)
-    const results = await searchProducts(db, 'produto-que-nao-existe-xyz123')
+    const results = await searchProducts(db, { query: 'produto-que-nao-existe-xyz123' })
 
     expect(results).toEqual([])
   })
 
   it('searchProducts: nunca retorna produto despublicado (active=false)', async () => {
     const db = drizzle(env.DB)
-    const results = await searchProducts(db, 'Fralda Despublicada Teste')
+    const results = await searchProducts(db, { query: 'Fralda Despublicada Teste' })
 
     expect(results).toEqual([])
   })
 
   it('searchProducts: resultado nao vaza supplierEmail nem supplierId', async () => {
     const db = drizzle(env.DB)
-    const results = await searchProducts(db, 'Pampers')
+    const results = await searchProducts(db, { query: 'Pampers' })
 
     expect(results.length).toBeGreaterThan(0)
     for (const item of results) {
       expect(item).not.toHaveProperty('supplierEmail')
       expect(item).not.toHaveProperty('supplierId')
     }
+  })
+
+  // Achado real de producao (2026-08-03): o assistente perguntou o tamanho,
+  // o comprador respondeu "G", e a busca por query="Pampers tamanho G" (frase
+  // composta) voltou vazia mesmo o produto p3 (Pampers, Supersec Pants, G)
+  // existindo e ativo. Reproduzido contra o banco real antes deste fix.
+  it('searchProducts: brand+size como campos SEPARADOS acha o produto que query livre composta nao achava', async () => {
+    const db = drizzle(env.DB)
+
+    const buscaComposta = await searchProducts(db, { query: 'Pampers tamanho G' })
+    expect(buscaComposta).toEqual([]) // reproduz o bug: frase composta nao bate em nenhum campo
+
+    const buscaEstruturada = await searchProducts(db, { brand: 'Pampers', size: 'G' })
+    // length exato (nao so "contem p3"): descarta falso-positivo de uma
+    // implementacao que ignore brand/size e devolva o catalogo inteiro.
+    expect(buscaEstruturada).toHaveLength(1)
+    expect(buscaEstruturada[0].id).toBe('p3')
+  })
+
+  it('searchProducts: size e EXATO, "G" nao pode casar com "GG" nem "XXG"', async () => {
+    const db = drizzle(env.DB)
+    const results = await searchProducts(db, { size: 'G' })
+
+    expect(results.length).toBeGreaterThan(0)
+    expect(results.every((p) => p.size === 'G')).toBe(true)
+  })
+
+  it('searchProducts: sem nenhum campo preenchido, retorna vazio (nao devolve o catalogo inteiro)', async () => {
+    const db = drizzle(env.DB)
+    const results = await searchProducts(db, {})
+
+    expect(results).toEqual([])
   })
 
   it('getProduct: id real retorna o produto com priceCents presente', async () => {

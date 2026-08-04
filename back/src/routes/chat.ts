@@ -15,16 +15,26 @@ const SYSTEM_PROMPT =
   'Voce e o assistente de compras da Fraldinha Livre. Ajude o comprador a achar o produto certo ' +
   'no catalogo (fraldas e itens relacionados), perguntando marca/tamanho quando precisar. Use ' +
   'search_products e get_product para consultar o catalogo real - nunca invente produto, preco ou ' +
-  'id. So chame select_product_for_purchase quando tiver certeza do productId e da quantidade.'
+  'id. Ao chamar search_products, preencha brand/size/categoria como campos SEPARADOS quando souber ' +
+  'esses dados (nao junte tudo numa frase so em query) - isso faz a busca ser precisa. So chame ' +
+  'select_product_for_purchase quando tiver certeza do productId e da quantidade.'
 
 const TOOLS: ChatCompletionTool[] = [
   {
     name: 'search_products',
-    description: 'Busca produtos do catalogo por nome, marca ou categoria',
+    description:
+      'Busca produtos do catalogo. Preencha brand/size/categoria quando souber (mais preciso que ' +
+      'so texto livre) - por exemplo, se o comprador disse a marca numa mensagem e o tamanho em ' +
+      'outra, preencha os dois campos juntos nesta mesma chamada.',
     parameters: {
       type: 'object',
-      properties: { query: { type: 'string' } },
-      required: ['query'],
+      properties: {
+        query: { type: 'string', description: 'Texto livre p/ nome/descricao/categoria (opcional)' },
+        brand: { type: 'string', description: 'Marca exata, ex: Pampers, Huggies, MamyPoko (opcional)' },
+        size: { type: 'string', description: 'Tamanho exato, ex: P, M, G, GG, RN, XXG (opcional)' },
+        categoria: { type: 'string', description: 'Categoria do produto (opcional)' },
+      },
+      required: [],
     },
   },
   {
@@ -114,9 +124,18 @@ export function createChatHandler(runChatCompletion: RunChatCompletion) {
   }
 }
 
+function toOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value : undefined
+}
+
 async function runDataTool(db: ReturnType<typeof drizzle>, call: ChatCompletionToolCall) {
   if (call.name === 'search_products') {
-    return searchProducts(db, String(call.arguments.query ?? ''))
+    return searchProducts(db, {
+      query: toOptionalString(call.arguments.query),
+      brand: toOptionalString(call.arguments.brand),
+      size: toOptionalString(call.arguments.size),
+      categoria: toOptionalString(call.arguments.categoria),
+    })
   }
   if (call.name === 'get_product') {
     return getProduct(db, String(call.arguments.productId ?? ''))

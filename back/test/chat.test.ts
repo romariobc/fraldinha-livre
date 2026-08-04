@@ -55,6 +55,26 @@ describe('POST /chat/message', () => {
     expect(run).not.toHaveBeenCalled()
   })
 
+  // Regressao leve pro achado de 2026-08-03: garante que a instrucao contra
+  // narrar a chamada de tool como texto continua no prompt enviado ao modelo.
+  // Nao prova comportamento do modelo (isso e QA manual, nao unit test) - so
+  // trava que a regra nao suma numa edicao futura do SYSTEM_PROMPT.
+  it('mensagem de sistema enviada ao modelo contem a instrucao contra narrar tool call como texto', async () => {
+    const run = vi.fn().mockResolvedValue({ text: 'oi', toolCalls: [] })
+    const testApp = createTestApp(run)
+    const request = new Request('http://localhost/chat/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...AUTH_HEADER },
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'oi' }] }),
+    })
+    await testApp.fetch(request, env)
+
+    const [sentMessages] = run.mock.calls[0]
+    const systemMessage = sentMessages.find((m: { role: string }) => m.role === 'system')
+    expect(systemMessage.content).toContain('NUNCA escreva a sintaxe de uma chamada de funcao')
+    expect(systemMessage.content).toContain('UMA coisa')
+  })
+
   it('resposta de texto direto (sem tool call): 1 chamada, devolve type text', async () => {
     const run = vi.fn().mockResolvedValue({ text: 'oi! o que voce procura?', toolCalls: [] })
     const testApp = createTestApp(run)

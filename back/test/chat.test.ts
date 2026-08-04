@@ -256,4 +256,39 @@ describe('POST /chat/message', () => {
     expect(Array.isArray(toolResult)).toBe(true)
     expect(toolResult.some((p: { id: string }) => p.id === 'p1')).toBe(true)
   })
+
+  // Achado da revisao do backend (0a4b0dc): toOptionalString (fronteira entre o
+  // que o modelo manda em arguments e o que searchProducts recebe) nunca era
+  // exercitada de ponta a ponta com brand/size/categoria - so query. Function-
+  // calling real as vezes manda string vazia em vez de omitir a chave; se
+  // toOptionalString('') nao virasse undefined, eq(products.size, '') filtraria
+  // tudo fora em silencio - mesma classe de bug de fronteira que ja mordeu hoje.
+  it('arguments com size vazio/so espaco nao filtra tudo fora (toOptionalString de ponta a ponta)', async () => {
+    const run = vi
+      .fn()
+      .mockResolvedValueOnce({
+        text: null,
+        toolCalls: [
+          { id: 'call_1', name: 'search_products', arguments: { brand: 'Pampers', size: '', categoria: '   ' } },
+        ],
+      })
+      .mockResolvedValueOnce({ text: 'achei varios', toolCalls: [] })
+    const testApp = createTestApp(run)
+    const request = new Request('http://localhost/chat/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...AUTH_HEADER },
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'fralda pampers' }] }),
+    })
+    const response = await testApp.fetch(request, env)
+
+    expect(response.status).toBe(200)
+
+    const secondCallMessages = run.mock.calls[1][0]
+    const toolMessage = secondCallMessages.find((m: { role: string }) => m.role === 'tool')
+    const toolResult = JSON.parse(toolMessage.content)
+    // Se size='' tivesse virado eq(size, ''), isso voltaria vazio — os 5
+    // produtos Pampers reais confirmam que a string vazia foi descartada.
+    expect(toolResult.length).toBeGreaterThan(1)
+    expect(toolResult.every((p: { brand: string }) => p.brand === 'Pampers')).toBe(true)
+  })
 })

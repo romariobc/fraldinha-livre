@@ -14,6 +14,9 @@
 > e corrigir com dado é parte do processo, não algo pra apagar — mas a seção 7 é a conclusão válida
 > agora. Se você está decidindo algo hoje, leia a seção 7 primeiro.
 >
+> **SEGUNDA CORREÇÃO (mesma noite):** com o parsing de M2 corrigido, apareceu um TERCEIRO bug — também
+> nosso, também não é o modelo. Ver seção 8.
+>
 > Contexto arquitetural geral (infra Firebase+Cloudflare) está em `arquitetura-firebase-cloudflare.md`
 > — este arquivo é específico do motor de IA, não repete o resto.
 
@@ -151,6 +154,50 @@ como referência de preço/capacidade caso uma troca vire necessária depois.
 
 **Log de diagnóstico:** ainda ativo em produção (`console.log('[chat-diag]', ...)`), marcado como
 temporário no código. Remover depois de validar mais rodadas de QA (incluindo foto), não antes.
+
+## 8. Terceiro achado real: busca não entendia campos separados (2026-08-03, mesma noite)
+
+Com o parsing de tool_calls corrigido (seção 7), o Romario testou de novo. O agente melhorou de verdade
+— perguntou "Qual tamanho você precisa? (P, M, G, RN, GG)" quando faltava informação, em vez de só cair
+no fallback. Mas a conversa "marca pampers" → "G" → "M" → "P" mostrou:
+
+- "G" → **"Desculpe, parece que não há produtos Pampers Supersec tamanho G disponíveis."**
+- "M" → **"Parece que não há produtos Pampers tamanho M disponíveis."**
+- "P" → voltou a escrever a sintaxe da tool como texto (`[search_products(query="Pampers tamanho P")]`)
+  — esse comportamento específico (narrar a chamada em vez de fazer) **ainda não tem causa confirmada**,
+  ficou registrado como pendência, não investigado ainda.
+
+**Causa raiz das duas primeiras (confirmada direto no D1 de produção, não suposição):**
+```
+SELECT id,name,brand,size FROM products WHERE active=1 AND brand='Pampers' AND size='G'
+→ 1 linha: p3 (Supersec Pants, Pampers, G) — O PRODUTO EXISTE.
+
+SELECT id,name,brand,size FROM products WHERE active=1
+  AND (name LIKE '%Pampers tamanho G%' OR brand LIKE '%Pampers tamanho G%' OR categoria LIKE '%Pampers tamanho G%')
+→ 0 linhas — a query que a tool provavelmente rodou (frase composta) NAO bate em nenhum campo.
+```
+
+`search_products` (M3) fazia `LIKE` da frase inteira contra `name`/`brand`/`categoria`, e **nunca
+olhava o campo `size`**. O modelo fez exatamente o certo (perguntou o tamanho que faltava, combinou
+marca+tamanho da conversa) — a ferramenta de busca é que não sabia lidar com mais de um conceito ao
+mesmo tempo.
+
+**Fix (commit `0a4b0dc`, deployado, Version ID `1a65343e`):** `search_products` ganhou `brand`/`size`/
+`categoria` como campos separados na tool (size com igualdade exata, não `LIKE` — "G" não pode casar com
+"GG"/"XXG"). O `SYSTEM_PROMPT` instrui o modelo a preencher os campos separados em vez de concatenar
+tudo numa frase.
+
+**Padrão que se repete pela 3ª vez hoje, vale destacar:** nas três correções desta noite (`279877a`,
+`f829d98`, `0a4b0dc`), a causa nunca foi "o modelo não presta" — foi sempre uma lacuna do nosso lado
+(schema rejeitando a própria resposta do servidor; parsing baseado em tipo declarado em vez de
+comportamento real; busca que não suportava consulta composta). **Antes de considerar trocar de modelo
+(seção 4/6), vale esgotar essa classe de bug primeiro** — pode ser que o `llama-4-scout` seja bom o
+suficiente e a experiência ruim seja inteiramente nossa, não dele.
+
+**Pendência real, não resolvida:** o vazamento de sintaxe da tool como texto ("P" acima) ainda acontece
+às vezes, mesmo com o parsing corrigido. Precisa da mesma instrumentação/captura ao vivo pra entender se
+é nondeterminismo do modelo, um gatilho específico (ex.: depois de N chamadas de tool na mesma
+conversa), ou outra coisa. Log `[chat-diag]` continua ativo em produção pra isso.
 
 ## Referências
 

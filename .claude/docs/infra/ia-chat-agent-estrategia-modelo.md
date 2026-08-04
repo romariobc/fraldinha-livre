@@ -2,9 +2,17 @@
 
 > Registro do achado de QA em produção (2026-08-03) e da análise de opções de implementação
 > (custo × experiência × eficiência de engenharia) para o motor do chat-agent, ANTES de qualquer
-> mudança de código. Decisão final ainda em aberto — este arquivo documenta o estado da investigação,
-> não uma decisão fechada. Deve ser lido antes de qualquer sessão que for mexer em
+> mudança de código. Deve ser lido antes de qualquer sessão que for mexer em
 > `back/src/lib/chat-completion.ts`, `back/src/routes/chat.ts`, ou no system prompt/tools do agente.
+>
+> **CORREÇÃO IMPORTANTE (mesmo dia, poucas horas depois):** a seção 2 concluiu "o modelo não chama
+> tools de forma confiável" com base em sintoma (o que apareceu na tela). Instrumentando log real e
+> capturando via `wrangler tail` (seção 7), essa conclusão **estava errada**: o modelo acertou a tool e
+> o argumento certo nas 3 tentativas, inclusive inferindo contexto ("tamanho G" → buscou "Pampers
+> tamanho G"). O bug era nosso parsing descartando toda chamada real. **Corrigido e deployado
+> (commit `f829d98`).** Mantive as seções 2-6 como registro do raciocínio original — errar por sintoma
+> e corrigir com dado é parte do processo, não algo pra apagar — mas a seção 7 é a conclusão válida
+> agora. Se você está decidindo algo hoje, leia a seção 7 primeiro.
 >
 > Contexto arquitetural geral (infra Firebase+Cloudflare) está em `arquitetura-firebase-cloudflare.md`
 > — este arquivo é específico do motor de IA, não repete o resto.
@@ -100,6 +108,49 @@ próxima:
 **Isto não é uma decisão fechada.** Falta o Romario (e as sessões de backend/frontend, se quiser opinião
 delas) avaliar esta análise antes de qualquer código ser tocado — é exatamente o pedido que gerou este
 documento.
+
+## 7. Causa raiz real (confirmada com dado, 2026-08-03 à noite) — LER PRIMEIRO
+
+Instrumentei log temporário no adapter (`chat-completion.ts`) logando a resposta CRUA do modelo antes
+de qualquer parsing nosso, e capturei via `wrangler tail` em produção, ao vivo, enquanto o Romario
+reproduzia as mesmas 3 entradas da seção 2 ("fralda", "fralda pampers", "tamanho G"). As 3 chamadas
+reais, sem edição:
+
+```json
+{"lastUserMessage":"fralda","rawResponseText":null,"rawToolCallsCount":1,
+ "rawToolCalls":[{"arguments":{"query":"fralda"},"name":"search_products"}]}
+{"lastUserMessage":"fralda pampers","rawResponseText":null,"rawToolCallsCount":1,
+ "rawToolCalls":[{"arguments":{"query":"fralda pampers"},"name":"search_products"}]}
+{"lastUserMessage":"tamanho G","rawResponseText":null,"rawToolCallsCount":1,
+ "rawToolCalls":[{"arguments":{"query":"Pampers tamanho G"},"name":"search_products"}]}
+```
+
+**O modelo acertou as 3 vezes** — inclusive a terceira, onde "tamanho G" sozinho (sem repetir "pampers")
+foi corretamente traduzido em `query: "Pampers tamanho G"` usando o contexto da conversa. Isso não é
+comportamento de modelo pouco confiável — é exatamente o que a spec esperava dele.
+
+**A causa raiz era nossa:** o payload real de `tool_calls` pra este modelo é **achatado**
+(`{name, arguments}`, sem `function`, sem `id`) — diferente do formato **aninhado**
+(`{function: {name, arguments}}`) que o pacote `@cloudflare/workers-types` declara, e que eu tinha usado
+pra "corrigir" M2 no dia anterior (commit `0a47359`) com base no **tipo declarado**, não em dado real de
+execução. O parsing só aceitava `call.function?.name` → descartava toda chamada real →
+`toolCalls.length === 0` → caía no branch de "sem tool call" → como `result.text` também vinha `null`,
+disparava o fallback genérico do fix de ontem (`279877a`). As duas correções anteriores (`279877a` e o
+fix de imagem `10d27d1`) continuam corretas e necessárias — só não eram a causa deste sintoma.
+
+**Fix aplicado (commit `f829d98`, deployado, Version ID `ab7938c3`):** o parsing agora aceita os dois
+formatos — o achatado (confirmado real, é o caminho principal) e o aninhado (mantido por segurança,
+documentado mas nunca confirmado em produção). Teste novo usa o payload exato capturado, não um mock
+inventado; validado revertendo o fix antes de commitar (2 testes falham exatamente nos casos novos).
+
+**O que isso muda nas seções 4-6:** a pergunta "qual modelo escolher" ainda não tem resposta definitiva,
+mas a urgência mudou — não é mais "o modelo atual está quebrado, precisa trocar já". É "o modelo atual
+está funcionando bem nos casos testados; validar mais casos (foto, ambiguidade real, produto fora do
+catálogo) antes de decidir se vale a pena trocar por causa/custo". A tabela da seção 4 continua válida
+como referência de preço/capacidade caso uma troca vire necessária depois.
+
+**Log de diagnóstico:** ainda ativo em produção (`console.log('[chat-diag]', ...)`), marcado como
+temporário no código. Remover depois de validar mais rodadas de QA (incluindo foto), não antes.
 
 ## Referências
 

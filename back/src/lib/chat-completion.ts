@@ -27,9 +27,20 @@ export type RunChatCompletion = (
   tools: ChatCompletionTool[],
 ) => Promise<ChatCompletionResult>
 
+interface WorkersAiToolCall {
+  id?: string
+  // Formato REAL observado em producao pro llama-4-scout (2026-08-03,
+  // ia-chat-agent-estrategia-modelo.md): achatado, sem `function`, sem `id`.
+  name?: string
+  arguments?: Record<string, unknown>
+  // Formato aninhado documentado em @cloudflare/workers-types — nao confirmado
+  // em producao ainda, mantido por seguranca caso apareca (ex.: outro modelo).
+  function?: { name?: string; arguments?: Record<string, unknown> }
+}
+
 interface WorkersAiChatCompletionResponse {
   response?: string
-  tool_calls?: { id?: string; function?: { name?: string; arguments?: Record<string, unknown> } }[]
+  tool_calls?: WorkersAiToolCall[]
 }
 
 function toWorkersAiMessage(message: ChatCompletionMessage) {
@@ -74,12 +85,12 @@ export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
     )
 
     const toolCalls = (response.tool_calls ?? [])
-      .filter((call) => call.function?.name)
       .map((call) => ({
         id: call.id ?? '',
-        name: call.function!.name!,
-        arguments: (call.function!.arguments ?? {}) as Record<string, unknown>,
+        name: call.function?.name ?? call.name,
+        arguments: (call.function?.arguments ?? call.arguments ?? {}) as Record<string, unknown>,
       }))
+      .filter((call): call is ChatCompletionToolCall => Boolean(call.name))
 
     return { text: response.response ?? null, toolCalls }
   }

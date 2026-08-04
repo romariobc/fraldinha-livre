@@ -71,6 +71,26 @@ describe('createWorkersAiChatCompletion', () => {
     expect(result.toolCalls).toEqual([{ id: 'call_1', name: 'search_products', arguments: { query: 'fralda M' } }])
   })
 
+  // Payload REAL capturado via wrangler tail em producao (2026-08-03, 3 requisicoes
+  // reais do llama-4-scout) — nao e um mock inventado. O formato de tool_calls pra
+  // este modelo e ACHATADO (sem `function`, sem `id`), diferente do que
+  // @cloudflare/workers-types declara. O parsing anterior (so `call.function?.name`)
+  // descartava TODA chamada real, fazendo o agente cair sempre no fallback generico
+  // mesmo quando o modelo acertava a tool e o argumento.
+  it('traduz tool_calls no formato ACHATADO real do llama-4-scout (sem function, sem id)', async () => {
+    const run = vi.fn().mockResolvedValue({
+      response: null,
+      tool_calls: [{ arguments: { query: 'Pampers tamanho G' }, name: 'search_products' }],
+    })
+    const runChatCompletion = createWorkersAiChatCompletion({ run } as unknown as Ai)
+
+    const result = await runChatCompletion([{ role: 'user', content: 'tamanho G' }], SAMPLE_TOOLS)
+
+    expect(result.toolCalls).toEqual([
+      { id: '', name: 'search_products', arguments: { query: 'Pampers tamanho G' } },
+    ])
+  })
+
   it('com tool_calls ausente na resposta, retorna toolCalls vazio (nao quebra)', async () => {
     const run = vi.fn().mockResolvedValue({ response: 'oi' })
     const runChatCompletion = createWorkersAiChatCompletion({ run } as unknown as Ai)
@@ -99,5 +119,17 @@ describe('createWorkersAiChatCompletion', () => {
     const result = await runChatCompletion([{ role: 'user', content: 'oi' }], [])
 
     expect(result.toolCalls).toEqual([{ id: 'call_2', name: 'search_products', arguments: {} }])
+  })
+
+  it('com item de tool_calls achatado sem name (mal formado), ignora esse item', async () => {
+    const run = vi.fn().mockResolvedValue({
+      response: null,
+      tool_calls: [{ arguments: { query: 'x' } }, { name: 'search_products', arguments: { query: 'y' } }],
+    })
+    const runChatCompletion = createWorkersAiChatCompletion({ run } as unknown as Ai)
+
+    const result = await runChatCompletion([{ role: 'user', content: 'oi' }], [])
+
+    expect(result.toolCalls).toEqual([{ id: '', name: 'search_products', arguments: { query: 'y' } }])
   })
 })

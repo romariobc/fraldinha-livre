@@ -132,4 +132,21 @@ describe('createWorkersAiChatCompletion', () => {
 
     expect(result.toolCalls).toEqual([{ id: '', name: 'search_products', arguments: { query: 'y' } }])
   })
+
+  it('detecta e limpa chamadas de tool vazadas com ou sem colchetes', async () => {
+    const run = vi.fn().mockResolvedValue({
+      response: 'Aqui esta: search_products(brand="Pampers", size="M") e tambem [select_product_for_purchase(productId="p3", quantity=1)] final do texto.',
+      tool_calls: [],
+    })
+    const runChatCompletion = createWorkersAiChatCompletion({ run } as unknown as Ai)
+
+    const result = await runChatCompletion([{ role: 'user', content: 'quero fralda' }], SAMPLE_TOOLS)
+
+    expect(result.toolCalls.length).toBe(2)
+    expect(result.toolCalls[0].name).toBe('search_products')
+    expect(result.toolCalls[0].arguments).toEqual({ brand: 'Pampers', size: 'M' })
+    expect(result.toolCalls[1].name).toBe('select_product_for_purchase')
+    expect(result.toolCalls[1].arguments).toEqual({ productId: 'p3', quantity: 1 })
+    expect(result.text).toBe('Aqui esta:  e tambem  final do texto.')
+  })
 })

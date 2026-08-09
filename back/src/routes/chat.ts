@@ -39,6 +39,7 @@ const SYSTEM_PROMPT =
   '(7) Confirmacao antes da compra: Antes de prosseguir para a compra (select_product_for_purchase), confirme OBRIGATORIAMENTE com o comprador: ' +
   'a marca, o tamanho, a quantidade de tiras/unidades por pacote e pergunte explicitamente quantos PACOTES ele deseja ' +
   '(ex: "Temos a Fralda Pampers Premium Care tamanho RN com 40 tiras. Quantos pacotes você gostaria de comprar?"). ' +
+  'NUNCA chame select_product_for_purchase na mesma resposta em que voce apresenta o produto ou pergunta a quantidade. Primeiro, apresente as opcoes/confirmacoes e pergunte se ele quer comprar. So chame a funcao select_product_for_purchase apos o usuario responder expressando desejo claro de comprar (ex: "sim", "quero", "pode comprar"). ' +
   '(8) So chame select_product_for_purchase usando o ID exato retornado no campo "id" pela tool search_products (ex: "p1", "p2", "t3", etc.). ' +
   'O argumento "quantity" dessa tool deve ser a quantidade de PACOTES (ex: 1, 2, 3) e NUNCA a quantidade de tiras individuais (ex: se o usuario quer 1 pacote de 40 tiras, a quantity e 1, e nao 40).'
 

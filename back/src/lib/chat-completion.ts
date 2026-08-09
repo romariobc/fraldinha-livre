@@ -59,13 +59,13 @@ function toWorkersAiMessage(message: ChatCompletionMessage) {
 
 function extractLeakedToolCalls(text: string): ChatCompletionToolCall[] {
   const calls: ChatCompletionToolCall[] = []
-  const regex = /\[([a-zA-Z0-9_]+)\(([^\]]*)\)\]/g
+  const regex = /(?:\[)?\b(search_products|get_product|select_product_for_purchase)\(([^)]*)\)(?:\])?/g
   let match
   while ((match = regex.exec(text)) !== null) {
     const name = match[1]
     const argsStr = match[2]
     const args: Record<string, unknown> = {}
-    const argRegex = /([a-zA-Z0-9_]+)\s*=\s*(?:'([^']*)'|"([^"]*)"|([^,\s]+))/g
+    const argRegex = /([a-zA-Z0-9_]+)\s*=\s*(?:'([^']*)'|"([^"]*)"|([^,\s)]+))/g
     let argMatch
     while ((argMatch = argRegex.exec(argsStr)) !== null) {
       const key = argMatch[1]
@@ -124,7 +124,9 @@ export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
       toolCalls = toolCalls.concat(leakedCalls)
     }
     
-    const parsedText = rawText ? rawText.replace(/\[[a-zA-Z0-9_]+\([^\]]*\)\]/g, '').trim() : null
+    const parsedText = rawText
+      ? rawText.replace(/(?:\[)?\b(search_products|get_product|select_product_for_purchase)\(([^)]*)\)(?:\])?/g, '').trim()
+      : null
 
     return { text: parsedText || null, toolCalls }
   }

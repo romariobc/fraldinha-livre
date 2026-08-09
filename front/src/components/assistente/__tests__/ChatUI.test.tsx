@@ -87,7 +87,10 @@ describe('ChatUI', () => {
 
     const [, init] = vi.mocked(apiFetch).mock.calls[0]
     const body = JSON.parse(init!.body as string)
-    expect(body.messages).toEqual([{ role: 'user', content: 'quero uma fralda' }])
+    expect(body.messages).toEqual([
+      { role: 'assistant', content: 'Olá! Sou seu assistente de compras. Como posso ajudar você hoje?' },
+      { role: 'user', content: 'quero uma fralda' }
+    ])
   })
 
   it('acao select_product com produto real e perfil completo: adiciona ao carrinho e vai pro checkout', async () => {

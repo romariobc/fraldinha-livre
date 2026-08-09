@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Send, Paperclip, RotateCcw } from 'lucide-react'
 import { apiFetch } from '@/lib/api-client'
@@ -18,7 +18,9 @@ import type { ChatMessage, ChatResponse } from '@contracts'
 const SUPPORTED_IMAGE_TYPES = SUPPORTED_CHAT_IMAGE_TYPES.map((type) => `image/${type}`)
 
 export default function ChatUI() {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { role: 'assistant', content: 'Olá! Sou seu assistente de compras. Como posso ajudar você hoje?' }
+  ])
   const [input, setInput] = useState('')
   const [pendingImage, setPendingImage] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
@@ -26,10 +28,17 @@ export default function ChatUI() {
   const [imageError, setImageError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const lastSentImageRef = useRef<string | null>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const cart = useCart()
   const { profile } = useAuth()
   const { products, loading: productsLoading } = useProducts()
+
+  useEffect(() => {
+    if (messagesEndRef.current && typeof messagesEndRef.current.scrollIntoView === 'function') {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages, sending])
 
   async function sendToBackend(messagesForRequest: ChatMessage[], image: string | null) {
     setSending(true)
@@ -124,13 +133,13 @@ export default function ChatUI() {
   }
 
   return (
-    <div className="rounded-card shadow-card bg-white flex flex-col h-[70vh] max-h-[640px]">
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {messages.length === 0 && (
-          <p className="text-brand-muted text-sm">
-            Descreva o que você procura ou mande uma foto do produto.
-          </p>
-        )}
+    <div className="flex flex-col bg-white h-[100dvh] -mx-4 -mt-8 -mb-8 sm:m-0 sm:h-[70vh] sm:max-h-[640px] sm:rounded-card sm:shadow-card sm:border">
+      <div className="flex md:hidden items-center px-4 py-3 border-b border-gray-100 bg-white sticky top-0 z-10">
+        <button onClick={() => router.back()} className="text-sm font-semibold text-primary-dark">
+          &larr; Voltar
+        </button>
+      </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 pb-24 sm:pb-4">
         {messages.map((message, index) => (
           <div
             key={index}
@@ -143,7 +152,13 @@ export default function ChatUI() {
             {message.content}
           </div>
         ))}
-        {sending && <p className="text-brand-muted text-sm">Assistente está digitando...</p>}
+        {sending && (
+          <div className="bg-brand-bg text-brand-text mr-auto max-w-[80%] rounded-card px-4 py-3 text-sm flex gap-1 items-center">
+            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+            <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
+          </div>
+        )}
         {error && (
           <div className="flex items-center gap-2 text-sm text-red-600">
             <span>{error}</span>
@@ -156,14 +171,18 @@ export default function ChatUI() {
             </button>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
       {pendingImage && (
-        <div className="px-4 pb-2">
-          <img src={pendingImage} alt="Foto anexada" className="h-16 rounded-card" />
+        <div className="px-4 pb-2 fixed bottom-[72px] sm:static bg-white w-full z-10 pt-2">
+          <img src={pendingImage} alt="Foto anexada" className="h-16 rounded-card shadow" />
         </div>
       )}
-      {imageError && <p className="px-4 pb-2 text-sm text-red-600">{imageError}</p>}
-      <div className="flex items-center gap-2 border-t p-3">
+      {imageError && <p className="px-4 pb-2 text-sm text-red-600 fixed bottom-[72px] sm:static bg-white w-full z-10">{imageError}</p>}
+      <form 
+        onSubmit={(e) => { e.preventDefault(); handleSend(); }}
+        className="flex items-center gap-2 border-t p-3 bg-white fixed bottom-0 left-0 right-0 sm:static sm:mt-auto z-20 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] sm:shadow-none"
+      >
         <input
           ref={fileInputRef}
           type="file"
@@ -189,15 +208,14 @@ export default function ChatUI() {
           className="flex-1 rounded-card border px-3 py-2 text-sm outline-none focus:border-primary"
         />
         <button
-          type="button"
-          onClick={handleSend}
+          type="submit"
           disabled={sending}
           aria-label="Enviar"
           className="font-display bg-accent hover:bg-accent-dark disabled:opacity-50 text-white rounded-card p-2"
         >
           <Send className="size-5" />
         </button>
-      </div>
+      </form>
     </div>
   )
 }

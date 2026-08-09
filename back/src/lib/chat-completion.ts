@@ -57,6 +57,32 @@ function toWorkersAiMessage(message: ChatCompletionMessage) {
   }
 }
 
+function extractLeakedToolCalls(text: string): ChatCompletionToolCall[] {
+  const calls: ChatCompletionToolCall[] = []
+  const regex = /\[([a-zA-Z0-9_]+)\(([^\]]*)\)\]/g
+  let match
+  while ((match = regex.exec(text)) !== null) {
+    const name = match[1]
+    const argsStr = match[2]
+    const args: Record<string, unknown> = {}
+    const argRegex = /([a-zA-Z0-9_]+)\s*=\s*(?:'([^']*)'|"([^"]*)"|([^,\s]+))/g
+    let argMatch
+    while ((argMatch = argRegex.exec(argsStr)) !== null) {
+      const key = argMatch[1]
+      const strVal = argMatch[2] !== undefined ? argMatch[2] : argMatch[3]
+      const rawVal = argMatch[4]
+      if (strVal !== undefined) {
+        args[key] = strVal
+      } else if (rawVal !== undefined) {
+        const num = Number(rawVal)
+        args[key] = isNaN(num) ? rawVal : num
+      }
+    }
+    calls.push({ id: `leaked-${Math.random().toString(36).slice(2)}`, name, arguments: args })
+  }
+  return calls
+}
+
 export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
   return async (messages, tools) => {
     const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')
@@ -84,7 +110,7 @@ export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
       }),
     )
 
-    const toolCalls = (response.tool_calls ?? [])
+    let toolCalls = (response.tool_calls ?? [])
       .map((call) => ({
         id: call.id ?? '',
         name: call.function?.name ?? call.name,
@@ -92,6 +118,14 @@ export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
       }))
       .filter((call): call is ChatCompletionToolCall => Boolean(call.name))
 
-    return { text: response.response ?? null, toolCalls }
+    const rawText = response.response ?? ''
+    if (rawText) {
+      const leakedCalls = extractLeakedToolCalls(rawText)
+      toolCalls = toolCalls.concat(leakedCalls)
+    }
+    
+    const parsedText = rawText ? rawText.replace(/\[[a-zA-Z0-9_]+\([^\]]*\)\]/g, '').trim() : null
+
+    return { text: parsedText || null, toolCalls }
   }
 }

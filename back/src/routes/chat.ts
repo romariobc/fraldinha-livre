@@ -33,8 +33,14 @@ const SYSTEM_PROMPT =
   'souber esses dados (nao junte tudo numa frase so em query). ' +
   '(5) Respostas de texto sao curtas - uma ou duas frases, nunca paragrafos longos nem multiplas ' +
   'perguntas na mesma mensagem. ' +
-  '(6) Nunca invente produto, preco ou id - use search_products/get_product pra confirmar. ' +
-  '(7) So chame select_product_for_purchase usando o ID exato retornado no campo "id" pela tool search_products (ex: "p1", "p2", "t3", etc.). Nunca invente ou use strings descritivas como ID.'
+  '(6) Regra de Unidades vs Pacotes: Cada item retornado por search_products representa um PACOTE fechado. ' +
+  'O campo "quantity" retornado na busca indica a quantidade de tiras ou unidades contidas DENTRO daquele pacote (ex: pacote de 40 tiras). ' +
+  'Nunca confunda tiras por pacote com a quantidade de pacotes a comprar! ' +
+  '(7) Confirmacao antes da compra: Antes de prosseguir para a compra (select_product_for_purchase), confirme OBRIGATORIAMENTE com o comprador: ' +
+  'a marca, o tamanho, a quantidade de tiras/unidades por pacote e pergunte explicitamente quantos PACOTES ele deseja ' +
+  '(ex: "Temos a Fralda Pampers Premium Care tamanho RN com 40 tiras. Quantos pacotes você gostaria de comprar?"). ' +
+  '(8) So chame select_product_for_purchase usando o ID exato retornado no campo "id" pela tool search_products (ex: "p1", "p2", "t3", etc.). ' +
+  'O argumento "quantity" dessa tool deve ser a quantidade de PACOTES (ex: 1, 2, 3) e NUNCA a quantidade de tiras individuais (ex: se o usuario quer 1 pacote de 40 tiras, a quantity e 1, e nao 40).'
 
 const TOOLS: ChatCompletionTool[] = [
   {
@@ -74,7 +80,7 @@ const TOOLS: ChatCompletionTool[] = [
           type: 'string',
           description: 'O id exato do produto retornado no campo "id" por search_products (ex: "p1", "p2", "t3")',
         },
-        quantity: { type: 'number' },
+        quantity: { type: 'number', description: 'A quantidade de PACOTES a comprar (ex: 1, 2, 3). NUNCA envie a quantidade de tiras/unidades individuais do pacote (ex: se quer 1 pacote de 40 tiras, envie 1, e nao 40).' },
       },
       required: ['productId', 'quantity'],
     },

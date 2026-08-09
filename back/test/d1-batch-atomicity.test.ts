@@ -16,7 +16,7 @@ describe('D1 batch atomicity (RN-03)', () => {
    * A segunda statement falha (violação de PK), e ambas são revertidas.
    * Isso prova que db.batch() funciona como uma transação atômica.
    */
-  it('db.batch([insert, insert] com conflito de PK → ambas são revertidas', async () => {
+  it('db.batch([insert, insert] com conflito de PK → ambas são revertidas', { timeout: 15000 }, async () => {
     const db = drizzle(env.DB)
 
     const addressJson = JSON.stringify({

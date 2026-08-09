@@ -15,6 +15,8 @@ declare global {
       RESEND_API_KEY: string
       /** UID fixo do admin unico da plataforma (feature 012, sem sistema de papeis multiplos). */
       ADMIN_UID: string
+      /** Binding da Workers AI — usado pelo chat-agent (thread M, feature 018). */
+      AI: Ai
     }
   }
 }

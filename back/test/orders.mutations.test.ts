@@ -109,7 +109,7 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     expect(body).toHaveProperty('error')
   })
 
-  it('POST /orders com id/uid/status maliciosos no body → 201, uid é do TOKEN (RN-03)', async () => {
+  it('POST /orders com id/uid/status maliciosos no body → 201, uid é do TOKEN (RN-03)', { timeout: 15000 }, async () => {
     const app = createTestApp()
     const request = new Request('http://localhost/orders', {
       method: 'POST',

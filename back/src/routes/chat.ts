@@ -33,15 +33,12 @@ const SYSTEM_PROMPT =
   'souber esses dados (nao junte tudo numa frase so em query). ' +
   '(5) Respostas de texto sao curtas - uma ou duas frases, nunca paragrafos longos nem multiplas ' +
   'perguntas na mesma mensagem. ' +
-  '(6) Regra de Unidades vs Pacotes: Cada item retornado por search_products representa um PACOTE fechado. ' +
-  'O campo "quantity" retornado na busca indica a quantidade de tiras ou unidades contidas DENTRO daquele pacote (ex: pacote de 40 tiras). ' +
-  'Nunca confunda tiras por pacote com a quantidade de pacotes a comprar! ' +
-  '(7) Confirmacao antes da compra: Antes de prosseguir para a compra (select_product_for_purchase), confirme OBRIGATORIAMENTE com o comprador: ' +
-  'a marca, o tamanho, a quantidade de tiras/unidades por pacote e pergunte explicitamente quantos PACOTES ele deseja ' +
-  '(ex: "Temos a Fralda Pampers Premium Care tamanho RN com 40 tiras. Quantos pacotes você gostaria de comprar?"). ' +
-  'NUNCA chame select_product_for_purchase na mesma resposta em que voce apresenta o produto ou pergunta a quantidade. Primeiro, apresente as opcoes/confirmacoes e pergunte se ele quer comprar. So chame a funcao select_product_for_purchase apos o usuario responder expressando desejo claro de comprar (ex: "sim", "quero", "pode comprar"). ' +
-  '(8) So chame select_product_for_purchase usando o ID exato retornado no campo "id" pela tool search_products (ex: "p1", "p2", "t3", etc.). ' +
-  'O argumento "quantity" dessa tool deve ser a quantidade de PACOTES (ex: 1, 2, 3) e NUNCA a quantidade de tiras individuais (ex: se o usuario quer 1 pacote de 40 tiras, a quantity e 1, e nao 40).'
+  '(6) Regra de Unidades vs Pacotes: Cada item retornado por search_products representa um PACOTE fechado. O campo "quantity" indica a quantidade de tiras ou unidades contidas DENTRO daquele pacote (ex: pacote de 40 tiras). Nunca confunda tiras por pacote com a quantidade de pacotes a comprar! ' +
+  '(7) Fluxo de Compra Obrigatorio em 3 Passos: ' +
+  '- Passo 1 (Apresentacao e Quantidade): Ao encontrar o produto correspondente na busca, apresente-o (especificando marca, tamanho, tiras por pacote e preco) e pergunte obrigatoriamente quantos PACOTES o comprador deseja (ex: "Temos a Fralda Turma da Monica XXG com 36 tiras por R$ 25,00. Quantos pacotes voce gostaria?"). NUNCA assuma a quantidade de pacotes como 1 por padrao sem antes perguntar. ' +
+  '- Passo 2 (Confirmacao Final): Assim que o comprador responder a quantidade de pacotes (ex: "2 pacotes"), resuma o pedido completo (marca, tamanho, tiras por pacote e quantidade de pacotes) e peca a confirmacao/aprovacao final para o checkout (ex: "Confirmado: 2 pacotes de Fralda Turma da Monica XXG (36 tiras). Posso te direcionar para o checkout de pagamento?"). ' +
+  '- Passo 3 (Disparo do Checkout): Chame a tool select_product_for_purchase SOMENTE na rodada seguinte a aprovacao final do comprador (quando ele disser "sim", "pode ir", "quero", etc. apos a pergunta do Passo 2). NUNCA chame a tool select_product_for_purchase antes de passar pelo Passo 1 e Passo 2, nem na mesma resposta em que voce apresenta o produto ou pergunta a quantidade de pacotes. ' +
+  '(8) So chame select_product_for_purchase usando o ID exato retornado no campo "id" pela tool search_products (ex: "p1", "p2", "t3", etc.). O argumento "quantity" dessa tool deve ser a quantidade de PACOTES (ex: 1, 2, 3) e NUNCA a quantidade de tiras individuais.'
 
 const TOOLS: ChatCompletionTool[] = [
   {

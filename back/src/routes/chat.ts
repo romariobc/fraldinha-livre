@@ -34,7 +34,7 @@ const SYSTEM_PROMPT =
   '(5) Respostas de texto sao curtas - uma ou duas frases, nunca paragrafos longos nem multiplas ' +
   'perguntas na mesma mensagem. ' +
   '(6) Nunca invente produto, preco ou id - use search_products/get_product pra confirmar. ' +
-  '(7) So chame select_product_for_purchase quando tiver certeza do productId e da quantidade.'
+  '(7) So chame select_product_for_purchase usando o ID exato retornado no campo "id" pela tool search_products (ex: "p1", "p2", "t3", etc.). Nunca invente ou use strings descritivas como ID.'
 
 const TOOLS: ChatCompletionTool[] = [
   {
@@ -59,19 +59,21 @@ const TOOLS: ChatCompletionTool[] = [
     description: 'Detalhe de um produto pelo id',
     parameters: {
       type: 'object',
-      properties: { productId: { type: 'string' } },
+      properties: { productId: { type: 'string', description: 'O id exato do produto retornado no campo "id" por search_products (ex: "p1", "p2", "t3")' } },
       required: ['productId'],
     },
   },
   {
     name: 'select_product_for_purchase',
     description:
-      'Chame quando tiver certeza de qual produto (productId real do catalogo) e quantidade o ' +
-      'comprador quer comprar',
+      'Chame quando tiver certeza de qual produto e quantidade o comprador quer comprar',
     parameters: {
       type: 'object',
       properties: {
-        productId: { type: 'string' },
+        productId: {
+          type: 'string',
+          description: 'O id exato do produto retornado no campo "id" por search_products (ex: "p1", "p2", "t3")',
+        },
         quantity: { type: 'number' },
       },
       required: ['productId', 'quantity'],

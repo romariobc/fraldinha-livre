@@ -132,11 +132,11 @@ export function createChatHandler(runChatCompletion: RunChatCompletion) {
 
       for (const call of result.toolCalls) {
         messages.push({ role: 'assistant', content: JSON.stringify(call) })
-        const toolResult = await runDataTool(db, call)
+        const rawToolResult = await runDataTool(db, call)
         
-        if (call.name === 'search_products' && Array.isArray(toolResult) && toolResult.length === 0) {
-          return c.json({ type: 'text', content: 'Não encontrei nenhum produto com essas características. Pode tentar buscar por outra marca ou tamanho?' }, 200)
-        }
+        const toolResult = (call.name === 'search_products' && Array.isArray(rawToolResult) && rawToolResult.length === 0)
+          ? [{ type: 'fallback', message: 'No products found. Please inform the user in a natural way.' }]
+          : rawToolResult
         
         messages.push({ role: 'tool', content: JSON.stringify(toolResult), toolCallId: call.id })
       }

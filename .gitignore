@@ -38,9 +38,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# ── Claude Code ────────────────────────────────────────────────
+# ── Claude Code / AI agents ────────────────────────────────────
 .claude/worktrees/
 .superpowers/
+.agents/
+run_checks.ps1
 
 # graphify (grafo de conhecimento gerado)
 graphify-out/

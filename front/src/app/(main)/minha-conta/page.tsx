@@ -9,6 +9,7 @@ import { useOrders } from '@/contexts/orders-context'
 import PedidosTab from '@/components/minha-conta/PedidosTab'
 import HistoricoTab from '@/components/minha-conta/HistoricoTab'
 import PerfilTab from '@/components/minha-conta/PerfilTab'
+import RoleProtectedRoute from '@/components/auth/RoleProtectedRoute'
 
 type TabKey = 'pedidos' | 'historico' | 'perfil'
 
@@ -148,8 +149,11 @@ function MinhaContaContent() {
 
 export default function MinhaContaPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Carregando...</div>}>
-      <MinhaContaContent />
-    </Suspense>
+    <RoleProtectedRoute allowedRoles={['comprador']}>
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Carregando...</div>}>
+        <MinhaContaContent />
+      </Suspense>
+    </RoleProtectedRoute>
   )
 }
+

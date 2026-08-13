@@ -41,23 +41,9 @@ function CheckoutContent() {
   const urlCidade = searchParams.get('cidade')
   const urlEstado = searchParams.get('estado')
 
-  const [step, setStep] = useState<CheckoutStep>('endereco')
-  const [useCustomAddress, setUseCustomAddress] = useState(false)
-  const [customAddress, setCustomAddress] = useState<Address>({
-    logradouro: '',
-    numero: '',
-    complemento: '',
-    bairro: '',
-    cidade: '',
-    estado: '',
-    cep: '',
-  })
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix')
-
-  useEffect(() => {
-    // 1. Process custom address if provided in URL
+  const [customAddress, setCustomAddress] = useState<Address>(() => {
     if (urlCep && urlLogradouro && urlNumero) {
-      setCustomAddress({
+      return {
         logradouro: urlLogradouro,
         numero: urlNumero,
         complemento: urlComplemento || '',
@@ -65,21 +51,27 @@ function CheckoutContent() {
         cidade: urlCidade || '',
         estado: urlEstado || '',
         cep: urlCep,
-      })
-      setUseCustomAddress(true)
-      setStep('revisao')
-    }
-
-    // 2. Process payment method if provided in URL
-    if (urlPaymentMethod) {
-      if (urlPaymentMethod === 'cartao' || urlPaymentMethod === 'card') {
-        setPaymentMethod('card')
-      } else if (urlPaymentMethod === 'pix') {
-        setPaymentMethod('pix')
       }
     }
+    return {
+      logradouro: '',
+      numero: '',
+      complemento: '',
+      bairro: '',
+      cidade: '',
+      estado: '',
+      cep: '',
+    }
+  })
+  const [useCustomAddress, setUseCustomAddress] = useState(() => Boolean(urlCep && urlLogradouro && urlNumero))
+  const [step, setStep] = useState<CheckoutStep>(() => (urlCep && urlLogradouro && urlNumero) ? 'revisao' : 'endereco')
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(() => {
+    if (urlPaymentMethod === 'cartao' || urlPaymentMethod === 'card') return 'card'
+    return 'pix'
+  })
 
-    // 3. Add item to cart if product ID is provided
+  useEffect(() => {
+    // Add item to cart if product ID is provided
     if (urlProductId && urlQuantity > 0 && !productsLoading && products.length > 0) {
       const product = products.find((p) => p.id === urlProductId)
       if (product) {
@@ -96,22 +88,7 @@ function CheckoutContent() {
         router.replace('/checkout')
       }
     }
-  }, [
-    urlProductId,
-    urlQuantity,
-    urlPaymentMethod,
-    urlCep,
-    urlLogradouro,
-    urlNumero,
-    urlComplemento,
-    urlBairro,
-    urlCidade,
-    urlEstado,
-    products,
-    productsLoading,
-    addItem,
-    router,
-  ])
+  }, [urlProductId, urlQuantity, productsLoading, products, addItem, router])
   const [createdOrders, setCreatedOrders] = useState<Order[]>([])
   const [submitting, setSubmitting] = useState(false)
 

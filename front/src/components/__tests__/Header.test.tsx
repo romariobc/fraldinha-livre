@@ -197,7 +197,19 @@ describe('Header', () => {
       })
     })
 
-    it('should have Minha conta link with correct href in dropdown', async () => {
+    it('should have Minha conta link with correct href in dropdown for comprador', async () => {
+      mockUseAuth.mockReturnValue({
+        user: { uid: 'user-123', email: 'user@example.com', displayName: 'John Doe' },
+        profile: null,
+        role: 'comprador',
+        loading: false,
+        signInGoogle: vi.fn(),
+        signInEmail: vi.fn(),
+        signUpEmail: vi.fn(),
+        signOutUser: mockSignOutUser,
+        updateProfile: vi.fn(),
+      })
+
       const user = userEvent.setup()
       render(<Header />)
 
@@ -206,6 +218,29 @@ describe('Header', () => {
 
       const minhaContaLink = screen.getByRole('menuitem', { name: /Minha conta/i })
       expect(minhaContaLink).toHaveAttribute('href', '/minha-conta')
+    })
+
+    it('should have Minha conta link pointing to /painel-fornecedor in dropdown for fornecedor', async () => {
+      mockUseAuth.mockReturnValue({
+        user: { uid: 'user-123', email: 'fornecedor@example.com', displayName: 'Fornecedor Test' },
+        profile: null,
+        role: 'fornecedor',
+        loading: false,
+        signInGoogle: vi.fn(),
+        signInEmail: vi.fn(),
+        signUpEmail: vi.fn(),
+        signOutUser: mockSignOutUser,
+        updateProfile: vi.fn(),
+      })
+
+      const user = userEvent.setup()
+      render(<Header />)
+
+      const trigger = screen.getByRole('button', { name: /Fornecedor Test/i })
+      await user.click(trigger)
+
+      const minhaContaLink = screen.getByRole('menuitem', { name: /Minha conta/i })
+      expect(minhaContaLink).toHaveAttribute('href', '/painel-fornecedor')
     })
 
     it('should call signOutUser when clicking "Sair"', async () => {
@@ -365,7 +400,19 @@ describe('Header', () => {
       })
     })
 
-    it('should display "Minha conta" in mobile menu when logged in', async () => {
+    it('should display "Minha conta" link pointing to /minha-conta in mobile menu for comprador', async () => {
+      mockUseAuth.mockReturnValue({
+        user: { uid: 'user-123', email: 'user@example.com', displayName: 'John Doe' },
+        profile: null,
+        role: 'comprador',
+        loading: false,
+        signInGoogle: vi.fn(),
+        signInEmail: vi.fn(),
+        signUpEmail: vi.fn(),
+        signOutUser: mockSignOutUser,
+        updateProfile: vi.fn(),
+      })
+
       const user = userEvent.setup()
       render(<Header />)
 
@@ -373,9 +420,36 @@ describe('Header', () => {
       const menuButton = screen.getByRole('button', { name: /Abrir menu/i })
       await user.click(menuButton)
 
-      // Mobile menu should contain Minha conta link
+      // Mobile menu should contain Minha conta link pointing to /minha-conta
       const links = screen.getAllByRole('link')
       const minhaContaLink = links.find((link) => link.textContent?.includes('Minha conta') && link.getAttribute('href') === '/minha-conta')
+
+      expect(minhaContaLink).toBeInTheDocument()
+    })
+
+    it('should display "Minha conta" link pointing to /painel-fornecedor in mobile menu for fornecedor', async () => {
+      mockUseAuth.mockReturnValue({
+        user: { uid: 'user-123', email: 'fornecedor@example.com', displayName: 'Fornecedor Test' },
+        profile: null,
+        role: 'fornecedor',
+        loading: false,
+        signInGoogle: vi.fn(),
+        signInEmail: vi.fn(),
+        signUpEmail: vi.fn(),
+        signOutUser: mockSignOutUser,
+        updateProfile: vi.fn(),
+      })
+
+      const user = userEvent.setup()
+      render(<Header />)
+
+      // Open mobile menu
+      const menuButton = screen.getByRole('button', { name: /Abrir menu/i })
+      await user.click(menuButton)
+
+      // Mobile menu should contain Minha conta link pointing to /painel-fornecedor
+      const links = screen.getAllByRole('link')
+      const minhaContaLink = links.find((link) => link.textContent?.includes('Minha conta') && link.getAttribute('href') === '/painel-fornecedor')
 
       expect(minhaContaLink).toBeInTheDocument()
     })

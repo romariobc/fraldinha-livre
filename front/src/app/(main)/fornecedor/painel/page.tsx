@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useMarket } from '@/contexts/market-context'
 import { useAuth } from '@/contexts/auth-context'
+import RoleProtectedRoute from '@/components/auth/RoleProtectedRoute'
 import PedidosDiretosTab from '@/components/fornecedor/PedidosDiretosTab'
 import OfertasMercadoTab from '@/components/fornecedor/OfertasMercadoTab'
 import LogisticaTab      from '@/components/fornecedor/LogisticaTab'
@@ -14,7 +15,7 @@ import CatalogoTab       from '@/components/fornecedor/CatalogoTab'
 
 type TabKey = 'diretos' | 'ofertas' | 'logistica' | 'catalogo' | 'perfil'
 
-export default function FornecedorPainelPage() {
+function FornecedorPainelContent() {
   const router = useRouter()
   const { user, loading } = useAuth()
 
@@ -193,3 +194,12 @@ export default function FornecedorPainelPage() {
     </>
   )
 }
+
+export default function FornecedorPainelPage() {
+  return (
+    <RoleProtectedRoute allowedRoles={['fornecedor']}>
+      <FornecedorPainelContent />
+    </RoleProtectedRoute>
+  )
+}
+

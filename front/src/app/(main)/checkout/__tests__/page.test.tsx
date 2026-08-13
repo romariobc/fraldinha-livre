@@ -1,11 +1,12 @@
 /// <reference types="vitest/globals" />
 
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CartProvider } from '@/contexts/cart-context'
 import { AuthProvider } from '@/contexts/auth-context'
 import { OrdersProvider } from '@/contexts/orders-context'
 import { MarketProvider } from '@/contexts/market-context'
+import { ProductsProvider } from '@/contexts/products-context'
 import type { CartItem } from '@/lib/domain/cart'
 import { type ReactNode } from 'react'
 import CheckoutPage from '../page'
@@ -42,7 +43,7 @@ let mockPush = vi.fn()
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
   usePathname: vi.fn(),
-  useSearchParams: vi.fn(),
+  useSearchParams: vi.fn(() => ({ get: () => null })),
 }))
 
 // Mock do auth-context: por padrao logado (a guarda D-024 exige login para o checkout).
@@ -64,7 +65,7 @@ function authValue(overrides: Partial<ReturnType<typeof useAuth>> = {}): ReturnT
     signInEmail: vi.fn(),
     signUpEmail: vi.fn(),
     signOutUser: vi.fn(),
-    updateProfile: vi.fn(),
+    updateProfile: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   }
 }
@@ -77,15 +78,17 @@ function renderCheckout(items: CartItem[]) {
   }
 
   return render(
-    <CartProvider>
-      <AuthProvider>
-        <OrdersProvider>
-          <MarketProvider>
-            <CheckoutPage />
-          </MarketProvider>
-        </OrdersProvider>
-      </AuthProvider>
-    </CartProvider>
+    <ProductsProvider>
+      <CartProvider>
+        <AuthProvider>
+          <OrdersProvider>
+            <MarketProvider>
+              <CheckoutPage />
+            </MarketProvider>
+          </OrdersProvider>
+        </AuthProvider>
+      </CartProvider>
+    </ProductsProvider>
   )
 }
 
@@ -420,8 +423,10 @@ describe('CheckoutPage', () => {
 
       // Verify that cart was cleared
       // Check localStorage to ensure it is empty
-      const stored = window.localStorage.getItem('fl.cart.v1')
-      expect(stored).toBe('[]')
+      await waitFor(() => {
+        const stored = window.localStorage.getItem('fl.cart.v1')
+        expect(stored).toBe('[]')
+      })
     })
   })
 

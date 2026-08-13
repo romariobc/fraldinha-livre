@@ -5,6 +5,7 @@ import { env } from 'cloudflare:workers'
 import { applyD1Migrations } from 'cloudflare:test'
 import { createAuthMiddleware } from '../src/middleware/auth'
 import { createChatHandler, EMPTY_RESPONSE_FALLBACK } from '../src/routes/chat'
+import { createWorkersAiChatCompletion } from '../src/lib/chat-completion'
 import type { Env, AppContext } from '../src/env'
 import type { RunChatCompletion } from '../src/lib/chat-completion'
 
@@ -310,5 +311,110 @@ describe('POST /chat/message', () => {
     // produtos Pampers reais confirmam que a string vazia foi descartada.
     expect(toolResult.length).toBeGreaterThan(1)
     expect(toolResult.every((p: { brand: string }) => p.brand === 'Pampers')).toBe(true)
+  })
+
+  // ── R2/R3/R4: Validacao Zod e Harness em chamadas de tool extraidas via Regex ──
+
+  it('chamada de tool extraida via Regex com argumentos validos passa por validacao Zod no executeToolHarness e executa no DB', async () => {
+    const aiRun = vi
+      .fn()
+      .mockResolvedValueOnce({
+        response: 'Vou buscar o produto para voce: [get_product(productId="p1")]',
+        tool_calls: [],
+      })
+      .mockResolvedValueOnce({
+        response: 'Encontrei o produto Supersec Pants P no catalogo.',
+        tool_calls: [],
+      })
+
+    const runChatCompletion = createWorkersAiChatCompletion({ run: aiRun } as unknown as Ai)
+    const testApp = createTestApp(runChatCompletion)
+
+    const request = new Request('http://localhost/chat/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...AUTH_HEADER },
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'busca o produto p1' }] }),
+    })
+    const response = await testApp.fetch(request, env)
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({ type: 'text', content: 'Encontrei o produto Supersec Pants P no catalogo.' })
+    expect(aiRun).toHaveBeenCalledTimes(2)
+
+    // Verifica que na 2a chamada ao modelo, a mensagem role='tool' contem o produto retornado pelo DB via harness
+    const secondCallMessages = aiRun.mock.calls[1][1].messages
+    const toolMessage = secondCallMessages.find((m: { role: string }) => m.role === 'tool')
+    expect(toolMessage).toBeDefined()
+    const toolResult = JSON.parse(toolMessage.content)
+    expect(toolResult).toHaveProperty('id', 'p1')
+  })
+
+  it('chamada de tool extraida via Regex com argumentos invalidos/maliciosos (quantity=999) retorna erro de validacao Zod sem crashar', async () => {
+    const aiRun = vi
+      .fn()
+      .mockResolvedValueOnce({
+        response: 'Processando seu pedido: [select_product_for_purchase(productId="p1", quantity=999)]',
+        tool_calls: [],
+      })
+      .mockResolvedValueOnce({
+        response: 'Desculpe, a quantidade maxima e 50 unidades.',
+        tool_calls: [],
+      })
+
+    const runChatCompletion = createWorkersAiChatCompletion({ run: aiRun } as unknown as Ai)
+    const testApp = createTestApp(runChatCompletion)
+
+    const request = new Request('http://localhost/chat/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...AUTH_HEADER },
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'quero 999 fraldas' }] }),
+    })
+    const response = await testApp.fetch(request, env)
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({ type: 'text', content: 'Desculpe, a quantidade maxima e 50 unidades.' })
+    expect(aiRun).toHaveBeenCalledTimes(2)
+
+    // Verifica que o erro do Zod (max 50) foi capturado pelo harness e enviado como role='tool'
+    const secondCallMessages = aiRun.mock.calls[1][1].messages
+    const toolMessage = secondCallMessages.find((m: { role: string }) => m.role === 'tool')
+    expect(toolMessage).toBeDefined()
+    expect(toolMessage.content).toContain('argumento')
+    expect(toolMessage.content).toContain('50')
+  })
+
+  it('chamada de tool extraida via Regex com SQL injection em productId retorna erro Zod no harness sem crashar', async () => {
+    const aiRun = vi
+      .fn()
+      .mockResolvedValueOnce({
+        response: 'Buscando informacoes: [get_product(productId="p1\'; DROP TABLE products;--")]',
+        tool_calls: [],
+      })
+      .mockResolvedValueOnce({
+        response: 'Identificador de produto invalido.',
+        tool_calls: [],
+      })
+
+    const runChatCompletion = createWorkersAiChatCompletion({ run: aiRun } as unknown as Ai)
+    const testApp = createTestApp(runChatCompletion)
+
+    const request = new Request('http://localhost/chat/message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...AUTH_HEADER },
+      body: JSON.stringify({ messages: [{ role: 'user', content: 'pesquisar id malicioso' }] }),
+    })
+    const response = await testApp.fetch(request, env)
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toEqual({ type: 'text', content: 'Identificador de produto invalido.' })
+    expect(aiRun).toHaveBeenCalledTimes(2)
+
+    const secondCallMessages = aiRun.mock.calls[1][1].messages
+    const toolMessage = secondCallMessages.find((m: { role: string }) => m.role === 'tool')
+    expect(toolMessage).toBeDefined()
+    expect(toolMessage.content).toContain('argumento')
   })
 })

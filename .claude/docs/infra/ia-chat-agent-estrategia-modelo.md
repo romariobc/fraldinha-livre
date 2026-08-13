@@ -194,10 +194,9 @@ comportamento real; busca que não suportava consulta composta). **Antes de cons
 (seção 4/6), vale esgotar essa classe de bug primeiro** — pode ser que o `llama-4-scout` seja bom o
 suficiente e a experiência ruim seja inteiramente nossa, não dele.
 
-**Pendência real, não resolvida:** o vazamento de sintaxe da tool como texto ("P" acima) ainda acontece
-às vezes, mesmo com o parsing corrigido. Precisa da mesma instrumentação/captura ao vivo pra entender se
-é nondeterminismo do modelo, um gatilho específico (ex.: depois de N chamadas de tool na mesma
-conversa), ou outra coisa. Log `[chat-diag]` continua ativo em produção pra isso.
+**Pendência resolvida (2026-08-13):** O vazamento de sintaxe em texto cru persistia, mas agora assumindo o formato de um objeto JSON cru da chamada de tool (ex: `{"search_products": {"brand": "MamyPoko", "size": "G", "query": "36 unidades"}}`).
+- **Causa**: O modelo às vezes escreve a chamada em formato JSON puro no meio da resposta de texto ao invés de emitir o array estruturado nativo.
+- **Resolução**: Implementamos `extractLeakedJsonToolCalls` para varrer a string em busca de blocos `{}` que contenham os nomes das nossas ferramentas (`search_products`, `get_product`, `select_product_for_purchase`). O parser extrai as propriedades do JSON, valida a estrutura, insere as chamadas no array final de `toolCalls` e higieniza a resposta de texto retornada ao usuário final, eliminando a exibição desse vazamento na interface web.
 
 ## Referências
 

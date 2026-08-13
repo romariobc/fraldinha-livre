@@ -1,18 +1,20 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useCart } from '@/contexts/cart-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useOrders } from '@/contexts/orders-context'
 import { useMarket } from '@/contexts/market-context'
+import { useProducts } from '@/contexts/products-context'
+import { STORE_SUPPLIERS } from '@/lib/suppliers'
 import { MOCK_USER } from '@/lib/account-mock'
 import type { Address, Order } from '@/lib/account-mock'
 import type { PaymentMethod } from '@/lib/ports/payment'
 import { lineTotal, cartSubtotal } from '@/lib/domain/cart'
 import { formatPrice } from '@/lib/utils'
 import { ShoppingBag } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { MockPaymentGateway } from '@/lib/adapters/mock-payment-gateway'
 import { MockFulfillmentService } from '@/lib/adapters/mock-fulfillment-service'
 import { orderToDirectOrder } from '@/lib/order-adapters'
@@ -20,12 +22,25 @@ import { toast } from 'sonner'
 
 type CheckoutStep = 'endereco' | 'revisao' | 'pagamento' | 'confirmacao'
 
-export default function CheckoutPage() {
-  const { items, subtotal, bySupplier, clear } = useCart()
-  const { user, loading, profile } = useAuth()
+function CheckoutContent() {
+  const { items, subtotal, bySupplier, clear, addItem } = useCart()
+  const { products, loading: productsLoading } = useProducts()
+  const { user, loading, profile, updateProfile } = useAuth()
   const { createOrdersFromCart } = useOrders()
   const { addDirectOrder } = useMarket()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const urlProductId = searchParams.get('productId')
+  const urlQuantity = parseInt(searchParams.get('quantity') || '0', 10)
+  const urlPaymentMethod = searchParams.get('paymentMethod')
+  const urlCep = searchParams.get('cep')
+  const urlLogradouro = searchParams.get('logradouro')
+  const urlNumero = searchParams.get('numero')
+  const urlComplemento = searchParams.get('complemento')
+  const urlBairro = searchParams.get('bairro')
+  const urlCidade = searchParams.get('cidade')
+  const urlEstado = searchParams.get('estado')
+
   const [step, setStep] = useState<CheckoutStep>('endereco')
   const [useCustomAddress, setUseCustomAddress] = useState(false)
   const [customAddress, setCustomAddress] = useState<Address>({
@@ -38,6 +53,65 @@ export default function CheckoutPage() {
     cep: '',
   })
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix')
+
+  useEffect(() => {
+    // 1. Process custom address if provided in URL
+    if (urlCep && urlLogradouro && urlNumero) {
+      setCustomAddress({
+        logradouro: urlLogradouro,
+        numero: urlNumero,
+        complemento: urlComplemento || '',
+        bairro: urlBairro || '',
+        cidade: urlCidade || '',
+        estado: urlEstado || '',
+        cep: urlCep,
+      })
+      setUseCustomAddress(true)
+      setStep('revisao')
+    }
+
+    // 2. Process payment method if provided in URL
+    if (urlPaymentMethod) {
+      if (urlPaymentMethod === 'cartao' || urlPaymentMethod === 'card') {
+        setPaymentMethod('card')
+      } else if (urlPaymentMethod === 'pix') {
+        setPaymentMethod('pix')
+      }
+    }
+
+    // 3. Add item to cart if product ID is provided
+    if (urlProductId && urlQuantity > 0 && !productsLoading && products.length > 0) {
+      const product = products.find((p) => p.id === urlProductId)
+      if (product) {
+        const supplier = STORE_SUPPLIERS.find((s) => s.id === product.supplierId)
+        addItem({
+          productId: product.id,
+          productName: `${product.name} ${product.size}`,
+          supplierId: product.supplierId,
+          supplierName: supplier?.name || 'Fornecedor desconhecido',
+          unitPrice: product.priceInCents,
+          quantity: urlQuantity,
+          unit: 'un',
+        })
+        router.replace('/checkout')
+      }
+    }
+  }, [
+    urlProductId,
+    urlQuantity,
+    urlPaymentMethod,
+    urlCep,
+    urlLogradouro,
+    urlNumero,
+    urlComplemento,
+    urlBairro,
+    urlCidade,
+    urlEstado,
+    products,
+    productsLoading,
+    addItem,
+    router,
+  ])
   const [createdOrders, setCreatedOrders] = useState<Order[]>([])
   const [submitting, setSubmitting] = useState(false)
 
@@ -103,6 +177,20 @@ export default function CheckoutPage() {
             addDirectOrder(directOrder)
           }
         }
+      }
+
+      // Record last purchase in profile
+      if (items.length > 0) {
+        const firstItem = items[0]
+        updateProfile({
+          lastPurchase: {
+            productId: firstItem.productId,
+            productName: firstItem.productName,
+            quantity: firstItem.quantity,
+          }
+        }).catch((err) => {
+          console.error('Erro ao salvar última compra:', err)
+        })
       }
 
       // 5. Save created orders, clear cart, and move to confirmacao
@@ -503,5 +591,13 @@ export default function CheckoutPage() {
         )}
       </div>
     </section>
+  )
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Carregando...</div>}>
+      <CheckoutContent />
+    </Suspense>
   )
 }

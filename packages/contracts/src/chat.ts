@@ -20,9 +20,32 @@ export const ChatImageDataUrlSchema = z
     new RegExp(`^data:image/(${SUPPORTED_CHAT_IMAGE_TYPES.join('|')});base64,[A-Za-z0-9+/=]+$`),
   )
 
+export const ChatAddressSchema = z.object({
+  logradouro: z.string(),
+  numero: z.string(),
+  complemento: z.string().optional(),
+  bairro: z.string(),
+  cidade: z.string(),
+  estado: z.string(),
+  cep: z.string(),
+})
+
 export const ChatRequestSchema = z.object({
   messages: z.array(ChatMessageSchema).min(1),
   image: ChatImageDataUrlSchema.optional(),
+  userProfile: z
+    .object({
+      name: z.string().optional(),
+      address: ChatAddressSchema.optional(),
+    })
+    .optional(),
+  lastPurchase: z
+    .object({
+      productId: z.string(),
+      productName: z.string(),
+      quantity: z.number(),
+    })
+    .optional(),
 })
 export type ChatRequest = z.infer<typeof ChatRequestSchema>
 
@@ -37,6 +60,8 @@ export const ChatActionResponseSchema = z.object({
   action: z.literal('select_product'),
   productId: z.string(),
   quantity: z.number().int().positive(),
+  paymentMethod: z.string().optional(),
+  address: ChatAddressSchema.optional(),
 })
 export type ChatActionResponse = z.infer<typeof ChatActionResponseSchema>
 

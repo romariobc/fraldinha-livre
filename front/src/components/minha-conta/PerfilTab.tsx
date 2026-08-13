@@ -2,7 +2,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Mail, MapPin, Phone, CreditCard } from 'lucide-react'
+import { Mail, MapPin, Phone, CreditCard, Trash2, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
@@ -105,6 +105,72 @@ export default function PerfilTab({ returnTo }: { returnTo?: string }) {
     },
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [showAddCard, setShowAddCard] = useState(false)
+  const [newCardName, setNewCardName] = useState('')
+  const [newCardNumber, setNewCardNumber] = useState('')
+  const [newCardExpiry, setNewCardExpiry] = useState('')
+  const [newCardCvv, setNewCardCvv] = useState('')
+  const [isSavingCard, setIsSavingCard] = useState(false)
+
+  async function handleAddCard() {
+    if (!newCardName.trim() || !newCardNumber.trim() || !newCardExpiry.trim() || !newCardCvv.trim()) {
+      toast.error('Preencha todos os campos do cartão')
+      return
+    }
+
+    const cleanNumber = newCardNumber.replace(/\D/g, '')
+    if (cleanNumber.length < 13 || cleanNumber.length > 19) {
+      toast.error('Número de cartão inválido')
+      return
+    }
+
+    const brand = cleanNumber.startsWith('4')
+      ? 'Visa'
+      : cleanNumber.startsWith('5')
+      ? 'Mastercard'
+      : 'Elo'
+
+    const newCard = {
+      id: `card-${Date.now()}`,
+      brand,
+      last4: cleanNumber.slice(-4),
+      holderName: newCardName.toUpperCase(),
+      expirationDate: newCardExpiry,
+    }
+
+    try {
+      setIsSavingCard(true)
+      const existingCards = profile?.savedCards || []
+      await updateProfile({
+        savedCards: [...existingCards, newCard],
+      })
+      toast.success('Cartão adicionado com sucesso!')
+      setShowAddCard(false)
+      setNewCardName('')
+      setNewCardNumber('')
+      setNewCardExpiry('')
+      setNewCardCvv('')
+    } catch (err) {
+      console.error('Erro ao salvar cartão:', err)
+      toast.error('Erro ao salvar cartão')
+    } finally {
+      setIsSavingCard(false)
+    }
+  }
+
+  async function handleRemoveCard(cardId: string) {
+    try {
+      const existingCards = profile?.savedCards || []
+      const filtered = existingCards.filter((c) => c.id !== cardId)
+      await updateProfile({
+        savedCards: filtered,
+      })
+      toast.success('Cartão removido com sucesso!')
+    } catch (err) {
+      console.error('Erro ao remover cartão:', err)
+      toast.error('Erro ao remover cartão')
+    }
+  }
 
   if (!profile) {
     return (
@@ -248,6 +314,129 @@ export default function PerfilTab({ returnTo }: { returnTo?: string }) {
           <InfoRow icon={Phone} label="Telefone" value={profile.phone ? formatPhone(profile.phone) : 'Não informado'} />
           <Separator />
           <InfoRow icon={MapPin} label="Endereço de cadastro" value={fullAddress} />
+        </div>
+
+        {/* Seção de Cartões Salvos */}
+        <div className="bg-white rounded-card shadow-card p-6 mt-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-display font-black text-lg text-brand-text flex items-center gap-2">
+              <CreditCard size={20} className="text-primary-dark" />
+              Cartões de Crédito Salvos
+            </h3>
+            {!showAddCard && (
+              <button
+                onClick={() => setShowAddCard(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-light hover:bg-primary/20 text-primary-dark font-semibold text-xs transition-colors"
+              >
+                <Plus size={14} />
+                Adicionar
+              </button>
+            )}
+          </div>
+
+          {/* Lista de cartões */}
+          {(!profile.savedCards || profile.savedCards.length === 0) && !showAddCard ? (
+            <p className="text-sm text-brand-muted py-2">
+              Nenhum cartão cadastrado. Adicione um cartão para agilizar suas compras.
+            </p>
+          ) : (
+            <div className="space-y-3 mb-4">
+              {(profile.savedCards || []).map((card) => (
+                <div
+                  key={card.id}
+                  className="flex items-center justify-between p-4 rounded-xl border-2 border-slate-100 hover:border-primary/20 transition-colors bg-slate-50/50"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-bold text-xs uppercase text-slate-500 shadow-sm">
+                      {card.brand}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-brand-text">
+                        •••• •••• •••• {card.last4}
+                      </p>
+                      <p className="text-xs text-brand-muted mt-0.5">
+                        {card.holderName} · Expira em {card.expirationDate}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveCard(card.id)}
+                    className="p-2 rounded-lg hover:bg-red-50 text-red-500 hover:text-red-700 transition-colors"
+                    title="Remover Cartão"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Formulário de adicionar cartão */}
+          {showAddCard && (
+            <div className="border-t border-slate-100 pt-4 mt-4 space-y-4">
+              <h4 className="font-semibold text-sm text-brand-text">Novo Cartão de Crédito</h4>
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  placeholder="Nome Impresso no Cartão"
+                  value={newCardName}
+                  onChange={(e) => setNewCardName(e.target.value)}
+                  className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none"
+                />
+                <input
+                  type="text"
+                  placeholder="Número do Cartão"
+                  maxLength={19}
+                  value={newCardNumber}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '')
+                    setNewCardNumber(digits)
+                  }}
+                  className="w-full px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    placeholder="Validade (MM/AA)"
+                    maxLength={5}
+                    value={newCardExpiry}
+                    onChange={(e) => {
+                      let val = e.target.value.replace(/\D/g, '')
+                      if (val.length > 2) {
+                        val = `${val.slice(0, 2)}/${val.slice(2, 4)}`
+                      }
+                      setNewCardExpiry(val)
+                    }}
+                    className="px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none"
+                  />
+                  <input
+                    type="password"
+                    placeholder="CVV"
+                    maxLength={4}
+                    value={newCardCvv}
+                    onChange={(e) => setNewCardCvv(e.target.value.replace(/\D/g, ''))}
+                    className="px-3 py-2 border-2 border-slate-200 rounded-lg text-sm focus:border-primary focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  disabled={isSavingCard}
+                  onClick={() => setShowAddCard(false)}
+                  className="flex-1 py-2 rounded-lg border-2 border-slate-200 text-slate-600 font-semibold text-xs hover:bg-slate-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  disabled={isSavingCard}
+                  onClick={handleAddCard}
+                  className="flex-1 py-2 rounded-lg bg-primary text-white font-semibold text-xs hover:bg-primary-dark transition-colors"
+                >
+                  {isSavingCard ? 'Salvando...' : 'Salvar Cartão'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <button

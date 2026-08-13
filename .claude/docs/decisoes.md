@@ -1088,3 +1088,12 @@ worktree/branch antes de continuar, ou (b) pelo menos avisar o usuário da
 defasagem antes de agir com base neles. Vale especialmente para sessões que
 ficam abertas por muito tempo em modo exploração/estratégia sem commitar
 com frequência.
+
+---
+
+## D-041 — Foco na Web e Postergação do App Mobile (2026-08-13) — VIGENTE
+
+Decidimos suspender e postergar o desenvolvimento e testes do aplicativo mobile Flutter (`app/`) para focar 100% de nossos esforços no canal Web (`front/` e `back/`).
+
+- **Motivação**: O desenvolvimento na Web permite iterações mais rápidas de feedback e homologação do Chat-Agent. O aplicativo mobile já está parcialmente pronto com a ponte de checkout integrada e suporte ao Google Sign-In, mas novas funcionalidades do agente serão experimentadas e refinadas primeiro na Web.
+- **Estratégia**: Assim que terminarmos de consolidar o agente e seus fluxos na Web, replicaremos as mudanças e a inteligência final de volta para o aplicativo Flutter.

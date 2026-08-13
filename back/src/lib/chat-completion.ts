@@ -83,6 +83,65 @@ function extractLeakedToolCalls(text: string): ChatCompletionToolCall[] {
   return calls
 }
 
+function extractLeakedJsonToolCalls(text: string): { calls: ChatCompletionToolCall[]; cleanedText: string } {
+  let cleanedText = text
+  const calls: ChatCompletionToolCall[] = []
+  const toolNames = ['search_products', 'get_product', 'select_product_for_purchase']
+
+  for (const name of toolNames) {
+    let index = cleanedText.indexOf(name)
+    while (index !== -1) {
+      const startIdx = cleanedText.lastIndexOf('{', index)
+      if (startIdx !== -1) {
+        let braceCount = 0
+        let endIdx = -1
+        for (let i = startIdx; i < cleanedText.length; i++) {
+          if (cleanedText[i] === '{') braceCount++
+          else if (cleanedText[i] === '}') {
+            braceCount--
+            if (braceCount === 0) {
+              endIdx = i
+              break
+            }
+          }
+        }
+
+        if (endIdx !== -1) {
+          const jsonStr = cleanedText.slice(startIdx, endIdx + 1)
+          try {
+            const parsed = JSON.parse(jsonStr)
+            if (parsed[name] && typeof parsed[name] === 'object') {
+              calls.push({
+                id: `leaked-json-${Math.random().toString(36).slice(2)}`,
+                name,
+                arguments: parsed[name] as Record<string, unknown>
+              })
+              cleanedText = cleanedText.slice(0, startIdx) + cleanedText.slice(endIdx + 1)
+              index = cleanedText.indexOf(name)
+              continue
+            }
+            if (parsed.name === name && parsed.arguments && typeof parsed.arguments === 'object') {
+              calls.push({
+                id: `leaked-json-${Math.random().toString(36).slice(2)}`,
+                name,
+                arguments: parsed.arguments as Record<string, unknown>
+              })
+              cleanedText = cleanedText.slice(0, startIdx) + cleanedText.slice(endIdx + 1)
+              index = cleanedText.indexOf(name)
+              continue
+            }
+          } catch (e) {
+            // parsing error or invalid format
+          }
+        }
+      }
+      index = cleanedText.indexOf(name, index + name.length)
+    }
+  }
+
+  return { calls, cleanedText: cleanedText.trim() }
+}
+
 export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
   return async (messages, tools) => {
     const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')
@@ -119,13 +178,21 @@ export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
       .filter((call): call is ChatCompletionToolCall => Boolean(call.name))
 
     const rawText = response.response ?? ''
-    if (rawText) {
-      const leakedCalls = extractLeakedToolCalls(rawText)
+    let processedText = rawText
+
+    if (processedText) {
+      // 1. Extrai e limpa chamadas vazadas no formato JSON
+      const { calls: leakedJsonCalls, cleanedText } = extractLeakedJsonToolCalls(processedText)
+      toolCalls = toolCalls.concat(leakedJsonCalls)
+      processedText = cleanedText
+
+      // 2. Extrai chamadas no formato tradicional de função [search_products(...)]
+      const leakedCalls = extractLeakedToolCalls(processedText)
       toolCalls = toolCalls.concat(leakedCalls)
     }
-    
-    const parsedText = rawText
-      ? rawText.replace(/(?:\[)?\b(search_products|get_product|select_product_for_purchase)\(([^)]*)\)(?:\])?/g, '').trim()
+
+    const parsedText = processedText
+      ? processedText.replace(/(?:\[)?\b(search_products|get_product|select_product_for_purchase)\(([^)]*)\)(?:\])?/g, '').trim()
       : null
 
     return { text: parsedText || null, toolCalls }

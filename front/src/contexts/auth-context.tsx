@@ -22,6 +22,20 @@ interface AuthUser {
   displayName: string | null;
 }
 
+export interface SavedCard {
+  id: string
+  brand: string
+  last4: string
+  holderName: string
+  expirationDate: string
+}
+
+export interface LastPurchase {
+  productId: string
+  productName: string
+  quantity: number
+}
+
 export interface UserProfile {
   role: UserRole;
   name: string;
@@ -40,6 +54,8 @@ export interface UserProfile {
     estado: string;
     cep: string;
   };
+  savedCards?: SavedCard[];
+  lastPurchase?: LastPurchase;
   createdAt?: string;
   updatedAt?: string;
 }

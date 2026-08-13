@@ -2,10 +2,10 @@ import { describe, it, expect, beforeAll } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
 import { env } from 'cloudflare:workers'
 import { applyD1Migrations } from 'cloudflare:test'
-import { searchProducts, getProduct } from '../src/lib/chat-tools'
+import { searchProducts, getProduct } from '../src/lib/ai/tools/handlers'
 import { products } from '../src/schema/products'
 
-describe('searchProducts / getProduct (tools do chat-agent)', () => {
+describe('searchProducts / getProduct (lib/ai/tools/handlers)', () => {
   let despublicadoId: string
 
   beforeAll(async () => {
@@ -106,7 +106,7 @@ describe('searchProducts / getProduct (tools do chat-agent)', () => {
 
   it('getProduct: id real retorna o produto com priceCents presente', async () => {
     const db = drizzle(env.DB)
-    const result = await getProduct(db, 'p1')
+    const result = await getProduct(db, { productId: 'p1' })
 
     expect(result).not.toBeNull()
     expect(result?.id).toBe('p1')
@@ -116,14 +116,14 @@ describe('searchProducts / getProduct (tools do chat-agent)', () => {
 
   it('getProduct: id inexistente retorna null', async () => {
     const db = drizzle(env.DB)
-    const result = await getProduct(db, 'produto-fantasma-xyz123')
+    const result = await getProduct(db, { productId: 'produto-fantasma-xyz123' })
 
     expect(result).toBeNull()
   })
 
   it('getProduct: id de produto despublicado retorna null (nao acessivel pelo chat)', async () => {
     const db = drizzle(env.DB)
-    const result = await getProduct(db, despublicadoId)
+    const result = await getProduct(db, { productId: despublicadoId })
 
     expect(result).toBeNull()
   })

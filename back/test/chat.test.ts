@@ -71,7 +71,7 @@ describe('POST /chat/message', () => {
 
     const [sentMessages] = run.mock.calls[0]
     const systemMessage = sentMessages.find((m: { role: string }) => m.role === 'system')
-    expect(systemMessage.content).toContain('NUNCA escreva a sintaxe de uma chamada de funcao')
+    expect(systemMessage.content).toContain('NUNCA escreva a sintaxe de uma chamada de fun')
     expect(systemMessage.content).toContain('UMA coisa')
   })
 

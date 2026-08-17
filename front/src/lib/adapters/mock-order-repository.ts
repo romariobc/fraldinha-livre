@@ -45,6 +45,7 @@ export class MockOrderRepository implements OrderRepository {
   }
 
   async listForSupplier(): Promise<Order[]> {
+    if (!this.supplierId) return []
     return this.orders.filter((o) => o.supplierId === this.supplierId)
   }
 

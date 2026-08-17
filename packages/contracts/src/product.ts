@@ -5,6 +5,7 @@ export const ProductAtributosSchema = z.object({
   genero: z.literal('unissex'),
   absorcao: z.string(),
   tecnologia: z.string(),
+  erpId: z.string().optional(),
 })
 export type ProductAtributos = z.infer<typeof ProductAtributosSchema>
 

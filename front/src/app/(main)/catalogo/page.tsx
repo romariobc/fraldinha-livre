@@ -28,6 +28,7 @@ function useFilters(): [ProductFilters, (key: keyof ProductFilters, value: strin
     size:   searchParams.get('tam')    ?? 'todos',
     sort:   searchParams.get('sort')   ?? '',
     page:   sanitizedPage,
+    supplierId: searchParams.get('fornecedor') ?? undefined,
   }
 
   const updateFilter = useCallback(
@@ -49,8 +50,13 @@ function useFilters(): [ProductFilters, (key: keyof ProductFilters, value: strin
   )
 
   const clearFilters = useCallback(() => {
-    router.replace('/catalogo')
-  }, [router])
+    const params = new URLSearchParams()
+    const fornecedor = searchParams.get('fornecedor')
+    if (fornecedor) {
+      params.set('fornecedor', fornecedor)
+    }
+    router.replace(params.toString() ? `/catalogo?${params.toString()}` : '/catalogo')
+  }, [router, searchParams])
 
   return [filters, updateFilter, clearFilters]
 }
@@ -101,6 +107,10 @@ function CatalogoContent() {
     router.push('/checkout')
   }
 
+  const supplierName = filters.supplierId 
+    ? STORE_SUPPLIERS.find(s => s.id === filters.supplierId)?.name || 'Fornecedor Parceiro'
+    : null
+
   return (
     <>
       <div className="bg-brand-bg min-h-screen py-10">
@@ -110,11 +120,11 @@ function CatalogoContent() {
           <div className="flex flex-col gap-1 mb-8 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="text-[11px] font-bold uppercase tracking-[2px] text-primary-dark mb-1">
-                Fraldinha Livre
+                {supplierName ? 'Loja Exclusiva' : 'Fraldinha Livre'}
               </p>
               <h1 className="font-display font-black text-brand-text"
                   style={{ fontSize: 'clamp(22px, 3vw, 36px)' }}>
-                Catálogo de Produtos
+                {supplierName ? `Catálogo: ${supplierName}` : 'Catálogo de Produtos'}
               </h1>
             </div>
             {total > 0 && (

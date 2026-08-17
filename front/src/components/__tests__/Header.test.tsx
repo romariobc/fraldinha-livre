@@ -5,11 +5,14 @@ import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import Header from '../Header'
 
+const mockUsePathname = vi.fn(() => '/')
+
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
   }),
+  usePathname: () => mockUsePathname(),
 }))
 
 // Mock sonner
@@ -488,6 +491,26 @@ describe('Header', () => {
 
       // Should only show Entrar/Criar conta, not Minha conta
       expect(screen.queryByText('Minha conta')).not.toBeInTheDocument()
+    })
+  })
+
+  describe('Supplier Route Suppression', () => {
+    it('should return null when pathname is /painel-fornecedor', () => {
+      mockUsePathname.mockReturnValue('/painel-fornecedor')
+      const { container } = render(<Header />)
+      expect(container).toBeEmptyDOMElement()
+    })
+
+    it('should return null when pathname is a subroute of /painel-fornecedor', () => {
+      mockUsePathname.mockReturnValue('/painel-fornecedor/pedidos')
+      const { container } = render(<Header />)
+      expect(container).toBeEmptyDOMElement()
+    })
+
+    it('should render header on standard B2C routes', () => {
+      mockUsePathname.mockReturnValue('/catalogo')
+      const { container } = render(<Header />)
+      expect(container.querySelector('header')).toBeInTheDocument()
     })
   })
 })

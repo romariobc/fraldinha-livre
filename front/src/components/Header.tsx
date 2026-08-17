@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Menu, X, ShoppingBag, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/auth-context'
@@ -20,6 +20,7 @@ const NAV_LINKS = [
 ]
 
 export default function Header() {
+  const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -67,6 +68,10 @@ export default function Header() {
       console.error('Erro ao fazer logout:', error)
       toast.error('Erro ao fazer logout')
     }
+  }
+
+  if (pathname?.startsWith('/painel-fornecedor')) {
+    return null
   }
 
   return (

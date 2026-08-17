@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { createAuthMiddleware, verifyFirebaseIdToken } from './middleware/auth'
-import { ordersGetHandler, ordersPostHandler, ordersCancelHandler } from './routes/orders'
+import { ordersGetHandler, ordersPostHandler, ordersCancelHandler, ordersReportHandler } from './routes/orders'
 import { productsGetHandler, productsPostHandler, productsPutHandler, productsDeleteHandler } from './routes/products'
 import { createChatHandler } from './routes/chat'
 import { createWorkersAiChatCompletion } from './lib/chat-completion'
@@ -66,6 +66,7 @@ app.use('/orders/*', (c, next) => {
 app.get('/orders', ordersGetHandler)
 app.post('/orders', ordersPostHandler)
 app.patch('/orders/:id/cancel', ordersCancelHandler)
+app.post('/orders/:id/report', ordersReportHandler)
 
 app.use('/chat/*', (c, next) => {
   const authMiddleware = createAuthMiddleware((token) =>

@@ -164,4 +164,27 @@ describe('RoleProtectedRoute', () => {
     expect(screen.getByText('Conteúdo Geral')).toBeInTheDocument()
     expect(mockPush).not.toHaveBeenCalled()
   })
+
+  it('should redirect authenticated user with null role to /login', () => {
+    mockUseAuth.mockReturnValue({
+      user: { uid: 'user-5', email: 'norole@example.com', displayName: 'No Role User' },
+      profile: null,
+      role: null,
+      loading: false,
+      signInGoogle: vi.fn(),
+      signInEmail: vi.fn(),
+      signUpEmail: vi.fn(),
+      signOutUser: vi.fn(),
+      updateProfile: vi.fn(),
+    })
+
+    render(
+      <RoleProtectedRoute allowedRoles={['comprador']}>
+        <div>Conteúdo Protegido Comprador</div>
+      </RoleProtectedRoute>
+    )
+
+    expect(mockPush).toHaveBeenCalledWith('/login')
+    expect(screen.queryByText('Conteúdo Protegido Comprador')).not.toBeInTheDocument()
+  })
 })

@@ -33,6 +33,10 @@ export default function Footer() {
   const isHome = pathname === '/'
   const [expanded, setExpanded] = useState(false)
 
+  if (pathname?.startsWith('/painel-fornecedor')) {
+    return null
+  }
+
   return (
     <footer className="bg-brand-text text-white/55">
       {!isHome && (

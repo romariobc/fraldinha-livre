@@ -37,3 +37,17 @@ Object.defineProperty(global, 'IntersectionObserver', {
   writable: true,
   value: IntersectionObserverStub,
 });
+
+// Stub ResizeObserver (used by Recharts ResponsiveContainer)
+class ResizeObserverStub {
+  constructor() {}
+  disconnect() {}
+  observe() {}
+  unobserve() {}
+}
+
+Object.defineProperty(global, 'ResizeObserver', {
+  writable: true,
+  value: ResizeObserverStub,
+});
+

@@ -16,3 +16,8 @@
 ### Backend ↔ Frontend
 - `POST /chat/message`
 - Frontend expects standard text responses and handles action responses correctly.
+
+## Future Backlog / Roadmap
+| # | Name | Scope | Dependencies | Status |
+|---|------|-------|-------------|--------|
+| 5 | Integração do Hub de Fornecedores aos ERPs | Arquitetura, Sync de Catálogo e Pedidos | Definir tecnologia (MCP, Websockets, Webhooks, Mensageria) | PLANNED (FUTURO) |

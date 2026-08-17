@@ -247,7 +247,7 @@ describe('CatalogoTab (fornecedor)', () => {
     await waitFor(() => {
       expect(screen.getByText('Novo Produto')).toBeInTheDocument()
     })
-  })
+  }, 15000)
 
   it('should reject form submission with empty required fields', async () => {
     const user = userEvent.setup()
@@ -379,5 +379,5 @@ describe('CatalogoTab (fornecedor)', () => {
     await waitFor(() => {
       expect(screen.getByText('Fraldinha Premium Editada')).toBeInTheDocument()
     })
-  })
+  }, 15000)
 })

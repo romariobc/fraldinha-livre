@@ -4,6 +4,7 @@ import type { Context } from 'hono'
 import { OrderSchema, CreateOrderRequestSchema } from '../../../packages/contracts/src/order'
 import { orders, orderItems } from '../schema/orders'
 import { products } from '../schema/products'
+import { reports } from '../schema/reports'
 import type { Env, AppContext } from '../env'
 import { ZodError } from 'zod'
 import { notifySupplierOfNewOrder, sendViaResend } from '../lib/notifications'
@@ -365,6 +366,56 @@ export const ordersCancelHandler = async (c: Context<{ Bindings: Env; Variables:
     return c.json(validatedOrder, 200)
   } catch (error) {
     // Não esconde erros
+    throw error
+  }
+}
+
+/**
+ * POST /orders/:id/report — Fornecedor reporta um problema/mensagem para o comprador.
+ */
+export const ordersReportHandler = async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>) => {
+  const uid = c.get('uid')
+  if (!uid) {
+    return c.json({ error: 'unauthorized' }, 401)
+  }
+
+  const orderId = c.req.param('id')
+
+  try {
+    const body = await c.req.json()
+    if (!body.message || typeof body.message !== 'string') {
+      return c.json({ error: 'message is required' }, 400)
+    }
+
+    const db = drizzle(c.env.DB)
+    const ordersList = await db.select().from(orders).where(sql`${orders.id} = ${orderId}`).all()
+
+    if (ordersList.length === 0) {
+      return c.json({ error: 'order not found' }, 404)
+    }
+
+    const order = ordersList[0]
+
+    // Apenas o fornecedor do pedido pode reportar para o cliente
+    if (order.supplierId !== uid) {
+      return c.json({ error: 'forbidden: only the supplier can report on this order' }, 403)
+    }
+
+    const reportId = generateUUID()
+    const createdAt = new Date().toISOString()
+
+    await db.insert(reports).values({
+      id: reportId,
+      orderId: order.id,
+      supplierId: uid,
+      clientId: order.uid, // O uid da order é o comprador
+      message: body.message,
+      read: false,
+      createdAt,
+    })
+
+    return c.json({ success: true, reportId })
+  } catch (error) {
     throw error
   }
 }

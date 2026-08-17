@@ -30,6 +30,7 @@ export interface ProductAtributos {
   genero: string           // ex.: "unissex" (fraldas são unissex; tipo deixa espaço para variar no futuro)
   absorcao: string         // ex.: "até 12 horas"
   tecnologia: string       // ex.: "camada seca antivazamento"
+  erpId?: string           // Código ERP ou SKU interno do fornecedor
 }
 
 export interface Product {
@@ -91,6 +92,7 @@ export interface ProductFilters {
   size: string
   sort: string
   page: number
+  supplierId?: string
 }
 
 export function filterProducts(
@@ -107,6 +109,11 @@ export function filterProducts(
         p.name.toLowerCase().includes(q) ||
         p.brand.toLowerCase().includes(q)
     )
+  }
+
+  // Filtro por fornecedor
+  if (filters.supplierId) {
+    result = result.filter((p) => p.supplierId === filters.supplierId)
   }
 
   // Filtro por marca

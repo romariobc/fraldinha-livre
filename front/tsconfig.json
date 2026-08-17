@@ -22,7 +22,9 @@
     "paths": {
       "@/*": ["./src/*"],
       "@contracts": ["../node_modules/@fraldinha-livre/contracts/src/index.ts"],
-      "@contracts/*": ["../node_modules/@fraldinha-livre/contracts/src/*"]
+      "@contracts/*": ["../node_modules/@fraldinha-livre/contracts/src/*"],
+      "@tanstack/react-table": ["./src/lib/tanstack-table.ts"],
+      "recharts": ["./src/lib/recharts.tsx"]
     }
   },
   "include": [

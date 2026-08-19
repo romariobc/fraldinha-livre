@@ -4,5 +4,10 @@
   "workspaces": [
     "front",
     "packages/contracts"
-  ]
+  ],
+  "overrides": {
+    "react-day-picker": {
+      "date-fns": "^4.1.0"
+    }
+  }
 }

@@ -46,14 +46,14 @@ function LoginPageContent() {
   // decide o destino pelo papel ja carregado do Firestore.
   // - sem papel (role === null) => onboarding (primeiro acesso escolhe comprador/fornecedor)
   // - comprador => o redirect recebido (?redirect) sanitizado ou /minha-conta
-  // - fornecedor => /fornecedor/painel
+  // - fornecedor => /painel-fornecedor
   // Efeito (nao no render) para evitar "Cannot update a component while rendering".
   useEffect(() => {
     if (loading || !user) return
     if (role === null) {
       router.push('/onboarding')
     } else if (role === 'fornecedor') {
-      router.push('/fornecedor/painel')
+      router.push('/painel-fornecedor')
     } else {
       // comprador — D-013: usar safeRedirect para sanitizar o redirect
       const redirect = searchParams.get('redirect')

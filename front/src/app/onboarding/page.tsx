@@ -20,7 +20,7 @@ export default function OnboardingPage() {
       if (role === 'comprador') {
         router.push('/minha-conta')
       } else if (role === 'fornecedor') {
-        router.push('/fornecedor/painel')
+        router.push('/painel-fornecedor')
       }
     }
   }, [user, role, loading, router])
@@ -53,7 +53,7 @@ export default function OnboardingPage() {
       if (chosenRole === 'comprador') {
         router.push('/minha-conta')
       } else if (chosenRole === 'fornecedor') {
-        router.push('/fornecedor/painel')
+        router.push('/painel-fornecedor')
       }
     } catch (error) {
       console.error('Erro ao salvar papel no Firestore:', error)

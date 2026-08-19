@@ -28,7 +28,7 @@ export default function CadastroPage() {
     if (role === null) {
       router.push('/onboarding')
     } else if (role === 'fornecedor') {
-      router.push('/fornecedor/painel')
+      router.push('/painel-fornecedor')
     } else {
       router.push('/minha-conta')
     }

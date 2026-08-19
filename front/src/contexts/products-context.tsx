@@ -21,6 +21,7 @@ function contractProductToLegacyProduct(p: ContractProduct): LegacyProduct {
     descricao: p.descricao,
     atributos: p.atributos,
     badge: p.badge,
+    imageUrl: p.imageUrl,
   }
 }
 
@@ -41,7 +42,6 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
 
   const repo: ProductRepository = useMemo(() => {
     if (useBackend) return new HttpProductRepository()
-    // supplierId vazio: catalogo publico so chama list(), que nao usa supplierId.
     return new MockProductRepository({
       supplierId: '',
       idFactory: () => crypto.randomUUID(),

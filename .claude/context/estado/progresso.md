@@ -1,5 +1,21 @@
 # Progresso — fraldinha-livre
 
+## Marco (2026-08-17) — Milestone 6: Seed Real de Produtos no D1 (fim dos mocks de catálogo)
+
+**Resumo da Sessão:**
+Conclusão da migração do catálogo de produtos de mock/hardcoded para dados reais raspados da Pague Menos, semeando-os na base do Cloudflare D1 local e remoto e ligando as imagens na interface.
+
+**O que foi feito:**
+1. **Esquema de BD e Contratos:** Campo `imageUrl` adicionado no D1 em `back/src/schema/products.ts` e no contrato Zod `packages/contracts/src/product.ts`.
+2. **Migrações:** Migração `0006_green_namor.sql` gerada pelo Drizzle Kit. Aplicada no D1 local via comandos manuais do SQLite e em produção via `wrangler@3 d1 migrations apply --remote` (bypasseando incompatibilidade do Node v20 do ambiente com o wrangler v4).
+3. **Scraper Pague Menos:** Desenvolvido script de raspagem `back/scripts/scrape-products.ts` que consome a API do catálogo VTEX da Pague Menos. Filtra especificamente fraldas de Pampers, Turma da Mônica e MamyPoko (97 produtos únicos obtidos). Calcula preços B2B com 35% de desconto sobre o varejo.
+4. **Seeding:** Desenvolvido script `back/scripts/seed-products.ts` para injeção round-robin das fraldas entre os 4 fornecedores de mock. Executado local e remotamente (produção).
+5. **Frontend e UX:** Mocks removidos de `front/src/lib/products.ts` (deixado como `[]`). Hook `useProducts` forçado a bater no backend real. Imagens reais exibidas com sucesso nos cards e na página de detalhes de produto (através de `imageUrl`).
+6. **Mocks de Teste:** O mock estático preexistente foi movido para `front/src/lib/mock-data/products-mock.ts` para que testes unitários e o `MockProductRepository` continuem estáveis e independentes do seed do banco. Mocks do Firebase foram injetados em `vitest.setup.ts` para impedir erros silenciosos de importação do SDK do Auth em testes.
+7. **Suítes de Testes:** Todas as 52 test suites de frontend (528 testes) e 18 test suites de backend (154 testes) passaram com sucesso no Vitest.
+
+---
+
 ## Marco (2026-08-02/03) — Sessão backend: incidente de segurança fechado + revisão D-012 de M1-M4 (feature 018)
 
 **Sincronização:** worktree estava 35 commits atrás de `origin/main` (D-037/D-037b, thread H-011/H-012,

@@ -38,7 +38,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useCart } from '@/contexts/cart-context'
 import { useProducts } from '@/contexts/products-context'
 import CatalogoPage from '../page'
-import { PRODUCTS } from '@/lib/products'
+import { PRODUCTS } from '@/lib/mock-data/products-mock'
 
 const mockUseRouter = vi.mocked(useRouter)
 const mockUseSearchParams = vi.mocked(useSearchParams)

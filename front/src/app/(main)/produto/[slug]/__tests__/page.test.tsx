@@ -41,7 +41,7 @@ import { useCart } from '@/contexts/cart-context'
 import { useProducts } from '@/contexts/products-context'
 import { toast } from 'sonner'
 import ProductPage from '../page'
-import { PRODUCTS } from '@/lib/products'
+import { PRODUCTS } from '@/lib/mock-data/products-mock'
 
 const mockUseParams = vi.mocked(useParams)
 const mockUseRouter = vi.mocked(useRouter)

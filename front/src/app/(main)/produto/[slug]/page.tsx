@@ -153,8 +153,16 @@ export default function ProductPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
         {/* Image column */}
         <div className="flex items-center justify-center">
-          <div className="w-full aspect-square bg-primary-light rounded-card shadow-card flex items-center justify-center text-6xl sm:text-7xl">
-            <span aria-hidden="true">🧷</span>
+          <div className="w-full aspect-square bg-primary-light rounded-card shadow-card flex items-center justify-center text-6xl sm:text-7xl overflow-hidden relative">
+            {definiteProduct.imageUrl ? (
+              <img
+                src={definiteProduct.imageUrl}
+                alt={`${definiteProduct.brand} ${definiteProduct.name} ${definiteProduct.size}`}
+                className="w-full h-full object-contain p-8"
+              />
+            ) : (
+              <span aria-hidden="true">🧷</span>
+            )}
           </div>
         </div>
 

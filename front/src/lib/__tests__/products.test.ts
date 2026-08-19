@@ -1,7 +1,7 @@
 /// <reference types="vitest/globals" />
 
 import { describe, it, expect } from 'vitest'
-import { PRODUCTS, getProductBySlug, type Size } from '../products'
+import { PRODUCTS, getProductBySlug, type Size } from '../mock-data/products-mock'
 
 describe('products', () => {
   describe('PRODUCTS array', () => {

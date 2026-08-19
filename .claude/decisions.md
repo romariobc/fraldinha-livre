@@ -108,3 +108,24 @@ Marketplace Core (Hono API + Painel B2B existentes)
 - 0 erros TypeScript, 0 erros ESLint
 
 **Regra de Negócio Definida:** Fornecedores NÃO podem criar produtos do zero. Devem selecionar do catálogo global e opcionalmente vincular um ERP_ID.
+
+---
+
+## Decisão 002: Seed Real de Produtos no D1 (Milestone 6)
+
+**Data:** 2026-08-17  
+**Status:** ✅ IMPLEMENTADO  
+**Escopo:** Milestone 6 — Seed Real de Produtos no D1
+
+### Contexto
+
+Substituição de todo o catálogo mockado no frontend Next.js por dados reais de produtos de fraldas obtidos via raspagem da Pague Menos, populando a base D1 e viabilizando o catálogo 100% dinâmico via API.
+
+### Decisões Técnicas Tomadas
+
+1. **Alvo de Scraping e API:** A API VTEX Catalog System (`https://www.paguemenos.com.br/api/catalog_system/pub/products/search?ft=...`) foi selecionada como fonte de dados preferencial em detrimento da Intelligent Search API por entregar resultados mais específicos de fraldas das marcas alvo (Pampers, Turma da Mônica, MamyPoko) sem ruído de produtos de outras categorias.
+2. **Esquema de Banco e Contratos:** Campo `imageUrl` (image_url em SQL) adicionado à tabela `products` e integrado no Zod `ProductSchema` do monorepo para dar suporte a imagens no frontend.
+3. **Versão de Wrangler para Migrações:** Como o ambiente local opera sob Node v20.20.2 e a versão v4 do Wrangler exige Node >=22.0.0, foi utilizado `npx wrangler@3` para executar as migrações locais e em produção (remoto) de maneira estável.
+4. **Resiliência de Testes Frontend:** O array de mocks estáticos `PRODUCTS` foi removido de `front/src/lib/products.ts` (esvaziando o catálogo estático), mas mantido isolado em `front/src/lib/mock-data/products-mock.ts` para que as suites de testes unitários existentes e o `MockProductRepository` continuem funcionando sem quebras por falta de dados.
+5. **Robustez no Firebase em Testes:** Inicialização de variáveis Firebase mockadas em `vitest.setup.ts` para evitar erros de inicialização de chave do Firebase em testes de componentes que importam módulos do SDK indiretamente.
+

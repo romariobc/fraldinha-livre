@@ -27,8 +27,14 @@ function generateUUID(): string {
 // usa `z.string().optional()`, que aceita `undefined` mas rejeita `null` explicito.
 // Mesma normalizacao ja aplicada em POST/PUT (C4) — aqui faltava, e so aparece com
 // dados reais que tem produtos sem badge (a maioria do seed backfillado, D-031).
-function normalizeBadge<T extends { badge: string | null }>(row: T): Omit<T, 'badge'> & { badge?: string } {
-  return { ...row, badge: row.badge ?? undefined }
+function normalizeProduct<T extends { badge: string | null; imageUrl?: string | null }>(
+  row: T
+): Omit<T, 'badge' | 'imageUrl'> & { badge?: string; imageUrl?: string } {
+  return {
+    ...row,
+    badge: row.badge ?? undefined,
+    imageUrl: row.imageUrl ?? undefined,
+  }
 }
 
 export const productsGetHandler = async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>) => {
@@ -44,7 +50,7 @@ export const productsGetHandler = async (c: Context<{ Bindings: Env; Variables: 
       return c.json({ error: 'forbidden' }, 403)
     }
     const rows = await db.select().from(products).all()
-    return c.json(rows.map(normalizeBadge))
+    return c.json(rows.map(normalizeProduct))
   }
 
   if (scope === 'fornecedor') {
@@ -53,11 +59,11 @@ export const productsGetHandler = async (c: Context<{ Bindings: Env; Variables: 
       return c.json({ error: 'unauthorized' }, 401)
     }
     const rows = await db.select().from(products).where(eq(products.supplierId, uid)).all()
-    return c.json(rows.map(normalizeBadge))
+    return c.json(rows.map(normalizeProduct))
   }
 
   const rows = await db.select().from(products).where(eq(products.active, true)).all()
-  return c.json(rows.map(normalizeBadge))
+  return c.json(rows.map(normalizeProduct))
 }
 
 // POST /products — cria produto do fornecedor autenticado. supplierId/active/id sempre
@@ -92,6 +98,7 @@ export const productsPostHandler = async (c: Context<{ Bindings: Env; Variables:
       descricao: createRequest.descricao,
       atributos: createRequest.atributos,
       badge: createRequest.badge,
+      imageUrl: createRequest.imageUrl,
     })
 
     const savedRows = await db.select().from(products).where(eq(products.id, id)).all()
@@ -99,6 +106,7 @@ export const productsPostHandler = async (c: Context<{ Bindings: Env; Variables:
     const validated = ProductSchema.parse({
       ...saved,
       badge: saved.badge ?? undefined,
+      imageUrl: saved.imageUrl ?? undefined,
     })
     return c.json(validated, 201)
   } catch (error) {
@@ -140,6 +148,7 @@ export const productsPutHandler = async (c: Context<{ Bindings: Env; Variables: 
     const validated = ProductSchema.parse({
       ...updated,
       badge: updated.badge ?? undefined,
+      imageUrl: updated.imageUrl ?? undefined,
     })
     return c.json(validated, 200)
   } catch (error) {

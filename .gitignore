@@ -49,3 +49,13 @@ graphify-out/
 
 # artefatos transitorios do Playwright MCP (logs/screenshots de validacao)
 .playwright-mcp/
+
+# Scripts de raspagem e dados brutos
+back/scripts/scrape-products.ts
+back/scripts/seed-products.ts
+back/scripts/test-search.ts
+back/scripts/*.json
+back/scripts/*.sql
+*.patch
+
+back/.wrangler/

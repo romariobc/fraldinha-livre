@@ -23,6 +23,7 @@ export const ProductSchema = z.object({
   atributos: ProductAtributosSchema,
   badge: z.string().optional(),
   active: z.boolean(),
+  imageUrl: z.string().optional(),
 })
 export type Product = z.infer<typeof ProductSchema>
 export const ProductListSchema = z.array(ProductSchema)

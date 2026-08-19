@@ -3,7 +3,7 @@ import type { Product } from '@contracts'
 import { MockProductRepository } from '../mock-product-repository'
 import { ProductForbiddenError } from '@/lib/ports/product-repository'
 import { runProductRepositoryContract } from '@/lib/ports/__tests__/product-repository.contract'
-import { PRODUCTS } from '@/lib/products'
+import { PRODUCTS } from '@/lib/mock-data/products-mock'
 
 describe('MockProductRepository', () => {
   let idCounter = 0

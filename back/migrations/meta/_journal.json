@@ -43,6 +43,13 @@
       "when": 1786887648680,
       "tag": "0005_messy_the_enforcers",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1786968140782,
+      "tag": "0006_green_namor",
+      "breakpoints": true
     }
   ]
 }

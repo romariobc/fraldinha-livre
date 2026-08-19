@@ -2,7 +2,7 @@ import type { ProductRepository } from '@/lib/ports/product-repository'
 import { ProductNotFoundError, ProductForbiddenError } from '@/lib/ports/product-repository'
 import type { Product, CreateProductRequest, UpdateProductRequest } from '@contracts'
 import { ProductSchema } from '@contracts'
-import { PRODUCTS as STATIC_PRODUCTS } from '@/lib/products'
+import { PRODUCTS as STATIC_PRODUCTS } from '@/lib/mock-data/products-mock'
 
 function toContractProduct(p: (typeof STATIC_PRODUCTS)[number]): Product {
   const mapped = {

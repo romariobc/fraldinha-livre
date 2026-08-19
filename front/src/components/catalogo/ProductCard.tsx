@@ -84,8 +84,17 @@ export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn
     <div className="bg-white rounded-card shadow-card overflow-hidden hover:-translate-y-1.5 hover:shadow-card-hover transition-all flex flex-col">
       {/* Imagem / placeholder + título (linkado) */}
       <Link href={`/produto/${product.slug}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-dark focus-visible:ring-offset-2">
-        <div className="aspect-square bg-primary-light flex items-center justify-center text-4xl sm:text-5xl relative">
-          <span aria-hidden="true">🧷</span>
+        <div className="aspect-square bg-primary-light flex items-center justify-center text-4xl sm:text-5xl relative overflow-hidden">
+          {product.imageUrl ? (
+            <img
+              src={product.imageUrl}
+              alt={`${product.brand} ${product.name} ${product.size}`}
+              className="w-full h-full object-contain p-4"
+              loading="lazy"
+            />
+          ) : (
+            <span aria-hidden="true">🧷</span>
+          )}
           {product.badge && (
             <span
               className={`absolute top-2.5 left-2.5 text-[10px] font-bold rounded-full px-2.5 py-0.5 ${badgeClass}`}

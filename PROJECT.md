@@ -13,14 +13,14 @@
 | 3 | Gestão de Pedidos (Fornecedor) | DataTable, Ações (Expandir, Cancelar) | COMPLETED |
 | 4 | Relatório Unidirecional no D1 | Rota `/orders/:id/report`, Tabela `reports` no D1 | COMPLETED |
 | 5 | Link de Catálogo Exclusivo B2C | Filtro por `supplierId` em `/catalogo` | COMPLETED |
-| 6 | Seed Real de Produtos no D1 | Script de Raspagem e Injeção no DB | PLANNED (Próxima Sessão) |
+| 6 | Seed Real de Produtos no D1 | Script de Raspagem e Injeção no DB | COMPLETED |
+| 7 | Integração do Hub de Fornecedores aos ERPs | Arquitetura, Sync de Catálogo e Pedidos | PLANNED (FUTURO) |
 
-## Funcionalidades Recentes Entregues (Supplier Dashboard)
+## Funcionalidades Recentes Entregues
+- **Seed Real de Produtos (Pague Menos)**: Script de scraping implementado consumindo a API do catálogo VTEX da Pague Menos. Extraídos 97 produtos de fraldas Pampers, Turma da Mônica e MamyPoko (com links de imagens reais). Preço de atacado B2B calculado deterministicamente com 35% de desconto sobre o varejo.
+- **Mapeamento de Imagens**: Tabela `products` e contratos Zod atualizados com campo `imageUrl`. Imagens renderizadas dinamicamente no `ProductCard` e na página de detalhes do produto.
+- **Desacoplamento de Mocks**: Constante estática `PRODUCTS` removida de `products.ts` do frontend (agora é `[]`). Mocks desacoplados em `products-mock.ts` para suites de testes unitários isoladas.
 - **Painel Administrativo (`/painel-fornecedor`)**: Rotas criadas para Visão Geral, Gestão de Pedidos, Catálogo, Relatórios e Configurações.
-- **Gráficos e Métricas**: Cards de métricas operacionais e gráficos (Recharts) implementados com mock temporário.
-- **Reporte de Problemas**: Sistema unidirecional onde o fornecedor alerta o cliente final. Os dados são salvos diretamente no D1 na tabela `reports` vinculados ao `order_id`.
-- **Loja Exclusiva (B2C)**: A rota pública de catálogo agora reconhece a query `?fornecedor=[id]` mostrando apenas produtos do fornecedor específico (uma página de vitrine para marketing do lojista).
-- **Correções Base UI**: Dropdown menus atualizados com `DropdownMenuGroup` para evitar erros de runtime do shadcn/ui atualizado.
 
 ## Interface Contracts (Backend ↔ Frontend)
 - Chamadas de API autenticadas do frontend utilizam o utilitário `apiFetch` (em `src/lib/api-client.ts`), que injeta automaticamente o Bearer Token do Firebase. O backend Hono valida no middleware de auth e não mantém estado no banco D1 para sessão.

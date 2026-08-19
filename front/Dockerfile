@@ -6,7 +6,7 @@ FROM node:22-alpine AS builder
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json .npmrc ./
 COPY front/package.json front/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 RUN npm ci

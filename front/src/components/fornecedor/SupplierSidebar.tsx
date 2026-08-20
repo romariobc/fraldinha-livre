@@ -167,7 +167,11 @@ export function SupplierSidebar() {
                 <SidebarMenuButton
                   className="h-9 px-3 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
                   render={
-                    <Link href="/catalogo" target="_blank" className="flex items-center gap-2.5 w-full">
+                    <Link
+                      href={user?.uid ? `/catalogo/fornecedor/${user.uid}` : "/catalogo"}
+                      target="_blank"
+                      className="flex items-center gap-2.5 w-full"
+                    >
                       <ExternalLink className="size-4 text-muted-foreground" />
                       <span>Ver Catálogo B2C</span>
                     </Link>

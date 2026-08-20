@@ -129,3 +129,27 @@ Substituição de todo o catálogo mockado no frontend Next.js por dados reais d
 4. **Resiliência de Testes Frontend:** O array de mocks estáticos `PRODUCTS` foi removido de `front/src/lib/products.ts` (esvaziando o catálogo estático), mas mantido isolado em `front/src/lib/mock-data/products-mock.ts` para que as suites de testes unitários existentes e o `MockProductRepository` continuem funcionando sem quebras por falta de dados.
 5. **Robustez no Firebase em Testes:** Inicialização de variáveis Firebase mockadas em `vitest.setup.ts` para evitar erros de inicialização de chave do Firebase em testes de componentes que importam módulos do SDK indiretamente.
 
+---
+
+## Decisão 003: Arquitetura de Rotas do Marketplace (Storefront vs Painel B2B)
+
+**Data:** 2026-08-20  
+**Status:** ✅ APROVADA / EM IMPLEMENTAÇÃO  
+**Escopo:** Isolamento de contexto B2B e criação de catálogo público B2C por distribuidora.
+
+### Contexto
+Necessidade de expor um catálogo exclusivo por distribuidora para o público (compradores) e estruturar a navegação privada do painel do fornecedor, preparando o sistema para atender desde pequenos lojistas até grandes redes de farmácias com múltiplas filiais (itens de compra recorrente).
+
+### Decisão Arquitetural Tomada
+
+1. **Storefront Público B2C (Rota Explícita):** 
+   - Adoção da rota /catalogo/fornecedor/[fornecedorId].
+   - Essa rota será pública, amigável para SEO e compartilhável. Reutilizará a engine de filtros do catálogo mestre, mas forçará o supplierId para restringir os produtos àquela distribuidora.
+
+2. **Dashboard Privado B2B (Sessão Implícita):** 
+   - Adoção da **Abordagem A**, mantendo as rotas internas limpas sem ID exposto (ex: /painel-fornecedor/catalogo).
+   - A identificação do fornecedor (para buscar estoque, pedidos, etc) virá obrigatoriamente do JWT (Firebase Auth). Isso blinda o sistema contra ataques de manipulação de URL (IDOR).
+
+3. **Modelagem de Filiais (Isolamento Restrito):** 
+   - Mantida a regra **1 Conta de Usuário = 1 Distribuidora**.
+   - Para atender grandes redes, cada filial deverá possuir uma conta própria, com CNPJ/login separado, garantindo gestão de estoque dinâmico isolado por localização. Isso evita a complexidade de um sistema Multi-tenant cruzado (1 usuário gerenciando dezenas de lojas simultâneas na mesma sessão), garantindo segurança máxima e independência de dados entre filiais (conceito shared-nothing na camada de aplicação).

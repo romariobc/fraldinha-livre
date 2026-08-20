@@ -7,6 +7,8 @@ import { vi } from 'vitest'
 vi.mock('next/navigation', () => ({
   useRouter: vi.fn(),
   useSearchParams: vi.fn(),
+  usePathname: vi.fn(() => '/catalogo'),
+  useParams: vi.fn(() => ({})),
 }))
 
 // Mock sonner
@@ -33,7 +35,7 @@ vi.mock('@/contexts/products-context', () => ({
   useProducts: vi.fn(),
 }))
 
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, usePathname, useParams } from 'next/navigation'
 import { useAuth } from '@/contexts/auth-context'
 import { useCart } from '@/contexts/cart-context'
 import { useProducts } from '@/contexts/products-context'
@@ -42,6 +44,8 @@ import { PRODUCTS } from '@/lib/mock-data/products-mock'
 
 const mockUseRouter = vi.mocked(useRouter)
 const mockUseSearchParams = vi.mocked(useSearchParams)
+const mockUsePathname = vi.mocked(usePathname)
+const mockUseParams = vi.mocked(useParams)
 const mockUseAuth = vi.mocked(useAuth)
 const mockUseCart = vi.mocked(useCart)
 const mockUseProducts = vi.mocked(useProducts)
@@ -61,6 +65,8 @@ describe('CatalogoPage', () => {
     })
 
     mockUseSearchParams.mockReturnValue(new URLSearchParams() as ReturnType<typeof useSearchParams>)
+    mockUsePathname.mockReturnValue('/catalogo')
+    mockUseParams.mockReturnValue({})
 
     mockUseAuth.mockReturnValue({
       user: null,

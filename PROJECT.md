@@ -12,11 +12,12 @@
 | 2 | Painel do Fornecedor Básico | Layout, Sidebar, Header (Base UI) | COMPLETED |
 | 3 | Gestão de Pedidos (Fornecedor) | DataTable, Ações (Expandir, Cancelar) | COMPLETED |
 | 4 | Relatório Unidirecional no D1 | Rota `/orders/:id/report`, Tabela `reports` no D1 | COMPLETED |
-| 5 | Link de Catálogo Exclusivo B2C | Filtro por `supplierId` em `/catalogo` | COMPLETED |
+| 5 | Vitrine Exclusiva B2C do Fornecedor | Rota `/catalogo/fornecedor/[id]` | COMPLETED |
 | 6 | Seed Real de Produtos no D1 | Script de Raspagem e Injeção no DB | COMPLETED |
 | 7 | Integração do Hub de Fornecedores aos ERPs | Arquitetura, Sync de Catálogo e Pedidos | PLANNED (FUTURO) |
 
 ## Funcionalidades Recentes Entregues
+- **Vitrine Exclusiva do Fornecedor (Storefront B2C)**: Componente de catálogo extraído e isolado (`CatalogoView`). Criação da rota pública dinâmica `/catalogo/fornecedor/[fornecedorId]`, permitindo acesso direto aos produtos de uma distribuidora específica. Barra lateral do painel do fornecedor refatorada para gerar o link da loja dinamicamente com base na sessão JWT.
 - **Seed Real de Produtos (Pague Menos)**: Script de scraping implementado consumindo a API do catálogo VTEX da Pague Menos. Extraídos 97 produtos de fraldas Pampers, Turma da Mônica e MamyPoko (com links de imagens reais). Preço de atacado B2B calculado deterministicamente com 35% de desconto sobre o varejo.
 - **Mapeamento de Imagens**: Tabela `products` e contratos Zod atualizados com campo `imageUrl`. Imagens renderizadas dinamicamente no `ProductCard` e na página de detalhes do produto.
 - **Desacoplamento de Mocks**: Constante estática `PRODUCTS` removida de `products.ts` do frontend (agora é `[]`). Mocks desacoplados em `products-mock.ts` para suites de testes unitários isoladas.

@@ -163,6 +163,9 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
       if (product.supplierId !== createRequest.supplierId) {
         return c.json({ error: `fornecedor divergente para produto: ${item.productId}` }, 400)
       }
+      if (product.quantity < item.quantity) {
+        return c.json({ error: `estoque insuficiente para produto: ${item.productId}` }, 400)
+      }
     }
 
     // RN-P2b: total tem que bater com a soma dos itens.
@@ -211,8 +214,13 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
       }),
     )
 
+    // Constrói queries de atualização de estoque
+    const productUpdates = createRequest.items.map((item) =>
+      db.update(products).set({ quantity: sql`${products.quantity} - ${item.quantity}` }).where(eq(products.id, item.productId))
+    )
+
     // Grava tudo num único batch (atomicidade RN-03)
-    await db.batch([orderInsert, ...itemInserts])
+    await db.batch([orderInsert, ...itemInserts, ...productUpdates] as any)
 
     // Notifica o fornecedor (best-effort — nunca afeta a resposta, RN-02 da spec H-011)
     const notificationItems = createRequest.items.map((item) => ({
@@ -301,36 +309,33 @@ export const ordersCancelHandler = async (c: Context<{ Bindings: Env; Variables:
   try {
     const db = drizzle(c.env.DB)
 
-    // Busca a order por ID — usando SQL raw para evitar problema de tipo
-    const ordersList = await db.select().from(orders).where(sql`${orders.id} = ${orderId}`).all()
+    // Busca a order atualizada para retornar.
+    // Usamos o RETURNING do SQLite D1 para evitar TOCTOU e garantir a atomicidade da trava de status.
+    const updatedOrders = await db.update(orders)
+      .set({ status: 'cancelado' })
+      .where(sql`${orders.id} = ${orderId} AND ${orders.uid} = ${uid} AND ${orders.status} = 'aguardando'`)
+      .returning()
 
-    if (ordersList.length === 0) {
-      return c.json({ error: 'order not found' }, 404)
-    }
-
-    const order = ordersList[0]
-
-    // Order existe mas não é do uid
-    if (order.uid !== uid) {
-      return c.json({ error: 'forbidden' }, 403)
-    }
-
-    // Order existe, é do dono, mas status não é 'aguardando' (trava logística, D-025)
-    if (order.status !== 'aguardando') {
+    if (updatedOrders.length === 0) {
+      // Se n˜åo atualizou nada, precisamos saber o motivo para retornar o erro correto (404, 403 ou 409).
+      const current = await db.select().from(orders).where(sql`${orders.id} = ${orderId}`).all()
+      if (current.length === 0) return c.json({ error: 'order not found' }, 404)
+      if (current[0].uid !== uid) return c.json({ error: 'forbidden' }, 403)
       return c.json({ error: 'cannot cancel: order is not awaiting' }, 409)
     }
 
-    // Atualiza status para 'cancelado'
-    await db.update(orders).set({ status: 'cancelado' }).where(sql`${orders.id} = ${orderId}`)
+    const updatedOrder = updatedOrders[0]
 
-    // Busca a order atualizada para retornar
-    const updatedOrders = await db.select().from(orders).where(sql`${orders.id} = ${orderId}`).all()
-
-    if (updatedOrders.length === 0) {
-      throw new Error('Order não foi encontrada após update')
+    // Restaura o estoque dos itens cancelados
+    const itemsToRestore = await db.select().from(orderItems).where(sql`${orderItems.orderId} = ${orderId}`).all()
+    const restoreUpdates = itemsToRestore.map((item) => 
+      db.update(products).set({ quantity: sql`${products.quantity} + ${item.quantity}` }).where(eq(products.id, item.productId))
+    )
+    if (restoreUpdates.length > 0) {
+      await db.batch(restoreUpdates as any)
     }
 
-    const updatedOrder = updatedOrders[0]
+    // (a order atualizada já está em updatedOrder pelo returning)
 
     // Busca items
     const items = await db.select().from(orderItems).where(sql`${orderItems.orderId} = ${orderId}`).all()

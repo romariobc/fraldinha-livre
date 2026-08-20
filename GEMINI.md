@@ -25,3 +25,5 @@ Guia de integracao backend: .claude/docs/backend/integration-guide.md
 
 Divergencias deste projeto em relacao ao harness: stack Next.js/TypeScript (nao Python); contexto de dominio em AGENTS.md (nao em context/dominio.md).
 
+## Protocolos de Revisão de Código e Segurança
+A partir de 2026-08-20, a skill genérica `code-review-skill` (em `.claude/skills/code-review-skill`) foi adotada como framework base de revisão. Todo agente revisor ou auditor de PRs deve utilizá-la em conjunto com as diretrizes do `relatorio-analise-seguranca.md` para garantir integridade.

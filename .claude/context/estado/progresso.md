@@ -1,3 +1,38 @@
+## Marco (2026-08-20) - Reestruturação de Rotas (RBAC Blindado)
+
+**Resumo da Sessão:**
+Aplicação da padronização de grupos de rota (Route Groups) para garantir o isolamento automático de autorização.
+
+**O que foi feito:**
+1. **Moveu /sacola, /checkout e /minha-conta:** para o novo grupo (comprador), o qual possui um layout.tsx que injeta nativamente a verificação <RoleProtectedRoute allowedRoles={['comprador']}>. Agora visitantes não autenticados não conseguem vazar dados B2B da sacola!
+2. **Moveu /mercado e /painel-fornecedor:** para o novo grupo (fornecedor), blindando o leilão reverso contra vazamento.
+3. **Refatoração:** Remoção das travas locais (useEffects e ifs de loading/user espalhados) centralizando no Cofre Arquitetural do layout.
+
+## Marco (2026-08-20) - Security Patch Crítico Aplicado
+
+**Resumo da Sessão:**
+Aplicação das correções mapeadas no elatorio-analise-seguranca.md.
+
+**O que foi feito:**
+1. **XSS em E-mails (
+otifications.ts):** Adicionada rotina de escapeHTML blindando contra nomes de produtos contendo scripts na renderização para o Resend.
+2. **Exposição de Secrets (wrangler.jsonc):** Chave ADMIN_UID removida do arquivo público e migrada para .dev.vars (secrets no D1/Workers).
+3. **TOCTOU / Overselling (orders.ts):** Adicionado check bloqueante de estoque e db.update atômico via db.batch no momento da criação do pedido. Refatorada a rota de cancelamento para usar RETURNING bloqueando falhas de race condition (TOCTOU) e restaurar o estoque ao cancelar pedido.
+
+---
+## Marco (2026-08-20) - Vitrine Exclusiva B2C do Fornecedor
+
+**Resumo da Sessão:**
+Desacoplamento do componente de catálogo e criação de rotas dinâmicas de isolamento de loja B2C (/catalogo/fornecedor/[id]), atualizando a sidebar do painel B2B para apontar dinamicamente via UID de sessão do fornecedor logado.
+
+**O que foi feito:**
+1. Extração de CatalogoContent e useFilters para components/catalogo/CatalogoView.tsx.
+2. Criação da rota pp/(main)/catalogo/fornecedor/[fornecedorId]/page.tsx.
+3. Adaptação do useFilters para utilizar usePathname() e useParams() do App Router.
+4. Alteração do atalho 'Ver Catálogo B2C' na SupplierSidebar.tsx.
+5. Validação total via 27 novos testes unitários.
+
+---
 # Progresso â€” fraldinha-livre
 
 ## Marco (2026-08-17) â€” Milestone 6: Seed Real de Produtos no D1 (fim dos mocks de catÃ¡logo)
@@ -1292,3 +1327,6 @@ _(Historico detalhado da Fase 1 abaixo e em chatsessions/2026-07-02-sessao-01.)_
 
 _Formato: Data | O que foi feito | Proximo passo | Decisoes pendentes_
 _A LLM preenche esta secao ao encerrar cada sessao antes de commitar._
+
+
+

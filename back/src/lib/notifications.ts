@@ -14,13 +14,26 @@ export interface OrderNotificationParams {
 /** Injetável — testes passam uma versão fake, produção usa `sendViaResend`. */
 export type SendEmailFn = (params: { to: string; subject: string; html: string; text: string }) => Promise<void>
 
+function escapeHTML(str: string): string {
+  return str.replace(/[&<>"']/g, (m: string) => {
+    const map: Record<string, string> = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    }
+    return map[m] || m
+  })
+}
+
 function formatBRL(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 function buildOrderEmail(params: OrderNotificationParams): { subject: string; html: string; text: string } {
   const itemsText = params.items.map((item) => `- ${item.productName} × ${item.quantity} ${item.unit}`).join('\n')
-  const itemsHtml = params.items.map((item) => `<li>${item.productName} × ${item.quantity} ${item.unit}</li>`).join('')
+  const itemsHtml = params.items.map((item) => `<li>${escapeHTML(item.productName)} × ${escapeHTML(item.quantity.toString())} ${escapeHTML(item.unit)}</li>`).join('')
   const total = formatBRL(params.totalCents)
 
   return {

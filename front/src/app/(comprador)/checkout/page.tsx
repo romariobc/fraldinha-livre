@@ -183,20 +183,7 @@ function CheckoutContent() {
   }
 
   // Guarda de login (D-024): finalizar compra e interacao de compra — so logado.
-  // Guarda client-side, mesmo padrao de /minha-conta (endurecimento SSR fica para 006 — D-010).
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login?redirect=/checkout')
-    }
-  }, [user, loading, router])
-
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>
-  }
-
-  if (!user) {
-    return null // Redirecionamento em progresso
-  }
+  // A validação de autênticação (loading, user) agora é responsabilidade do (comprador)/layout.tsx
 
   // Guard: empty cart (but not when viewing confirmacao)
   if (items.length === 0 && step !== 'confirmacao') {

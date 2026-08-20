@@ -25,21 +25,7 @@ function MinhaContaContent() {
     return (tabParam && ['pedidos', 'historico', 'perfil'].includes(tabParam)) ? tabParam : 'pedidos'
   })
 
-  // Guarda client-side: redireciona deslogado para /login?redirect=/minha-conta
-  // (endurecimento SSR com session cookie fica para deploy/006 — D-010)
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login?redirect=/minha-conta')
-    }
-  }, [user, loading, router])
-
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>
-  }
-
-  if (!user) {
-    return null // Redirecionar em progresso
-  }
+  // A proteção foi delegada ao (comprador)/layout.tsx
 
   if (ordersLoading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando pedidos...</div>
@@ -149,11 +135,13 @@ function MinhaContaContent() {
 
 export default function MinhaContaPage() {
   return (
-    <RoleProtectedRoute allowedRoles={['comprador']}>
+    
       <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Carregando...</div>}>
         <MinhaContaContent />
       </Suspense>
-    </RoleProtectedRoute>
+    
   )
 }
+
+
 

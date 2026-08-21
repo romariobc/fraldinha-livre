@@ -26,7 +26,7 @@ export default function Header() {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const { user, role, signOutUser } = useAuth()
-  const { itemCount } = useCart()
+  const { itemCount, clear } = useCart()
 
   const accountHref = role === 'fornecedor' ? '/painel-fornecedor' : '/minha-conta'
 
@@ -271,3 +271,5 @@ export default function Header() {
     </header>
   )
 }
+
+

@@ -41,6 +41,8 @@ function MinhaContaContent() {
 
   const returnTo = searchParams.get('returnTo')
 
+  if (!user) return null
+
   const activeOrdersCount = orders.filter(
     (o) => o.status !== 'entregue' && o.status !== 'cancelado'
   ).length
@@ -142,6 +144,7 @@ export default function MinhaContaPage() {
     
   )
 }
+
 
 
 

@@ -20,6 +20,7 @@ export interface Product {
   size: Size
   quantity: number
   priceInCents: number
+  oldPriceCents?: number
   supplierId: string
   slug: string
   categoria: ProductCategory

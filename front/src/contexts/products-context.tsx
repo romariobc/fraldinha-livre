@@ -14,6 +14,7 @@ function contractProductToLegacyProduct(p: ContractProduct): LegacyProduct {
     size: p.size,
     quantity: p.quantity,
     priceInCents: p.priceCents,
+    oldPriceCents: p.oldPriceCents ?? undefined,
     supplierId: p.supplierId,
     slug: p.slug,
     categoria: p.categoria,

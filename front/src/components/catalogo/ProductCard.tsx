@@ -102,6 +102,11 @@ export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn
               {product.badge}
             </span>
           )}
+          {product.oldPriceCents && product.oldPriceCents > product.priceInCents && (
+            <span className="absolute top-2.5 right-2.5 text-[10px] font-bold bg-destructive text-white rounded-full px-2.5 py-0.5 shadow-sm">
+              {Math.round(((product.oldPriceCents - product.priceInCents) / product.oldPriceCents) * 100)}% OFF
+            </span>
+          )}
         </div>
 
         {/* Informações (marca, nome, tamanho) */}
@@ -128,7 +133,12 @@ export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn
         </p>
 
         <div className="mt-auto">
-          <p className="font-display font-black text-base sm:text-lg text-brand-text mb-3">
+          {product.oldPriceCents && product.oldPriceCents > product.priceInCents && (
+            <p className="text-[11px] text-muted-foreground line-through mb-0.5">
+              {formatPrice(product.oldPriceCents)}
+            </p>
+          )}
+          <p className={`font-display font-black text-base sm:text-lg text-brand-text mb-3 ${product.oldPriceCents && product.oldPriceCents > product.priceInCents ? 'text-destructive' : ''}`}>
             {formatPrice(product.priceInCents)}
             <span className="text-[11px] font-medium text-brand-muted font-body"> / pct</span>
           </p>

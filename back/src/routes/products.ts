@@ -141,7 +141,20 @@ export const productsPutHandler = async (c: Context<{ Bindings: Env; Variables: 
     const body = await c.req.json()
     const updateRequest = UpdateProductRequestSchema.parse(body)
 
-    await db.update(products).set(updateRequest).where(eq(products.id, id))
+    let finalUpdateRequest = { ...updateRequest }
+
+    // Auto-track old price for discounts
+    if (updateRequest.priceCents !== undefined && updateRequest.priceCents !== existingRows[0].priceCents) {
+      if (updateRequest.priceCents < existingRows[0].priceCents) {
+        // Price dropped -> set oldPriceCents
+        finalUpdateRequest.oldPriceCents = existingRows[0].priceCents
+      } else {
+        // Price increased -> remove discount
+        finalUpdateRequest.oldPriceCents = null
+      }
+    }
+
+    await db.update(products).set(finalUpdateRequest).where(eq(products.id, id))
 
     const updatedRows = await db.select().from(products).where(eq(products.id, id)).all()
     const updated = updatedRows[0]

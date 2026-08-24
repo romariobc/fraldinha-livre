@@ -1,0 +1,1 @@
+ALTER TABLE `products` ADD `old_price_cents` integer;

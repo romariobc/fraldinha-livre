@@ -28,6 +28,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { AddProductDialog } from '@/components/fornecedor/AddProductDialog'
+import { EditPriceDialog } from '@/components/fornecedor/EditPriceDialog'
 import { useAuth } from '@/contexts/auth-context'
 import type { ProductRepository } from '@/lib/ports/product-repository'
 import { HttpProductRepository } from '@/lib/adapters/http-product-repository'
@@ -51,6 +52,7 @@ export default function CatalogoPage() {
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false)
   const [productToDelete, setProductToDelete] = React.useState<Product | null>(null)
   const [isDeleting, setIsDeleting] = React.useState(false)
+  const [productToEditPrice, setProductToEditPrice] = React.useState<Product | null>(null)
 
   // Load supplier products
   const handleReload = React.useCallback(async () => {
@@ -181,6 +183,10 @@ export default function CatalogoPage() {
 
   const handleProductAdded = (newProduct: Product) => {
     setProducts((prev) => [newProduct, ...prev])
+  }
+
+  const handlePriceUpdated = (updatedProduct: Product) => {
+    setProducts((prev) => prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p)))
   }
 
   return (
@@ -469,9 +475,23 @@ export default function CatalogoPage() {
 
                         <div className="text-right">
                           <span className="text-[10px] text-muted-foreground block">Preço de Venda</span>
-                          <span className="font-extrabold text-sm text-primary-dark">
-                            {formatPrice(product.priceCents)}
-                          </span>
+                          <div className="flex items-center justify-end gap-2 group/price cursor-pointer hover:bg-slate-50 p-1 -mr-1 rounded-md transition-colors" onClick={() => setProductToEditPrice(product)}>
+                            <div className="flex flex-col items-end">
+                              {product.oldPriceCents && product.oldPriceCents > product.priceCents && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-bold text-white bg-destructive px-1 rounded-sm">
+                                    {Math.round(((product.oldPriceCents - product.priceCents) / product.oldPriceCents) * 100)}% OFF
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground line-through">
+                                    {formatPrice(product.oldPriceCents)}
+                                  </span>
+                                </div>
+                              )}
+                              <span className="font-extrabold text-sm text-primary-dark">
+                                {formatPrice(product.priceCents)}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
@@ -528,6 +548,16 @@ export default function CatalogoPage() {
         onOpenChange={setIsAddModalOpen}
         onProductAdded={handleProductAdded}
         repo={repo}
+      />
+
+      <EditPriceDialog
+        open={!!productToEditPrice}
+        onOpenChange={(open) => {
+          if (!open) setProductToEditPrice(null)
+        }}
+        product={productToEditPrice}
+        repo={repo}
+        onSuccess={handlePriceUpdated}
       />
 
       {/* Delete Confirmation Dialog */}

@@ -1,3 +1,22 @@
+## Marco (2026-08-24) - Orquestração e Workflows de Início e Encerramento
+
+**Resumo da Sessão:**
+Criação dos workflows nativos de `session-start` e `session-finish` baseados em Custom Skills e integração com as regras globais do Gemini e Claude.
+
+**O que foi feito:**
+1. Atualização completa da documentação da skill `domain-fornecedor` para refletir a arquitetura atual (D1 e integração REST) e a remoção de mocks.
+2. Criação da skill `session-start` (.agents/skills/session-start/SKILL.md) que impõe o carregamento de contexto, checagem de staleness e análise de orquestração no começo de novas sessões.
+3. Criação da skill `session-finish` (.agents/skills/session-finish/SKILL.md) que executa validação de versionamento, pergunta de commit e persistência atômica da documentação do projeto no final do dia.
+4. Alteração nas regras nativas de inicialização em `GEMINI.md` e `CLAUDE.md`.
+
+**Status:**
+Build limpo. Nenhuma compilação TS foi quebrada (apenas Markdown).
+
+**Próximo Passo:**
+Nenhuma tarefa de código em andamento. Inicie a próxima sessão invocando a skill `session-start` para avaliar o estado atual do backlog (`feature_list.json`) e selecionar a nova prioridade (ex: validação E2E das novas features entregues).
+
+---
+
 ## Marco (2026-08-23) - Unificação de Governança, Custom Skills e Reorganização de Pastas
 
 **Resumo da Sessão:**

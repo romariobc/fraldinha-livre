@@ -28,6 +28,7 @@ ENV HOSTNAME=0.0.0.0
 # Caminho verificado nesta sessao com um build real: a saida standalone aninha
 # por "front/" porque outputFileTracingRoot aponta pra raiz do monorepo.
 COPY --from=builder /app/front/.next/standalone/front ./
+COPY --from=builder /app/front/.next/standalone/node_modules ./node_modules
 COPY --from=builder /app/front/.next/static ./.next/static
 COPY --from=builder /app/front/public ./public
 

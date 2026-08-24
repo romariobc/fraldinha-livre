@@ -173,7 +173,7 @@ export function SupplierSidebar() {
                       className="flex items-center gap-2.5 w-full"
                     >
                       <ExternalLink className="size-4 text-muted-foreground" />
-                      <span>Ver Catálogo B2C</span>
+                      <span>Ver Meu Catálogo Ativo</span>
                     </Link>
                   }
                 />

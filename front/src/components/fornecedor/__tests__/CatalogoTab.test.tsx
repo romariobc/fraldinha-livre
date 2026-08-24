@@ -16,21 +16,19 @@ vi.mock('@/contexts/auth-context', () => ({
   useAuth: vi.fn(),
 }))
 
-vi.mock('@/lib/adapters/mock-product-repository', () => ({
-  MockProductRepository: vi.fn(),
-}))
-
 vi.mock('@/lib/adapters/http-product-repository', () => ({
   HttpProductRepository: vi.fn(),
 }))
 
+
+
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/auth-context'
-import { MockProductRepository } from '@/lib/adapters/mock-product-repository'
+import { HttpProductRepository } from '@/lib/adapters/http-product-repository'
 import type { Product, CreateProductRequest, UpdateProductRequest } from '@contracts'
 
 const mockUseAuth = vi.mocked(useAuth)
-const mockMockProductRepository = vi.mocked(MockProductRepository)
+const mockHttpProductRepository = vi.mocked(HttpProductRepository)
 
 const MOCK_PRODUCTS: Product[] = [
   {
@@ -160,8 +158,8 @@ describe('CatalogoTab (fornecedor)', () => {
     const mockRepo = new MockRepoInstance({
       supplierId: 'sup-1',
       idFactory: () => crypto.randomUUID(),
-    })
-    mockMockProductRepository.mockImplementation(() => mockRepo as unknown as InstanceType<typeof MockProductRepository>)
+    });
+    (HttpProductRepository as any).mockImplementation(function() { return mockRepo as unknown as InstanceType<typeof HttpProductRepository> })
   })
 
   it('should load and display supplier products including inactive ones', async () => {
@@ -185,9 +183,9 @@ describe('CatalogoTab (fornecedor)', () => {
   })
 
   it('should show empty state when no products', async () => {
-    mockMockProductRepository.mockImplementation(() => ({
+    mockHttpProductRepository.mockImplementation(function() { return {
       listForSupplier: async () => [],
-    }) as unknown as InstanceType<typeof MockProductRepository>)
+    } as unknown as InstanceType<typeof HttpProductRepository> })
 
     render(<CatalogoTab />)
 
@@ -197,11 +195,9 @@ describe('CatalogoTab (fornecedor)', () => {
   })
 
   it('should show error state when loading fails', async () => {
-    mockMockProductRepository.mockImplementation(() => ({
-      listForSupplier: async () => {
-        throw new Error('Network error')
-      },
-    }) as unknown as InstanceType<typeof MockProductRepository>)
+    mockHttpProductRepository.mockImplementation(function() { return {
+      listForSupplier: vi.fn().mockRejectedValue(new Error('Erro simulado de rede')),
+    } as unknown as InstanceType<typeof HttpProductRepository> })
 
     render(<CatalogoTab />)
 

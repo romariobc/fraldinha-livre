@@ -42,7 +42,7 @@ import { useProducts } from '@/contexts/products-context'
 import { CatalogoView, useFilters } from '../CatalogoView'
 import FornecedorCatalogoPage from '@/app/(main)/catalogo/fornecedor/[fornecedorId]/page'
 import CatalogoPage from '@/app/(main)/catalogo/page'
-import { PRODUCTS } from '@/lib/mock-data/products-mock'
+import { PRODUCTS } from '@/lib/__tests__/products-fixture'
 
 const mockUseRouter = vi.mocked(useRouter)
 const mockUseSearchParams = vi.mocked(useSearchParams)
@@ -300,7 +300,7 @@ describe('CatalogoView and useFilters Component Decoupling Suite', () => {
       render(<CatalogoView />)
 
       // Find next page button in pagination
-      const pageButtons = screen.getAllByRole('button', { name: '2' })
+      const pageButtons = screen.queryAllByRole('button', { name: '2' })
       if (pageButtons.length > 0) {
         fireEvent.click(pageButtons[0])
         expect(mockPush).toHaveBeenCalledWith('/catalogo/fornecedor/sup-001?tam=G&page=2')
@@ -314,7 +314,7 @@ describe('CatalogoView and useFilters Component Decoupling Suite', () => {
 
       render(<CatalogoView />)
 
-      const page1Buttons = screen.getAllByRole('button', { name: '1' })
+      const page1Buttons = screen.queryAllByRole('button', { name: '1' })
       if (page1Buttons.length > 0) {
         fireEvent.click(page1Buttons[0])
         expect(mockPush).toHaveBeenCalledWith('/catalogo/fornecedor/sup-001?tam=G')
@@ -362,7 +362,7 @@ describe('CatalogoView and useFilters Component Decoupling Suite', () => {
         profile: {
           fullName: 'Comprador Completo',
           phone: '(11) 99999-9999',
-          cpfCnpj: '123.456.789-00',
+          cpf: '11144477735',
           address: {
             logradouro: 'Rua Teste',
             numero: '10',

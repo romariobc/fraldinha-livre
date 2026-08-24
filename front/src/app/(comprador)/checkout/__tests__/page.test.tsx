@@ -10,6 +10,7 @@ import { ProductsProvider } from '@/contexts/products-context'
 import type { CartItem } from '@/lib/domain/cart'
 import { type ReactNode } from 'react'
 import CheckoutPage from '../page'
+import CompradorRouteGroupLayout from '../../layout'
 import { vi } from 'vitest'
 
 // Mock firebase
@@ -83,7 +84,9 @@ function renderCheckout(items: CartItem[]) {
         <AuthProvider>
           <OrdersProvider>
             <MarketProvider>
-              <CheckoutPage />
+              <CompradorRouteGroupLayout>
+                <CheckoutPage />
+              </CompradorRouteGroupLayout>
             </MarketProvider>
           </OrdersProvider>
         </AuthProvider>
@@ -122,11 +125,11 @@ describe('CheckoutPage', () => {
   })
 
   describe('Guarda de login (D-024)', () => {
-    it('redireciona para /login?redirect=/checkout quando deslogado', () => {
+    it('redireciona para /login quando deslogado', () => {
       vi.mocked(useAuth).mockReturnValue(authValue({ user: null }))
       renderCheckout([mockItem1])
 
-      expect(mockPush).toHaveBeenCalledWith('/login?redirect=/checkout')
+      expect(mockPush).toHaveBeenCalledWith('/login')
       // Nao renderiza os passos do checkout
       expect(screen.queryByText('Endereço de entrega')).not.toBeInTheDocument()
     })

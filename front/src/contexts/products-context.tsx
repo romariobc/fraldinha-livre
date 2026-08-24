@@ -3,7 +3,6 @@
 import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react'
 import type { Product as LegacyProduct } from '@/lib/products'
 import type { ProductRepository } from '@/lib/ports/product-repository'
-import { MockProductRepository } from '@/lib/adapters/mock-product-repository'
 import { HttpProductRepository } from '@/lib/adapters/http-product-repository'
 import type { Product as ContractProduct } from '@contracts'
 
@@ -38,15 +37,9 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const useBackend = process.env.NEXT_PUBLIC_USE_BACKEND === 'true'
-
   const repo: ProductRepository = useMemo(() => {
-    if (useBackend) return new HttpProductRepository()
-    return new MockProductRepository({
-      supplierId: '',
-      idFactory: () => crypto.randomUUID(),
-    })
-  }, [useBackend])
+    return new HttpProductRepository()
+  }, [])
 
   useEffect(() => {
     let cancelled = false

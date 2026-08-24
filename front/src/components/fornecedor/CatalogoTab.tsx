@@ -5,7 +5,6 @@ import { Package2, Edit2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/auth-context'
 import { ProductRepository } from '@/lib/ports/product-repository'
-import { MockProductRepository } from '@/lib/adapters/mock-product-repository'
 import { HttpProductRepository } from '@/lib/adapters/http-product-repository'
 import type { Product, CreateProductRequest, UpdateProductRequest } from '@contracts'
 import {
@@ -71,16 +70,9 @@ function getEmptyFormData(): FormData {
 
 export default function CatalogoTab() {
   const { user } = useAuth()
-  const useBackend = process.env.NEXT_PUBLIC_USE_BACKEND === 'true'
-
-  // Instanciar repositório direto no componente
   const repo: ProductRepository = useMemo(() => {
-    if (useBackend) return new HttpProductRepository()
-    return new MockProductRepository({
-      supplierId: user?.uid ?? '',
-      idFactory: () => crypto.randomUUID(),
-    })
-  }, [useBackend, user?.uid])
+    return new HttpProductRepository()
+  }, [])
 
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)

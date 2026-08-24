@@ -174,7 +174,7 @@ describe('MarketContext - directOrders loading (backend mode)', () => {
   it('modo backend: busca pedidos via listForSupplier e mapeia para DirectOrder', async () => {
     const listForSupplierMock = vi.fn().mockResolvedValue([fakeContractOrder])
     mockedHttpOrderRepository.mockImplementation(
-      () => makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository
+      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository }
     )
 
     const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
@@ -190,10 +190,9 @@ describe('MarketContext - directOrders loading (backend mode)', () => {
 
   it('modo backend: erro no listForSupplier define directOrdersError e nao quebra', async () => {
     mockedHttpOrderRepository.mockImplementation(
-      () =>
-        makeFakeRepo({
+      function() { return makeFakeRepo({
           listForSupplier: vi.fn().mockRejectedValue(new Error('network fail')),
-        }) as unknown as HttpOrderRepository
+        }) as unknown as HttpOrderRepository }
     )
 
     const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
@@ -210,7 +209,7 @@ describe('MarketContext - directOrders loading (backend mode)', () => {
     mockUseAuth.mockReturnValue({ ...FORNECEDOR_LOGADO, user: null, role: null })
     const listForSupplierMock = vi.fn().mockResolvedValue([fakeContractOrder])
     mockedHttpOrderRepository.mockImplementation(
-      () => makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository
+      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository }
     )
 
     const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
@@ -230,7 +229,7 @@ describe('MarketContext - directOrders loading (backend mode)', () => {
     })
     const listForSupplierMock = vi.fn().mockResolvedValue([fakeContractOrder])
     mockedHttpOrderRepository.mockImplementation(
-      () => makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository
+      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository }
     )
 
     const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
@@ -244,7 +243,7 @@ describe('MarketContext - directOrders loading (backend mode)', () => {
     mockUseAuth.mockReturnValue({ ...FORNECEDOR_LOGADO, loading: true })
     const listForSupplierMock = vi.fn().mockResolvedValue([fakeContractOrder])
     mockedHttpOrderRepository.mockImplementation(
-      () => makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository
+      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository }
     )
 
     const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })

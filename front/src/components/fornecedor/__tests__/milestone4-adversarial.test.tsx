@@ -7,7 +7,7 @@ import {
   DatePickerWithRange,
   formatDateRangeLabel,
 } from '../DatePickerWithRange'
-import RelatoriosPage from '@/app/(main)/painel-fornecedor/relatorios/page'
+import RelatoriosPage from '@/app/(fornecedor)/painel-fornecedor/relatorios/page'
 import {
   filterOrdersByDateRange,
   generateReportTimeSeries,

@@ -30,11 +30,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { PRODUCTS as STATIC_PRODUCTS } from '@/lib/mock-data/products-mock'
 import { formatPrice } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'
 import type { ProductRepository } from '@/lib/ports/product-repository'
-import { MockProductRepository } from '@/lib/adapters/mock-product-repository'
 import { HttpProductRepository } from '@/lib/adapters/http-product-repository'
 import type { Product, CreateProductRequest } from '@contracts'
 
@@ -73,40 +71,46 @@ export function AddProductDialog({
   masterProducts: customMasterProducts,
 }: AddProductDialogProps) {
   const { user } = useAuth()
-  const useBackend = process.env.NEXT_PUBLIC_USE_BACKEND === 'true'
-
   const repo = React.useMemo<ProductRepository>(() => {
     if (customRepo) return customRepo
-    if (useBackend) return new HttpProductRepository()
-    return new MockProductRepository({
-      supplierId: user?.uid || 'mock-supplier',
-      idFactory: () => crypto.randomUUID(),
-    })
-  }, [customRepo, useBackend, user?.uid])
+    return new HttpProductRepository()
+  }, [customRepo])
+
+  const [fetchedMasterList, setFetchedMasterList] = React.useState<MasterCatalogItem[]>([])
+  
+  React.useEffect(() => {
+    if (open && (!customMasterProducts || customMasterProducts.length === 0)) {
+      repo.list().then(products => {
+        setFetchedMasterList(products.map(p => ({
+          id: p.id,
+          name: p.name,
+          brand: p.brand,
+          size: p.size,
+          slug: p.slug,
+          categoria: p.categoria,
+          descricao: p.descricao,
+          priceInCents: p.priceCents,
+          atributos: {
+            faixaPeso: p.atributos.faixaPeso,
+            genero: 'unissex',
+            absorcao: p.atributos.absorcao,
+            tecnologia: p.atributos.tecnologia,
+          },
+          badge: p.badge,
+        })))
+      }).catch(err => {
+        console.error('Failed to fetch master catalog', err)
+      })
+    }
+  }, [open, customMasterProducts, repo])
 
   // Master products list
   const masterList: MasterCatalogItem[] = React.useMemo(() => {
     if (customMasterProducts && customMasterProducts.length > 0) {
       return customMasterProducts
     }
-    return STATIC_PRODUCTS.map((p) => ({
-      id: p.id,
-      name: p.name,
-      brand: p.brand,
-      size: p.size,
-      slug: p.slug,
-      categoria: p.categoria,
-      descricao: p.descricao,
-      priceInCents: p.priceInCents,
-      atributos: {
-        faixaPeso: p.atributos.faixaPeso,
-        genero: 'unissex' as const,
-        absorcao: p.atributos.absorcao,
-        tecnologia: p.atributos.tecnologia,
-      },
-      badge: p.badge,
-    }))
-  }, [customMasterProducts])
+    return fetchedMasterList
+  }, [customMasterProducts, fetchedMasterList])
 
   // Component state
   const [searchQuery, setSearchQuery] = React.useState('')

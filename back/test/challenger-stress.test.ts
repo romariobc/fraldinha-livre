@@ -144,7 +144,7 @@ describe('CHALLENGER STRESS SUITE: Edge cases & Security Harness Verification', 
       body: JSON.stringify({ messages: [{ role: 'user', content: 'busca fralda' }] }),
     })
     const response = await testApp.fetch(request, env)
-    const body = await response.json()
+    const body = (await response.json()) as any
 
     expect(response.status).toBe(200)
     // The malformed JSON is ignored, text returned cleanly without app crash

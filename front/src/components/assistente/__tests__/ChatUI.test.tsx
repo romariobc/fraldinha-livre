@@ -3,7 +3,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import ChatUI from '../ChatUI'
-import { PRODUCTS } from '@/lib/mock-data/products-mock'
+import { PRODUCTS } from '@/lib/__tests__/products-fixture'
 
 vi.mock('@/lib/api-client', () => ({ apiFetch: vi.fn() }))
 import { apiFetch } from '@/lib/api-client'

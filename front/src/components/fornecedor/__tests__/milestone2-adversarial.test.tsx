@@ -4,7 +4,7 @@ import { render, screen, fireEvent, renderHook } from '@testing-library/react'
 import { vi } from 'vitest'
 import { MetricCard } from '../MetricCard'
 import { useSupplierData } from '@/hooks/use-supplier-data'
-import SupplierDashboardOverviewPage from '@/app/(main)/painel-fornecedor/page'
+import SupplierDashboardOverviewPage from '@/app/(fornecedor)/painel-fornecedor/page'
 import { DollarSign, Package } from 'lucide-react'
 import type { DirectOrder } from '@/lib/supplier-mock'
 

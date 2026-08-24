@@ -30,22 +30,15 @@ import {
 import { AddProductDialog } from '@/components/fornecedor/AddProductDialog'
 import { useAuth } from '@/contexts/auth-context'
 import type { ProductRepository } from '@/lib/ports/product-repository'
-import { MockProductRepository } from '@/lib/adapters/mock-product-repository'
 import { HttpProductRepository } from '@/lib/adapters/http-product-repository'
 import { formatPrice } from '@/lib/utils'
 import type { Product, UpdateProductRequest } from '@contracts'
 
 export default function CatalogoPage() {
   const { user } = useAuth()
-  const useBackend = process.env.NEXT_PUBLIC_USE_BACKEND === 'true'
-
   const repo: ProductRepository = React.useMemo(() => {
-    if (useBackend) return new HttpProductRepository()
-    return new MockProductRepository({
-      supplierId: user?.uid || 'mock-supplier',
-      idFactory: () => crypto.randomUUID(),
-    })
-  }, [useBackend, user?.uid])
+    return new HttpProductRepository()
+  }, [])
 
   const [products, setProducts] = React.useState<Product[]>([])
   const [loading, setLoading] = React.useState(true)

@@ -5,9 +5,9 @@ import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { OrdersDataTable, type SupplierOrderRow } from '../OrdersDataTable'
 import { AddProductDialog, type MasterCatalogItem } from '../AddProductDialog'
-import CatalogoPage from '@/app/(main)/painel-fornecedor/catalogo/page'
+import CatalogoPage from '@/app/(fornecedor)/painel-fornecedor/catalogo/page'
 import type { ProductRepository } from '@/lib/ports/product-repository'
-import { MockProductRepository } from '@/lib/adapters/mock-product-repository'
+import { HttpProductRepository } from '@/lib/adapters/http-product-repository'
 import type { Product, CreateProductRequest, UpdateProductRequest } from '@contracts'
 
 // Mocks
@@ -43,8 +43,8 @@ vi.mock('@/contexts/market-context', () => ({
   })),
 }))
 
-vi.mock('@/lib/adapters/mock-product-repository', () => ({
-  MockProductRepository: vi.fn(),
+vi.mock('@/lib/adapters/http-product-repository', () => ({
+  HttpProductRepository: vi.fn(),
 }))
 
 import { toast } from 'sonner'
@@ -508,8 +508,8 @@ describe('Milestone 3 Adversarial Stress Testing', () => {
         }),
       }
 
-      vi.mocked(MockProductRepository).mockImplementation(
-        () => mockRepoInstance as unknown as InstanceType<typeof MockProductRepository>
+      vi.mocked(HttpProductRepository).mockImplementation(
+        function() { return mockRepoInstance as unknown as InstanceType<typeof HttpProductRepository> }
       )
     })
 

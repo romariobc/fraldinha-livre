@@ -76,15 +76,15 @@ harness). Nao sao "lidos por tarefa" — sao o chao.
 | `.claude/context/estado/progresso.md` | Diario cronologico: onde cada sessao parou, proximo passo | **Sempre, no inicio** |
 | `.claude/context/estado/feature_list.json` | Backlog com status (todo/in_progress/blocked/done), fase, criterio de aceite | **Sempre, no inicio** |
 | `.claude/context/chatsessions/` | Registro narrativo por sessao significativa (D-006). `README.md` = formato + indice | Ao retomar; para entender uma decisao passada em detalhe |
-| `.claude/docs/decisoes.md` | Log de decisoes D-NNN (arquitetura/infra/processo) — **fonte de verdade quando docs divergirem** | Ao planejar; quando um doc antigo conflita | 
-| `.claude/docs/design/specs/` | Specs de design (spec-driven, D-002). `README.md` = template + indice | Antes de implementar qualquer feature |
-| `.claude/docs/design/plans/` | Planos/prompts Haiku (H-NNN, threads S/T/U/B). `README.md` = template + indice | Ao executar uma feature |
-| `.claude/docs/design/adr/` | ADRs — decisoes de arquitetura extensas (ex.: adr-001 backend) | Ao mexer em arquitetura/infra |
-| `.claude/docs/review-checklist.md` | Passo a passo da revisao pre-aprovacao (D-012) | Ao revisar entrega Haiku |
-| `.claude/docs/licoes-e-diretrizes.md` | Licoes aprendidas + backlog de UX/pendencias menores | Ao planejar; ao caçar divida tecnica |
-| `.claude/docs/backend/integration-guide.md` | Guia de integracao do backend ⚠️ **DESATUALIZADO** (assume NextAuth; reescrever na thread B) | Só com ressalva; sera reescrito (D-027) |
-| `.claude/docs/leilao-reverso-filosofia-e-contexto.md` | Contexto do leilao reverso (Fase 2 / microservico, D-014) | Ao tratar do leilao (fase 2) |
-| `.claude/docs/design/tokens-legacy.md` | Tokens de design legados | Ao mexer em UI/tokens |
+| `.claude/docs/governance/decisoes.md` | Log de decisoes D-NNN (arquitetura/infra/processo) — **fonte de verdade quando docs divergirem** | Ao planejar; quando um doc antigo conflita | 
+| `.claude/docs/features/specs/` | Specs de design (spec-driven, D-002). `README.md` = template + indice | Antes de implementar qualquer feature |
+| `.claude/docs/features/plans/` | Planos/prompts Haiku (H-NNN, threads S/T/U/B). `README.md` = template + indice | Ao executar uma feature |
+| `.claude/docs/features/adr/` | ADRs — decisoes de arquitetura extensas (ex.: adr-001 backend) | Ao mexer em arquitetura/infra |
+| `.claude/docs/governance/review-checklist.md` | Passo a passo da revisao pre-aprovacao (D-012) | Ao revisar entrega Haiku |
+| `.claude/docs/governance/licoes-e-diretrizes.md` | Licoes aprendidas + backlog de UX/pendencias menores | Ao planejar; ao caçar divida tecnica |
+| `.claude/docs/architecture/integration-guide.md` | Guia de integracao do backend ⚠️ **DESATUALIZADO** (assume NextAuth; reescrever na thread B) | Só com ressalva; sera reescrito (D-027) |
+| `.claude/docs/governance/leilao-reverso-filosofia-e-contexto.md` | Contexto do leilao reverso (Fase 2 / microservico, D-014) | Ao tratar do leilao (fase 2) |
+| `.claude/docs/architecture/tokens-legacy.md` | Tokens de design legados | Ao mexer em UI/tokens |
 
 ---
 
@@ -95,10 +95,10 @@ harness). Nao sao "lidos por tarefa" — sao o chao.
 | `.claude/context/estado/feature_list.json` | Novo status da feature; notas de execucao (commits, decisoes) | Sessao-mae, ao encerrar |
 | `.claude/context/estado/progresso.md` | Entrada da sessao: o que foi feito, estado do branch, proximo passo | Sessao-mae, ao encerrar |
 | `.claude/context/chatsessions/` + `README.md` | Registro narrativo da sessao (se significativa) + linha no indice | Sessao-mae, ao encerrar sessao significativa |
-| `.claude/docs/decisoes.md` | Nova decisao D-NNN (com Why + How to apply) | Sessao-mae, quando uma decisao e tomada |
-| `.claude/docs/design/specs/` + `README.md` | Nova spec + linha no indice | Sessao-mae, na fase de design |
-| `.claude/docs/design/plans/` + `README.md` | Novo plano/prompt Haiku + linha no indice | Sessao-mae, antes de disparar execucao |
-| `.claude/docs/design/adr/` | Novo ADR ou atualizacao de status | Sessao-mae, em decisao de arquitetura |
+| `.claude/docs/governance/decisoes.md` | Nova decisao D-NNN (com Why + How to apply) | Sessao-mae, quando uma decisao e tomada |
+| `.claude/docs/features/specs/` + `README.md` | Nova spec + linha no indice | Sessao-mae, na fase de design |
+| `.claude/docs/features/plans/` + `README.md` | Novo plano/prompt Haiku + linha no indice | Sessao-mae, antes de disparar execucao |
+| `.claude/docs/features/adr/` | Novo ADR ou atualizacao de status | Sessao-mae, em decisao de arquitetura |
 | **Codigo** (`front/`, futuramente `back/`, `packages/`) | A implementacao | Sessao Haiku (executor), revisada pela mae |
 
 > **Regra:** o `decisoes.md` prevalece quando qualquer doc antigo divergir. `progresso.md` e narrativa;

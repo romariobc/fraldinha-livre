@@ -1,22 +1,24 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# Diretrizes de Agentes de IA — Fraldinha Livre
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+Este repositório possui regras e diretrizes de desenvolvimento estruturadas para coordenar múltiplos agentes concorrentes.
 
-<!-- BEGIN:domain-skills -->
-## Domain Skills
+---
 
-Sub-agents working on a specific domain MUST invoke the corresponding skill
-before taking any action:
+## 1. Regras de Desenvolvimento Next.js
+Consulte a regra em [.agents/rules/nextjs-rules.md](file:///.agents/rules/nextjs-rules.md).
 
-| Working in | Invoke |
-|---|---|
-| `src/components/fornecedor/` or `src/app/(main)/fornecedor/` | `Skill(domain-fornecedor)` |
-| `src/components/minha-conta/` or `src/app/(main)/minha-conta/` | `Skill(domain-comprador)` |
-| `src/components/catalogo/` or `src/app/(main)/catalogo/` | `Skill(domain-catalogo)` |
-| Any UI component or layout work | `Skill(ui-system)` |
-| Dispatching parallel sub-agents | `Skill(paralelize)` |
-| Migrating mocks to real API calls | `Skill(api-contract)` |
-| Modifying any file in `src/lib/`, `src/components/ui/`, `tailwind.config.ts`, or shared layout | `Skill(risk-zone-protocol)` |
-<!-- END:domain-skills -->
+---
+
+## 2. Habilidades de Domínio (Custom Skills)
+
+Sub-agentes que atuem em domínios ou diretórios específicos **devem invocar** a respectiva habilidade antes de tomar qualquer ação:
+
+| Diretório / Escopo de Trabalho | Habilidade a Invocar | Caminho do Guia de Habilidade |
+|---|---|---|
+| `src/components/fornecedor/` ou `src/app/(main)/fornecedor/` | `Skill(domain-fornecedor)` | [.agents/skills/domain-fornecedor/SKILL.md](file:///.agents/skills/domain-fornecedor/SKILL.md) |
+| `src/components/minha-conta/` ou `src/app/(main)/minha-conta/` | `Skill(domain-comprador)` | [.agents/skills/domain-comprador/SKILL.md](file:///.agents/skills/domain-comprador/SKILL.md) |
+| `src/components/catalogo/` ou `src/app/(main)/catalogo/` | `Skill(domain-catalogo)` | [.agents/skills/domain-catalogo/SKILL.md](file:///.agents/skills/domain-catalogo/SKILL.md) |
+| Criação ou modificação de componentes de UI | `Skill(ui-system)` | [.agents/skills/ui-system/SKILL.md](file:///.agents/skills/ui-system/SKILL.md) |
+| Delegação ou disparo de sub-agentes concorrentes | `Skill(paralelize)` | [.agents/skills/paralelize/SKILL.md](file:///.agents/skills/paralelize/SKILL.md) |
+| Migração de dados mockados para endpoints reais (REST) | `Skill(api-contract)` | [.agents/skills/api-contract/SKILL.md](file:///.agents/skills/api-contract/SKILL.md) |
+| Modificar qualquer arquivo de Zona de Risco (`src/lib/`, `src/contexts/`, `src/components/ui/`, `tailwind.config.ts`, layout compartilhado) | `Skill(risk-zone-protocol)` | [.agents/skills/risk-zone-protocol/SKILL.md](file:///.agents/skills/risk-zone-protocol/SKILL.md) |

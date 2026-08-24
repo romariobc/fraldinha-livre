@@ -27,15 +27,15 @@ vi.mock('@/contexts/auth-context', () => ({
   })),
 }))
 
-vi.mock('@/lib/adapters/mock-product-repository', () => ({
-  MockProductRepository: vi.fn(),
+vi.mock('@/lib/adapters/http-product-repository', () => ({
+  HttpProductRepository: vi.fn(),
 }))
 
 import { toast } from 'sonner'
-import { MockProductRepository } from '@/lib/adapters/mock-product-repository'
+import { HttpProductRepository } from '@/lib/adapters/http-product-repository'
 import type { Product, UpdateProductRequest } from '@contracts'
 
-const mockMockProductRepository = vi.mocked(MockProductRepository)
+const mockHttpProductRepository = vi.mocked(HttpProductRepository)
 
 const MOCK_SUPPLIER_PRODUCTS: Product[] = [
   {
@@ -119,8 +119,8 @@ describe('CatalogoPage (/painel-fornecedor/catalogo)', () => {
       }),
     }
 
-    mockMockProductRepository.mockImplementation(
-      () => mockRepoInstance as unknown as InstanceType<typeof MockProductRepository>
+    mockHttpProductRepository.mockImplementation(
+      function() { return mockRepoInstance as unknown as InstanceType<typeof HttpProductRepository> }
     )
   })
 

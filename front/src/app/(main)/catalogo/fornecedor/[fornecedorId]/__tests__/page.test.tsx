@@ -40,7 +40,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useCart } from '@/contexts/cart-context'
 import { useProducts } from '@/contexts/products-context'
 import FornecedorCatalogoPage from '../page'
-import { PRODUCTS } from '@/lib/mock-data/products-mock'
+import { PRODUCTS } from '@/lib/__tests__/products-fixture'
 
 const mockUseRouter = vi.mocked(useRouter)
 const mockUseSearchParams = vi.mocked(useSearchParams)

@@ -14,6 +14,10 @@ vi.mock('@/lib/firebase', () => ({
   googleProvider: {},
 }))
 
+const { listMock } = vi.hoisted(() => ({
+  listMock: vi.fn(),
+}))
+
 type AuthCallback = (user: { uid: string } | null) => void
 let authCallback: AuthCallback = () => {}
 
@@ -28,14 +32,15 @@ vi.mock('firebase/auth', () => ({
   signOut: vi.fn(),
 }))
 
-const listMock = vi.fn()
 vi.mock('@/lib/adapters/http-order-repository', () => ({
-  HttpOrderRepository: vi.fn().mockImplementation(() => ({
-    list: listMock,
-    create: vi.fn(),
-    cancel: vi.fn(),
-  })),
-}))
+  HttpOrderRepository: class HttpOrderRepository {
+    constructor() {
+      this.list = listMock;
+      this.create = vi.fn();
+      this.cancel = vi.fn();
+    }
+  },
+}));
 
 import { OrdersProvider, useOrders } from '../orders-context'
 

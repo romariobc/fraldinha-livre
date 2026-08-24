@@ -1,27 +1,29 @@
 @AGENTS.md
 
-## Ciclo de sessao (harness de referencia)
+## Ciclo de Sessão (Harness de Referência)
 
-Este projeto adota o ciclo de sessao definido em:
-https://github.com/romariobc/dev_flow_create_harness (branch: dominio/vendas-b2b, ou main enquanto branch de dominio nao existe)
+Este projeto adota o ciclo de sessão definido em:
+https://github.com/romariobc/dev_flow_create_harness
 
-**Mapa completo do ciclo + contexto/persistencia/memoria:** `.claude/docs/ciclo-de-sessao.md`
-(contexto base, arquivos de consulta, arquivos de persistencia, memoria e divergencias). Resumo abaixo.
+**Mapa completo do ciclo + contexto/persistência/memória:** [.claude/docs/governance/ciclo-de-sessao.md](file:///.claude/docs/governance/ciclo-de-sessao.md)
+(contexto base, arquivos de consulta, persistência, memória e divergências). Resumo abaixo.
 
 Antes de qualquer tarefa:
-0. Cheque se seu proprio checkout esta defasado: `git fetch && git log --oneline HEAD..origin/main | wc -l`.
-   Se o numero for grande (dezenas+), progresso.md/feature_list.json abaixo sao uma FOTO CONGELADA de
-   quando este worktree/branch nasceu, nao o estado atual do projeto — atualize/rebaseie ou pelo menos
-   avise o usuario da defasagem antes de continuar (incidente real: D-040 em decisoes.md).
-1. Leia .claude/context/estado/progresso.md — sabe onde a sessao anterior parou
-2. Leia .claude/context/estado/feature_list.json — pegue a proxima feature (status: todo)
-3. Trabalhe em exatamente 1 feature por sessao
-4. Verifique antes de declarar feito — so prova executavel conta
-5. Atualize feature_list.json e progresso.md antes de encerrar
+0. **Cheque defasagem**: `git fetch && git log --oneline HEAD..origin/main | wc -l`.
+   Se > 0, rebaseie ou alerte o usuário antes de confiar nos arquivos de estado.
+1. **Leia o progresso**: [.claude/context/estado/progresso.md](file:///.claude/context/estado/progresso.md) (histórico cronológico).
+2. **Leia o backlog**: [.claude/context/estado/feature_list.json](file:///.claude/context/estado/feature_list.json) (status e critérios de aceite).
+3. **Foco**: Trabalhe em exatamente 1 feature por sessão.
+4. **Verifique**: Só prova executável conta (testes automatizados e `tsc`).
+5. **Atualize**: Salve o progresso em `feature_list.json` e `progresso.md` antes de encerrar e comite-os junto com o código.
 
-Specs de design: .claude/docs/design/specs/
-Planos de implementacao: .claude/docs/design/plans/
-Guia de integracao backend: .claude/docs/backend/integration-guide.md
+---
 
-Divergencias deste projeto em relacao ao harness: stack Next.js/TypeScript (nao Python); contexto de dominio em AGENTS.md (nao em context/dominio.md).
+## Atalhos de Documentação
 
+- **Especificações de Design**: [.claude/docs/features/specs/](file:///.claude/docs/features/specs/)
+- **Planos de Implementação**: [.claude/docs/features/plans/](file:///.claude/docs/features/plans/)
+- **Decisões Arquiteturais (ADRs)**: [.claude/docs/governance/decisoes.md](file:///.claude/docs/governance/decisoes.md)
+- **Guia de Integração Backend**: [.claude/docs/architecture/integration-guide.md](file:///.claude/docs/architecture/integration-guide.md)
+
+Divergências deste projeto em relação ao harness: stack Next.js/TypeScript (não Python); contexto de domínio mapeado em `AGENTS.md` e regras nativas sob `.agents/`.

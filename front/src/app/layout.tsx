@@ -5,6 +5,11 @@ import './globals.css'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/contexts/auth-context'
 
+import { MarketProvider } from '@/contexts/market-context'
+import { OrdersProvider } from '@/contexts/orders-context'
+import { CartProvider } from '@/contexts/cart-context'
+import { ProductsProvider } from '@/contexts/products-context'
+
 const nunito = Nunito({
   subsets: ['latin'],
   variable: '--font-nunito',
@@ -35,9 +40,17 @@ export default function RootLayout({
         <link href="/assets/img/apple-touch-icon.png" rel="apple-touch-icon" />
       </head>
       <body>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+        <OrdersProvider>
+          <ProductsProvider>
+            <CartProvider>
+              <AuthProvider>
+                <MarketProvider>
+                  {children}
+                </MarketProvider>
+              </AuthProvider>
+            </CartProvider>
+          </ProductsProvider>
+        </OrdersProvider>
         <Toaster position="top-right" richColors />
       </body>
     </html>

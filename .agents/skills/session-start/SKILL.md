@@ -20,6 +20,7 @@ Use a ferramenta de visualização de arquivos para ler os seguintes arquivos si
 - [.claude/context/estado/progresso.md](file:///.claude/context/estado/progresso.md) (para entender onde o desenvolvimento parou e quais os próximos passos táticos).
 - [.claude/context/estado/feature_list.json](file:///.claude/context/estado/feature_list.json) (para identificar a feature atualmente em 'in_progress' ou 'todo' e seus critérios de aceite).
 - [PROJECT.md](file:///PROJECT.md) (para entender os milestones e arquitetura de alto nível do monorepo).
+- [graphify-out/GRAPH_REPORT.md](file:///graphify-out/GRAPH_REPORT.md) (para entender o mapa mental das dependências, as comunidades isoladas e a arquitetura geral do frontend).
 
 ### Passo 3: Consciência de Orquestração e Paralelização
 Para trabalhar no Fraldinha Livre, o agente usa habilidades de domínio isoladas para não gerar conflito. 

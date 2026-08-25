@@ -45,6 +45,12 @@ git log -n 5 --pretty=format:"%ai %an — %s" -- <caminho_do_arquivo>
 - Reporte ao humano: "Detectei atividade recente em `<arquivo>`. Outro agente pode estar trabalhando neste arquivo. Confirme se é seguro prosseguir."
 - Aguarde confirmação antes de continuar
 
+### Passo 1.5 — Análise de Dependências (Graphify)
+
+Antes de fazer alterações em estruturas públicas (interfaces, contexts, wrappers globais):
+1. Consulte o relatório de dependências em [graphify-out/GRAPH_REPORT.md](file:///graphify-out/GRAPH_REPORT.md) para identificar quais módulos e componentes dependem da abstração que você está prestes a alterar (evitando regressões em outros domínios).
+2. Se a mudança no fluxo de dados for complexa ou estrutural, execute a regeneração do grafo de dependências via ferramenta Graphify local para mapear o impacto real do acoplamento antes de iniciar a edição do código.
+
 ### Passo 2 — Justificativa documentada
 
 Antes de escrever qualquer linha, responda as três perguntas e inclua as respostas no seu commit message:

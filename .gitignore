@@ -45,6 +45,7 @@ yarn-error.log*
 !.agents/skills/
 !.agents/rules/
 run_checks.ps1
+check_resources.ps1
 
 # graphify (grafo de conhecimento gerado)
 graphify-out/

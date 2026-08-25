@@ -1214,3 +1214,14 @@ Necessidade de expor um catálogo exclusivo por distribuidora para o público (c
    - Mantida a regra **1 Conta de Usuário = 1 Distribuidora**.
    - Para atender grandes redes, cada filial deverá possuir uma conta própria, com CNPJ/login separado, garantindo gestão de estoque dinâmico isolado por localização. Isso evita a complexidade de um sistema Multi-tenant cruzado (1 usuário gerenciando dezenas de lojas simultâneas na mesma sessão), garantindo segurança máxima e independência de dados entre filiais (conceito shared-nothing na camada de aplicação).
 
+---
+
+## D-046 — Gestão de Recursos Locais (Prevenção de ENOSPC) (2026-08-25) — VIGENTE
+
+### Contexto
+Durante a execução de testes automatizados e servidores de desenvolvimento local (Wrangler/Next.js/Firebase Auth), o sistema apresentou falhas de escrita e travamentos decorrentes de esgotamento de espaço em disco no drive C: (menos de 300 MB livres). A causa raiz foi o acúmulo de arquivos temporários e capturas de tela das execuções automáticas do navegador na pasta `.gemini/antigravity-ide/browser_recordings/` (totalizando 3.08 GB).
+
+### Decisão
+1. **Rotina de Limpeza Automática:** Criar um script ou rotina de verificação integrada antes de tarefas de grande carga de testes. O script deve verificar a capacidade de disco livre do drive C:.
+2. **Limite Crítico:** Definir o limite mínimo ideal de 2.0 GB livres no drive C:. Se o espaço livre for menor e a pasta de gravações de teste existir, limpá-la automaticamente.
+3. **Trava de Segurança:** Caso o espaço permaneça abaixo de 1.0 GB após a limpeza, o script deve emitir um alerta claro de erro e interromper a execução para prevenir falhas silenciosas de IndexedDB e SQLite local.

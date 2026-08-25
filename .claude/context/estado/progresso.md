@@ -8,6 +8,7 @@ Execução de validação E2E do fluxo de compra do comprador e integração com
 2. **Ajuste de Teste Unitário:** Corrigido o teste `SupplierSidebar.test.tsx` que falhava por causa da label `"Ver Meu Catálogo Ativo"` que estava desatualizada no teste.
 3. **Validação E2E no Browser:** Executamos e comprovamos o funcionamento do fluxo E2E (Cadastro -> Onboarding -> Catálogo -> Carrinho -> Sacola -> Checkout -> Confirmação -> Minha Conta) integrado com o banco de dados Cloudflare D1 local.
 4. **Resolução de Espaço em Disco (ENOSPC):** Identificamos 3.08 GB de capturas temporárias de gravações de teste acumuladas na pasta `.gemini/antigravity-ide/browser_recordings/` no drive C: (que estava cheio, com apenas 300MB livres) e realizamos a limpeza, liberando o disco para 2.67 GB livres e normalizando o funcionamento das instâncias locais do IndexedDB e do Wrangler.
+5. **Automação contra Falha de Disco (Prevenção de ENOSPC):** Desenvolvemos o script de checagem [check_resources.ps1](file:///E:/Labdev/Projetos/fraldinha-livre/check_resources.ps1) (integrado no [run_checks.ps1](file:///E:/Labdev/Projetos/fraldinha-livre/run_checks.ps1)) que automatiza a verificação e limpeza das gravações de navegador antes de testes/builds. Registramos formalmente o incidente e a solução como a decisão [D-046](file:///E:/Labdev/Projetos/fraldinha-livre/.claude/docs/governance/decisoes.md#D-046) no log de decisões arquiteturais.
 
 **Status:**
 Build de produção compilado com sucesso. Testes unitários 100% verdes (154 backend, 539 frontend).

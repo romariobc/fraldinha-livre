@@ -25,7 +25,7 @@ describe('SupplierSidebar Component', () => {
     vi.clearAllMocks()
   })
 
-  it('renders "Ver Catálogo B2C" pointing to /catalogo/fornecedor/${user.uid} when user is authenticated', () => {
+  it('renders "Ver Meu Catálogo Ativo" pointing to /catalogo/fornecedor/${user.uid} when user is authenticated', () => {
     mockUseAuth.mockReturnValue({
       user: {
         uid: 'supplier-uid-123',
@@ -48,7 +48,7 @@ describe('SupplierSidebar Component', () => {
       </SidebarProvider>
     )
 
-    const catalogLink = screen.getByRole('link', { name: /ver catálogo b2c/i })
+    const catalogLink = screen.getByRole('link', { name: /ver meu catálogo ativo/i })
     expect(catalogLink).toBeInTheDocument()
     expect(catalogLink).toHaveAttribute('href', '/catalogo/fornecedor/supplier-uid-123')
     expect(catalogLink).toHaveAttribute('target', '_blank')
@@ -73,7 +73,7 @@ describe('SupplierSidebar Component', () => {
       </SidebarProvider>
     )
 
-    const catalogLink = screen.getByRole('link', { name: /ver catálogo b2c/i })
+    const catalogLink = screen.getByRole('link', { name: /ver meu catálogo ativo/i })
     expect(catalogLink).toBeInTheDocument()
     expect(catalogLink).toHaveAttribute('href', '/catalogo')
   })
@@ -101,7 +101,7 @@ describe('SupplierSidebar Component', () => {
       </SidebarProvider>
     )
 
-    const catalogLink = screen.getByRole('link', { name: /ver catálogo b2c/i })
+    const catalogLink = screen.getByRole('link', { name: /ver meu catálogo ativo/i })
     expect(catalogLink).toBeInTheDocument()
     expect(catalogLink).toHaveAttribute('href', '/catalogo')
   })

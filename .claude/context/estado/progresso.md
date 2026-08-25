@@ -1,3 +1,22 @@
+## Marco (2026-08-25) - Validação E2E, Correção de Teste e Liberação de Espaço em Disco
+
+**Resumo da Sessão:**
+Execução de validação E2E do fluxo de compra do comprador e integração com o painel do fornecedor localmente, ajuste de teste unitário da barra lateral do fornecedor e liberação de espaço em disco no drive C:.
+
+**O que foi feito:**
+1. **Verificação de Suítes de Testes:** Rodamos e validamos todas as suítes de testes unitários locais, com 100% de sucesso (154 testes de backend e 539 testes de frontend passando).
+2. **Ajuste de Teste Unitário:** Corrigido o teste `SupplierSidebar.test.tsx` que falhava por causa da label `"Ver Meu Catálogo Ativo"` que estava desatualizada no teste.
+3. **Validação E2E no Browser:** Executamos e comprovamos o funcionamento do fluxo E2E (Cadastro -> Onboarding -> Catálogo -> Carrinho -> Sacola -> Checkout -> Confirmação -> Minha Conta) integrado com o banco de dados Cloudflare D1 local.
+4. **Resolução de Espaço em Disco (ENOSPC):** Identificamos 3.08 GB de capturas temporárias de gravações de teste acumuladas na pasta `.gemini/antigravity-ide/browser_recordings/` no drive C: (que estava cheio, com apenas 300MB livres) e realizamos a limpeza, liberando o disco para 2.67 GB livres e normalizando o funcionamento das instâncias locais do IndexedDB e do Wrangler.
+
+**Status:**
+Build de produção compilado com sucesso. Testes unitários 100% verdes (154 backend, 539 frontend).
+
+**Próximo Passo:**
+Selecionar a próxima feature/tarefa tática do backlog em `feature_list.json`. Sugere-se iniciar o desenvolvimento do gateway de pagamento (Feature 011) ou prosseguir com pendências de deploy de e-mail/push (Feature 010) e do Chat Agent (Feature 018).
+
+---
+
 ## Marco (2026-08-24) - Orquestração e Workflows de Início e Encerramento
 
 **Resumo da Sessão:**

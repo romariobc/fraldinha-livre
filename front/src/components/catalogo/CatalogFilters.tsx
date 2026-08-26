@@ -1,6 +1,7 @@
 // src/components/catalogo/CatalogFilters.tsx
 'use client'
 
+import { useState, useEffect } from 'react'
 import { SlidersHorizontal, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import {
@@ -33,6 +34,23 @@ function hasActiveFilters(filters: ProductFilters) {
 }
 
 function FilterBody({ filters, onChange, onClear }: CatalogFiltersProps) {
+  const [searchValue, setSearchValue] = useState(filters.search)
+
+  // Sincroniza estado local com filtros externos (ex.: quando limpa filtros)
+  useEffect(() => {
+    setSearchValue(filters.search)
+  }, [filters.search])
+
+  // Debounce para atualizar os parâmetros da URL
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchValue !== filters.search) {
+        onChange('search', searchValue)
+      }
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [searchValue, onChange, filters.search])
+
   return (
     <div className="flex flex-col gap-6">
       {/* Busca */}
@@ -40,8 +58,8 @@ function FilterBody({ filters, onChange, onClear }: CatalogFiltersProps) {
         <p className="text-xs font-bold uppercase tracking-widest text-brand-muted mb-2">Buscar</p>
         <Input
           placeholder="Nome ou marca..."
-          value={filters.search}
-          onChange={(e) => onChange('search', e.target.value)}
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
           className="border-2 border-slate-200 rounded-xl bg-slate-50 focus-visible:border-primary focus-visible:ring-0 text-brand-text text-sm"
         />
       </div>

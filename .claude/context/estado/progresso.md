@@ -1,3 +1,22 @@
+## Marco (2026-08-26) - Expansão de Scraping de Fraldas e Hotfix no Input de Busca
+
+**Resumo da Sessão:**
+Expansão do scraper da Pague Menos e seed do banco de dados D1 (local e produção) para 12 marcas de fraldas diferentes, com salvaguardas de exclusão e prevenção de duplicidade baseadas em slugs ativos, e aplicação do padrão de estado local com debounce no input de busca do catálogo.
+
+**O que foi feito:**
+1. **Expansão de Marcas no Scraper:** Atualizado `scrape-products.ts` para capturar 12 marcas específicas (*Huggies, Cremer, Amorável, Bigfral, Nateen, Babysec, Pompom, Capricho, Baby Shark, MamyPoko, Pampers, Turma da Mônica*). Obteve-se um total de **310 fraldas exclusivas** no `raw_products.json`.
+2. **Seeding Protegido no D1:** Ajustado `seed-products.ts` para que o `DELETE` limpe apenas os produtos de fornecedores mock (`sup-001` a `sup-004`). Integrou-se uma pré-consulta via wrangler para skipar a inserção de produtos que entrem em conflito de slug com produtos de fornecedores reais ativos. Semeados 310 produtos locais e 309 em produção remota (1 duplicado pulado automaticamente).
+3. **Padrão Debounce no Input do Catálogo:** Corrigido o bug em `CatalogFilters.tsx` em que o input de busca sofria lag e perda de foco/letras ao digitar devido à navegação assíncrona do roteador do Next.js a cada keystroke. O input agora opera com estado local síncrono e debounce de 400ms.
+4. **Verificação de Suíte:** Rodou-se as suítes de testes locais com aprovação de 100% (154 backend, 539 frontend).
+
+**Status:**
+Build limpo e testes 100% verdes. Scripts de scraping e seeding atualizados no banco local e remoto de produção. Input de busca do catálogo verificado e funcional.
+
+**Próximo Passo:**
+Selecionar a próxima feature/tarefa tática do backlog em `feature_list.json`. Sugere-se iniciar o desenvolvimento do gateway de pagamento (Feature 011) ou prosseguir com pendências de deploy de e-mail/push (Feature 010) e do Chat Agent (Feature 018).
+
+---
+
 ## Marco (2026-08-26) - Hotfix de Validação Zod no Catálogo (SQLite/D1 Dynamic Typing)
 
 **Resumo da Sessão:**

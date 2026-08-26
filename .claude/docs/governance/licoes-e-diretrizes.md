@@ -93,6 +93,8 @@ Firestore; endurecimento SSR do auth adiado para deploy/006.
   autorizados.
 - Manter uma decisao por bloco em `decisoes.md`; quando algo muda, marcar a antiga como superada.
 - Commits pequenos, descritivos, em pt-BR, com trailer Co-Authored-By.
+- Sempre aplicar migrations no D1 remoto/produção logo após o deploy do backend que altera schemas.
+- Implementar blindagem (sanitização de tipos) em helpers de normalização do backend (`normalizeProduct`) para garantir que os tipos dos dados batam rigorosamente com os contratos antes do envio, evitando quebras por dados corrompidos.
 
 **NAO FAZER**
 - Nao aprovar entrega Haiku so pelo relatorio.
@@ -101,6 +103,7 @@ Firestore; endurecimento SSR do auth adiado para deploy/006.
 - Nao silenciar erro de lint com disable-comment; corrigir a causa.
 - Nao introduzir dependencia proprietaria fora do Google Cloud/Firebase (D-001).
 - Nao apresentar solucao stub como definitiva sem marcar a divida tecnica.
+- Não confiar no dynamic typing do SQLite para campos validados estritamente no Zod do frontend. Se uma coluna estiver declarada no schema do Drizzle mas não existir no SQLite, o Drizzle pode mapear o valor ausente como a string do nome da coluna (ex: "old_price_cents"), quebrando a validação de número no Zod.
 
 ## 7. Dividas tecnicas conhecidas (rastrear ate fechar)
 

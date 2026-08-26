@@ -1,3 +1,24 @@
+## Marco (2026-08-26) - Hotfix de Validação Zod no Catálogo (SQLite/D1 Dynamic Typing)
+
+**Resumo da Sessão:**
+Resolução de um travamento silencioso no catálogo de produtos (/catalogo) para usuários deslogados através da aplicação de migrações pendentes em produção e blindagem preventiva no backend.
+
+**O que foi feito:**
+1. **Identificação da Causa Raiz:** Mismatch entre o schema do backend (que declarava a coluna `old_price_cents` adicionada na migration `0007_swift_toxin.sql`) e a tabela no Cloudflare D1 de produção remoto (onde a migration nunca havia sido executada). Em SQLite/D1, Drizzle ORM preenchia a coluna ausente com a string do seu próprio nome de coluna ("old_price_cents"), quebrando a validação numérica do Zod no frontend.
+2. **Aplicação de Migration Remota:** Executamos e aplicamos com sucesso a migration `0007_swift_toxin.sql` em produção remoto (`npx wrangler d1 migrations apply fraldinha-livre-db --remote`), criando a coluna e a populando com `NULL`.
+3. **Robustez no Backend:** Atualizamos o helper `normalizeProduct` em `back/src/routes/products.ts` para higienizar preventivamente o campo `oldPriceCents`, convertendo strings ou valores inválidos em `null` antes de responder a API (Defesa em Profundidade).
+4. **Governança:** Registramos formalmente a decisão [D-047](file:///E:/Labdev/Projetos/fraldinha-livre/.claude/docs/governance/decisoes.md#D-047) no log de decisões arquiteturais e documentamos a lição sobre SQLite dynamic typing em [licoes-e-diretrizes.md](file:///E:/Labdev/Projetos/fraldinha-livre/.claude/docs/governance/licoes-e-diretrizes.md).
+5. **Verificação de Suítes de Testes:** Todas as suítes de testes unitários locais (154 testes de backend e 539 testes de frontend) passaram com sucesso no Vitest.
+6. **Validação Manual no Navegador:** Subimos os servidores de desenvolvimento localmente e validamos via sub-agente de navegador que `/catalogo` renderiza os produtos 100% livre de erros e que a API agora retorna corretamente `oldPriceCents: null` para os produtos que não têm desconto em produção.
+
+**Status:**
+Build limpo e typecheck passando no backend. Testes unitários 100% verdes (154 backend, 539 frontend). Validação visual e de console no navegador concluída com sucesso.
+
+**Próximo Passo:**
+Selecionar a próxima feature/tarefa tática do backlog em `feature_list.json`. Sugere-se iniciar o desenvolvimento do gateway de pagamento (Feature 011) ou prosseguir com pendências de deploy de e-mail/push (Feature 010) e do Chat Agent (Feature 018).
+
+---
+
 ## Marco (2026-08-25) - Validação E2E, Correção de Teste e Liberação de Espaço em Disco
 
 **Resumo da Sessão:**

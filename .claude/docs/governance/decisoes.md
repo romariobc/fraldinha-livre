@@ -1225,3 +1225,20 @@ Durante a execução de testes automatizados e servidores de desenvolvimento loc
 1. **Rotina de Limpeza Automática:** Criar um script ou rotina de verificação integrada antes de tarefas de grande carga de testes. O script deve verificar a capacidade de disco livre do drive C:.
 2. **Limite Crítico:** Definir o limite mínimo ideal de 2.0 GB livres no drive C:. Se o espaço livre for menor e a pasta de gravações de teste existir, limpá-la automaticamente.
 3. **Trava de Segurança:** Caso o espaço permaneça abaixo de 1.0 GB após a limpeza, o script deve emitir um alerta claro de erro e interromper a execução para prevenir falhas silenciosas de IndexedDB e SQLite local.
+
+---
+
+## D-047 — Hotfix do Zod no Catálogo: Mismatch de Schema D1/SQLite (2026-08-26) — VIGENTE
+
+### Contexto
+Durante o carregamento do catálogo público (`/catalogo`) por usuários não autenticados, o catálogo ficava em branco exibindo uma mensagem de erro genérica. O agente Gemini do Chrome DevTools reportou um erro de validação do Zod, onde o campo `oldPriceCents` retornava a string literal `"old_price_cents"` em vez de um número inteiro, `null` ou `undefined` como esperado por `ProductListSchema`.
+
+### Análise e Causa Raiz
+1. **Migration não aplicada**: A coluna `old_price_cents` foi adicionada na migration `0007_swift_toxin.sql`, mas essa migration nunca foi executada no banco de dados Cloudflare D1 de produção (remoto).
+2. **Comportamento do Drizzle ORM**: Como a migration não foi aplicada, a coluna física não existia no banco de dados. No entanto, o código do backend Workers já continha o schema Drizzle atualizado declarando a coluna. Em SQLite/D1, a query `SELECT * FROM products` não falhou, mas ao mapear a linha de dados, a camada do Drizzle ORM mapeou a propriedade declarada ausente `oldPriceCents` para o nome de sua respectiva coluna em string (`"old_price_cents"`).
+3. **Falha de Validação**: A API do backend retornou `"oldPriceCents": "old_price_cents"` no JSON. O frontend, ao realizar o `ProductListSchema.parse(json)`, falhou estritamente na validação de número.
+
+### Decisão
+1. **Aplicação de Migrations Pendentes**: Aplicar imediatamente a migration `0007_swift_toxin.sql` no ambiente remoto de produção (`npx wrangler d1 migrations apply fraldinha-livre-db --remote`), criando o campo e definindo seu valor padrão para `NULL` nas linhas existentes.
+2. **Blindagem e Sanitização (Defesa em Profundidade)**: Atualizar o helper `normalizeProduct` em `back/src/routes/products.ts` para higienizar `oldPriceCents`, convertendo qualquer valor que não seja número ou string numérica válida em `null` antes de retornar a resposta da API, prevenindo quebras em casos de dados corrompidos.
+

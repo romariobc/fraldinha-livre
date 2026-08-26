@@ -27,13 +27,21 @@ function generateUUID(): string {
 // usa `z.string().optional()`, que aceita `undefined` mas rejeita `null` explicito.
 // Mesma normalizacao ja aplicada em POST/PUT (C4) — aqui faltava, e so aparece com
 // dados reais que tem produtos sem badge (a maioria do seed backfillado, D-031).
-function normalizeProduct<T extends { badge: string | null; imageUrl?: string | null }>(
+function normalizeProduct<T extends { badge: string | null; imageUrl?: string | null; oldPriceCents?: any }>(
   row: T
-): Omit<T, 'badge' | 'imageUrl'> & { badge?: string; imageUrl?: string } {
+): Omit<T, 'badge' | 'imageUrl' | 'oldPriceCents'> & { badge?: string; imageUrl?: string; oldPriceCents?: number | null } {
+  let oldPrice: number | null = null
+  if (typeof row.oldPriceCents === 'number') {
+    oldPrice = row.oldPriceCents
+  } else if (typeof row.oldPriceCents === 'string') {
+    const parsed = parseInt(row.oldPriceCents, 10)
+    oldPrice = isNaN(parsed) ? null : parsed
+  }
   return {
     ...row,
     badge: row.badge ?? undefined,
     imageUrl: row.imageUrl ?? undefined,
+    oldPriceCents: oldPrice,
   }
 }
 

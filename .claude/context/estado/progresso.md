@@ -1,3 +1,21 @@
+## Marco (2026-08-28) - Custom Skill de QA e Homologação de Produção
+
+**Resumo da Sessão:**
+Desenvolvimento e registro da Custom Skill de QA contendo as regras e checklists unificados para homologação e lançamento em produção do projeto Fraldinha Livre, adaptados à arquitetura Next.js/Cloudflare Workers/D1.
+
+**O que foi feito:**
+1. **Criação da Skill de QA:** Desenvolvido o arquivo de customização [.agents/skills/qa/SKILL.md](file:///e:/Labdev/Projetos/fraldinha-livre/.agents/skills/qa/SKILL.md) estruturando os passos de testes locais, arquivos estáticos e dinâmicos de metadados (`robots.ts`, `sitemap.ts`, `llms.txt`, `security.txt`, `site.webmanifest`), além das diretrizes de responsividade (quebras de breakpoints), acessibilidade e de infraestrutura.
+2. **Sanity Check de Frontend:** Executada a suíte de testes de frontend localmente com aprovação de 100% (539 testes verdes).
+3. **Avaliação dos Testes de Backend:** Identificados erros de autenticação na Cloudflare (`dash.cloudflare.com/oauth2/token`) durante os testes de backend, relacionados a problemas temporários de faturamento na conta Cloudflare do cliente.
+
+**Status:**
+Build limpo no frontend com testes 100% verdes. Testes de backend dependentes do ambiente Cloudflare Workers AI/wrangler pausados devido a restrições temporárias de faturamento.
+
+**Próximo Passo:**
+Resolver os problemas de pagamento/billing na conta Cloudflare e, na próxima sessão de trabalho, executar `git push` para sincronizar os commits locais com a origin/main, rodar o `run_checks.ps1` completo e continuar o desenvolvimento da Feature 011 (Gateway de Pagamento) ou a finalização do M7 da Feature 018 (Chat Agent).
+
+---
+
 ## Marco (2026-08-26) - Expansão de Scraping de Fraldas e Hotfix no Input de Busca
 
 **Resumo da Sessão:**

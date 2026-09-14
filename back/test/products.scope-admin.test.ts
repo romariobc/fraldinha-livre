@@ -31,6 +31,8 @@ describe('GET /products?scope=admin', () => {
   const createTestApp = () => {
     const fakeVerify = async (token: string) => {
       if (token === 'token-admin') return { uid: env.ADMIN_UID }
+      if (token === 'token-admin-role') return { uid: 'uid-role-admin', role: 'admin' }
+      if (token === 'token-admin-claim') return { uid: 'uid-claim-admin', claims: { admin: true } }
       if (token === 'token-fornecedor-teste') return { uid: 'uid-fornecedor-teste' }
       return null
     }
@@ -61,10 +63,34 @@ describe('GET /products?scope=admin', () => {
     expect(response.status).toBe(403)
   })
 
-  it('GET /products?scope=admin com uid admin → retorna produtos ativos e inativos de qualquer fornecedor', async () => {
+  it('GET /products?scope=admin com uid admin legado → retorna produtos ativos e inativos de qualquer fornecedor', async () => {
     const app = createTestApp()
     const request = new Request('http://localhost/products?scope=admin', {
       headers: { Authorization: 'Bearer token-admin' },
+    })
+    const response = await app.fetch(request, env)
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as unknown[]
+    const ids = body.map((p) => (p as Record<string, unknown>).id)
+    expect(ids).toContain('produto-admin-teste')
+  })
+
+  it('GET /products?scope=admin com Custom Claim role: admin → 200 (RBAC)', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/products?scope=admin', {
+      headers: { Authorization: 'Bearer token-admin-role' },
+    })
+    const response = await app.fetch(request, env)
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as unknown[]
+    const ids = body.map((p) => (p as Record<string, unknown>).id)
+    expect(ids).toContain('produto-admin-teste')
+  })
+
+  it('GET /products?scope=admin com Custom Claim admin: true → 200 (RBAC)', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/products?scope=admin', {
+      headers: { Authorization: 'Bearer token-admin-claim' },
     })
     const response = await app.fetch(request, env)
     expect(response.status).toBe(200)

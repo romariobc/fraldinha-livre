@@ -11,10 +11,12 @@ export default defineConfig({
       return {
         main: './src/index.ts',
         wrangler: {
-          configPath: './wrangler.jsonc',
+          configPath: './wrangler.test.jsonc',
         },
         miniflare: {
-          bindings: { TEST_MIGRATIONS: migrations },
+          bindings: {
+            TEST_MIGRATIONS: migrations,
+          },
         },
       }
     }),

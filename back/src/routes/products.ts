@@ -54,7 +54,10 @@ export const productsGetHandler = async (c: Context<{ Bindings: Env; Variables: 
     if (!uid) {
       return c.json({ error: 'unauthorized' }, 401)
     }
-    if (uid !== c.env.ADMIN_UID) {
+    const role = c.get('role')
+    const claims = c.get('claims')
+    const isAdmin = role === 'admin' || claims?.admin === true || (Boolean(c.env.ADMIN_UID) && uid === c.env.ADMIN_UID)
+    if (!isAdmin) {
       return c.json({ error: 'forbidden' }, 403)
     }
     const rows = await db.select().from(products).all()

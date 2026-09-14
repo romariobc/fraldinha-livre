@@ -2,7 +2,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { HttpOrderRepository } from '../http-order-repository'
-import { OrderNotFoundError, OrderCancelNotAllowedError, OrderForbiddenError } from '@/lib/ports/order-repository'
+import { OrderNotFoundError, OrderCancelNotAllowedError, OrderForbiddenError, InsufficientStockError } from '@/lib/ports/order-repository'
 import { runOrderRepositoryContract } from '@/lib/ports/__tests__/order-repository.contract'
 import type { Order } from '@contracts'
 
@@ -98,6 +98,63 @@ describe('HttpOrderRepository - Parte A: comportamento específico de HTTP', () 
       const [, init] = fetchMock.mock.calls[0]
       const headers = new Headers(init?.headers)
       expect(headers.get('Authorization')).toBe('Bearer test-token')
+      expect(headers.get('Idempotency-Key')).toBeDefined()
+    })
+
+    it('create() envia Idempotency-Key customizada quando fornecida', async () => {
+      const mockOrder: Order = {
+        id: 'ord-1',
+        uid: 'uid-1',
+        type: 'compra-direta',
+        status: 'aguardando',
+        createdAt: new Date().toISOString(),
+        product: 'Test',
+        quantity: 1,
+        unit: 'un',
+        price: 1000,
+        supplierId: 'sup-1',
+        supplierName: 'Supplier',
+        deliveryAddress: {
+          logradouro: 'Rua A',
+          numero: '1',
+          bairro: 'Bairro',
+          cidade: 'Cidade',
+          estado: 'SP',
+          cep: '12345-678',
+        },
+        items: [],
+      }
+
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify(mockOrder), { status: 201 })
+      )
+
+      const repo = new HttpOrderRepository()
+      await repo.create(
+        {
+          product: 'Test',
+          quantity: 1,
+          unit: 'un',
+          price: 1000,
+          supplierId: 'sup-1',
+          supplierName: 'Supplier',
+          deliveryAddress: {
+            logradouro: 'Rua A',
+            numero: '1',
+            bairro: 'Bairro',
+            cidade: 'Cidade',
+            estado: 'SP',
+            cep: '12345-678',
+          },
+          items: [],
+        },
+        'custom-idempotency-key-xyz'
+      )
+
+      expect(fetchMock).toHaveBeenCalledOnce()
+      const [, init] = fetchMock.mock.calls[0]
+      const headers = new Headers(init?.headers)
+      expect(headers.get('Idempotency-Key')).toBe('custom-idempotency-key-xyz')
     })
 
     it('cancel() envia Authorization: Bearer <token>', async () => {
@@ -166,6 +223,33 @@ describe('HttpOrderRepository - Parte A: comportamento específico de HTTP', () 
       await expect(repo.cancel('ord-not-allowed')).rejects.toThrow(
         OrderCancelNotAllowedError
       )
+    })
+
+    it('create() com status 409 lança InsufficientStockError com mensagem do servidor', async () => {
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: 'Estoque insuficiente para o produto X no momento da finalização.' }), { status: 409 })
+      )
+
+      const repo = new HttpOrderRepository()
+      await expect(
+        repo.create({
+          product: 'Test',
+          quantity: 1,
+          unit: 'un',
+          price: 1000,
+          supplierId: 'sup-1',
+          supplierName: 'Supplier',
+          deliveryAddress: {
+            logradouro: 'Rua A',
+            numero: '1',
+            bairro: 'Bairro',
+            cidade: 'Cidade',
+            estado: 'SP',
+            cep: '12345-678',
+          },
+          items: [],
+        })
+      ).rejects.toThrow('Estoque insuficiente para o produto X no momento da finalização.')
     })
   })
 

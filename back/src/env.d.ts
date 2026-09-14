@@ -31,5 +31,7 @@ export interface AppContext {
   Variables: {
     uid: string
     email?: string
+    role?: 'comprador' | 'fornecedor' | 'admin' | string
+    claims?: Record<string, unknown>
   }
 }

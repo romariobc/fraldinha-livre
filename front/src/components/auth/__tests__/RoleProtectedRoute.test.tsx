@@ -187,4 +187,54 @@ describe('RoleProtectedRoute', () => {
     expect(mockPush).toHaveBeenCalledWith('/login')
     expect(screen.queryByText('Conteúdo Protegido Comprador')).not.toBeInTheDocument()
   })
+
+  it('should allow admin user when admin role is allowed', () => {
+    mockUseAuth.mockReturnValue({
+      user: { uid: 'admin-1', email: 'admin@example.com', displayName: 'Admin User' },
+      profile: null,
+      role: 'admin',
+      claims: { admin: true },
+      isAdmin: true,
+      loading: false,
+      signInGoogle: vi.fn(),
+      signInEmail: vi.fn(),
+      signUpEmail: vi.fn(),
+      signOutUser: vi.fn(),
+      updateProfile: vi.fn(),
+    })
+
+    render(
+      <RoleProtectedRoute allowedRoles={['admin']}>
+        <div>Painel Admin Secreto</div>
+      </RoleProtectedRoute>
+    )
+
+    expect(screen.getByText('Painel Admin Secreto')).toBeInTheDocument()
+    expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('should redirect admin user to /admin when accessing comprador-only route', () => {
+    mockUseAuth.mockReturnValue({
+      user: { uid: 'admin-1', email: 'admin@example.com', displayName: 'Admin User' },
+      profile: null,
+      role: 'admin',
+      claims: { admin: true },
+      isAdmin: true,
+      loading: false,
+      signInGoogle: vi.fn(),
+      signInEmail: vi.fn(),
+      signUpEmail: vi.fn(),
+      signOutUser: vi.fn(),
+      updateProfile: vi.fn(),
+    })
+
+    render(
+      <RoleProtectedRoute allowedRoles={['comprador']}>
+        <div>Conteúdo Comprador</div>
+      </RoleProtectedRoute>
+    )
+
+    expect(mockPush).toHaveBeenCalledWith('/admin')
+    expect(screen.queryByText('Conteúdo Comprador')).not.toBeInTheDocument()
+  })
 })

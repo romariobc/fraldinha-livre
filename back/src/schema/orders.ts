@@ -13,6 +13,7 @@ export const orders = sqliteTable('orders', {
   supplierName: text('supplier_name'),
   deliveryAddress: text('delivery_address').notNull(),
   createdAt: text('created_at').notNull(),
+  idempotencyKey: text('idempotency_key').unique(),
 }, (table) => ({
   uidIdx: index('idx_orders_uid').on(table.uid),
 }))

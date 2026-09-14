@@ -28,6 +28,23 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     }
 
     const testApp = new Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>()
+    testApp.use('*', async (c, next) => {
+      if (c.req.method === 'POST' && c.req.path === '/orders') {
+        const hasKey = c.req.header('idempotency-key') || c.req.header('Idempotency-Key')
+        const omit = c.req.header('x-omit-idempotency')
+        if (!hasKey && !omit) {
+          try {
+            c.req.raw.headers.set('Idempotency-Key', crypto.randomUUID())
+          } catch {
+            const newHeaders = new Headers(c.req.raw.headers)
+            newHeaders.set('Idempotency-Key', crypto.randomUUID())
+            // @ts-ignore
+            c.req.raw = new Request(c.req.raw, { headers: newHeaders })
+          }
+        }
+      }
+      await next()
+    })
     testApp.use('*', createAuthMiddleware(fakeVerify))
     testApp.get('/orders', ordersGetHandler)
     testApp.post('/orders', ordersPostHandler)
@@ -619,5 +636,213 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     expect(response.status).toBe(404)
     const body = await response.json()
     expect(body).toHaveProperty('error')
+  })
+
+  it('POST /orders com estoque insuficiente → 409 Conflict', async () => {
+    const app = createTestApp()
+    const db = drizzle(env.DB)
+
+    // Garante que p1 existe com estoque limitado (ex: 2 unidades)
+    await env.DB.prepare(`UPDATE products SET quantity = 2 WHERE id = 'p1'`).run()
+
+    const request = new Request('http://localhost/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-uid-a',
+      },
+      body: JSON.stringify({
+        product: 'Fralda',
+        quantity: 5,
+        unit: 'cx',
+        deliveryAddress: {
+          logradouro: 'Rua A',
+          numero: '123',
+          bairro: 'Centro',
+          cidade: 'São Paulo',
+          estado: 'SP',
+          cep: '01000-000',
+        },
+        items: [
+          {
+            productId: 'p1',
+            productName: 'Fralda P',
+            unitPrice: 1800,
+            quantity: 5, // Solicita 5 mas só tem 2
+            unit: 'cx',
+          },
+        ],
+        supplierId: 'sup-001',
+        price: 9000,
+      }),
+    })
+    const response = await app.fetch(request, env)
+
+    expect(response.status).toBe(409)
+    const body = await response.json()
+    expect(body).toEqual({
+      error: 'Estoque insuficiente para o produto Fralda P no momento da finalização.',
+    })
+  })
+
+  // ============================================================
+  // CASOS DE IDEMPOTÊNCIA (Idempotency-Key)
+  // ============================================================
+
+  it('POST /orders sem Idempotency-Key header → 400 Bad Request', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-uid-a',
+        'x-omit-idempotency': '1',
+      },
+      body: JSON.stringify({
+        product: 'Fralda',
+        quantity: 1,
+        unit: 'cx',
+        deliveryAddress: {
+          logradouro: 'Rua A',
+          numero: '123',
+          bairro: 'Centro',
+          cidade: 'São Paulo',
+          estado: 'SP',
+          cep: '01000-000',
+        },
+        items: [
+          {
+            productId: 'p1',
+            productName: 'Fralda P',
+            unitPrice: 1800,
+            quantity: 1,
+            unit: 'cx',
+          },
+        ],
+        supplierId: 'sup-001',
+        price: 1800,
+      }),
+    })
+    const response = await app.fetch(request, env)
+
+    expect(response.status).toBe(400)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'Idempotency-Key header is required' })
+  })
+
+  it('POST /orders com Idempotency-Key duplicado → 200 OK com mesmo pedido e estoque inalterado', async () => {
+    const app = createTestApp()
+    const idempotencyKey = 'idemp-key-test-123'
+    const payload = {
+      product: 'Fralda',
+      quantity: 1,
+      unit: 'cx',
+      deliveryAddress: {
+        logradouro: 'Rua A',
+        numero: '123',
+        bairro: 'Centro',
+        cidade: 'São Paulo',
+        estado: 'SP',
+        cep: '01000-000',
+      },
+      items: [
+        {
+          productId: 'p1',
+          productName: 'Fralda P',
+          unitPrice: 1800,
+          quantity: 1,
+          unit: 'cx',
+        },
+      ],
+      supplierId: 'sup-001',
+      price: 1800,
+    }
+
+    // 1ª Requisição: Deve criar o pedido com 201
+    const req1 = new Request('http://localhost/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-uid-a',
+        'Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify(payload),
+    })
+    const res1 = await app.fetch(req1, env)
+    expect(res1.status).toBe(201)
+    const order1 = (await res1.json()) as Order
+    expect(order1.id).toBeDefined()
+
+    // 2ª Requisição: Exatamente a mesma chave e payload → Deve retornar 200 com o mesmo ID
+    const req2 = new Request('http://localhost/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-uid-a',
+        'Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify(payload),
+    })
+    const res2 = await app.fetch(req2, env)
+    expect(res2.status).toBe(200)
+    const order2 = (await res2.json()) as Order
+    expect(order2.id).toBe(order1.id)
+    expect(order2.price).toBe(order1.price)
+    expect(order2.items).toHaveLength(1)
+  })
+
+  it('POST /orders com mesmo Idempotency-Key por outro usuário → 403 Forbidden', async () => {
+    const app = createTestApp()
+    const idempotencyKey = 'idemp-key-shared-test-456'
+    const payload = {
+      product: 'Fralda',
+      quantity: 1,
+      unit: 'cx',
+      deliveryAddress: {
+        logradouro: 'Rua A',
+        numero: '123',
+        bairro: 'Centro',
+        cidade: 'São Paulo',
+        estado: 'SP',
+        cep: '01000-000',
+      },
+      items: [
+        {
+          productId: 'p1',
+          productName: 'Fralda P',
+          unitPrice: 1800,
+          quantity: 1,
+          unit: 'cx',
+        },
+      ],
+      supplierId: 'sup-001',
+      price: 1800,
+    }
+
+    // Criado por uid-a
+    const req1 = new Request('http://localhost/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-uid-a',
+        'Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify(payload),
+    })
+    const res1 = await app.fetch(req1, env)
+    expect(res1.status).toBe(201)
+
+    // Tentativa por uid-b com a mesma chave → 403 Forbidden
+    const req2 = new Request('http://localhost/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-uid-b',
+        'Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify(payload),
+    })
+    const res2 = await app.fetch(req2, env)
+    expect(res2.status).toBe(403)
   })
 })

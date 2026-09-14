@@ -12,13 +12,23 @@ const JWKS = createRemoteJWKSet(
 )
 
 /**
- * Verificador testável de JWT — recebe um token e retorna uid ou null se inválido.
+ * Resultado da verificação testável de JWT — contém uid e claims customizadas.
  */
-export type VerifyTokenFn = (token: string) => Promise<{ uid: string; email?: string } | null>
+export type VerifyTokenResult = {
+  uid: string
+  email?: string
+  role?: 'comprador' | 'fornecedor' | 'admin' | string
+  claims?: Record<string, unknown>
+}
+
+/**
+ * Verificador testável de JWT — recebe um token e retorna VerifyTokenResult ou null se inválido.
+ */
+export type VerifyTokenFn = (token: string) => Promise<VerifyTokenResult | null>
 
 /**
  * Middleware de autenticação por Firebase ID Token, testável por injeção de verificador.
- * Lê Authorization: Bearer <token>, verifica e coloca uid no contexto.
+ * Lê Authorization: Bearer <token>, verifica e coloca uid, role e claims no contexto.
  */
 export const createAuthMiddleware = (verifyToken: VerifyTokenFn) => {
   return async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>, next: Next) => {
@@ -40,18 +50,24 @@ export const createAuthMiddleware = (verifyToken: VerifyTokenFn) => {
     if (verified.email) {
       c.set('email', verified.email)
     }
+    if (verified.role) {
+      c.set('role', verified.role)
+    }
+    if (verified.claims) {
+      c.set('claims', verified.claims)
+    }
     await next()
   }
 }
 
 /**
  * Verificador real de Firebase ID Token contra o JWKS público.
- * Valida assinatura, issuer, audience e extrai o uid.
+ * Valida assinatura, issuer, audience e extrai o uid e Custom Claims.
  */
 export const verifyFirebaseIdToken = async (
   token: string,
   projectId: string,
-): Promise<{ uid: string; email?: string } | null> => {
+): Promise<VerifyTokenResult | null> => {
   try {
     // Verifica assinatura, issuer, audience e expiration (JWKS reutilizado do escopo do módulo)
     const verified = await jwtVerify(token, JWKS, {
@@ -67,7 +83,19 @@ export const verifyFirebaseIdToken = async (
 
     const email = typeof verified.payload.email === 'string' ? verified.payload.email : undefined
 
-    return { uid, email }
+    const claims = verified.payload as Record<string, unknown>
+    let role: string | undefined = undefined
+    if (typeof claims.role === 'string') {
+      role = claims.role
+    } else if (claims.admin === true) {
+      role = 'admin'
+    } else if (claims.fornecedor === true) {
+      role = 'fornecedor'
+    } else if (claims.comprador === true) {
+      role = 'comprador'
+    }
+
+    return { uid, email, role, claims }
   } catch {
     // Token inválido, expirado, forjado, etc. → não esconder em try/catch silencioso
     // se quisermos debug, adicionar logging aqui (não fazer nesta tarefa)

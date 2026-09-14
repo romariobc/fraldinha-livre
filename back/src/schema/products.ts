@@ -1,4 +1,5 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, check } from 'drizzle-orm/sqlite-core'
+import { sql } from 'drizzle-orm'
 
 export const products = sqliteTable('products', {
   id: text('id').primaryKey(),
@@ -17,4 +18,6 @@ export const products = sqliteTable('products', {
   supplierEmail: text('supplier_email'),
   active: integer('active', { mode: 'boolean' }).notNull().default(true),
   imageUrl: text('image_url'),
-})
+}, (table) => ({
+  quantityCheck: check('products_quantity_check', sql`${table.quantity} >= 0`),
+}))

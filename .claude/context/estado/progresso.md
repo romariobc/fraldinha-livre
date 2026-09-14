@@ -1,3 +1,23 @@
+## Marco (2026-09-14) - Idempotência no Checkout, Controle Atômico de Estoque e RBAC via Custom Claims
+
+**Resumo da Sessão:**
+Implementação completa da blindagem contra concorrência de estoque (eliminação de vulnerabilidade TOCTOU), padrão de idempotência no fluxo de checkout (backend e frontend) e migração para Role-Based Access Control (RBAC) com Firebase Custom Claims.
+
+**O que foi feito:**
+1. **Controle Atômico de Estoque (Race Condition):** Adicionada constraint `CHECK (quantity >= 0)` na tabela de produtos (migration `0008_outgoing_stryfe.sql`). Query de decremento de estoque reestruturada com cláusula atômica `WHERE id = ? AND quantity >= ? RETURNING id`, batch no D1 e rollbacks compensatórios em caso de falha de lote. Criada classe de erro `InsufficientStockError` no frontend com feedback via toast e redirecionamento para `/sacola`. Testado com concorrência real em `back/test/stock-race-condition.test.ts`.
+2. **Padrão de Idempotência no Checkout:** Adicionada coluna `idempotency_key` com constraint/índice UNIQUE na tabela `orders` (migration `0009_tranquil_molly_hayes.sql`). `POST /orders` exige header `Idempotency-Key` (400 se ausente), busca prévia via `SELECT` (200 com pedido existente sem tocar no estoque) e captura de colisão por race condition `UNIQUE constraint failed`. No frontend, geração de UUIDv4 mantida em `useRef` durante todo o ciclo de checkout e chave determinística no split por fornecedor (`${baseKey}-${supplierId}`).
+3. **RBAC com Firebase Custom Claims:** Atualizado `verifyFirebaseIdToken` em `back/src/middleware/auth.ts` para extrair claims (`admin`, `fornecedor`, `role`) do JWT do Firebase via `jose`, injetando `role` e `claims` no contexto Hono. Rotas `/products` e `/orders` no escopo `admin` agora aceitam Custom Claims (`role === 'admin' || claims?.admin === true`) mantendo compatibilidade com `ADMIN_UID`. No frontend, `onAuthStateChanged` lê `fbUser.getIdTokenResult()` e expõe `role`, `claims` e `isAdmin` no `useAuth()`, liberando o painel de administração sem depender de UIDs estáticos.
+4. **CORS:** Adicionado `Idempotency-Key` aos headers autorizados (`allowHeaders`) no middleware CORS.
+5. **Verificação de Suíte:** 166 testes no backend (19 arquivos) e 545 testes no frontend (54 arquivos) 100% verdes. `npx tsc --noEmit` aprovado com 0 erros.
+
+**Status:**
+Build limpo, typecheck sem erros, 100% dos testes unitários e de concorrência aprovados.
+
+**Próximo Passo:**
+Dar continuidade ao backlog da Feature 011 (Gateway de Pagamento) ou à finalização do M7 da Feature 018 (Chat Agent).
+
+---
+
 ## Marco (2026-08-28) - Custom Skill de QA e Homologação de Produção
 
 **Resumo da Sessão:**

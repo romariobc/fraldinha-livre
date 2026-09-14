@@ -57,6 +57,20 @@
       "when": 1787547967406,
       "tag": "0007_swift_toxin",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1789354469605,
+      "tag": "0008_outgoing_stryfe",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1789355746804,
+      "tag": "0009_tranquil_molly_hayes",
+      "breakpoints": true
     }
   ]
 }

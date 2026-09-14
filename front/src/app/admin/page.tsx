@@ -14,17 +14,17 @@ type TabKey = 'usuarios' | 'pedidos' | 'produtos'
 
 export default function AdminPage() {
   const router = useRouter()
-  const { user, loading } = useAuth()
+  const { user, isAdmin, loading } = useAuth()
   const [activeTab, setActiveTab] = useState<TabKey>('usuarios')
 
   useEffect(() => {
     if (loading) return
-    if (!user || user.uid !== ADMIN_UID) {
+    if (!user || !isAdmin) {
       router.push('/')
     }
-  }, [loading, user, router])
+  }, [loading, user, isAdmin, router])
 
-  if (loading || !user || user.uid !== ADMIN_UID) {
+  if (loading || !user || !isAdmin) {
     return null
   }
 

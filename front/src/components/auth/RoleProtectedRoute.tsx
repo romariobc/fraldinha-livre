@@ -27,6 +27,8 @@ export default function RoleProtectedRoute({ children, allowedRoles }: RoleProte
         router.push('/painel-fornecedor')
       } else if (role === 'comprador') {
         router.push('/minha-conta')
+      } else if (role === 'admin') {
+        router.push('/admin')
       } else {
         router.push('/login')
       }

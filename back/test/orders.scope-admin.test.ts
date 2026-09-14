@@ -15,6 +15,8 @@ describe('GET /orders?scope=admin', () => {
   const createTestApp = () => {
     const fakeVerify = async (token: string) => {
       if (token === 'token-admin') return { uid: env.ADMIN_UID }
+      if (token === 'token-admin-role') return { uid: 'uid-role-admin', role: 'admin' }
+      if (token === 'token-admin-claim') return { uid: 'uid-claim-admin', claims: { admin: true } }
       if (token === 'token-fornecedor-a') return { uid: 'uid-fornecedor-a' }
       return null
     }
@@ -41,7 +43,7 @@ describe('GET /orders?scope=admin', () => {
     expect(response.status).toBe(401)
   })
 
-  it('GET /orders?scope=admin com uid admin → retorna TODOS os pedidos, de qualquer uid', async () => {
+  it('GET /orders?scope=admin com uid admin legado → retorna TODOS os pedidos, de qualquer uid', async () => {
     const app = createTestApp()
     const addressJson = JSON.stringify({
       logradouro: 'Rua A', numero: '123', bairro: 'Centro',
@@ -54,6 +56,30 @@ describe('GET /orders?scope=admin', () => {
 
     const request = new Request('http://localhost/orders?scope=admin', {
       headers: { Authorization: 'Bearer token-admin' },
+    })
+    const response = await app.fetch(request, env)
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as unknown as Order[]
+    expect(Array.isArray(body)).toBe(true)
+    expect(body.some((o) => o.id === 'order-admin-teste-1')).toBe(true)
+  })
+
+  it('GET /orders?scope=admin com Custom Claim role: admin → 200 (RBAC)', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/orders?scope=admin', {
+      headers: { Authorization: 'Bearer token-admin-role' },
+    })
+    const response = await app.fetch(request, env)
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as unknown as Order[]
+    expect(Array.isArray(body)).toBe(true)
+    expect(body.some((o) => o.id === 'order-admin-teste-1')).toBe(true)
+  })
+
+  it('GET /orders?scope=admin com Custom Claim admin: true → 200 (RBAC)', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/orders?scope=admin', {
+      headers: { Authorization: 'Bearer token-admin-claim' },
     })
     const response = await app.fetch(request, env)
     expect(response.status).toBe(200)

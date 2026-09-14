@@ -3,7 +3,7 @@ import type { Order, CreateOrderRequest } from '@contracts'
 export interface OrderRepository {
   list(): Promise<Order[]>
   listForSupplier(): Promise<Order[]>
-  create(req: CreateOrderRequest): Promise<Order>
+  create(req: CreateOrderRequest, idempotencyKey?: string): Promise<Order>
   cancel(orderId: string): Promise<Order>
 }
 
@@ -28,5 +28,13 @@ export class OrderForbiddenError extends Error {
   constructor(orderId: string) {
     super(`Not allowed to cancel order: ${orderId}`)
     this.name = 'OrderForbiddenError'
+  }
+}
+
+/** Lançado por create() quando o estoque acaba na fração de segundo do checkout (HTTP 409). */
+export class InsufficientStockError extends Error {
+  constructor(message?: string) {
+    super(message || 'Estoque insuficiente no momento da finalização.')
+    this.name = 'InsufficientStockError'
   }
 }

@@ -49,7 +49,7 @@ export class MockOrderRepository implements OrderRepository {
     return this.orders.filter((o) => o.supplierId === this.supplierId)
   }
 
-  async create(req: CreateOrderRequest): Promise<Order> {
+  async create(req: CreateOrderRequest, _idempotencyKey?: string): Promise<Order> {
     const order: Order = OrderSchema.parse({
       id: this.idFactory(),
       uid: MOCK_UID,

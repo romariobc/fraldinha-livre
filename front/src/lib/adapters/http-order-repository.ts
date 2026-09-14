@@ -1,6 +1,6 @@
 import { apiFetch } from '@/lib/api-client'
 import type { OrderRepository } from '@/lib/ports/order-repository'
-import { OrderNotFoundError, OrderCancelNotAllowedError, OrderForbiddenError } from '@/lib/ports/order-repository'
+import { OrderNotFoundError, OrderCancelNotAllowedError, OrderForbiddenError, InsufficientStockError } from '@/lib/ports/order-repository'
 import type { Order, CreateOrderRequest } from '@contracts'
 import { OrderSchema, OrderListSchema } from '@contracts'
 
@@ -19,8 +19,19 @@ export class HttpOrderRepository implements OrderRepository {
     return OrderListSchema.parse(json)
   }
 
-  async create(req: CreateOrderRequest): Promise<Order> {
-    const res = await apiFetch('/orders', { method: 'POST', body: JSON.stringify(req) })
+  async create(req: CreateOrderRequest, idempotencyKey?: string): Promise<Order> {
+    const key = idempotencyKey || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `idemp-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+    const res = await apiFetch('/orders', {
+      method: 'POST',
+      headers: {
+        'Idempotency-Key': key,
+      },
+      body: JSON.stringify(req),
+    })
+    if (res.status === 409) {
+      const errorData = await res.json().catch(() => null)
+      throw new InsufficientStockError(errorData?.error)
+    }
     if (!res.ok) throw new Error(`Failed to create order: HTTP ${res.status}`)
     const json = await res.json()
     return OrderSchema.parse(json)

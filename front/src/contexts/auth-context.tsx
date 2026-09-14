@@ -14,7 +14,7 @@ import {
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '@/lib/firebase';
 
-export type UserRole = 'comprador' | 'fornecedor';
+export type UserRole = 'comprador' | 'fornecedor' | 'admin';
 
 interface AuthUser {
   uid: string;
@@ -64,6 +64,8 @@ interface AuthContextType {
   user: AuthUser | null;
   profile: UserProfile | null;
   role: UserRole | null;
+  claims: Record<string, unknown> | null;
+  isAdmin: boolean;
   loading: boolean;
   signInGoogle: () => Promise<void>;
   signInEmail: (email: string, password: string) => Promise<void>;
@@ -78,6 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
+  const [claims, setClaims] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -89,33 +92,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
-        // Usuario logado: carregar perfil completo do Firestore
+        // Usuario logado: carregar claims e perfil completo
         setUser({
           uid: fbUser.uid,
           email: fbUser.email,
           displayName: fbUser.displayName,
         });
 
+        let tokenRole: UserRole | null = null;
+        let tokenClaims: Record<string, unknown> | null = null;
+
+        try {
+          if (typeof fbUser.getIdTokenResult === 'function') {
+            const tokenResult = await fbUser.getIdTokenResult();
+            tokenClaims = (tokenResult.claims as Record<string, unknown>) || null;
+            if (tokenClaims) {
+              if (tokenClaims.role === 'admin' || tokenClaims.admin === true) {
+                tokenRole = 'admin';
+              } else if (tokenClaims.role === 'fornecedor' || tokenClaims.fornecedor === true) {
+                tokenRole = 'fornecedor';
+              } else if (tokenClaims.role === 'comprador' || tokenClaims.comprador === true) {
+                tokenRole = 'comprador';
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Erro ao obter Custom Claims do token:', err);
+        }
+
+        setClaims(tokenClaims);
+
         try {
           const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
           if (userDoc.exists()) {
             const data = userDoc.data() as UserProfile;
             setProfile(data);
-            setRole(data.role || null); // Sem papel => onboarding
+            setRole(tokenRole || data.role || null); // Custom claims tem precedencia
           } else {
             setProfile(null);
-            setRole(null); // Sem papel => onboarding
+            setRole(tokenRole || null);
           }
         } catch (error) {
           console.error('Erro ao carregar perfil do Firestore:', error);
           setProfile(null);
-          setRole(null);
+          setRole(tokenRole || null);
         }
       } else {
         // Usuario deslogado
         setUser(null);
         setProfile(null);
         setRole(null);
+        setClaims(null);
       }
       setLoading(false);
     });
@@ -198,10 +225,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const isAdmin = Boolean(
+    role === 'admin' ||
+    claims?.admin === true ||
+    (process.env.NEXT_PUBLIC_ADMIN_UID && user?.uid === process.env.NEXT_PUBLIC_ADMIN_UID)
+  );
+
   const value: AuthContextType = {
     user,
     profile,
     role,
+    claims,
+    isAdmin,
     loading,
     signInGoogle,
     signInEmail,

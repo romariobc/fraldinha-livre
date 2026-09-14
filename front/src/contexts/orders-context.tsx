@@ -33,7 +33,7 @@ interface OrdersContextType {
   loading: boolean
   error: string | null
   createDirectOrder: (product: string, quantity: number, deliveryAddress: Address, price: number, supplierId?: string, supplierName?: string) => Order
-  createOrdersFromCart: (items: CartItem[], address: Address) => Promise<Order[]>
+  createOrdersFromCart: (items: CartItem[], address: Address, idempotencyKey?: string) => Promise<Order[]>
   cancelOrder: (orderId: string) => Promise<void>
 }
 
@@ -136,7 +136,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return newOrder
   }
 
-  const createOrdersFromCart = async (items: CartItem[], address: Address): Promise<Order[]> => {
+  const createOrdersFromCart = async (items: CartItem[], address: Address, idempotencyKey?: string): Promise<Order[]> => {
     let idCounter = 0
     const idFactory = () => {
       idCounter++
@@ -146,6 +146,8 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
     // DEC-A: o split por fornecedor continua no front (dominio puro, ja testado, T1).
     const domainOrders = buildOrdersFromCart(items, address, idFactory, now)
+
+    const baseKey = idempotencyKey || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `idemp-${Date.now()}-${Math.random().toString(36).slice(2)}`)
 
     const newOrders: Order[] = []
     for (const domainOrder of domainOrders) {
@@ -165,8 +167,11 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         items: domainOrder.items,
       }
 
+      // Garante que cada pedido do split receba uma chave determinística e única
+      const orderKey = domainOrders.length === 1 ? baseKey : `${baseKey}-${domainOrder.supplierId}`
+
       // DEC-A: uma chamada POST /orders por pedido resultante do split.
-      const created = await repo.create(createRequest)
+      const created = await repo.create(createRequest, orderKey)
       newOrders.push(contractOrderToAccountMockOrder(created))
     }
 

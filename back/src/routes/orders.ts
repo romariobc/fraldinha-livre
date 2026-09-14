@@ -1,5 +1,5 @@
 import { drizzle } from 'drizzle-orm/d1'
-import { eq, sql, inArray } from 'drizzle-orm'
+import { eq, sql, inArray, and, gte } from 'drizzle-orm'
 import type { Context } from 'hono'
 import { OrderSchema, CreateOrderRequestSchema } from '../../../packages/contracts/src/order'
 import { orders, orderItems } from '../schema/orders'
@@ -57,7 +57,10 @@ export const ordersGetHandler = async (c: Context<{ Bindings: Env; Variables: Ap
           ? await db.select().from(orders).where(inArray(orders.id, orderIds)).all()
           : []
     } else if (scope === 'admin') {
-      if (uid !== c.env.ADMIN_UID) {
+      const role = c.get('role')
+      const claims = c.get('claims')
+      const isAdmin = role === 'admin' || claims?.admin === true || (Boolean(c.env.ADMIN_UID) && uid === c.env.ADMIN_UID)
+      if (!isAdmin) {
         return c.json({ error: 'forbidden' }, 403)
       }
       userOrders = await db.select().from(orders).all()
@@ -128,6 +131,11 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
   }
 
   try {
+    const idempotencyKey = c.req.header('idempotency-key') || c.req.header('Idempotency-Key')
+    if (!idempotencyKey || idempotencyKey.trim() === '') {
+      return c.json({ error: 'Idempotency-Key header is required' }, 400)
+    }
+
     const body = await c.req.json()
 
     // Valida body contra CreateOrderRequestSchema
@@ -145,6 +153,39 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
     }
 
     const db = drizzle(c.env.DB)
+
+    // Lógica de Idempotência: busca se já existe um pedido com este idempotencyKey
+    const existingOrder = await db.select().from(orders).where(eq(orders.idempotencyKey, idempotencyKey)).get()
+    if (existingOrder) {
+      if (existingOrder.uid !== uid) {
+        return c.json({ error: 'forbidden' }, 403)
+      }
+      const existingItems = await db.select().from(orderItems).where(eq(orderItems.orderId, existingOrder.id)).all()
+      const deliveryAddressObj = JSON.parse(existingOrder.deliveryAddress)
+      const responseExistingOrder = {
+        id: existingOrder.id,
+        uid: existingOrder.uid,
+        type: existingOrder.type,
+        status: existingOrder.status,
+        product: existingOrder.product,
+        quantity: existingOrder.quantity,
+        unit: existingOrder.unit,
+        price: existingOrder.price ?? undefined,
+        supplierId: existingOrder.supplierId ?? undefined,
+        supplierName: existingOrder.supplierName ?? undefined,
+        deliveryAddress: deliveryAddressObj,
+        createdAt: existingOrder.createdAt,
+        items: existingItems.map((item) => ({
+          productId: item.productId,
+          productName: item.productName,
+          unitPrice: item.unitPrice,
+          quantity: item.quantity,
+          unit: item.unit,
+        })),
+      }
+      const validatedExisting = OrderSchema.parse(responseExistingOrder)
+      return c.json(validatedExisting, 200)
+    }
 
     // Busca em lote (nao 1 query por item) - RN-P2/P2c.
     const productIds = createRequest.items.map((item) => item.productId)
@@ -164,7 +205,7 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
         return c.json({ error: `fornecedor divergente para produto: ${item.productId}` }, 400)
       }
       if (product.quantity < item.quantity) {
-        return c.json({ error: `estoque insuficiente para produto: ${item.productId}` }, 400)
+        return c.json({ error: `Estoque insuficiente para o produto ${item.productName || item.productId} no momento da finalização.` }, 409)
       }
     }
 
@@ -200,6 +241,7 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
       supplierName: createRequest.supplierName ?? null,
       deliveryAddress: deliveryAddressJson,
       createdAt,
+      idempotencyKey,
     })
 
     // Constrói queries de inserção para cada item
@@ -214,13 +256,94 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
       }),
     )
 
-    // Constrói queries de atualização de estoque
+    // Constrói e executa queries de decremento atômico de estoque com RETURNING
+    // para eliminar Race Condition (TOCTOU) e garantir que quantity >= requested na escrita.
     const productUpdates = createRequest.items.map((item) =>
-      db.update(products).set({ quantity: sql`${products.quantity} - ${item.quantity}` }).where(eq(products.id, item.productId))
+      db.update(products)
+        .set({ quantity: sql`${products.quantity} - ${item.quantity}` })
+        .where(and(eq(products.id, item.productId), gte(products.quantity, item.quantity)))
+        .returning({ id: products.id })
     )
 
-    // Grava tudo num único batch (atomicidade RN-03)
-    await db.batch([orderInsert, ...itemInserts, ...productUpdates] as any)
+    let updateResults: { id: string }[][]
+    try {
+      updateResults = await db.batch(productUpdates as any)
+    } catch (batchError) {
+      // Se estourar constraint no D1 (ex: CHECK products_quantity_check), aborta imediatamente com 409
+      return c.json({ error: 'Estoque insuficiente para um ou mais produtos no momento da finalização.' }, 409)
+    }
+
+    const failedItemIndex = updateResults.findIndex((rows) => !rows || rows.length === 0)
+    if (failedItemIndex !== -1) {
+      // Compensação: restaura os itens que porventura foram decrementados nesta mesma tentativa
+      const rollbacks = []
+      for (let i = 0; i < createRequest.items.length; i++) {
+        if (i !== failedItemIndex && updateResults[i]?.length > 0) {
+          const itemToRollback = createRequest.items[i]
+          rollbacks.push(
+            db.update(products)
+              .set({ quantity: sql`${products.quantity} + ${itemToRollback.quantity}` })
+              .where(eq(products.id, itemToRollback.productId))
+          )
+        }
+      }
+      if (rollbacks.length > 0) {
+        await db.batch(rollbacks as any)
+      }
+
+      const failedItem = createRequest.items[failedItemIndex]
+      return c.json({
+        error: `Estoque insuficiente para o produto ${failedItem.productName || failedItem.productId} no momento da finalização.`
+      }, 409)
+    }
+
+    // Com o estoque atomicamente garantido e decrementado, persiste a order e os items
+    try {
+      await db.batch([orderInsert, ...itemInserts] as any)
+    } catch (orderInsertError: any) {
+      // Caso a gravação do pedido falhe inesperadamente, restaura o estoque de todos os itens
+      const fullRollbacks = createRequest.items.map((item) =>
+        db.update(products)
+          .set({ quantity: sql`${products.quantity} + ${item.quantity}` })
+          .where(eq(products.id, item.productId))
+      )
+      await db.batch(fullRollbacks as any)
+
+      // Tratamento de colisão / Race Condition da chave de idempotência
+      const errStr = `${orderInsertError?.message || ''} ${orderInsertError?.cause?.message || ''}`
+      if (errStr.includes('UNIQUE constraint failed') && errStr.includes('idempotency_key')) {
+        const collidedOrder = await db.select().from(orders).where(eq(orders.idempotencyKey, idempotencyKey)).get()
+        if (collidedOrder && collidedOrder.uid === uid) {
+          const collidedItems = await db.select().from(orderItems).where(eq(orderItems.orderId, collidedOrder.id)).all()
+          const deliveryAddressObj = JSON.parse(collidedOrder.deliveryAddress)
+          const responseCollidedOrder = {
+            id: collidedOrder.id,
+            uid: collidedOrder.uid,
+            type: collidedOrder.type,
+            status: collidedOrder.status,
+            product: collidedOrder.product,
+            quantity: collidedOrder.quantity,
+            unit: collidedOrder.unit,
+            price: collidedOrder.price ?? undefined,
+            supplierId: collidedOrder.supplierId ?? undefined,
+            supplierName: collidedOrder.supplierName ?? undefined,
+            deliveryAddress: deliveryAddressObj,
+            createdAt: collidedOrder.createdAt,
+            items: collidedItems.map((item) => ({
+              productId: item.productId,
+              productName: item.productName,
+              unitPrice: item.unitPrice,
+              quantity: item.quantity,
+              unit: item.unit,
+            })),
+          }
+          const validatedCollided = OrderSchema.parse(responseCollidedOrder)
+          return c.json(validatedCollided, 200)
+        }
+      }
+
+      throw orderInsertError
+    }
 
     // Notifica o fornecedor (best-effort — nunca afeta a resposta, RN-02 da spec H-011)
     const notificationItems = createRequest.items.map((item) => ({

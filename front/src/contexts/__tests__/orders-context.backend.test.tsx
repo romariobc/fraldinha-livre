@@ -34,13 +34,11 @@ vi.mock('firebase/auth', () => ({
 
 vi.mock('@/lib/adapters/http-order-repository', () => ({
   HttpOrderRepository: class HttpOrderRepository {
-    constructor() {
-      this.list = listMock;
-      this.create = vi.fn();
-      this.cancel = vi.fn();
-    }
+    list = listMock
+    create = vi.fn()
+    cancel = vi.fn()
   },
-}));
+}))
 
 import { OrdersProvider, useOrders } from '../orders-context'
 

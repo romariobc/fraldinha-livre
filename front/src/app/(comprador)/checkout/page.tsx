@@ -14,13 +14,21 @@ import type { PaymentMethod } from '@/lib/ports/payment'
 import { lineTotal, cartSubtotal } from '@/lib/domain/cart'
 import { formatPrice } from '@/lib/utils'
 import { ShoppingBag } from 'lucide-react'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { MockPaymentGateway } from '@/lib/adapters/mock-payment-gateway'
 import { MockFulfillmentService } from '@/lib/adapters/mock-fulfillment-service'
 import { orderToDirectOrder } from '@/lib/order-adapters'
+import { InsufficientStockError } from '@/lib/ports/order-repository'
 import { toast } from 'sonner'
 
 type CheckoutStep = 'endereco' | 'revisao' | 'pagamento' | 'confirmacao'
+
+function generateIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID()
+  }
+  return `idemp-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
 
 function CheckoutContent() {
   const { items, subtotal, bySupplier, clear, addItem } = useCart()
@@ -91,6 +99,7 @@ function CheckoutContent() {
   }, [urlProductId, urlQuantity, productsLoading, products, addItem, router])
   const [createdOrders, setCreatedOrders] = useState<Order[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const idempotencyKeyRef = useRef<string>(generateIdempotencyKey())
 
   // Determine default address: profile.address or MOCK_USER.address
   const defaultAddress = profile?.address || MOCK_USER.address
@@ -114,8 +123,8 @@ function CheckoutContent() {
     setSubmitting(true)
 
     try {
-      // 1. Create orders from cart
-      const orders = await createOrdersFromCart(items, deliveryAddress)
+      // 1. Create orders from cart (idempotent across multiple clicks or network retries)
+      const orders = await createOrdersFromCart(items, deliveryAddress, idempotencyKeyRef.current)
 
       // 2. Instantiate adapters (STUB)
       let txnIdCounter = 0
@@ -173,10 +182,19 @@ function CheckoutContent() {
       // 5. Save created orders, clear cart, and move to confirmacao
       setCreatedOrders(orders)
       clear()
+      idempotencyKeyRef.current = generateIdempotencyKey()
       setStep('confirmacao')
     } catch (err) {
       console.error('Erro ao finalizar compra:', err)
-      toast.error('Não foi possível finalizar a compra. Tente novamente.')
+      if (err instanceof InsufficientStockError || (err instanceof Error && (err.name === 'InsufficientStockError' || err.message.includes('Estoque insuficiente')))) {
+        toast.error(err.message || 'Outro cliente finalizou a compra deste item antes. Por favor, revise sua sacola.', {
+          duration: 6000,
+        })
+        // Redireciona de volta para a sacola para revisar e recarregar os dados
+        router.push('/sacola')
+      } else {
+        toast.error('Não foi possível finalizar a compra. Tente novamente.')
+      }
     } finally {
       setSubmitting(false)
     }

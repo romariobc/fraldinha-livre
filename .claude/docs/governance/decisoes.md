@@ -982,7 +982,7 @@ pânico — mas exigem verificação de verdade (`gh api`), não assumir que é 
 
 ---
 
-## D-039 — Feature 012 (painel admin) entregue: read-only, admin único hardcoded (2026-08-02) — VIGENTE
+## D-039 — Feature 012 (painel admin) entregue: read-only, admin único hardcoded (2026-08-02) — SUPERSEDIDA pela D-050
 
 Brainstorming fechou o escopo do que o backlog deixava "a definir": admin é um
 UID fixo (`KOQclmb5eshfkufioK03ayRh6Fi2`, conta `romariobc@gmail.com`), sem
@@ -1311,5 +1311,39 @@ Após a implementação e formalização do provisionamento funcional de Firebas
    - `GET /orders?scope=admin` e `GET /products?scope=admin`: Restritos exclusivamente a `role === 'admin'` ou claim `admin: true`.
 
 4. **Preservação de Escopo Administrativo:**
-   - Nenhum bypass administrativo novo foi concedido. A governança e auditoria completa das permissões do papel `admin` serão tratadas na task AUTH-003.
+   - Nenhum bypass administrativo novo foi concedido. A governança e auditoria completa das permissões do papel `admin` foram tratadas e concluídas na task AUTH-003 (D-050).
 
+---
+
+## D-050 — Escopo Administrativo da Plataforma e Desacoplamento de Operações de Fornecedor (AUTH-003) (2026-09-15) — VIGENTE (supersede D-039)
+
+### Contexto
+A decisão D-039 estruturou inicialmente o painel administrativo como somente leitura com UID único fixo. Posteriormente, nas decisões D-048 e D-049, o sistema migrou para RBAC baseado em Firebase Custom Claims assinado (`role: 'admin'` / `admin: true`). Contudo, resquícios de implementação mantinham o papel `admin` como bypass em endpoints operacionais de fornecedor (`POST /products`, `PUT /products/:id`, `DELETE /products/:id`, `GET /products?scope=fornecedor`, `GET /orders?scope=fornecedor` e `POST /orders/:id/report`). Isso violava o princípio de domínio onde o administrador é **gestor/governador da plataforma**, e não participante operacional ou comerciante no marketplace.
+
+### Decisão Arquitetural
+1. **Papel de Administrador (Governança vs Operação):**
+   - O papel `admin` é gestor e moderador da plataforma.
+   - Admin NÃO é comprador e NÃO é fornecedor.
+   - Admin não cria nem gerencia produtos como fornecedor, não assume ownership de produtos ou pedidos de terceiros, não emite reports em nome de fornecedores e não consome rotas de escopo exclusivo de parceiros comerciais.
+
+2. **Remoção de Bypasses Operacionais no Backend:**
+   - **Produtos:**
+     - `POST /products`: Restrito estritamente a `role === 'fornecedor'`. Admin recebe `403 Forbidden`.
+     - `PUT /products/:id`: Restrito estritamente a `role === 'fornecedor'` + ownership estrito (`product.supplierId === token.uid`). Bypasses de admin removidos tanto do middleware de roteamento quanto da checagem interna do handler. Admin recebe `403 Forbidden`.
+     - `DELETE /products/:id`: Restrito estritamente a `role === 'fornecedor'` + ownership estrito (`product.supplierId === token.uid`). Admin recebe `403 Forbidden`.
+     - `GET /products?scope=fornecedor`: Restrito estritamente a `role === 'fornecedor'` para listar o catálogo próprio. Admin recebe `403 Forbidden`.
+   - **Pedidos e Ocorrências:**
+     - `GET /orders?scope=fornecedor`: Restrito estritamente a `role === 'fornecedor'`. Admin recebe `403 Forbidden`.
+     - `POST /orders/:id/report`: Restrito estritamente a `role === 'fornecedor'` + ownership do pedido pelo fornecedor (`order.supplierId === token.uid`). Admin recebe `403 Forbidden`.
+
+3. **Preservação de Escopos Administrativos Legítimos (Visão Global):**
+   - `GET /products?scope=admin`: Exclusivo para `admin`. Retorna a totalidade de produtos cadastrados no marketplace (ativos e inativos).
+   - `GET /orders?scope=admin`: Exclusivo para `admin`. Retorna a totalidade dos pedidos globais da plataforma para supervisão.
+   - Usuários com `role === 'comprador'` ou `role === 'fornecedor'` recebem `403 Forbidden` nesses escopos.
+
+4. **Regras para Futuras Ações Administrativas de Moderação:**
+   - Ações de moderação ou governança futura (ex: suspensão de usuário, bloqueio/desativação de produtos em desacordo, mediação de disputas) deverão:
+     - Utilizar rotas administrativas explícitas (ex: `PATCH /admin/products/:id/moderation`), nunca reaproveitar endpoints operacionais de parceiros;
+     - Exigir papel `admin`;
+     - Registrar ator, recurso alvo, ação, justificativa obrigatória e timestamp em trilha de auditoria formal (`AUDIT-001`);
+     - Priorizar reversibilidade (soft actions/status) em detrimento de exclusões destrutivas (`DELETE`).

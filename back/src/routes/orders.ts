@@ -44,7 +44,7 @@ export const ordersGetHandler = async (c: Context<{ Bindings: Env; Variables: Ap
 
     let userOrders
     if (scope === 'fornecedor') {
-      if (!hasAnyRole(c, ['fornecedor', 'admin'])) {
+      if (!hasAnyRole(c, ['fornecedor'])) {
         return c.json({ error: 'forbidden' }, 403)
       }
       // Busca order_items cujo product_id pertence a um produto do uid autenticado (fornecedor).
@@ -516,7 +516,7 @@ export const ordersReportHandler = async (c: Context<{ Bindings: Env; Variables:
   if (!uid) {
     return c.json({ error: 'unauthorized' }, 401)
   }
-  if (!hasAnyRole(c, ['fornecedor', 'admin'])) {
+  if (!hasAnyRole(c, ['fornecedor'])) {
     return c.json({ error: 'forbidden' }, 403)
   }
 
@@ -537,8 +537,8 @@ export const ordersReportHandler = async (c: Context<{ Bindings: Env; Variables:
 
     const order = ordersList[0]
 
-    // Apenas o fornecedor do pedido (ou admin) pode reportar para o cliente
-    if (order.supplierId !== uid && !hasAnyRole(c, ['admin'])) {
+    // Apenas o fornecedor do pedido pode reportar para o cliente
+    if (order.supplierId !== uid) {
       return c.json({ error: 'forbidden: only the supplier can report on this order' }, 403)
     }
 

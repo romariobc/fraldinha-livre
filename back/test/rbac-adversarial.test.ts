@@ -134,19 +134,19 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       return createAuthMiddleware(fakeVerify)(c, next)
     })
     testApp.get('/products', productsGetHandler)
-    testApp.post('/products', requireAnyRole(['fornecedor', 'admin']), productsPostHandler)
+    testApp.post('/products', requireAnyRole(['fornecedor']), productsPostHandler)
 
     // /products/:id
     testApp.use('/products/:id', (c, next) => createAuthMiddleware(fakeVerify)(c, next))
-    testApp.put('/products/:id', requireAnyRole(['fornecedor', 'admin']), productsPutHandler)
-    testApp.delete('/products/:id', requireAnyRole(['fornecedor', 'admin']), productsDeleteHandler)
+    testApp.put('/products/:id', requireAnyRole(['fornecedor']), productsPutHandler)
+    testApp.delete('/products/:id', requireAnyRole(['fornecedor']), productsDeleteHandler)
 
     // /orders/*
     testApp.use('/orders/*', (c, next) => createAuthMiddleware(fakeVerify)(c, next))
     testApp.get('/orders', ordersGetHandler)
-    testApp.post('/orders', requireAnyRole(['comprador', 'admin']), ordersPostHandler)
-    testApp.patch('/orders/:id/cancel', requireAnyRole(['comprador', 'admin']), ordersCancelHandler)
-    testApp.post('/orders/:id/report', requireAnyRole(['fornecedor', 'admin']), ordersReportHandler)
+    testApp.post('/orders', requireAnyRole(['comprador']), ordersPostHandler)
+    testApp.patch('/orders/:id/cancel', requireAnyRole(['comprador']), ordersCancelHandler)
+    testApp.post('/orders/:id/report', requireAnyRole(['fornecedor']), ordersReportHandler)
 
     return testApp
   }
@@ -899,5 +899,131 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(getBuyerOrders.status).toBe(403)
+  })
+
+  // -------------------------------------------------------------
+  // 12. Admin bloqueado em operações de fornecedor (AUTH-003)
+  // -------------------------------------------------------------
+  it('34. Admin com Custom Claim tentando POST /products → 403 Forbidden', async () => {
+    const app = createTestApp()
+    const response = await app.fetch(
+      new Request('http://localhost/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer token-admin-claim',
+        },
+        body: JSON.stringify({
+          name: 'Produto Admin Bloqueado',
+          brand: 'Pampers',
+          size: 'M',
+          quantity: 20,
+          slug: `slug-admin-post-${Date.now()}`,
+          categoria: 'fraldas',
+          descricao: 'Admin nao pode criar produto',
+          atributos: { faixaPeso: '5-9kg', genero: 'unissex', absorcao: 'alta', tecnologia: 'soft' },
+          priceCents: 1500,
+        }),
+      }),
+      env,
+    )
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('35. Admin tentando PUT /products/:id em produto de fornecedor → 403 Forbidden', async () => {
+    const app = createTestApp()
+    const response = await app.fetch(
+      new Request(`http://localhost/products/${prodFornecedorAId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer token-admin-claim',
+        },
+        body: JSON.stringify({ name: 'Admin Editando Produto de Fornecedor' }),
+      }),
+      env,
+    )
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('36. Admin tentando DELETE /products/:id em produto de fornecedor → 403 Forbidden', async () => {
+    const app = createTestApp()
+    const response = await app.fetch(
+      new Request(`http://localhost/products/${prodFornecedorAId}`, {
+        method: 'DELETE',
+        headers: { Authorization: 'Bearer token-admin-claim' },
+      }),
+      env,
+    )
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('37. Admin tentando GET /products?scope=fornecedor → 403 Forbidden', async () => {
+    const app = createTestApp()
+    const response = await app.fetch(
+      new Request('http://localhost/products?scope=fornecedor', {
+        headers: { Authorization: 'Bearer token-admin-claim' },
+      }),
+      env,
+    )
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('38. Admin tentando GET /orders?scope=fornecedor → 403 Forbidden', async () => {
+    const app = createTestApp()
+    const response = await app.fetch(
+      new Request('http://localhost/orders?scope=fornecedor', {
+        headers: { Authorization: 'Bearer token-admin-claim' },
+      }),
+      env,
+    )
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('39. Admin tentando POST /orders/:id/report em pedido de fornecedor → 403 Forbidden', async () => {
+    const app = createTestApp()
+    const response = await app.fetch(
+      new Request(`http://localhost/orders/${orderFornecedorAId}/report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer token-admin-claim',
+        },
+        body: JSON.stringify({ message: 'Mensagem de report admin' }),
+      }),
+      env,
+    )
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('40. Fornecedor A tenta enviar report em pedido pertencente a Fornecedor B → 403 Forbidden (ownership)', async () => {
+    const app = createTestApp()
+    // orderFornecedorAId tem supplierId === 'uid-fornecedor-a'. Fornecedor B tenta reportar.
+    const response = await app.fetch(
+      new Request(`http://localhost/orders/${orderFornecedorAId}/report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer token-fornecedor-b',
+        },
+        body: JSON.stringify({ message: 'Fornecedor B tentando reportar no pedido de A' }),
+      }),
+      env,
+    )
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden: only the supplier can report on this order' })
   })
 })

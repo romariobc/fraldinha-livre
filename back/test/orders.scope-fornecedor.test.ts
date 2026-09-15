@@ -23,6 +23,7 @@ describe('GET /orders?scope=fornecedor', () => {
       if (token === 'token-fornecedor-b') return { uid: 'uid-fornecedor-b', role: 'fornecedor' }
       if (token === 'token-comprador-a') return { uid: 'uid-comprador-a', role: 'comprador' }
       if (token === 'token-sem-role') return { uid: 'uid-sem-role' }
+      if (token === 'token-admin') return { uid: 'uid-admin', role: 'admin', claims: { admin: true } }
       return null
     }
 
@@ -47,6 +48,18 @@ describe('GET /orders?scope=fornecedor', () => {
     const app = createTestApp()
     const request = new Request('http://localhost/orders?scope=fornecedor', {
       headers: { Authorization: 'Bearer token-comprador-a' },
+    })
+    const response = await app.fetch(request, env)
+
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('GET /orders?scope=fornecedor com token de admin → 403 (RBAC)', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/orders?scope=fornecedor', {
+      headers: { Authorization: 'Bearer token-admin' },
     })
     const response = await app.fetch(request, env)
 

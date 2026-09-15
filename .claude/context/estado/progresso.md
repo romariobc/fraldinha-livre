@@ -1,3 +1,30 @@
+## Marco (2026-09-15) - AUTH-003: Escopo Administrativo da Plataforma e Desacoplamento de Operações de Fornecedor
+
+**Resumo da Sessão:**
+Conclusão da task AUTH-003 estabelecendo que o papel `admin` é estritamente o gestor e governador da plataforma, sem permissão para executar operações pertencentes ao domínio operacional do fornecedor ou do comprador. Removidos todos os bypasses de admin em `POST /products`, `PUT /products/:id`, `DELETE /products/:id`, `GET /products?scope=fornecedor`, `GET /orders?scope=fornecedor` e `POST /orders/:id/report`. Preservadas leituras globais em `GET /products?scope=admin` e `GET /orders?scope=admin`. Formalizada a decisão arquitetural D-050 (supersedendo D-039).
+
+**O que foi feito:**
+1. **Diagnóstico dos Bypasses:** Identificado que o admin ainda possuía privilégios em operações de catálogo do fornecedor (`POST`, `PUT`, `DELETE /products` e `GET /products?scope=fornecedor`), escopo de pedidos de fornecedor (`GET /orders?scope=fornecedor`) e reporte de problemas (`POST /orders/:id/report`), além de bypass de ownership nos handlers de produtos e pedidos.
+2. **Remoção de Bypasses no Roteador e Handlers (`back/src/index.ts`, `back/src/routes/products.ts`, `back/src/routes/orders.ts`):**
+   - Rotas de produto (`POST /products`, `PUT /products/:id`, `DELETE /products/:id`) agora exigem exclusivamente `role === 'fornecedor'`. Admin recebe 403.
+   - Bypasses de ownership `!hasAnyRole(c, ['admin'])` em `PUT /products/:id`, `DELETE /products/:id` e `POST /orders/:id/report` foram completamente eliminados.
+   - `GET /products?scope=fornecedor` e `GET /orders?scope=fornecedor` restritos exclusivamente a `role === 'fornecedor'`. Admin recebe 403.
+   - `POST /orders/:id/report` restrito exclusivamente a `role === 'fornecedor'` com ownership do pedido (`order.supplierId === uid`). Admin recebe 403.
+   - Preservada visão global via `GET /products?scope=admin` e `GET /orders?scope=admin` exclusiva para administradores.
+3. **Formalização de Decisão de Governança (ADR D-050):** Registrada em [.claude/docs/governance/decisoes.md](file:///e:/Labdev/Projetos/fraldinha-livre/.claude/docs/governance/decisoes.md) supersedendo D-039, definindo o modelo de governança, o escopo administrativo aprovado e as regras para futuras ações de moderação.
+4. **Bateria de Testes Adversariais e Unitários:**
+   - Adicionados 7 novos testes em `back/test/rbac-adversarial.test.ts` (testes 34 a 40) cobrindo admin bloqueado em POST/PUT/DELETE de produtos, scope de fornecedor de produtos, scope de fornecedor de pedidos, envio de report e teste de ownership estrito entre fornecedores.
+   - Adicionados testes de regressão específicos em `back/test/products.crud.test.ts`, `back/test/products.get.test.ts` e `back/test/orders.scope-fornecedor.test.ts`.
+5. **Verificação de Suíte e Typecheck:** 22 arquivos de teste do backend (238 testes), 4 arquivos em contracts (33 testes) e 55 arquivos no frontend (548 testes) 100% verdes. `npx tsc --noEmit` aprovado em todos os pacotes.
+
+**Status:**
+Build limpo, typecheck com 0 erros nos 3 pacotes, 100% dos testes unitários e adversariais aprovados, ADR D-050 formalizada.
+
+**Próximo Passo:**
+Iniciar a próxima frente de trabalho priorizada no backlog (ex: AUDIT-001 para trilha de auditoria administrativa, SEC-002 ou a continuação do gateway de pagamento / Feature 011).
+
+---
+
 ## Marco (2026-09-15) - AUTH-002: Separação Efetiva de Comprador e Fornecedor (Enforcement RBAC Completo)
 
 **Resumo da Sessão:**

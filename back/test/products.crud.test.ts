@@ -62,6 +62,7 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
       if (token === 'token-uid-fornecedor-teste') return { uid: 'uid-fornecedor-teste', email: 'fornecedor-teste@example.com', role: 'fornecedor' }
       if (token === 'token-comprador') return { uid: 'uid-comprador', role: 'comprador' }
       if (token === 'token-sem-role') return { uid: 'uid-sem-role' }
+      if (token === 'token-admin') return { uid: 'uid-admin', role: 'admin', claims: { admin: true } }
       return null
     }
 
@@ -90,6 +91,60 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
 
     return testApp
   }
+
+  it('POST /products com token de admin → 403', async () => {
+    const testApp = createTestApp()
+    const request = new Request('http://localhost/products', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-admin',
+      },
+      body: JSON.stringify({
+        name: 'Produto Admin',
+        brand: 'Admin Marca',
+        size: 'P',
+        quantity: 10,
+        slug: `admin-prod-${Date.now()}`,
+        categoria: 'test',
+        descricao: 'Desc',
+        atributos: { faixaPeso: 'P', genero: 'unissex', absorcao: 'A', tecnologia: 'T' },
+        priceCents: 500,
+      }),
+    })
+    const response = await testApp.fetch(request, env)
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('PUT /products/:id com token de admin → 403', async () => {
+    const testApp = createTestApp()
+    const request = new Request(`http://localhost/products/${existingProductId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-admin',
+      },
+      body: JSON.stringify({ active: false }),
+    })
+    const response = await testApp.fetch(request, env)
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('DELETE /products/:id com token de admin → 403', async () => {
+    const testApp = createTestApp()
+    const request = new Request(`http://localhost/products/${existingProductId}`, {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer token-admin' },
+    })
+    const response = await testApp.fetch(request, env)
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
 
   // ===== POST /products =====
   it('POST /products sem token → 401', async () => {

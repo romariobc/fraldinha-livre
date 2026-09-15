@@ -44,6 +44,7 @@ describe('GET /products', () => {
       if (token === 'token-uid-fornecedor-teste') return { uid: 'uid-fornecedor-teste', role: 'fornecedor' }
       if (token === 'token-comprador') return { uid: 'uid-comprador', role: 'comprador' }
       if (token === 'token-sem-role') return { uid: 'uid-sem-role' }
+      if (token === 'token-admin') return { uid: 'uid-admin', role: 'admin', claims: { admin: true } }
       return null
     }
 
@@ -62,6 +63,18 @@ describe('GET /products', () => {
 
     return testApp
   }
+
+  it('GET /products?scope=fornecedor com token de admin → retorna 403', async () => {
+    const testApp = createTestApp()
+    const request = new Request('http://localhost/products?scope=fornecedor', {
+      headers: { Authorization: 'Bearer token-admin' },
+    })
+    const response = await testApp.fetch(request, env)
+
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
 
   it('GET /products sem scope → retorna 200 (rota publica)', async () => {
     const request = new Request('http://localhost/products')

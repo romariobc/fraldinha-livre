@@ -67,7 +67,7 @@ export const productsGetHandler = async (c: Context<{ Bindings: Env; Variables: 
     if (!uid) {
       return c.json({ error: 'unauthorized' }, 401)
     }
-    if (!hasAnyRole(c, ['fornecedor', 'admin'])) {
+    if (!hasAnyRole(c, ['fornecedor'])) {
       return c.json({ error: 'forbidden' }, 403)
     }
     const rows = await db.select().from(products).where(eq(products.supplierId, uid)).all()
@@ -86,7 +86,7 @@ export const productsPostHandler = async (c: Context<{ Bindings: Env; Variables:
   if (!uid) {
     return c.json({ error: 'unauthorized' }, 401)
   }
-  if (!hasAnyRole(c, ['fornecedor', 'admin'])) {
+  if (!hasAnyRole(c, ['fornecedor'])) {
     return c.json({ error: 'forbidden' }, 403)
   }
   const supplierEmail = c.get('email')
@@ -140,7 +140,7 @@ export const productsPutHandler = async (c: Context<{ Bindings: Env; Variables: 
   if (!uid) {
     return c.json({ error: 'unauthorized' }, 401)
   }
-  if (!hasAnyRole(c, ['fornecedor', 'admin'])) {
+  if (!hasAnyRole(c, ['fornecedor'])) {
     return c.json({ error: 'forbidden' }, 403)
   }
 
@@ -151,7 +151,7 @@ export const productsPutHandler = async (c: Context<{ Bindings: Env; Variables: 
   if (existingRows.length === 0) {
     return c.json({ error: 'product not found' }, 404)
   }
-  if (existingRows[0].supplierId !== uid && !hasAnyRole(c, ['admin'])) {
+  if (existingRows[0].supplierId !== uid) {
     return c.json({ error: 'forbidden' }, 403)
   }
 
@@ -197,7 +197,7 @@ export const productsDeleteHandler = async (c: Context<{ Bindings: Env; Variable
   if (!uid) {
     return c.json({ error: 'unauthorized' }, 401)
   }
-  if (!hasAnyRole(c, ['fornecedor', 'admin'])) {
+  if (!hasAnyRole(c, ['fornecedor'])) {
     return c.json({ error: 'forbidden' }, 403)
   }
 
@@ -208,7 +208,7 @@ export const productsDeleteHandler = async (c: Context<{ Bindings: Env; Variable
   if (existingRows.length === 0) {
     return c.json({ error: 'product not found' }, 404)
   }
-  if (existingRows[0].supplierId !== uid && !hasAnyRole(c, ['admin'])) {
+  if (existingRows[0].supplierId !== uid) {
     return c.json({ error: 'forbidden' }, 403)
   }
 

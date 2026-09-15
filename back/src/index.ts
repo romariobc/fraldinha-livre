@@ -44,7 +44,7 @@ app.use('/products', async (c, next) => {
 })
 
 app.get('/products', productsGetHandler)
-app.post('/products', requireAnyRole(['fornecedor', 'admin']), productsPostHandler)
+app.post('/products', requireAnyRole(['fornecedor']), productsPostHandler)
 
 // /products/:id (PUT/DELETE) sempre autenticado - checagem de dono feita no handler (403 vs 404).
 app.use('/products/:id', (c, next) => {
@@ -53,8 +53,8 @@ app.use('/products/:id', (c, next) => {
   )
   return authMiddleware(c, next)
 })
-app.put('/products/:id', requireAnyRole(['fornecedor', 'admin']), productsPutHandler)
-app.delete('/products/:id', requireAnyRole(['fornecedor', 'admin']), productsDeleteHandler)
+app.put('/products/:id', requireAnyRole(['fornecedor']), productsPutHandler)
+app.delete('/products/:id', requireAnyRole(['fornecedor']), productsDeleteHandler)
 
 // Middleware de autenticação para /orders/*
 app.use('/orders/*', (c, next) => {
@@ -67,7 +67,7 @@ app.use('/orders/*', (c, next) => {
 app.get('/orders', ordersGetHandler)
 app.post('/orders', requireAnyRole(['comprador']), ordersPostHandler)
 app.patch('/orders/:id/cancel', requireAnyRole(['comprador']), ordersCancelHandler)
-app.post('/orders/:id/report', requireAnyRole(['fornecedor', 'admin']), ordersReportHandler)
+app.post('/orders/:id/report', requireAnyRole(['fornecedor']), ordersReportHandler)
 
 app.use('/chat/*', (c, next) => {
   const authMiddleware = createAuthMiddleware((token) =>

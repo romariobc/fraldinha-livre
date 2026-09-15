@@ -65,8 +65,8 @@ app.use('/orders/*', (c, next) => {
 })
 
 app.get('/orders', ordersGetHandler)
-app.post('/orders', ordersPostHandler)
-app.patch('/orders/:id/cancel', ordersCancelHandler)
+app.post('/orders', requireAnyRole(['comprador']), ordersPostHandler)
+app.patch('/orders/:id/cancel', requireAnyRole(['comprador']), ordersCancelHandler)
 app.post('/orders/:id/report', requireAnyRole(['fornecedor', 'admin']), ordersReportHandler)
 
 app.use('/chat/*', (c, next) => {

@@ -1,3 +1,20 @@
+## Marco (2026-09-15) - AUTH-002: Separação Efetiva de Comprador e Fornecedor (Enforcement RBAC Completo)
+
+**Resumo da Sessão:**
+Conclusão da task AUTH-002 estabelecendo a separação estrita e exclusiva entre os papéis de Comprador e Fornecedor em todo o ciclo de vida do backend. Rotas de pedidos (`POST /orders`, `GET /orders` sem scope e `PATCH /orders/:id/cancel`) agora exigem explicitamente o papel ativo `comprador` via Custom Claim assinado no JWT, bloqueando fornecedores e usuários sem role de executarem fluxos de compra. Formalização da decisão arquitetural D-049.
+
+**O que foi feito:**
+1. **Inspeção e Identificação das Lacunas:** Confirmado que `POST /orders`, `GET /orders` (sem scope) e `PATCH /orders/:id/cancel` operavam apenas com verificação de autenticação genérica (`uid`), permitindo que contas de fornecedores ou tokens sem role realizassem operações de compra.
+2. **Enforcement de RBAC em Pedidos (`back/src/routes/orders.ts` e `back/src/index.ts`):**
+   - `POST /orders`: Aplicado `requireAnyRole(['comprador', 'admin'])` no roteador e verificação defensiva no handler. Fornecedor ou token sem role recebe `403 Forbidden`.
+   - `GET /orders` (sem scope): Aplicada verificação `hasAnyRole(c, ['comprador', 'admin'])`. Fornecedor ou token sem role recebe `403 Forbidden`.
+   - `PATCH /orders/:id/cancel`: Aplicado `requireAnyRole(['comprador', 'admin'])` + checagem de ownership (`orders.uid === token.uid`) e trava de status (`aguardando`). Fornecedor ou token sem role recebe `403 Forbidden`.
+3. **Formalização de Decisão de Governança (ADR D-049):** Registrada em [.claude/docs/governance/decisoes.md](file:///e:/Labdev/Projetos/fraldinha-livre/.claude/docs/governance/decisoes.md) a exclusividade operacional dos papéis `comprador` e `fornecedor`, vinculada à D-048.
+4. **Bateria de Testes Adversariais (`back/test/rbac-adversarial.test.ts`):** Expandida de 17 para 28 testes cobrindo fornecedor tentando criar/listar/cancelar pedidos, usuário sem role tentando operações de comprador e fornecedor, comprador legítimo, ownership estrito entre compradores e prevenção de spoofing via body/query.
+5. **Verificação de Suíte e Typecheck:** 213 testes no backend (22 arquivos), 33 testes em contracts e 548 testes no frontend (55 arquivos) 100% verdes. `npx tsc --noEmit` aprovado em todos os pacotes.
+
+---
+
 ## Marco (2026-09-15) - AUTH-001: Provisionamento Seguro de Firebase Custom Claims e Migração de Usuários
 
 **Resumo da Sessão:**

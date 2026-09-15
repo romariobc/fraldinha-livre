@@ -89,12 +89,12 @@ export async function runMigration(
 
     try {
       // 2. Consulta claims existentes no Google Identity
-      const existingClaims = await lookupClaims({
-        uid: user.uid,
+      const existingUser = await lookupClaims(user.uid, {
         projectId: config.projectId,
         clientEmail: config.clientEmail,
         privateKey: config.privateKey,
       })
+      const existingClaims = existingUser?.customAttributes
 
       const existingRole = (existingClaims?.role as string | undefined) ||
         (existingClaims?.fornecedor === true ? 'fornecedor' : undefined) ||
@@ -138,16 +138,18 @@ export async function runMigration(
           reason: '[DRY-RUN] Claim seria provisionado com sucesso.',
         })
       } else {
-        await provisionClaims({
-          uid: user.uid,
-          claims: {
+        await provisionClaims(
+          user.uid,
+          {
             role: validRole,
             [validRole]: true,
           },
-          projectId: config.projectId,
-          clientEmail: config.clientEmail,
-          privateKey: config.privateKey,
-        })
+          {
+            projectId: config.projectId,
+            clientEmail: config.clientEmail,
+            privateKey: config.privateKey,
+          }
+        )
 
         summary.provisioned++
         summary.details.push({
@@ -173,8 +175,11 @@ export async function runMigration(
   return summary
 }
 
+declare const require: any
+declare const module: any
+
 // Execução direta via CLI
-if (typeof require !== 'undefined' && require.main === module) {
+if (typeof require !== 'undefined' && typeof module !== 'undefined' && require.main === module) {
   const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
   const privateKey = process.env.FIREBASE_PRIVATE_KEY

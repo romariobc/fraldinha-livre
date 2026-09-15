@@ -37,6 +37,8 @@ const FORNECEDOR_LOGADO = {
   user: { uid: 'sup-1', email: 'fornecedor@test.com', displayName: 'Fornecedor Test' },
   profile: null,
   role: 'fornecedor' as const,
+  claims: { role: 'fornecedor', fornecedor: true },
+  isAdmin: false,
   loading: false,
   signInGoogle: vi.fn(),
   signInEmail: vi.fn(),

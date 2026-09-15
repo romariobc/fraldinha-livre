@@ -71,6 +71,8 @@ describe('FornecedorCatalogoPage Route', () => {
       user: null,
       profile: null,
       role: null,
+      claims: null,
+      isAdmin: false,
       loading: false,
       signInGoogle: vi.fn(),
       signInEmail: vi.fn(),

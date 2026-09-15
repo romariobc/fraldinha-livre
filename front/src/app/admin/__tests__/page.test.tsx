@@ -26,7 +26,7 @@ function authValue(overrides: Partial<ReturnType<typeof useAuth>> = {}): ReturnT
   )
 
   return {
-    user: null, profile: null, role: null, claims: null, isAdmin: isAdminCalculated, loading: false,
+    user: null, profile: null, role: null, claims: null, loading: false,
     signInGoogle: vi.fn(), signInEmail: vi.fn(), signUpEmail: vi.fn(),
     signOutUser: vi.fn(), updateProfile: vi.fn(),
     ...overrides,

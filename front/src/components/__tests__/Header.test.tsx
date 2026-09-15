@@ -41,6 +41,23 @@ import { useCart } from '@/contexts/cart-context'
 const mockUseAuth = vi.mocked(useAuth)
 const mockUseCart = vi.mocked(useCart)
 
+function authValue(overrides: Partial<ReturnType<typeof useAuth>> = {}): ReturnType<typeof useAuth> {
+  return {
+    user: null,
+    profile: null,
+    role: null,
+    claims: null,
+    isAdmin: false,
+    loading: false,
+    signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
+    signOutUser: mockSignOutUser,
+    updateProfile: vi.fn(),
+    ...overrides,
+  }
+}
+
 describe('Header', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -48,17 +65,7 @@ describe('Header', () => {
 
   describe('Deslogado', () => {
     beforeEach(() => {
-      mockUseAuth.mockReturnValue({
-        user: null,
-        profile: null,
-        role: null,
-        loading: false,
-        signInGoogle: vi.fn(),
-    signInEmail: vi.fn(),
-    signUpEmail: vi.fn(),
-        signOutUser: mockSignOutUser,
-        updateProfile: vi.fn(),
-      })
+      mockUseAuth.mockReturnValue(authValue())
       mockUseCart.mockReturnValue({
         items: [],
         itemCount: 0,
@@ -101,21 +108,13 @@ describe('Header', () => {
 
   describe('Logado', () => {
     beforeEach(() => {
-      mockUseAuth.mockReturnValue({
+      mockUseAuth.mockReturnValue(authValue({
         user: {
           uid: 'user-123',
           email: 'user@example.com',
           displayName: 'John Doe',
         },
-        profile: null,
-        role: null,
-        loading: false,
-        signInGoogle: vi.fn(),
-    signInEmail: vi.fn(),
-    signUpEmail: vi.fn(),
-        signOutUser: mockSignOutUser,
-        updateProfile: vi.fn(),
-      })
+      }))
       mockUseCart.mockReturnValue({
         items: [],
         itemCount: 3,
@@ -150,21 +149,13 @@ describe('Header', () => {
     })
 
     it('should display email when displayName is not available', () => {
-      mockUseAuth.mockReturnValue({
+      mockUseAuth.mockReturnValue(authValue({
         user: {
           uid: 'user-123',
           email: 'user@example.com',
           displayName: null,
         },
-        profile: null,
-        role: null,
-        loading: false,
-        signInGoogle: vi.fn(),
-    signInEmail: vi.fn(),
-    signUpEmail: vi.fn(),
-        signOutUser: mockSignOutUser,
-        updateProfile: vi.fn(),
-      })
+      }))
 
       render(<Header />)
 
@@ -201,17 +192,11 @@ describe('Header', () => {
     })
 
     it('should have Minha conta link with correct href in dropdown for comprador', async () => {
-      mockUseAuth.mockReturnValue({
+      mockUseAuth.mockReturnValue(authValue({
         user: { uid: 'user-123', email: 'user@example.com', displayName: 'John Doe' },
-        profile: null,
         role: 'comprador',
-        loading: false,
-        signInGoogle: vi.fn(),
-        signInEmail: vi.fn(),
-        signUpEmail: vi.fn(),
-        signOutUser: mockSignOutUser,
-        updateProfile: vi.fn(),
-      })
+        claims: { role: 'comprador', comprador: true },
+      }))
 
       const user = userEvent.setup()
       render(<Header />)
@@ -224,17 +209,11 @@ describe('Header', () => {
     })
 
     it('should have Minha conta link pointing to /painel-fornecedor in dropdown for fornecedor', async () => {
-      mockUseAuth.mockReturnValue({
+      mockUseAuth.mockReturnValue(authValue({
         user: { uid: 'user-123', email: 'fornecedor@example.com', displayName: 'Fornecedor Test' },
-        profile: null,
         role: 'fornecedor',
-        loading: false,
-        signInGoogle: vi.fn(),
-        signInEmail: vi.fn(),
-        signUpEmail: vi.fn(),
-        signOutUser: mockSignOutUser,
-        updateProfile: vi.fn(),
-      })
+        claims: { role: 'fornecedor', fornecedor: true },
+      }))
 
       const user = userEvent.setup()
       render(<Header />)
@@ -366,21 +345,13 @@ describe('Header', () => {
 
   describe('Mobile menu', () => {
     beforeEach(() => {
-      mockUseAuth.mockReturnValue({
+      mockUseAuth.mockReturnValue(authValue({
         user: {
           uid: 'user-123',
           email: 'user@example.com',
           displayName: 'John Doe',
         },
-        profile: null,
-        role: null,
-        loading: false,
-        signInGoogle: vi.fn(),
-    signInEmail: vi.fn(),
-    signUpEmail: vi.fn(),
-        signOutUser: mockSignOutUser,
-        updateProfile: vi.fn(),
-      })
+      }))
       mockUseCart.mockReturnValue({
         items: [],
         itemCount: 2,
@@ -404,17 +375,11 @@ describe('Header', () => {
     })
 
     it('should display "Minha conta" link pointing to /minha-conta in mobile menu for comprador', async () => {
-      mockUseAuth.mockReturnValue({
+      mockUseAuth.mockReturnValue(authValue({
         user: { uid: 'user-123', email: 'user@example.com', displayName: 'John Doe' },
-        profile: null,
         role: 'comprador',
-        loading: false,
-        signInGoogle: vi.fn(),
-        signInEmail: vi.fn(),
-        signUpEmail: vi.fn(),
-        signOutUser: mockSignOutUser,
-        updateProfile: vi.fn(),
-      })
+        claims: { role: 'comprador', comprador: true },
+      }))
 
       const user = userEvent.setup()
       render(<Header />)
@@ -431,17 +396,11 @@ describe('Header', () => {
     })
 
     it('should display "Minha conta" link pointing to /painel-fornecedor in mobile menu for fornecedor', async () => {
-      mockUseAuth.mockReturnValue({
+      mockUseAuth.mockReturnValue(authValue({
         user: { uid: 'user-123', email: 'fornecedor@example.com', displayName: 'Fornecedor Test' },
-        profile: null,
         role: 'fornecedor',
-        loading: false,
-        signInGoogle: vi.fn(),
-        signInEmail: vi.fn(),
-        signUpEmail: vi.fn(),
-        signOutUser: mockSignOutUser,
-        updateProfile: vi.fn(),
-      })
+        claims: { role: 'fornecedor', fornecedor: true },
+      }))
 
       const user = userEvent.setup()
       render(<Header />)
@@ -470,17 +429,7 @@ describe('Header', () => {
     })
 
     it('should not display account menu items in mobile menu when logged out', async () => {
-      mockUseAuth.mockReturnValue({
-        user: null,
-        profile: null,
-        role: null,
-        loading: false,
-        signInGoogle: vi.fn(),
-    signInEmail: vi.fn(),
-    signUpEmail: vi.fn(),
-        signOutUser: mockSignOutUser,
-        updateProfile: vi.fn(),
-      })
+      mockUseAuth.mockReturnValue(authValue())
 
       const user = userEvent.setup()
       render(<Header />)

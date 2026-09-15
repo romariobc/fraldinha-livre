@@ -1275,4 +1275,41 @@ Adotada a **Opção A** (provisionamento orquestrado pelo próprio Cloudflare Wo
    - **Auto-Migração Lazy:** No `auth-context.tsx`, se um usuário autenticado possui `role` válido no Firestore mas o JWT não possui o claim correspondente, o cliente executa uma sincronização única via `POST /auth/claim`, renovando o token de forma transparente.
    - **Migração em Lote (Batch):** Criado script administrativo auditável `back/scripts/migrate-user-claims.ts` com suporte a `--dry-run` para migração e auditoria offline.
 
+6. **Adendo de Segurança e Robustez (AUTH-001 Hotfix):**
+   - **Lookup Fail-Closed:** A verificação prévia no Google Identity Toolkit API opera estritamente fail-closed. Se a consulta falhar, nenhum claim é provisionado e a API retorna `502 Bad Gateway` recuperável para permitir retry seguro.
+   - **Tratamento de Claims Contraditórios:** Se a identidade contiver múltiplos papéis conflitantes no token ou no Identity Toolkit (ex: `role: 'comprador'` + `admin: true`, ou `fornecedor: true` + `comprador: true`), a resolução entra em estado de `conflict` fail-closed, bloqueando mutações com `409 Conflict` e negando acesso a rotas protegidas (403).
+   - **Imutabilidade de Administradores:** Contas com `admin: true` ou `role: 'admin'` não podem ser convertidas para outros papéis via endpoint de onboarding (409 Conflict).
+   - **Preservação Atômica de Claims Legítimos:** Atributos customizados prévios não relacionados a papéis (como identificadores de tenant ou feature flags) são rigorosamente preservados na recomposição do JSON enviado ao `accounts:update`.
+
+---
+
+## D-049 — Separação Efetiva de Comprador e Fornecedor (AUTH-002) (2026-09-15) — VIGENTE
+
+### Contexto
+Após a implementação e formalização do provisionamento funcional de Firebase Custom Claims (D-048 / AUTH-001), constatou-se que determinadas rotas de compras no backend Cloudflare Worker ainda estavam permissivas, validando apenas autenticação genérica (`if (!uid) return 401`) e ownership básico, permitindo que fornecedores ou usuários com token sem claim realizassem operações de compra.
+
+### Decisão Arquitetural
+1. **Exclusividade Operacional de Papéis (Role Exclusivity):**
+   - Os papéis `comprador` e `fornecedor` são estritamente mutuamente exclusivos na sessão ativa.
+   - O **Firebase Custom Claim** assinado no JWT representa o papel ativo e exclusivo da sessão.
+   - Fornecedor autenticado com `role: 'fornecedor'` NÃO PODE realizar operações de comprador. Se desejar comprar, deverá futuramente criar ou assumir um perfil específico de comprador.
+   - Comprador autenticado com `role: 'comprador'` NÃO PODE realizar operações de fornecedor.
+   - Tokens sem Custom Claim válido de papel não possuem acesso a nenhuma operação restrita de comprador ou fornecedor (403 Forbidden).
+
+2. **Desacoplamento de Autorização vs Perfil (Vínculo com D-048):**
+   - O documento `users/{uid}` do Firestore é fonte de dados cadastrais e experiência da UI, NÃO concedendo qualquer privilégio de autorização no backend.
+   - Tentativas de spoofing (enviar `role=comprador` ou `role=fornecedor` no corpo, headers ou query string) são completamente inócuas e ignoradas; apenas o claim assinado no JWT determina autorização.
+
+3. **Matriz de Enforcement por Endpoint (Admin Governa, Não Compra):**
+   - `POST /orders`: Exige exclusivamente `role === 'comprador'`. Fornecedor, Admin ou token sem role recebe `403 Forbidden`.
+   - `GET /orders` (sem scope): Exige exclusivamente `role === 'comprador'`. Retorna apenas os pedidos onde `orders.uid === token.uid`. Fornecedor, Admin ou token sem role recebe `403 Forbidden`.
+   - `PATCH /orders/:id/cancel`: Exige exclusivamente `role === 'comprador'` + ownership (`orders.uid === token.uid`) + trava de status (`aguardando`). Fornecedor, Admin ou token sem role recebe `403 Forbidden`.
+   - `GET /orders?scope=fornecedor`: Exige estritamente `role === 'fornecedor'` (ou admin até AUTH-003) + filtragem estrita pelos produtos do fornecedor autenticado (`products.supplierId === token.uid`). Comprador recebe `403 Forbidden`.
+   - `POST /orders/:id/report`: Exige estritamente `role === 'fornecedor'` (ou admin até AUTH-003) + ownership do pedido pelo fornecedor (`order.supplierId === token.uid`). Comprador recebe `403 Forbidden`.
+   - `POST /products`, `PUT /products/:id`, `DELETE /products/:id`: Exigem estritamente `role === 'fornecedor'` (ou admin até AUTH-003) + ownership do produto pelo fornecedor. Comprador recebe `403 Forbidden`.
+   - `GET /products` (sem scope): Permanece público por design (RN-007-04).
+   - `GET /orders?scope=admin` e `GET /products?scope=admin`: Restritos exclusivamente a `role === 'admin'` ou claim `admin: true`.
+
+4. **Preservação de Escopo Administrativo:**
+   - Nenhum bypass administrativo novo foi concedido. A governança e auditoria completa das permissões do papel `admin` serão tratadas na task AUTH-003.
 

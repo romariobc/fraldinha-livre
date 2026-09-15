@@ -134,8 +134,8 @@ describe('Stock decrement race condition & constraints', () => {
     const { ordersPostHandler } = await import('../src/routes/orders')
 
     const fakeVerify = async (token: string) => {
-      if (token === 'token-uid-a') return { uid: 'uid-a', email: 'uid-a@example.com' }
-      if (token === 'token-uid-b') return { uid: 'uid-b', email: 'uid-b@example.com' }
+      if (token === 'token-uid-a') return { uid: 'uid-a', email: 'uid-a@example.com', role: 'comprador', claims: { comprador: true } }
+      if (token === 'token-uid-b') return { uid: 'uid-b', email: 'uid-b@example.com', role: 'comprador', claims: { comprador: true } }
       return null
     }
 

@@ -61,6 +61,8 @@ function authValue(overrides: Partial<ReturnType<typeof useAuth>> = {}): ReturnT
     user: { uid: 'u1', email: 'ana@example.com', displayName: 'Ana Lima' },
     profile: null,
     role: 'comprador',
+    claims: { role: 'comprador' },
+    isAdmin: false,
     loading: false,
     signInGoogle: vi.fn(),
     signInEmail: vi.fn(),

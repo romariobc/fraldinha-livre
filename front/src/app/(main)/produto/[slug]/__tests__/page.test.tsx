@@ -50,6 +50,22 @@ const mockUseCart = vi.mocked(useCart)
 const mockUseProducts = vi.mocked(useProducts)
 const mockToast = vi.mocked(toast)
 
+function authValue(overrides: Partial<ReturnType<typeof useAuth>> = {}): ReturnType<typeof useAuth> {
+  return {
+    user: null,
+    profile: null,
+    role: null,
+    claims: null,
+    isAdmin: false,
+    loading: false,
+    signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
+    signOutUser: vi.fn(),
+    updateProfile: vi.fn(),
+    ...overrides,
+  }
+}
 
 describe('ProductPage', () => {
   beforeEach(() => {
@@ -66,17 +82,7 @@ describe('ProductPage', () => {
       refresh: vi.fn(),
       replace: vi.fn(),
     })
-    mockUseAuth.mockReturnValue({
-      user: null,
-      profile: null,
-      role: null,
-      loading: false,
-      signInGoogle: vi.fn(),
-    signInEmail: vi.fn(),
-    signUpEmail: vi.fn(),
-      signOutUser: vi.fn(),
-      updateProfile: vi.fn(),
-    })
+    mockUseAuth.mockReturnValue(authValue())
     mockUseCart.mockReturnValue({
       items: [],
       itemCount: 0,
@@ -168,17 +174,7 @@ describe('ProductPage', () => {
 
   describe('Deslogado + Adicionar à sacola', () => {
     it('should redirect to login when not logged in', async () => {
-      mockUseAuth.mockReturnValue({
-        user: null,
-        profile: null,
-        role: null,
-        loading: false,
-        signInGoogle: vi.fn(),
-    signInEmail: vi.fn(),
-    signUpEmail: vi.fn(),
-        signOutUser: vi.fn(),
-        updateProfile: vi.fn(),
-      })
+      mockUseAuth.mockReturnValue(authValue())
 
       const user = userEvent.setup()
       render(<ProductPage />)
@@ -193,17 +189,13 @@ describe('ProductPage', () => {
   describe('Logado + Adicionar à sacola', () => {
     it('should call addItem with quantity 2 when stepper is set to 2', async () => {
       const mockAddItem = vi.fn()
-      mockUseAuth.mockReturnValue({
-        user: { uid: 'user-1', email: 'test@example.com', displayName: 'Test User' },
-        profile: { role: 'comprador', name: 'Test User', email: 'test@example.com' },
-        role: 'comprador',
-        loading: false,
-        signInGoogle: vi.fn(),
-    signInEmail: vi.fn(),
-    signUpEmail: vi.fn(),
-        signOutUser: vi.fn(),
-        updateProfile: vi.fn(),
-      })
+      mockUseAuth.mockReturnValue(
+        authValue({
+          user: { uid: 'user-1', email: 'test@example.com', displayName: 'Test User' },
+          profile: { role: 'comprador', name: 'Test User', email: 'test@example.com' },
+          role: 'comprador',
+        })
+      )
       mockUseCart.mockReturnValue({
         items: [],
         itemCount: 0,
@@ -239,17 +231,13 @@ describe('ProductPage', () => {
 
     it('should show success toast with "Ver sacola" action', async () => {
       const mockAddItem = vi.fn()
-      mockUseAuth.mockReturnValue({
-        user: { uid: 'user-1', email: 'test@example.com', displayName: 'Test User' },
-        profile: { role: 'comprador', name: 'Test User', email: 'test@example.com' },
-        role: 'comprador',
-        loading: false,
-        signInGoogle: vi.fn(),
-    signInEmail: vi.fn(),
-    signUpEmail: vi.fn(),
-        signOutUser: vi.fn(),
-        updateProfile: vi.fn(),
-      })
+      mockUseAuth.mockReturnValue(
+        authValue({
+          user: { uid: 'user-1', email: 'test@example.com', displayName: 'Test User' },
+          profile: { role: 'comprador', name: 'Test User', email: 'test@example.com' },
+          role: 'comprador',
+        })
+      )
       mockUseCart.mockReturnValue({
         items: [],
         itemCount: 0,
@@ -279,17 +267,13 @@ describe('ProductPage', () => {
 
     it('should reset stepper to 1 after adding to cart', async () => {
       const mockAddItem = vi.fn()
-      mockUseAuth.mockReturnValue({
-        user: { uid: 'user-1', email: 'test@example.com', displayName: 'Test User' },
-        profile: { role: 'comprador', name: 'Test User', email: 'test@example.com' },
-        role: 'comprador',
-        loading: false,
-        signInGoogle: vi.fn(),
-    signInEmail: vi.fn(),
-    signUpEmail: vi.fn(),
-        signOutUser: vi.fn(),
-        updateProfile: vi.fn(),
-      })
+      mockUseAuth.mockReturnValue(
+        authValue({
+          user: { uid: 'user-1', email: 'test@example.com', displayName: 'Test User' },
+          profile: { role: 'comprador', name: 'Test User', email: 'test@example.com' },
+          role: 'comprador',
+        })
+      )
       mockUseCart.mockReturnValue({
         items: [],
         itemCount: 0,
@@ -323,17 +307,7 @@ describe('ProductPage', () => {
 
   describe('Comprar agora', () => {
     it('should redirect to login when not logged in', async () => {
-      mockUseAuth.mockReturnValue({
-        user: null,
-        profile: null,
-        role: null,
-        loading: false,
-        signInGoogle: vi.fn(),
-    signInEmail: vi.fn(),
-    signUpEmail: vi.fn(),
-        signOutUser: vi.fn(),
-        updateProfile: vi.fn(),
-      })
+      mockUseAuth.mockReturnValue(authValue())
 
       const user = userEvent.setup()
       render(<ProductPage />)
@@ -345,17 +319,13 @@ describe('ProductPage', () => {
     })
 
     it('should redirect to minha-conta when profile is incomplete', async () => {
-      mockUseAuth.mockReturnValue({
-        user: { uid: 'user-1', email: 'test@example.com', displayName: 'Test User' },
-        profile: { role: 'comprador', name: 'Test User', email: 'test@example.com', cpf: '' }, // incomplete profile
-        role: 'comprador',
-        loading: false,
-        signInGoogle: vi.fn(),
-    signInEmail: vi.fn(),
-    signUpEmail: vi.fn(),
-        signOutUser: vi.fn(),
-        updateProfile: vi.fn(),
-      })
+      mockUseAuth.mockReturnValue(
+        authValue({
+          user: { uid: 'user-1', email: 'test@example.com', displayName: 'Test User' },
+          profile: { role: 'comprador', name: 'Test User', email: 'test@example.com', cpf: '' }, // incomplete profile
+          role: 'comprador',
+        })
+      )
 
       const user = userEvent.setup()
       render(<ProductPage />)
@@ -371,31 +341,27 @@ describe('ProductPage', () => {
     it('should call addItem and push to checkout when profile is complete', async () => {
       const mockAddItem = vi.fn()
       // Valid Brazilian CPF: 11144477735 (test CPF that passes validation)
-      mockUseAuth.mockReturnValue({
-        user: { uid: 'user-1', email: 'test@example.com', displayName: 'Test User' },
-        profile: {
-          role: 'comprador',
-          name: 'Test User',
-          email: 'test@example.com',
-          cpf: '11144477735',
-          phone: '11999999999',
-          address: {
-            logradouro: 'Rua A',
-            numero: '123',
-            bairro: 'Bairro',
-            cidade: 'São Paulo',
-            estado: 'SP',
-            cep: '01234-567',
+      mockUseAuth.mockReturnValue(
+        authValue({
+          user: { uid: 'user-1', email: 'test@example.com', displayName: 'Test User' },
+          profile: {
+            role: 'comprador',
+            name: 'Test User',
+            email: 'test@example.com',
+            cpf: '11144477735',
+            phone: '11999999999',
+            address: {
+              logradouro: 'Rua A',
+              numero: '123',
+              bairro: 'Bairro',
+              cidade: 'São Paulo',
+              estado: 'SP',
+              cep: '01234-567',
+            },
           },
-        },
-        role: 'comprador',
-        loading: false,
-        signInGoogle: vi.fn(),
-    signInEmail: vi.fn(),
-    signUpEmail: vi.fn(),
-        signOutUser: vi.fn(),
-        updateProfile: vi.fn(),
-      })
+          role: 'comprador',
+        })
+      )
       mockUseCart.mockReturnValue({
         items: [],
         itemCount: 0,

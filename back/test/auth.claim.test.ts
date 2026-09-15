@@ -25,6 +25,12 @@ describe('POST /auth/claim — Provisionamento Seguro de Custom Claims (AUTH-001
       if (token === 'token-fornecedor-existente') {
         return { uid: 'uid-fornecedor-789', role: 'fornecedor', claims: { fornecedor: true, role: 'fornecedor' } }
       }
+      if (token === 'token-admin-existente') {
+        return { uid: 'uid-admin-999', role: 'admin', claims: { admin: true, role: 'admin' } }
+      }
+      if (token === 'token-claims-conflitantes') {
+        return { uid: 'uid-conflito-111', role: 'comprador', claims: { comprador: true, admin: true } }
+      }
       return null
     }
 
@@ -273,5 +279,182 @@ describe('POST /auth/claim — Provisionamento Seguro de Custom Claims (AUTH-001
     expect(response.status).toBe(502)
     const body = await response.json()
     expect(body).toEqual({ error: 'failed to provision claims' })
+  })
+
+  it('12. Lookup falha → fail-closed: nenhum provisionamento ocorre e retorna 502', async () => {
+    mockLookupClaims.mockRejectedValueOnce(new Error('Google Identity API unavailable'))
+
+    const app = createTestApp()
+    const request = new Request('http://localhost/auth/claim', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-novo-usuario',
+      },
+      body: JSON.stringify({ role: 'comprador' }),
+    })
+
+    const response = await app.fetch(request)
+    expect(response.status).toBe(502)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'failed to resolve authorization state' })
+    expect(mockProvisionClaims).not.toHaveBeenCalled()
+  })
+
+  it('13. Identidade com admin:true no token → tentativa de provisionar comprador é bloqueada com 409', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/auth/claim', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-admin-existente',
+      },
+      body: JSON.stringify({ role: 'comprador' }),
+    })
+
+    const response = await app.fetch(request)
+    expect(response.status).toBe(409)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'role change not allowed' })
+    expect(mockProvisionClaims).not.toHaveBeenCalled()
+  })
+
+  it('14. Identidade com admin:true no lookup do Identity Toolkit → tentativa de provisionar fornecedor é bloqueada com 409', async () => {
+    mockLookupClaims.mockResolvedValueOnce({
+      customAttributes: { admin: true },
+    })
+
+    const app = createTestApp()
+    const request = new Request('http://localhost/auth/claim', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-novo-usuario',
+      },
+      body: JSON.stringify({ role: 'fornecedor' }),
+    })
+
+    const response = await app.fetch(request)
+    expect(response.status).toBe(409)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'role change not allowed' })
+    expect(mockProvisionClaims).not.toHaveBeenCalled()
+  })
+
+  it('15. Claims independentes preexistentes são preservados ao provisionar nova role', async () => {
+    mockLookupClaims.mockResolvedValueOnce({
+      customAttributes: {
+        tenantId: 'tenant-abc-123',
+        betaFeatures: true,
+        permissions: ['read:beta'],
+      },
+    })
+
+    const app = createTestApp()
+    const request = new Request('http://localhost/auth/claim', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-novo-usuario',
+      },
+      body: JSON.stringify({ role: 'comprador' }),
+    })
+
+    const response = await app.fetch(request)
+    expect(response.status).toBe(200)
+    expect(mockProvisionClaims).toHaveBeenCalledWith('uid-novo-123', {
+      tenantId: 'tenant-abc-123',
+      betaFeatures: true,
+      permissions: ['read:beta'],
+      role: 'comprador',
+      comprador: true,
+    })
+  })
+
+  // -------------------------------------------------------------
+  // 7. Claims Contraditórios (Fail-Closed)
+  // -------------------------------------------------------------
+  it('16. Token com claims contraditórios (role: comprador + admin: true) → 409 e nenhum claim provisionado', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/auth/claim', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-claims-conflitantes',
+      },
+      body: JSON.stringify({ role: 'comprador' }),
+    })
+
+    const response = await app.fetch(request)
+    expect(response.status).toBe(409)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'conflicting authorization state' })
+    expect(mockProvisionClaims).not.toHaveBeenCalled()
+  })
+
+  it('17. Lookup com claims contraditórios (role: fornecedor + comprador: true) → 409 e nenhum claim provisionado', async () => {
+    mockLookupClaims.mockResolvedValueOnce({
+      customAttributes: { role: 'fornecedor', comprador: true },
+    })
+
+    const app = createTestApp()
+    const request = new Request('http://localhost/auth/claim', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-novo-usuario',
+      },
+      body: JSON.stringify({ role: 'comprador' }),
+    })
+
+    const response = await app.fetch(request)
+    expect(response.status).toBe(409)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'conflicting authorization state' })
+    expect(mockProvisionClaims).not.toHaveBeenCalled()
+  })
+
+  it('18. Lookup com claims contraditórios (fornecedor: true + comprador: true) → 409 e nenhum claim provisionado', async () => {
+    mockLookupClaims.mockResolvedValueOnce({
+      customAttributes: { fornecedor: true, comprador: true },
+    })
+
+    const app = createTestApp()
+    const request = new Request('http://localhost/auth/claim', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-novo-usuario',
+      },
+      body: JSON.stringify({ role: 'fornecedor' }),
+    })
+
+    const response = await app.fetch(request)
+    expect(response.status).toBe(409)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'conflicting authorization state' })
+    expect(mockProvisionClaims).not.toHaveBeenCalled()
+  })
+
+  it('19. Lookup com claims contraditórios (role: admin + fornecedor: true) → 409 e nenhum claim provisionado', async () => {
+    mockLookupClaims.mockResolvedValueOnce({
+      customAttributes: { role: 'admin', fornecedor: true },
+    })
+
+    const app = createTestApp()
+    const request = new Request('http://localhost/auth/claim', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-novo-usuario',
+      },
+      body: JSON.stringify({ role: 'fornecedor' }),
+    })
+
+    const response = await app.fetch(request)
+    expect(response.status).toBe(409)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'conflicting authorization state' })
+    expect(mockProvisionClaims).not.toHaveBeenCalled()
   })
 })

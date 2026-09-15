@@ -22,6 +22,7 @@ vi.mock('@/components/assistente/ChatUI', () => ({
 function authValue(overrides: Partial<ReturnType<typeof useAuth>> = {}): ReturnType<typeof useAuth> {
   return {
     user: null, profile: null, role: null, loading: false,
+    claims: null, isAdmin: false,
     signInGoogle: vi.fn(), signInEmail: vi.fn(), signUpEmail: vi.fn(),
     signOutUser: vi.fn(), updateProfile: vi.fn(),
     ...overrides,

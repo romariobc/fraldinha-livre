@@ -14,6 +14,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
 vi.mock('@/contexts/auth-context', () => ({ useAuth: vi.fn() }))
 import { useAuth } from '@/contexts/auth-context'
 
+import type { CartItem } from '@/lib/domain/cart'
 vi.mock('@/contexts/cart-context', () => ({ useCart: vi.fn() }))
 import { useCart } from '@/contexts/cart-context'
 
@@ -41,7 +42,7 @@ const COMPLETE_PROFILE = {
 }
 
 describe('ChatUI', () => {
-  let mockAddItem: ReturnType<typeof vi.fn>
+  let mockAddItem: ReturnType<typeof vi.fn<(item: CartItem) => void>>
 
   beforeEach(() => {
     vi.mocked(apiFetch).mockClear()
@@ -52,6 +53,8 @@ describe('ChatUI', () => {
       user: { uid: 'user-1', email: 'test@example.com', displayName: 'Test User' },
       profile: COMPLETE_PROFILE,
       role: 'comprador',
+      claims: { role: 'comprador', comprador: true },
+      isAdmin: false,
       loading: false,
       signInGoogle: vi.fn(),
       signInEmail: vi.fn(),
@@ -122,6 +125,8 @@ describe('ChatUI', () => {
       user: { uid: 'user-1', email: 'test@example.com', displayName: 'Test User' },
       profile: { ...COMPLETE_PROFILE, cpf: '' },
       role: 'comprador',
+      claims: { role: 'comprador', comprador: true },
+      isAdmin: false,
       loading: false,
       signInGoogle: vi.fn(),
       signInEmail: vi.fn(),

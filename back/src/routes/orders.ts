@@ -66,7 +66,10 @@ export const ordersGetHandler = async (c: Context<{ Bindings: Env; Variables: Ap
       }
       userOrders = await db.select().from(orders).all()
     } else {
-      // Comportamento existente (comprador) — inalterado.
+      // Escopo padrão (comprador): exige explicitamente role comprador
+      if (!hasAnyRole(c, ['comprador'])) {
+        return c.json({ error: 'forbidden' }, 403)
+      }
       userOrders = await db
         .select()
         .from(orders)
@@ -129,6 +132,9 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
   const uid = c.get('uid')
   if (!uid) {
     return c.json({ error: 'unauthorized' }, 401)
+  }
+  if (!hasAnyRole(c, ['comprador'])) {
+    return c.json({ error: 'forbidden' }, 403)
   }
 
   try {
@@ -426,6 +432,9 @@ export const ordersCancelHandler = async (c: Context<{ Bindings: Env; Variables:
   const uid = c.get('uid')
   if (!uid) {
     return c.json({ error: 'unauthorized' }, 401)
+  }
+  if (!hasAnyRole(c, ['comprador'])) {
+    return c.json({ error: 'forbidden' }, 403)
   }
 
   const orderId = c.req.param('id')

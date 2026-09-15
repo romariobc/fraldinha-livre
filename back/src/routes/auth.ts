@@ -4,7 +4,7 @@ import {
   ProvisionRoleRequestSchema,
   ProvisionRoleResponse,
 } from '../../../packages/contracts/src/auth'
-import { getUserRole } from '../middleware/auth'
+import { getUserRole, resolveEffectiveRole } from '../middleware/auth'
 import {
   setCustomClaimsViaGoogleApi,
   lookupUserViaGoogleApi,
@@ -48,6 +48,9 @@ export function createAuthClaimHandler(options?: AuthClaimHandlerOptions) {
 
       // 1. Verifica papel já presente no token do usuário
       const currentRole = getUserRole(c)
+      if (currentRole === 'conflict') {
+        return c.json({ error: 'conflicting authorization state' }, 409)
+      }
       if (currentRole) {
         if (currentRole === requestedRole) {
           const response: ProvisionRoleResponse = {
@@ -85,35 +88,54 @@ export function createAuthClaimHandler(options?: AuthClaimHandlerOptions) {
         return c.json({ error: 'claims provisioner not configured' }, 500)
       }
 
-      // 3. Se houver lookup configurado, verifica se o usuário já possui claims no Identity Toolkit
+      // 3. Se houver lookup configurado, verifica se o usuário já possui claims no Identity Toolkit (Fail-closed)
+      let existingAttributes: Record<string, unknown> | undefined = undefined
       if (lookupFn) {
         try {
           const existingUser = await lookupFn(uid)
-          const existingAttributes = existingUser?.customAttributes
-          if (existingAttributes) {
-            const existingRole = existingAttributes.role
-            if (existingRole === requestedRole) {
-              const response: ProvisionRoleResponse = {
-                success: true,
-                role: requestedRole,
-                alreadyProvisioned: true,
-              }
-              return c.json(response, 200)
-            }
-            if (existingRole && existingRole !== requestedRole) {
-              return c.json({ error: 'role change not allowed' }, 409)
-            }
+          existingAttributes = existingUser?.customAttributes
+        } catch {
+          console.error('[auth-claim] Falha ao consultar estado prévio de autorização do usuário')
+          return c.json({ error: 'failed to resolve authorization state' }, 502)
+        }
+
+        if (existingAttributes) {
+          const existingRole = resolveEffectiveRole(existingAttributes)
+          if (existingRole === 'conflict') {
+            return c.json({ error: 'conflicting authorization state' }, 409)
           }
-        } catch (lookupErr) {
-          console.warn('[auth-claim] Falha não impeditiva no lookup prévio:', lookupErr)
+          if (existingRole === requestedRole) {
+            const response: ProvisionRoleResponse = {
+              success: true,
+              role: requestedRole,
+              alreadyProvisioned: true,
+            }
+            return c.json(response, 200)
+          }
+          if (existingRole && existingRole !== requestedRole) {
+            return c.json({ error: 'role change not allowed' }, 409)
+          }
         }
       }
 
-      // 4. Executa o provisionamento atômico do claim
-      await provisionFn(uid, {
+      // 4. Preservação de claims legítimos preexistentes
+      // Remove chaves de papel anteriores para manter a política de papel exclusivo
+      const {
+        role: _r,
+        comprador: _c,
+        fornecedor: _f,
+        admin: _a,
+        ...preservedClaims
+      } = existingAttributes ?? {}
+
+      const newClaims = {
+        ...preservedClaims,
         role: requestedRole,
         [requestedRole]: true,
-      })
+      }
+
+      // 5. Executa o provisionamento atômico do claim
+      await provisionFn(uid, newClaims)
 
       const response: ProvisionRoleResponse = {
         success: true,

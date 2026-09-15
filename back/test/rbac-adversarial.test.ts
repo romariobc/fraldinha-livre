@@ -115,6 +115,12 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       if (token === 'token-admin-legacy') {
         return { uid: env.ADMIN_UID }
       }
+      if (token === 'token-claims-contraditorios') {
+        return { uid: 'uid-contraditorio', claims: { comprador: true, fornecedor: true, role: 'comprador' } }
+      }
+      if (token === 'token-comprador-admin-conflito') {
+        return { uid: 'uid-comp-adm-conflito', role: 'comprador', claims: { role: 'comprador', admin: true } }
+      }
       return null
     }
 
@@ -138,8 +144,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
     // /orders/*
     testApp.use('/orders/*', (c, next) => createAuthMiddleware(fakeVerify)(c, next))
     testApp.get('/orders', ordersGetHandler)
-    testApp.post('/orders', ordersPostHandler)
-    testApp.patch('/orders/:id/cancel', ordersCancelHandler)
+    testApp.post('/orders', requireAnyRole(['comprador', 'admin']), ordersPostHandler)
+    testApp.patch('/orders/:id/cancel', requireAnyRole(['comprador', 'admin']), ordersCancelHandler)
     testApp.post('/orders/:id/report', requireAnyRole(['fornecedor', 'admin']), ordersReportHandler)
 
     return testApp
@@ -520,5 +526,378 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(delRes.status).toBe(204)
+  })
+
+  // -------------------------------------------------------------
+  // 9. Separação Efetiva de Comprador e Fornecedor (AUTH-002)
+  // -------------------------------------------------------------
+  it('18. Fornecedor tentando POST /orders (criar pedido como comprador) → 403', async () => {
+    const app = createTestApp()
+    const response = await app.fetch(
+      new Request('http://localhost/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `idemp-forn-post-${Date.now()}`,
+          Authorization: 'Bearer token-fornecedor-a',
+        },
+        body: JSON.stringify({
+          type: 'compra-direta',
+          product: 'Fralda Fornecedor B',
+          quantity: 1,
+          unit: 'cx',
+          price: 1800,
+          supplierId: 'uid-fornecedor-b',
+          items: [{ productId: prodFornecedorBId, productName: 'Fralda Fornecedor B', unitPrice: 1800, quantity: 1, unit: 'cx' }],
+          deliveryAddress: { logradouro: 'Rua X', numero: '1', bairro: 'B', cidade: 'C', estado: 'SP', cep: '01000-000' },
+        }),
+      }),
+      env,
+    )
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('19. Fornecedor tentando GET /orders sem scope (fluxo de pedidos do comprador) → 403', async () => {
+    const app = createTestApp()
+    const response = await app.fetch(
+      new Request('http://localhost/orders', {
+        headers: { Authorization: 'Bearer token-fornecedor-a' },
+      }),
+      env,
+    )
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('20. Fornecedor tentando PATCH /orders/:id/cancel (cancelar pedido como comprador) → 403', async () => {
+    const app = createTestApp()
+    const response = await app.fetch(
+      new Request(`http://localhost/orders/${orderFornecedorAId}/cancel`, {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer token-fornecedor-a' },
+      }),
+      env,
+    )
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('21. Usuário sem role tentando POST /orders → 403', async () => {
+    const app = createTestApp()
+    const response = await app.fetch(
+      new Request('http://localhost/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `idemp-semrole-post-${Date.now()}`,
+          Authorization: 'Bearer token-sem-role',
+        },
+        body: JSON.stringify({
+          type: 'compra-direta',
+          product: 'Fralda Fornecedor B',
+          quantity: 1,
+          unit: 'cx',
+          price: 1800,
+          supplierId: 'uid-fornecedor-b',
+          items: [{ productId: prodFornecedorBId, productName: 'Fralda Fornecedor B', unitPrice: 1800, quantity: 1, unit: 'cx' }],
+          deliveryAddress: { logradouro: 'Rua X', numero: '1', bairro: 'B', cidade: 'C', estado: 'SP', cep: '01000-000' },
+        }),
+      }),
+      env,
+    )
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('22. Usuário sem role tentando GET /orders sem scope → 403', async () => {
+    const app = createTestApp()
+    const response = await app.fetch(
+      new Request('http://localhost/orders', {
+        headers: { Authorization: 'Bearer token-sem-role' },
+      }),
+      env,
+    )
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('23. Usuário sem role tentando PATCH /orders/:id/cancel → 403', async () => {
+    const app = createTestApp()
+    const response = await app.fetch(
+      new Request(`http://localhost/orders/${orderFornecedorAId}/cancel`, {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer token-sem-role' },
+      }),
+      env,
+    )
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('24. Comprador legítimo cria pedido via POST /orders → 201', async () => {
+    const app = createTestApp()
+    const idempKey = `idemp-comprador-legit-${Date.now()}`
+    const response = await app.fetch(
+      new Request('http://localhost/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempKey,
+          Authorization: 'Bearer token-comprador',
+        },
+        body: JSON.stringify({
+          type: 'compra-direta',
+          product: 'Fralda Fornecedor B',
+          quantity: 2,
+          unit: 'cx',
+          price: 3600,
+          supplierId: 'uid-fornecedor-b',
+          items: [{ productId: prodFornecedorBId, productName: 'Fralda Fornecedor B', unitPrice: 1800, quantity: 2, unit: 'cx' }],
+          deliveryAddress: { logradouro: 'Rua X', numero: '1', bairro: 'B', cidade: 'C', estado: 'SP', cep: '01000-000' },
+        }),
+      }),
+      env,
+    )
+    expect(response.status).toBe(201)
+    const created = (await response.json()) as { id: string; uid: string; price: number }
+    expect(created.uid).toBe('uid-comprador-teste')
+    expect(created.price).toBe(3600)
+  })
+
+  it('25. Comprador legítimo consulta seus próprios pedidos via GET /orders sem scope → 200', async () => {
+    const app = createTestApp()
+    const response = await app.fetch(
+      new Request('http://localhost/orders', {
+        headers: { Authorization: 'Bearer token-comprador' },
+      }),
+      env,
+    )
+    expect(response.status).toBe(200)
+    const list = (await response.json()) as Array<{ id: string; uid: string }>
+    expect(Array.isArray(list)).toBe(true)
+    expect(list.every((o) => o.uid === 'uid-comprador-teste')).toBe(true)
+  })
+
+  it('26. Comprador legítimo cancela seu próprio pedido (aguardando) → 200', async () => {
+    const app = createTestApp()
+    const response = await app.fetch(
+      new Request(`http://localhost/orders/${orderFornecedorAId}/cancel`, {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer token-comprador' },
+      }),
+      env,
+    )
+    expect(response.status).toBe(200)
+    const cancelled = (await response.json()) as { id: string; status: string }
+    expect(cancelled.status).toBe('cancelado')
+  })
+
+  it('27. Comprador A tenta cancelar pedido pertencente a outro comprador → 403', async () => {
+    const app = createTestApp()
+    // Criamos um pedido de outro comprador
+    const db = drizzle(env.DB)
+    const otherOrderId = `order-other-buyer-${Date.now()}`
+    await db.insert(orders).values({
+      id: otherOrderId,
+      uid: 'uid-outro-comprador',
+      type: 'compra-direta',
+      status: 'aguardando',
+      product: 'Fralda Fornecedor B',
+      quantity: 1,
+      unit: 'cx',
+      deliveryAddress: JSON.stringify({ logradouro: 'Rua Outra' }),
+      price: 1800,
+      createdAt: new Date().toISOString(),
+    })
+
+    const response = await app.fetch(
+      new Request(`http://localhost/orders/${otherOrderId}/cancel`, {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer token-comprador' },
+      }),
+      env,
+    )
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('28. Spoofing de role: envio de role=comprador no body por fornecedor ou sem-role NÃO concede privilégio → 403', async () => {
+    const app = createTestApp()
+    // Fornecedor tenta burlar enviando role no body
+    const fornRes = await app.fetch(
+      new Request('http://localhost/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `idemp-spoof-forn-${Date.now()}`,
+          Authorization: 'Bearer token-fornecedor-a',
+        },
+        body: JSON.stringify({
+          role: 'comprador',
+          type: 'compra-direta',
+          product: 'Fralda Fornecedor B',
+          quantity: 1,
+          unit: 'cx',
+          price: 1800,
+          supplierId: 'uid-fornecedor-b',
+          items: [{ productId: prodFornecedorBId, productName: 'Fralda Fornecedor B', unitPrice: 1800, quantity: 1, unit: 'cx' }],
+          deliveryAddress: { logradouro: 'Rua X', numero: '1', bairro: 'B', cidade: 'C', estado: 'SP', cep: '01000-000' },
+        }),
+      }),
+      env,
+    )
+    expect(fornRes.status).toBe(403)
+
+    // Sem-role tenta burlar via query string
+    const semRoleRes = await app.fetch(
+      new Request('http://localhost/orders?role=comprador', {
+        headers: { Authorization: 'Bearer token-sem-role' },
+      }),
+      env,
+    )
+    expect(semRoleRes.status).toBe(403)
+  })
+
+  // -------------------------------------------------------------
+  // 10. Admin não é comprador (AUTH-002 Ajuste)
+  // -------------------------------------------------------------
+  it('29. Admin com claim tentando POST /orders → 403 Forbidden', async () => {
+    const app = createTestApp()
+    const response = await app.fetch(
+      new Request('http://localhost/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `idemp-admin-post-${Date.now()}`,
+          Authorization: 'Bearer token-admin-claim',
+        },
+        body: JSON.stringify({
+          type: 'compra-direta',
+          product: 'Fralda Fornecedor B',
+          quantity: 1,
+          unit: 'cx',
+          price: 1800,
+          supplierId: 'uid-fornecedor-b',
+          items: [{ productId: prodFornecedorBId, productName: 'Fralda Fornecedor B', unitPrice: 1800, quantity: 1, unit: 'cx' }],
+          deliveryAddress: { logradouro: 'Rua X', numero: '1', bairro: 'B', cidade: 'C', estado: 'SP', cep: '01000-000' },
+        }),
+      }),
+      env,
+    )
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('30. Admin tentando GET /orders sem scope (fluxo de comprador) → 403 Forbidden', async () => {
+    const app = createTestApp()
+    const response = await app.fetch(
+      new Request('http://localhost/orders', {
+        headers: { Authorization: 'Bearer token-admin-claim' },
+      }),
+      env,
+    )
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('31. Admin tentando PATCH /orders/:id/cancel → 403 Forbidden', async () => {
+    const app = createTestApp()
+    const response = await app.fetch(
+      new Request(`http://localhost/orders/${orderFornecedorAId}/cancel`, {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer token-admin-claim' },
+      }),
+      env,
+    )
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  // -------------------------------------------------------------
+  // 11. Claims Contraditórios / Inconsistentes (Fail-Closed)
+  // -------------------------------------------------------------
+  it('32. Usuário com claims contraditórios (comprador + fornecedor) → 403 em qualquer rota protegida', async () => {
+    const app = createTestApp()
+
+    // Tenta POST /orders (comprador)
+    const postOrder = await app.fetch(
+      new Request('http://localhost/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `idemp-conflict-post-${Date.now()}`,
+          Authorization: 'Bearer token-claims-contraditorios',
+        },
+        body: JSON.stringify({
+          type: 'compra-direta',
+          product: 'Fralda Fornecedor B',
+          quantity: 1,
+          unit: 'cx',
+          price: 1800,
+          supplierId: 'uid-fornecedor-b',
+          items: [{ productId: prodFornecedorBId, productName: 'Fralda Fornecedor B', unitPrice: 1800, quantity: 1, unit: 'cx' }],
+          deliveryAddress: { logradouro: 'Rua X', numero: '1', bairro: 'B', cidade: 'C', estado: 'SP', cep: '01000-000' },
+        }),
+      }),
+      env,
+    )
+    expect(postOrder.status).toBe(403)
+
+    // Tenta POST /products (fornecedor)
+    const postProd = await app.fetch(
+      new Request('http://localhost/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer token-claims-contraditorios',
+        },
+        body: JSON.stringify({
+          name: 'Tentativa Conflito',
+          brand: 'Pampers',
+          size: 'M',
+          quantity: 10,
+          slug: `slug-conflict-${Date.now()}`,
+          categoria: 'fraldas',
+          descricao: 'Desc',
+          atributos: { faixaPeso: '5-9kg', genero: 'unissex', absorcao: 'alta', tecnologia: 'soft' },
+          priceCents: 1200,
+        }),
+      }),
+      env,
+    )
+    expect(postProd.status).toBe(403)
+  })
+
+  it('33. Usuário com claims contraditórios (role: comprador + admin: true) → 403 em rotas de admin e de comprador', async () => {
+    const app = createTestApp()
+
+    // Tenta escopo de admin
+    const getAdminOrders = await app.fetch(
+      new Request('http://localhost/orders?scope=admin', {
+        headers: { Authorization: 'Bearer token-comprador-admin-conflito' },
+      }),
+      env,
+    )
+    expect(getAdminOrders.status).toBe(403)
+
+    // Tenta rota de comprador
+    const getBuyerOrders = await app.fetch(
+      new Request('http://localhost/orders', {
+        headers: { Authorization: 'Bearer token-comprador-admin-conflito' },
+      }),
+      env,
+    )
+    expect(getBuyerOrders.status).toBe(403)
   })
 })

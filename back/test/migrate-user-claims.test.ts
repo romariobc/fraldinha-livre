@@ -29,20 +29,24 @@ describe('migrate-user-claims — Migração Administrativa de Custom Claims (AU
     expect(summary.errors).toBe(0)
     expect(summary.rejectedUnallowed).toBe(0)
 
-    expect(mockProvision).toHaveBeenCalledWith({
-      uid: 'u1',
-      claims: { role: 'comprador', comprador: true },
-      projectId: 'test-proj',
-      clientEmail: 'test@service.com',
-      privateKey: 'key',
-    })
-    expect(mockProvision).toHaveBeenCalledWith({
-      uid: 'u2',
-      claims: { role: 'fornecedor', fornecedor: true },
-      projectId: 'test-proj',
-      clientEmail: 'test@service.com',
-      privateKey: 'key',
-    })
+    expect(mockProvision).toHaveBeenCalledWith(
+      'u1',
+      { role: 'comprador', comprador: true },
+      {
+        projectId: 'test-proj',
+        clientEmail: 'test@service.com',
+        privateKey: 'key',
+      }
+    )
+    expect(mockProvision).toHaveBeenCalledWith(
+      'u2',
+      { role: 'fornecedor', fornecedor: true },
+      {
+        projectId: 'test-proj',
+        clientEmail: 'test@service.com',
+        privateKey: 'key',
+      }
+    )
   })
 
   it('rejeita com segurança tentativas de migração para admin ou roles arbitrárias', async () => {
@@ -80,7 +84,7 @@ describe('migrate-user-claims — Migração Administrativa de Custom Claims (AU
       { uid: 'u-already', role: 'fornecedor', email: 'existing@teste.com' },
     ]
 
-    const mockLookup = vi.fn().mockResolvedValue({ role: 'fornecedor', fornecedor: true })
+    const mockLookup = vi.fn().mockResolvedValue({ customAttributes: { role: 'fornecedor', fornecedor: true } })
     const mockProvision = vi.fn()
 
     const summary = await runMigration(
@@ -106,7 +110,7 @@ describe('migrate-user-claims — Migração Administrativa de Custom Claims (AU
       { uid: 'u-conflict', role: 'fornecedor', email: 'conflict@teste.com' },
     ]
 
-    const mockLookup = vi.fn().mockResolvedValue({ role: 'comprador', comprador: true })
+    const mockLookup = vi.fn().mockResolvedValue({ customAttributes: { role: 'comprador', comprador: true } })
     const mockProvision = vi.fn()
 
     const summary = await runMigration(

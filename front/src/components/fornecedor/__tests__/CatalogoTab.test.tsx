@@ -147,6 +147,8 @@ describe('CatalogoTab (fornecedor)', () => {
       },
       profile: null,
       role: 'fornecedor',
+      claims: { role: 'fornecedor', fornecedor: true },
+      isAdmin: false,
       loading: false,
       signInGoogle: vi.fn(),
     signInEmail: vi.fn(),

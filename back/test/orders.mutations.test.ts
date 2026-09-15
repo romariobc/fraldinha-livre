@@ -21,9 +21,9 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
    */
   const createTestApp = () => {
     const fakeVerify = async (token: string) => {
-      if (token === 'token-uid-a') return { uid: 'uid-a', email: 'uid-a@example.com' }
-      if (token === 'token-uid-b') return { uid: 'uid-b', email: 'uid-b@example.com' }
-      if (token === 'token-uid-c') return { uid: 'uid-c', email: 'uid-c@example.com' }
+      if (token === 'token-uid-a') return { uid: 'uid-a', email: 'uid-a@example.com', role: 'comprador', claims: { comprador: true } }
+      if (token === 'token-uid-b') return { uid: 'uid-b', email: 'uid-b@example.com', role: 'comprador', claims: { comprador: true } }
+      if (token === 'token-uid-c') return { uid: 'uid-c', email: 'uid-c@example.com', role: 'comprador', claims: { comprador: true } }
       return null
     }
 

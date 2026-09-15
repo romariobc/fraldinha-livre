@@ -8,6 +8,7 @@ import {
   CreateProductRequestSchema,
   UpdateProductRequestSchema,
 } from '../../../packages/contracts/src/product'
+import { hasAnyRole } from '../middleware/auth'
 import { ZodError } from 'zod'
 
 function generateUUID(): string {
@@ -54,10 +55,7 @@ export const productsGetHandler = async (c: Context<{ Bindings: Env; Variables: 
     if (!uid) {
       return c.json({ error: 'unauthorized' }, 401)
     }
-    const role = c.get('role')
-    const claims = c.get('claims')
-    const isAdmin = role === 'admin' || claims?.admin === true || (Boolean(c.env.ADMIN_UID) && uid === c.env.ADMIN_UID)
-    if (!isAdmin) {
+    if (!hasAnyRole(c, ['admin'])) {
       return c.json({ error: 'forbidden' }, 403)
     }
     const rows = await db.select().from(products).all()
@@ -68,6 +66,9 @@ export const productsGetHandler = async (c: Context<{ Bindings: Env; Variables: 
     const uid = c.get('uid')
     if (!uid) {
       return c.json({ error: 'unauthorized' }, 401)
+    }
+    if (!hasAnyRole(c, ['fornecedor', 'admin'])) {
+      return c.json({ error: 'forbidden' }, 403)
     }
     const rows = await db.select().from(products).where(eq(products.supplierId, uid)).all()
     return c.json(rows.map(normalizeProduct))
@@ -84,6 +85,9 @@ export const productsPostHandler = async (c: Context<{ Bindings: Env; Variables:
   const uid = c.get('uid')
   if (!uid) {
     return c.json({ error: 'unauthorized' }, 401)
+  }
+  if (!hasAnyRole(c, ['fornecedor', 'admin'])) {
+    return c.json({ error: 'forbidden' }, 403)
   }
   const supplierEmail = c.get('email')
 
@@ -136,6 +140,9 @@ export const productsPutHandler = async (c: Context<{ Bindings: Env; Variables: 
   if (!uid) {
     return c.json({ error: 'unauthorized' }, 401)
   }
+  if (!hasAnyRole(c, ['fornecedor', 'admin'])) {
+    return c.json({ error: 'forbidden' }, 403)
+  }
 
   const id = c.req.param('id') as string
   const db = drizzle(c.env.DB)
@@ -144,7 +151,7 @@ export const productsPutHandler = async (c: Context<{ Bindings: Env; Variables: 
   if (existingRows.length === 0) {
     return c.json({ error: 'product not found' }, 404)
   }
-  if (existingRows[0].supplierId !== uid) {
+  if (existingRows[0].supplierId !== uid && !hasAnyRole(c, ['admin'])) {
     return c.json({ error: 'forbidden' }, 403)
   }
 
@@ -190,6 +197,9 @@ export const productsDeleteHandler = async (c: Context<{ Bindings: Env; Variable
   if (!uid) {
     return c.json({ error: 'unauthorized' }, 401)
   }
+  if (!hasAnyRole(c, ['fornecedor', 'admin'])) {
+    return c.json({ error: 'forbidden' }, 403)
+  }
 
   const id = c.req.param('id') as string
   const db = drizzle(c.env.DB)
@@ -198,7 +208,7 @@ export const productsDeleteHandler = async (c: Context<{ Bindings: Env; Variable
   if (existingRows.length === 0) {
     return c.json({ error: 'product not found' }, 404)
   }
-  if (existingRows[0].supplierId !== uid) {
+  if (existingRows[0].supplierId !== uid && !hasAnyRole(c, ['admin'])) {
     return c.json({ error: 'forbidden' }, 403)
   }
 

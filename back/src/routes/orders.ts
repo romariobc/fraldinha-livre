@@ -8,6 +8,7 @@ import { reports } from '../schema/reports'
 import type { Env, AppContext } from '../env'
 import { ZodError } from 'zod'
 import { notifySupplierOfNewOrder, sendViaResend } from '../lib/notifications'
+import { hasAnyRole } from '../middleware/auth'
 
 /**
  * Gera um UUID v4 usando a API de crypto disponível (Workers/Node).
@@ -43,6 +44,9 @@ export const ordersGetHandler = async (c: Context<{ Bindings: Env; Variables: Ap
 
     let userOrders
     if (scope === 'fornecedor') {
+      if (!hasAnyRole(c, ['fornecedor', 'admin'])) {
+        return c.json({ error: 'forbidden' }, 403)
+      }
       // Busca order_items cujo product_id pertence a um produto do uid autenticado (fornecedor).
       const matchingItems = await db
         .select({ orderId: orderItems.orderId })
@@ -57,10 +61,7 @@ export const ordersGetHandler = async (c: Context<{ Bindings: Env; Variables: Ap
           ? await db.select().from(orders).where(inArray(orders.id, orderIds)).all()
           : []
     } else if (scope === 'admin') {
-      const role = c.get('role')
-      const claims = c.get('claims')
-      const isAdmin = role === 'admin' || claims?.admin === true || (Boolean(c.env.ADMIN_UID) && uid === c.env.ADMIN_UID)
-      if (!isAdmin) {
+      if (!hasAnyRole(c, ['admin'])) {
         return c.json({ error: 'forbidden' }, 403)
       }
       userOrders = await db.select().from(orders).all()
@@ -506,6 +507,9 @@ export const ordersReportHandler = async (c: Context<{ Bindings: Env; Variables:
   if (!uid) {
     return c.json({ error: 'unauthorized' }, 401)
   }
+  if (!hasAnyRole(c, ['fornecedor', 'admin'])) {
+    return c.json({ error: 'forbidden' }, 403)
+  }
 
   const orderId = c.req.param('id')
 
@@ -524,8 +528,8 @@ export const ordersReportHandler = async (c: Context<{ Bindings: Env; Variables:
 
     const order = ordersList[0]
 
-    // Apenas o fornecedor do pedido pode reportar para o cliente
-    if (order.supplierId !== uid) {
+    // Apenas o fornecedor do pedido (ou admin) pode reportar para o cliente
+    if (order.supplierId !== uid && !hasAnyRole(c, ['admin'])) {
       return c.json({ error: 'forbidden: only the supplier can report on this order' }, 403)
     }
 

@@ -13,6 +13,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '@/lib/firebase';
+import { apiFetch } from '@/lib/api-client';
 
 export type UserRole = 'comprador' | 'fornecedor' | 'admin';
 
@@ -72,9 +73,13 @@ interface AuthContextType {
   signUpEmail: (email: string, password: string, name: string) => Promise<void>;
   signOutUser: () => Promise<void>;
   updateProfile: (patch: Partial<UserProfile>) => Promise<void>;
+  refreshClaims?: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Cache em memória para evitar chamadas duplicadas de migração na mesma sessão
+const migratedUsersCache = new Set<string>();
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -84,8 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Retorno do signInWithRedirect (mobile/WebView) - onAuthStateChanged abaixo ja
-    // restabelece a sessao; isto so captura erro de redirect que passaria em silencio.
+    // Retorno do signInWithRedirect (mobile/WebView)
     getRedirectResult(auth).catch((error) => {
       console.error('Erro ao concluir login via redirect:', error);
     });
@@ -127,6 +131,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (userDoc.exists()) {
             const data = userDoc.data() as UserProfile;
             setProfile(data);
+
+            // MIGRATION LAZY (AUTH-001):
+            // Se o usuário possui role legítimo no Firestore ('comprador' ou 'fornecedor'),
+            // mas ainda não possui o Custom Claim correspondente no JWT, auto-migramos via POST /auth/claim.
+            if (
+              !tokenRole &&
+              (data.role === 'comprador' || data.role === 'fornecedor') &&
+              !migratedUsersCache.has(fbUser.uid)
+            ) {
+              migratedUsersCache.add(fbUser.uid);
+              apiFetch('/auth/claim', {
+                method: 'POST',
+                body: JSON.stringify({ role: data.role }),
+              })
+                .then(async (res) => {
+                  if (res.ok && typeof fbUser.getIdTokenResult === 'function') {
+                    // Força renovação do token e atualiza estado local de claims/role
+                    const tokenResult = await fbUser.getIdTokenResult(true);
+                    const freshClaims = (tokenResult.claims as Record<string, unknown>) || null;
+                    setClaims(freshClaims);
+                    if (freshClaims?.role === 'comprador' || freshClaims?.role === 'fornecedor') {
+                      setRole(freshClaims.role as UserRole);
+                    }
+                  }
+                })
+                .catch((err) => {
+                  console.warn('[auth-context] Falha na auto-migração de Custom Claim:', err);
+                });
+            }
+
             setRole(tokenRole || data.role || null); // Custom claims tem precedencia
           } else {
             setProfile(null);
@@ -225,6 +259,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshClaims = async () => {
+    if (auth.currentUser) {
+      if (typeof auth.currentUser.getIdTokenResult === 'function') {
+        const tokenResult = await auth.currentUser.getIdTokenResult(true);
+        const tokenClaims = (tokenResult.claims as Record<string, unknown>) || null;
+        let tokenRole: UserRole | null = null;
+        if (tokenClaims) {
+          if (tokenClaims.role === 'admin' || tokenClaims.admin === true) {
+            tokenRole = 'admin';
+          } else if (tokenClaims.role === 'fornecedor' || tokenClaims.fornecedor === true) {
+            tokenRole = 'fornecedor';
+          } else if (tokenClaims.role === 'comprador' || tokenClaims.comprador === true) {
+            tokenRole = 'comprador';
+          }
+        }
+        setClaims(tokenClaims);
+        if (tokenRole) {
+          setRole(tokenRole);
+        }
+      } else if (typeof auth.currentUser.getIdToken === 'function') {
+        await auth.currentUser.getIdToken(true);
+      }
+    }
+  };
+
   const isAdmin = Boolean(
     role === 'admin' ||
     claims?.admin === true ||
@@ -243,6 +302,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUpEmail,
     signOutUser,
     updateProfile,
+    refreshClaims,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -6,7 +6,8 @@ import { toast } from 'sonner'
 import Image from 'next/image'
 import { useAuth, UserRole } from '@/contexts/auth-context'
 import { doc, setDoc } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { auth, db } from '@/lib/firebase'
+import { apiFetch } from '@/lib/api-client'
 
 export default function OnboardingPage() {
   const router = useRouter()
@@ -39,7 +40,24 @@ export default function OnboardingPage() {
       setIsSubmitting(true)
       setSelectedRole(chosenRole)
 
-      // Gravar papel no Firestore
+      // 1. Provisionar Custom Claim via backend Cloudflare Worker (AUTH-001)
+      const claimRes = await apiFetch('/auth/claim', {
+        method: 'POST',
+        body: JSON.stringify({ role: chosenRole }),
+      })
+
+      if (!claimRes.ok) {
+        const errorData = await claimRes.json().catch(() => ({}))
+        const errorMsg = (errorData as { message?: string }).message || 'Erro ao provisionar permissões'
+        throw new Error(errorMsg)
+      }
+
+      // 2. Renovar Firebase ID Token para carregar o novo Custom Claim assinado
+      if (auth.currentUser) {
+        await auth.currentUser.getIdToken(true)
+      }
+
+      // 3. Gravar perfil do usuário no Firestore
       await setDoc(doc(db, 'users', user.uid), {
         role: chosenRole,
         name: user.displayName || 'Usuario',
@@ -49,15 +67,16 @@ export default function OnboardingPage() {
 
       toast.success(`Bem-vindo, ${chosenRole === 'comprador' ? 'comprador' : 'fornecedor'}!`)
 
-      // Redirecionar baseado no papel escolhido
+      // 4. Redirecionar baseado no papel escolhido
       if (chosenRole === 'comprador') {
         router.push('/minha-conta')
       } else if (chosenRole === 'fornecedor') {
         router.push('/painel-fornecedor')
       }
     } catch (error) {
-      console.error('Erro ao salvar papel no Firestore:', error)
-      toast.error('Erro ao completar onboarding')
+      console.error('Erro ao salvar papel e provisionar claims:', error)
+      const msg = error instanceof Error ? error.message : 'Erro ao completar onboarding'
+      toast.error(msg)
       setSelectedRole(null)
     } finally {
       setIsSubmitting(false)

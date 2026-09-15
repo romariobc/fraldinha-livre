@@ -1242,3 +1242,37 @@ Durante o carregamento do catálogo público (`/catalogo`) por usuários não au
 1. **Aplicação de Migrations Pendentes**: Aplicar imediatamente a migration `0007_swift_toxin.sql` no ambiente remoto de produção (`npx wrangler d1 migrations apply fraldinha-livre-db --remote`), criando o campo e definindo seu valor padrão para `NULL` nas linhas existentes.
 2. **Blindagem e Sanitização (Defesa em Profundidade)**: Atualizar o helper `normalizeProduct` em `back/src/routes/products.ts` para higienizar `oldPriceCents`, convertendo qualquer valor que não seja número ou string numérica válida em `null` antes de retornar a resposta da API, prevenindo quebras em casos de dados corrompidos.
 
+---
+
+## D-048 — Provisionamento de Custom Claims pelo Cloudflare Worker (AUTH-001) (2026-09-15) — VIGENTE
+
+### Contexto
+Uma auditoria de autorização (SEC-001 / AUTH-001) confirmou que o backend Cloudflare Worker valida permissões (RBAC) através de Firebase Custom Claims extraídos do ID Token JWT. No entanto, o fluxo de onboarding anterior apenas gravava `role: 'comprador' | 'fornecedor'` no documento `users/{uid}` do Firestore, sem executar `setCustomUserClaims` no Firebase Auth. Como consequência, usuários legítimos possuíam papel no Firestore sem possuir o claim correspondente no token assinado, e o backend não podia confiar no token como fonte de autorização.
+
+### Decisão Arquitetural: Opção A (Provisionamento via Cloudflare Worker)
+Adotada a **Opção A** (provisionamento orquestrado pelo próprio Cloudflare Worker):
+
+1. **Separação Arquitetural de Responsabilidades (Fonte da Verdade):**
+   - **Firebase Custom Claims:** Fonte exclusiva e autoritativa de verdade para **AUTORIZAÇÃO (RBAC)** em todas as operações de backend.
+   - **Firestore `users/{uid}`:** Fonte de verdade para **PERFIL / DADOS CADASTRAIS / EXPERIÊNCIA DA UI**. O backend nunca concede privilégios de acesso apenas baseado em campos do documento Firestore.
+
+2. **Mecanismo de Execução e Compatibilidade de Runtime:**
+   - Foi criado o endpoint autenticado `POST /auth/claim` no Worker.
+   - Para interagir com o Firebase Auth, foi implementado um cliente REST nativo para a **Google Identity Toolkit API v1** (`accounts:update` e `accounts:lookup`) utilizando asserção JWT RS256 assinada com `jose` (`crypto.subtle`) a partir de credenciais de Service Account.
+   - **Rejeição do Firebase Admin SDK:** O `firebase-admin` SDK oficial foi descartado por incompatibilidade com a sandbox V8 do Cloudflare Workers (`EvalError` provocado pelo `protobufjs` que utiliza geração dinâmica de código `new Function()`).
+   - **Rejeição da Opção B (Cloud Functions dedicadas):** Descartada para evitar overhead operacional de gerenciar um segundo cluster de runtime, múltiplos deploys, cold starts e custos desnecessários.
+
+3. **Regras Fundamentais de Segurança:**
+   - **Allowlist Estrita:** O endpoint aceita exclusivamente os papéis `comprador` e `fornecedor`.
+   - **Bloqueio de Admin e Escalada:** Tentativas de enviar `role: 'admin'` ou strings arbitrárias são sumariamente rejeitadas na borda com `400 Bad Request`. O papel `admin` permanece sob controle restrito de infraestrutura/bootstrap.
+   - **Prevenção de UID Spoofing:** O UID alvo do provisionamento é extraído unicamente do token JWT autenticado e verificado via JWKS. Qualquer `uid` enviado no corpo da requisição é ignorado.
+   - **Idempotência e Prevenção de Troca de Papel:** Chamadas repetidas com o mesmo papel retornam `200 OK` (`alreadyProvisioned: true`). Tentativas de mutação (ex: comprador tentando virar fornecedor) são bloqueadas com `409 Conflict`.
+
+4. **Fluxo de Onboarding e Renovação de Token:**
+   - `Usuário autenticado` → Seleção de perfil → `POST /auth/claim` → Sucesso do provisionamento → Renovação do token (`auth.currentUser.getIdToken(true)`) → Gravação do perfil no Firestore → Redirecionamento da UI.
+
+5. **Estratégia de Migração de Usuários Legados:**
+   - **Auto-Migração Lazy:** No `auth-context.tsx`, se um usuário autenticado possui `role` válido no Firestore mas o JWT não possui o claim correspondente, o cliente executa uma sincronização única via `POST /auth/claim`, renovando o token de forma transparente.
+   - **Migração em Lote (Batch):** Criado script administrativo auditável `back/scripts/migrate-user-claims.ts` com suporte a `--dry-run` para migração e auditoria offline.
+
+

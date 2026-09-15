@@ -59,7 +59,9 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
    */
   const createTestApp = () => {
     const fakeVerify = async (token: string) => {
-      if (token === 'token-uid-fornecedor-teste') return { uid: 'uid-fornecedor-teste', email: 'fornecedor-teste@example.com' }
+      if (token === 'token-uid-fornecedor-teste') return { uid: 'uid-fornecedor-teste', email: 'fornecedor-teste@example.com', role: 'fornecedor' }
+      if (token === 'token-comprador') return { uid: 'uid-comprador', role: 'comprador' }
+      if (token === 'token-sem-role') return { uid: 'uid-sem-role' }
       return null
     }
 
@@ -112,6 +114,58 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
     expect(response.status).toBe(401)
     const body = await response.json()
     expect(body).toEqual({ error: 'unauthorized' })
+  })
+
+  it('POST /products com token de comprador → 403 (RBAC)', async () => {
+    const testApp = createTestApp()
+    const request = new Request('http://localhost/products', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-comprador',
+      },
+      body: JSON.stringify({
+        name: 'Produto Comprador',
+        brand: 'Pampers',
+        size: 'M',
+        quantity: 10,
+        slug: `prod-comprador-${Date.now()}`,
+        categoria: 'fraldas',
+        descricao: 'Teste',
+        atributos: { faixaPeso: '5-9kg', genero: 'unissex', absorcao: 'alta', tecnologia: 'soft' },
+        priceCents: 1000,
+      }),
+    })
+    const response = await testApp.fetch(request, env)
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('POST /products com token sem role → 403 (RBAC)', async () => {
+    const testApp = createTestApp()
+    const request = new Request('http://localhost/products', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-sem-role',
+      },
+      body: JSON.stringify({
+        name: 'Produto Sem Role',
+        brand: 'Pampers',
+        size: 'M',
+        quantity: 10,
+        slug: `prod-sem-role-${Date.now()}`,
+        categoria: 'fraldas',
+        descricao: 'Teste',
+        atributos: { faixaPeso: '5-9kg', genero: 'unissex', absorcao: 'alta', tecnologia: 'soft' },
+        priceCents: 1000,
+      }),
+    })
+    const response = await testApp.fetch(request, env)
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
   })
 
   it('POST /products com token valido, body sem campos obrigatorios → 400', async () => {

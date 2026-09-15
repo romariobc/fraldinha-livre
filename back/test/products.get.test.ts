@@ -41,7 +41,9 @@ describe('GET /products', () => {
    */
   const createTestApp = () => {
     const fakeVerify = async (token: string) => {
-      if (token === 'token-uid-fornecedor-teste') return { uid: 'uid-fornecedor-teste' }
+      if (token === 'token-uid-fornecedor-teste') return { uid: 'uid-fornecedor-teste', role: 'fornecedor' }
+      if (token === 'token-comprador') return { uid: 'uid-comprador', role: 'comprador' }
+      if (token === 'token-sem-role') return { uid: 'uid-sem-role' }
       return null
     }
 

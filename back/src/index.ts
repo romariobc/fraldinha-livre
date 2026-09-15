@@ -1,9 +1,10 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
-import { createAuthMiddleware, verifyFirebaseIdToken } from './middleware/auth'
+import { createAuthMiddleware, verifyFirebaseIdToken, requireAnyRole } from './middleware/auth'
 import { ordersGetHandler, ordersPostHandler, ordersCancelHandler, ordersReportHandler } from './routes/orders'
 import { productsGetHandler, productsPostHandler, productsPutHandler, productsDeleteHandler } from './routes/products'
 import { createChatHandler } from './routes/chat'
+import { createAuthClaimHandler } from './routes/auth'
 import { createWorkersAiChatCompletion } from './lib/chat-completion'
 import type { Env, AppContext } from './env'
 
@@ -43,7 +44,7 @@ app.use('/products', async (c, next) => {
 })
 
 app.get('/products', productsGetHandler)
-app.post('/products', productsPostHandler)
+app.post('/products', requireAnyRole(['fornecedor', 'admin']), productsPostHandler)
 
 // /products/:id (PUT/DELETE) sempre autenticado - checagem de dono feita no handler (403 vs 404).
 app.use('/products/:id', (c, next) => {
@@ -52,8 +53,8 @@ app.use('/products/:id', (c, next) => {
   )
   return authMiddleware(c, next)
 })
-app.put('/products/:id', productsPutHandler)
-app.delete('/products/:id', productsDeleteHandler)
+app.put('/products/:id', requireAnyRole(['fornecedor', 'admin']), productsPutHandler)
+app.delete('/products/:id', requireAnyRole(['fornecedor', 'admin']), productsDeleteHandler)
 
 // Middleware de autenticação para /orders/*
 app.use('/orders/*', (c, next) => {
@@ -66,7 +67,7 @@ app.use('/orders/*', (c, next) => {
 app.get('/orders', ordersGetHandler)
 app.post('/orders', ordersPostHandler)
 app.patch('/orders/:id/cancel', ordersCancelHandler)
-app.post('/orders/:id/report', ordersReportHandler)
+app.post('/orders/:id/report', requireAnyRole(['fornecedor', 'admin']), ordersReportHandler)
 
 app.use('/chat/*', (c, next) => {
   const authMiddleware = createAuthMiddleware((token) =>
@@ -76,5 +77,13 @@ app.use('/chat/*', (c, next) => {
 })
 
 app.post('/chat/message', (c) => createChatHandler(createWorkersAiChatCompletion(c.env.AI))(c))
+
+app.use('/auth/*', (c, next) => {
+  const authMiddleware = createAuthMiddleware((token) =>
+    verifyFirebaseIdToken(token, c.env.FIREBASE_PROJECT_ID),
+  )
+  return authMiddleware(c, next)
+})
+app.post('/auth/claim', (c) => createAuthClaimHandler()(c))
 
 export default app

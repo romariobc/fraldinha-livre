@@ -19,9 +19,10 @@ describe('GET /orders?scope=fornecedor', () => {
    */
   const createTestApp = () => {
     const fakeVerify = async (token: string) => {
-      if (token === 'token-fornecedor-a') return { uid: 'uid-fornecedor-a' }
-      if (token === 'token-fornecedor-b') return { uid: 'uid-fornecedor-b' }
-      if (token === 'token-comprador-a') return { uid: 'uid-comprador-a' }
+      if (token === 'token-fornecedor-a') return { uid: 'uid-fornecedor-a', role: 'fornecedor' }
+      if (token === 'token-fornecedor-b') return { uid: 'uid-fornecedor-b', role: 'fornecedor' }
+      if (token === 'token-comprador-a') return { uid: 'uid-comprador-a', role: 'comprador' }
+      if (token === 'token-sem-role') return { uid: 'uid-sem-role' }
       return null
     }
 
@@ -40,6 +41,30 @@ describe('GET /orders?scope=fornecedor', () => {
     expect(response.status).toBe(401)
     const body = await response.json()
     expect(body).toEqual({ error: 'unauthorized' })
+  })
+
+  it('GET /orders?scope=fornecedor com token de comprador → 403 (RBAC)', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/orders?scope=fornecedor', {
+      headers: { Authorization: 'Bearer token-comprador-a' },
+    })
+    const response = await app.fetch(request, env)
+
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
+  })
+
+  it('GET /orders?scope=fornecedor com token sem role → 403 (RBAC)', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/orders?scope=fornecedor', {
+      headers: { Authorization: 'Bearer token-sem-role' },
+    })
+    const response = await app.fetch(request, env)
+
+    expect(response.status).toBe(403)
+    const body = await response.json()
+    expect(body).toEqual({ error: 'forbidden' })
   })
 
   it('GET /orders?scope=fornecedor retorna pedidos cujos itens referenciam produtos do fornecedor', async () => {

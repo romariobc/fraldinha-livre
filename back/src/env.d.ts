@@ -17,6 +17,10 @@ declare global {
       ADMIN_UID: string
       /** Binding da Workers AI — usado pelo chat-agent (thread M, feature 018). */
       AI: Ai
+      /** Service Account Client Email para provisionamento de Custom Claims (Google Identity Toolkit). */
+      FIREBASE_CLIENT_EMAIL?: string
+      /** Service Account Private Key PEM para provisionamento de Custom Claims (Google Identity Toolkit). */
+      FIREBASE_PRIVATE_KEY?: string
     }
   }
 }

@@ -1,3 +1,19 @@
+## Marco (2026-09-15) - AUTH-001: Provisionamento Seguro de Firebase Custom Claims e Migração de Usuários
+
+**Resumo da Sessão:**
+Implementação completa da task AUTH-001: desenvolvimento de mecanismo seguro, coeso, transacional e idempotente para provisionar Firebase Custom Claims (`comprador` e `fornecedor`) via Cloudflare Worker sem depender de SDKs pesados incompatíveis. Integração com o fluxo de onboarding no frontend, auto-migração transparente (lazy self-healing) para usuários legados e criação de script administrativo de migração one-shot.
+
+**O que foi feito:**
+1. **Contrato de Provisionamento (`packages/contracts`):** Criado `auth.ts` contendo `ProvisionRoleRequestSchema` e `ProvisionRoleResponseSchema`, com allowlist estrita (`['comprador', 'fornecedor']`), rejeitando sumariamente `admin` ou quaisquer papéis arbitrários.
+2. **Provedor de Claims Nativo (`back/src/lib/claims-provisioner.ts`):** Implementado cliente REST puro para a Google Identity Toolkit API (`accounts:update` e `accounts:lookup`) com autenticação RS256 via `jose` utilizando Google Service Account. Compatível com a V8 sandbox do Cloudflare Workers sem incorrer no erro de runtime (`EvalError: Code generation from strings`) causado pelo `firebase-admin` / protobufjs.
+3. **Endpoint Seguro `POST /auth/claim` (`back/src/routes/auth.ts`):** Handler autenticado por JWT que extrai o UID diretamente do token verificado (eliminando UID spoofing), valida o schema, aplica verificação de idempotência (200 com `alreadyProvisioned: true` se a role já for a mesma), bloqueia mutação indevida de role (409 Conflict se tentar mudar de papel) e trata falhas de rede do Google (502 Bad Gateway permitindo retry).
+4. **Onboarding Atualizado (`front/src/app/onboarding/page.tsx`):** Sequência ordenada garantindo: chamada para `POST /auth/claim` → renovação de token `auth.currentUser.getIdToken(true)` → persistência do perfil em `users/{uid}` no Firestore → navegação baseada no perfil.
+5. **Auto-Migração Lazy e Refresh (`front/src/contexts/auth-context.tsx`):** Usuários pré-existentes que possuem perfil no Firestore com `role: 'comprador' | 'fornecedor'`, mas token sem claim, são auto-migrados na inicialização da sessão com chamada autenticada a `POST /auth/claim`, forçando atualização de token e sincronização de claims. Adicionado `refreshClaims()` ao contexto.
+6. **Script de Migração One-Shot (`back/scripts/migrate-user-claims.ts`):** Script para migração em lote com validação de allowlist, checagem de idempotência, bloqueio de conflitos, suporte a dry-run e geração de relatório auditável.
+7. **Verificação de Suíte e Typecheck:** 202 testes no backend (22 arquivos), 33 testes em contracts e 548 testes no frontend (55 arquivos) 100% verdes. `npx tsc --noEmit` aprovado em todos os pacotes.
+
+---
+
 ## Marco (2026-09-14) - Idempotência no Checkout, Controle Atômico de Estoque e RBAC via Custom Claims
 
 **Resumo da Sessão:**

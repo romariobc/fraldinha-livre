@@ -102,3 +102,58 @@ export const verifyFirebaseIdToken = async (
     return null
   }
 }
+
+/**
+ * Extrai e resolve o papel efetivo do usuário a partir do contexto Hono.
+ * Avalia role injetada, Custom Claims e o fallback de ADMIN_UID legado.
+ */
+export function getUserRole(c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>): string | undefined {
+  const uid = c.get('uid')
+  const role = c.get('role')
+  const claims = c.get('claims')
+
+  if (role === 'admin' || claims?.admin === true || (Boolean(c.env?.ADMIN_UID) && uid === c.env.ADMIN_UID)) {
+    return 'admin'
+  }
+  if (role === 'fornecedor' || claims?.fornecedor === true) {
+    return 'fornecedor'
+  }
+  if (role === 'comprador' || claims?.comprador === true) {
+    return 'comprador'
+  }
+  return role
+}
+
+/**
+ * Valida se o usuário autenticado possui pelo menos um dos papéis permitidos.
+ */
+export function hasAnyRole(
+  c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>,
+  allowedRoles: string[],
+): boolean {
+  const effectiveRole = getUserRole(c)
+  return Boolean(effectiveRole && allowedRoles.includes(effectiveRole))
+}
+
+/**
+ * Middleware centralizado de autorização por papel (RBAC).
+ * Retorna 401 se não autenticado e 403 se autenticado porém sem papel permitido.
+ */
+export const requireAnyRole = (allowedRoles: string[]) => {
+  return async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>, next: Next) => {
+    const uid = c.get('uid')
+    if (!uid) {
+      return c.json({ error: 'unauthorized' }, 401)
+    }
+    if (!hasAnyRole(c, allowedRoles)) {
+      return c.json({ error: 'forbidden' }, 403)
+    }
+    await next()
+  }
+}
+
+/**
+ * Middleware para exigir um único papel específico.
+ */
+export const requireRole = (role: string) => requireAnyRole([role])
+

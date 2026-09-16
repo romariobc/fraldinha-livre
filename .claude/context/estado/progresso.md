@@ -1,3 +1,26 @@
+## Marco (2026-09-16) - OBS-001A: Higienização de Logs Sensíveis e Habilitação da Observabilidade Cloudflare
+
+**Resumo da Sessão:**
+Execução da task OBS-001A na sequência do diagnóstico operacional e de observabilidade OBS-000. Eliminados todos os pontos de vazamento de dados pessoais (PII) nos logs de produção do backend (chat completion, notificações e erros externos), e ativada oficialmente a observabilidade nativa no Cloudflare Worker (`observability.enabled: true` em `wrangler.jsonc`). Adicionados testes automatizados de regressão em `back/test/observability-sanitization.test.ts` e formalizada a decisão arquitetural D-053.
+
+**O que foi feito:**
+1. **Diagnóstico Operacional Transversal (OBS-000):** Mapeamento integral da arquitetura observável, fluxos críticos, inventário de logging, tratamento de erros e capacidade atual de diagnóstico de incidentes.
+2. **Habilitação da Observabilidade Cloudflare:** Alterado `"observability": { "enabled": true }` em `back/wrangler.jsonc`, mantendo amostragem 100% e persistência de logs de invocação.
+3. **Higienização de Logs no Chat (`back/src/lib/chat-completion.ts`):** Removidos `lastUserMessage.content` (que expunha texto livre do usuário com risco de CPF/telefone/e-mail) e `rawResponseText` (resposta completa do LLM). O log de diagnóstico agora emite estritamente metadados numéricos/técnicos seguros (`hasUserMessage`, `userMessageLength`, `messagesCount`, `responseLength`, `toolCallsCount`, `toolNames`).
+4. **Higienização de Notificações (`back/src/lib/notifications.ts`):** Removida a exposição do e-mail do fornecedor no log de simulação de envio com flag desligada. Sanitizado o log de erro do Resend para registrar apenas `errorMessage` técnico em vez do objeto de erro bruto.
+5. **Sanitização de Erros Externos (`back/src/routes/auth.ts` e `back/src/lib/ai/harness.ts`):** Erros de chamadas à Google Identity Toolkit API e runtime de tools passam a registrar apenas `errorMessage` sanitizado via `console.error`.
+6. **Bateria de Testes Automatizados:** Desenvolvido `back/test/observability-sanitization.test.ts` (4 testes) protegendo contra regressão na configuração do Wrangler, garantindo que nenhum PII ou texto do chat vaze nos logs e validando o mascaramento de e-mails em notificações.
+7. **Governança:** Registrada a decisão arquitetural [D-053](file:///.claude/docs/governance/decisoes.md#D-053) estabelecendo a política de que logs persistentes devem privilegiar metadados operacionais e não dados brutos de usuários.
+8. **Verificação de Suíte e Typecheck:** 23 arquivos de teste no backend (247 testes aprovados), 4 arquivos em contracts (33 testes) e 55 arquivos no frontend (548 testes) 100% verdes. `npx tsc --noEmit` com 0 erros em todos os pacotes.
+
+**Status:**
+Build limpo, typecheck com 0 erros, observabilidade nativa Cloudflare ligada, logs 100% higienizados, ADR D-053 vigente. Classificação final: **OBS-001A CONCLUÍDA — LOGS HIGIENIZADOS E OBSERVABILIDADE CLOUDFLARE HABILITADA**.
+
+**Próximo Passo:**
+Planejar e executar a task **OBS-001B — Request ID + Structured Logging** (propagação de header de correlação, CORS e middleware de logging estruturado).
+
+---
+
 ## Marco (2026-09-16) - SEC-002: Auditoria Consolidada de Autorização e RBAC
 
 **Resumo da Sessão:**

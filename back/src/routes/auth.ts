@@ -147,7 +147,8 @@ export function createAuthClaimHandler(options?: AuthClaimHandlerOptions) {
       if (error instanceof ZodError) {
         return c.json({ error: 'invalid request', details: error.errors }, 400)
       }
-      console.error('[auth-claim] Falha ao provisionar claims:', error)
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      console.error('[auth-claim] Falha ao provisionar claims:', errorMessage)
       return c.json({ error: 'failed to provision claims' }, 502)
     }
   }

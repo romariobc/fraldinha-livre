@@ -70,7 +70,8 @@ export async function executeToolHarness(
       return { error: `argumento inválido — ${issues}` }
     }
     // Erros inesperados de DB ou runtime são logados e retornam mensagem genérica.
-    console.error(`[harness] erro ao executar tool "${toolName}":`, err)
+    const errorMessage = err instanceof Error ? err.message : String(err)
+    console.error(`[harness] erro ao executar tool "${toolName}": ${errorMessage}`)
     return { error: `falha interna ao executar ${toolName}` }
   }
 }

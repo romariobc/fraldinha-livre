@@ -60,14 +60,15 @@ export async function notifySupplierOfNewOrder(
   const { subject, html, text } = buildOrderEmail(params)
 
   if (!options.notificationsEnabled) {
-    console.log(`[notifications] enviaria para ${params.supplierEmail}: ${subject}`)
+    console.log(`[notifications] envio simulado para fornecedor configurado: ${subject}`)
     return
   }
 
   try {
     await options.sendEmail({ to: params.supplierEmail, subject, html, text })
   } catch (error) {
-    console.error('[notifications] falha ao enviar e-mail de novo pedido:', error)
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    console.error('[notifications] falha ao enviar e-mail de novo pedido:', errorMessage)
   }
 }
 

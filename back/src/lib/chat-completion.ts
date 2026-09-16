@@ -162,10 +162,12 @@ export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
     console.log(
       '[chat-diag]',
       JSON.stringify({
-        lastUserMessage: lastUserMessage?.content?.slice(0, 200) ?? null,
-        rawResponseText: response.response ?? null,
-        rawToolCallsCount: response.tool_calls?.length ?? 0,
-        rawToolCalls: response.tool_calls ?? [],
+        hasUserMessage: Boolean(lastUserMessage),
+        userMessageLength: lastUserMessage?.content?.length ?? 0,
+        messagesCount: messages.length,
+        responseLength: response.response?.length ?? 0,
+        toolCallsCount: response.tool_calls?.length ?? 0,
+        toolNames: (response.tool_calls ?? []).map((call) => call.function?.name ?? call.name ?? 'unknown'),
       }),
     )
 

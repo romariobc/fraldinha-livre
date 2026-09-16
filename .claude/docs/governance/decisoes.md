@@ -1394,3 +1394,27 @@ A auditoria SEC-002 inspecionou transversalmente toda a superfície HTTP do back
 ### Dívidas Deliberadas Documentadas
 - **ADMIN_UID legado:** D-051.
 - **Fase conversacional futura:** `/chat/*` opera como `AUTENTICADO / FASE FUTURA`. Quando o chat ganhar ferramentas mutáveis (criação de pedidos, ofertas, leilões, checkout via function calling), RBAC por operação/tool será obrigatório. A cada nova tool que execute escrita ou altere estado, deve-se verificar role e ownership no harness (`executeToolHarness`) antes da execução, seguindo o mesmo padrão de autorização dos endpoints REST.
+
+---
+
+## D-053 — Política de Higienização de Logs e Habilitação da Observabilidade Cloudflare (OBS-001A) (2026-09-16) — VIGENTE
+
+### Contexto
+O diagnóstico operacional OBS-000 identificou que o Cloudflare Worker do backend possuía logs de invocação retidos no dashboard (`logs.enabled: true`), porém com a observabilidade nativa desligada (`observability.enabled: false`) e pontos de logging com potencial exposição de dados sensíveis:
+1. Trecho de mensagens livres de usuários no chat (`lastUserMessage` até 200 caracteres) e respostas completas da IA (`rawResponseText`) expostos em `console.log('[chat-diag]')`.
+2. E-mail de fornecedores registrado em texto claro em simulações de envio (`[notifications] enviaria para ...`).
+3. Objetos de erro arbitrários de serviços externos (Google Identity, Resend) logados via `console.error` sem extração de campos técnicos seguros.
+
+### Decisão
+1. **Política de Higienização de Logs:**
+   - **Logs persistentes de produção devem privilegiar metadados operacionais e não conteúdo bruto fornecido pelo usuário.**
+   - É proibido logar texto livre de prompts de usuário, respostas completas de LLM, endereços de e-mail, CPFs, telefones, dados de cartão ou payloads de requisição/resposta contendo dados pessoais.
+   - Diagnósticos de IA e chat devem registrar exclusivamente metadados operacionais: indicadores booleanos de presença, contagens, comprimentos numéricos e nomes técnicos de ferramentas invocadas.
+   - Objetos de erro capturados de provedores externos devem ser sanitizados para registrar apenas mensagens técnicas (`error.message`) e identificadores operacionais, prevenindo vazamento de cabeçalhos de autorização ou corpos de resposta de terceiros.
+2. **Habilitação da Observabilidade Cloudflare:**
+   - Habilitado `"observability": { "enabled": true }` em `back/wrangler.jsonc` com amostragem de 100% (`head_sampling_rate: 1`) e retenção de logs de invocação ativa (`logs.persist: true`, `invocation_logs: true`).
+   - **A observabilidade nativa do Cloudflare Worker foi habilitada, mas isso não substitui a futura implementação de correlação e logging estruturado da aplicação.**
+
+### Status
+Implementada na task OBS-001A. Protegida por testes automatizados em `back/test/observability-sanitization.test.ts`. 100% verde.
+

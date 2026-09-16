@@ -121,6 +121,15 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       if (token === 'token-comprador-admin-conflito') {
         return { uid: 'uid-comp-adm-conflito', role: 'comprador', claims: { role: 'comprador', admin: true } }
       }
+      if (token === 'token-fornecedor-admin-conflito') {
+        return { uid: 'uid-forn-adm-conflito', role: 'fornecedor', claims: { role: 'fornecedor', admin: true } }
+      }
+      if (token === 'token-role-arbitraria') {
+        return { uid: 'uid-role-hacker', role: 'hacker', claims: { role: 'hacker' } }
+      }
+      if (token === 'token-triple-conflito') {
+        return { uid: 'uid-triple-conflito', claims: { admin: true, comprador: true, fornecedor: true, role: 'admin' } }
+      }
       return null
     }
 
@@ -1025,5 +1034,306 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
     expect(response.status).toBe(403)
     const body = await response.json()
     expect(body).toEqual({ error: 'forbidden: only the supplier can report on this order' })
+  })
+
+  // -------------------------------------------------------------
+  // 13. SEC-002 — Lacunas de cobertura adversarial
+  // -------------------------------------------------------------
+  it('41. Claims contraditórios (fornecedor + admin) → 403 em rotas de fornecedor e de admin', async () => {
+    const app = createTestApp()
+
+    // Tenta rota de fornecedor (POST /products)
+    const postProd = await app.fetch(
+      new Request('http://localhost/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer token-fornecedor-admin-conflito',
+        },
+        body: JSON.stringify({
+          name: 'Conflito Fornecedor Admin',
+          brand: 'Pampers',
+          size: 'M',
+          quantity: 10,
+          slug: `slug-forn-adm-conflict-${Date.now()}`,
+          categoria: 'fraldas',
+          descricao: 'Desc',
+          atributos: { faixaPeso: '5-9kg', genero: 'unissex', absorcao: 'alta', tecnologia: 'soft' },
+          priceCents: 1200,
+        }),
+      }),
+      env,
+    )
+    expect(postProd.status).toBe(403)
+
+    // Tenta escopo de admin
+    const getAdminProducts = await app.fetch(
+      new Request('http://localhost/products?scope=admin', {
+        headers: { Authorization: 'Bearer token-fornecedor-admin-conflito' },
+      }),
+      env,
+    )
+    expect(getAdminProducts.status).toBe(403)
+
+    // Tenta escopo de fornecedor
+    const getFornecedorProducts = await app.fetch(
+      new Request('http://localhost/products?scope=fornecedor', {
+        headers: { Authorization: 'Bearer token-fornecedor-admin-conflito' },
+      }),
+      env,
+    )
+    expect(getFornecedorProducts.status).toBe(403)
+  })
+
+  it('42. ADMIN_UID legacy (sem claims) bloqueado em rotas de comprador e fornecedor → 403', async () => {
+    const app = createTestApp()
+
+    // Tenta POST /orders (comprador)
+    const postOrder = await app.fetch(
+      new Request('http://localhost/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `idemp-admin-legacy-post-${Date.now()}`,
+          Authorization: 'Bearer token-admin-legacy',
+        },
+        body: JSON.stringify({
+          type: 'compra-direta',
+          product: 'Fralda Fornecedor B',
+          quantity: 1,
+          unit: 'cx',
+          price: 1800,
+          supplierId: 'uid-fornecedor-b',
+          items: [{ productId: prodFornecedorBId, productName: 'Fralda Fornecedor B', unitPrice: 1800, quantity: 1, unit: 'cx' }],
+          deliveryAddress: { logradouro: 'Rua X', numero: '1', bairro: 'B', cidade: 'C', estado: 'SP', cep: '01000-000' },
+        }),
+      }),
+      env,
+    )
+    expect(postOrder.status).toBe(403)
+
+    // Tenta GET /orders sem scope (comprador)
+    const getOrders = await app.fetch(
+      new Request('http://localhost/orders', {
+        headers: { Authorization: 'Bearer token-admin-legacy' },
+      }),
+      env,
+    )
+    expect(getOrders.status).toBe(403)
+
+    // Tenta POST /products (fornecedor)
+    const postProd = await app.fetch(
+      new Request('http://localhost/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer token-admin-legacy',
+        },
+        body: JSON.stringify({
+          name: 'Produto Admin Legacy',
+          brand: 'Pampers',
+          size: 'P',
+          quantity: 10,
+          slug: `slug-admin-legacy-${Date.now()}`,
+          categoria: 'fraldas',
+          descricao: 'Desc',
+          atributos: { faixaPeso: '5-9kg', genero: 'unissex', absorcao: 'alta', tecnologia: 'soft' },
+          priceCents: 1200,
+        }),
+      }),
+      env,
+    )
+    expect(postProd.status).toBe(403)
+
+    // Tenta GET /products?scope=fornecedor
+    const getFornecedorProducts = await app.fetch(
+      new Request('http://localhost/products?scope=fornecedor', {
+        headers: { Authorization: 'Bearer token-admin-legacy' },
+      }),
+      env,
+    )
+    expect(getFornecedorProducts.status).toBe(403)
+
+    // Confirma que admin scope FUNCIONA (regressão de #16)
+    const getAdminProducts = await app.fetch(
+      new Request('http://localhost/products?scope=admin', {
+        headers: { Authorization: 'Bearer token-admin-legacy' },
+      }),
+      env,
+    )
+    expect(getAdminProducts.status).toBe(200)
+  })
+
+  it('43. Comprador tentando GET /products?scope=admin e GET /orders?scope=admin → 403', async () => {
+    const app = createTestApp()
+
+    const prodRes = await app.fetch(
+      new Request('http://localhost/products?scope=admin', {
+        headers: { Authorization: 'Bearer token-comprador' },
+      }),
+      env,
+    )
+    expect(prodRes.status).toBe(403)
+    const prodBody = await prodRes.json()
+    expect(prodBody).toEqual({ error: 'forbidden' })
+
+    const orderRes = await app.fetch(
+      new Request('http://localhost/orders?scope=admin', {
+        headers: { Authorization: 'Bearer token-comprador' },
+      }),
+      env,
+    )
+    expect(orderRes.status).toBe(403)
+    const orderBody = await orderRes.json()
+    expect(orderBody).toEqual({ error: 'forbidden' })
+  })
+
+  it('44. Role arbitrária ("hacker") → 403 em rotas protegidas de comprador, fornecedor e admin', async () => {
+    const app = createTestApp()
+
+    // POST /orders (comprador)
+    const postOrder = await app.fetch(
+      new Request('http://localhost/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `idemp-hacker-post-${Date.now()}`,
+          Authorization: 'Bearer token-role-arbitraria',
+        },
+        body: JSON.stringify({
+          type: 'compra-direta',
+          product: 'Fralda Fornecedor B',
+          quantity: 1,
+          unit: 'cx',
+          price: 1800,
+          supplierId: 'uid-fornecedor-b',
+          items: [{ productId: prodFornecedorBId, productName: 'Fralda Fornecedor B', unitPrice: 1800, quantity: 1, unit: 'cx' }],
+          deliveryAddress: { logradouro: 'Rua X', numero: '1', bairro: 'B', cidade: 'C', estado: 'SP', cep: '01000-000' },
+        }),
+      }),
+      env,
+    )
+    expect(postOrder.status).toBe(403)
+
+    // POST /products (fornecedor)
+    const postProd = await app.fetch(
+      new Request('http://localhost/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer token-role-arbitraria',
+        },
+        body: JSON.stringify({
+          name: 'Produto Hacker',
+          brand: 'Pampers',
+          size: 'P',
+          quantity: 10,
+          slug: `slug-hacker-${Date.now()}`,
+          categoria: 'fraldas',
+          descricao: 'Desc',
+          atributos: { faixaPeso: '5-9kg', genero: 'unissex', absorcao: 'alta', tecnologia: 'soft' },
+          priceCents: 1200,
+        }),
+      }),
+      env,
+    )
+    expect(postProd.status).toBe(403)
+
+    // GET /products?scope=admin
+    const getAdmin = await app.fetch(
+      new Request('http://localhost/products?scope=admin', {
+        headers: { Authorization: 'Bearer token-role-arbitraria' },
+      }),
+      env,
+    )
+    expect(getAdmin.status).toBe(403)
+
+    // GET /orders sem scope (comprador)
+    const getOrders = await app.fetch(
+      new Request('http://localhost/orders', {
+        headers: { Authorization: 'Bearer token-role-arbitraria' },
+      }),
+      env,
+    )
+    expect(getOrders.status).toBe(403)
+  })
+
+  it('45. Claims triplos (admin + comprador + fornecedor) → conflict → 403 em todas as rotas protegidas', async () => {
+    const app = createTestApp()
+
+    // Tenta POST /orders (comprador)
+    const postOrder = await app.fetch(
+      new Request('http://localhost/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `idemp-triple-post-${Date.now()}`,
+          Authorization: 'Bearer token-triple-conflito',
+        },
+        body: JSON.stringify({
+          type: 'compra-direta',
+          product: 'Fralda Fornecedor B',
+          quantity: 1,
+          unit: 'cx',
+          price: 1800,
+          supplierId: 'uid-fornecedor-b',
+          items: [{ productId: prodFornecedorBId, productName: 'Fralda Fornecedor B', unitPrice: 1800, quantity: 1, unit: 'cx' }],
+          deliveryAddress: { logradouro: 'Rua X', numero: '1', bairro: 'B', cidade: 'C', estado: 'SP', cep: '01000-000' },
+        }),
+      }),
+      env,
+    )
+    expect(postOrder.status).toBe(403)
+
+    // Tenta POST /products (fornecedor)
+    const postProd = await app.fetch(
+      new Request('http://localhost/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer token-triple-conflito',
+        },
+        body: JSON.stringify({
+          name: 'Produto Triple Conflito',
+          brand: 'Pampers',
+          size: 'M',
+          quantity: 10,
+          slug: `slug-triple-${Date.now()}`,
+          categoria: 'fraldas',
+          descricao: 'Desc',
+          atributos: { faixaPeso: '5-9kg', genero: 'unissex', absorcao: 'alta', tecnologia: 'soft' },
+          priceCents: 1200,
+        }),
+      }),
+      env,
+    )
+    expect(postProd.status).toBe(403)
+
+    // Tenta GET /products?scope=admin
+    const getAdmin = await app.fetch(
+      new Request('http://localhost/products?scope=admin', {
+        headers: { Authorization: 'Bearer token-triple-conflito' },
+      }),
+      env,
+    )
+    expect(getAdmin.status).toBe(403)
+
+    // Tenta GET /orders?scope=admin
+    const getAdminOrders = await app.fetch(
+      new Request('http://localhost/orders?scope=admin', {
+        headers: { Authorization: 'Bearer token-triple-conflito' },
+      }),
+      env,
+    )
+    expect(getAdminOrders.status).toBe(403)
+
+    // Tenta GET /orders?scope=fornecedor
+    const getFornecedorOrders = await app.fetch(
+      new Request('http://localhost/orders?scope=fornecedor', {
+        headers: { Authorization: 'Bearer token-triple-conflito' },
+      }),
+      env,
+    )
+    expect(getFornecedorOrders.status).toBe(403)
   })
 })

@@ -1347,3 +1347,50 @@ A decisão D-039 estruturou inicialmente o painel administrativo como somente le
      - Exigir papel `admin`;
      - Registrar ator, recurso alvo, ação, justificativa obrigatória e timestamp em trilha de auditoria formal (`AUDIT-001`);
      - Priorizar reversibilidade (soft actions/status) em detrimento de exclusões destrutivas (`DELETE`).
+
+---
+
+## D-051 — ADMIN_UID: Exceção Legada Transitória à Exclusividade de Custom Claims (SEC-002) (2026-09-16) — VIGENTE
+
+### Contexto
+A auditoria SEC-002 confirmou que o fallback `ADMIN_UID` em `getUserRole()` ([auth.ts L157](file:///e:/Labdev/Projetos/fraldinha-livre/back/src/middleware/auth.ts#L157)) concede o papel `admin` a qualquer token cujo `uid` corresponda à variável de ambiente `ADMIN_UID`, **independente da presença de Firebase Custom Claims**. Isso significa que, tecnicamente, Firebase Custom Claims ainda não são a única fonte absoluta de privilégio administrativo, criando uma exceção à política D-048.
+
+### Classificação
+**EXCEÇÃO LEGADA TRANSITÓRIA** à D-048.
+
+### Propriedades da Exceção
+1. **Propósito:** bootstrap e compatibilidade retroativa. O fallback foi introduzido na feature 012 (D-039, painel administrativo) antes da migração para Custom Claims (D-048/AUTH-001).
+2. **Escopo restrito:** o fallback concede exclusivamente o papel `admin`. Não concede `comprador` nem `fornecedor`. Testado e confirmado (SEC-002, teste adversarial #42).
+3. **Fail-closed em conflitos:** se o token do `ADMIN_UID` possuir claims de `comprador` ou `fornecedor`, `getUserRole()` retorna `conflict`, negando qualquer acesso (403). Testado e confirmado.
+4. **Não amplia superfície operacional:** o papel `admin` obtido via `ADMIN_UID` possui as mesmas restrições de D-050 (sem bypass em rotas de comprador/fornecedor). Testado nos adversariais #34-39 e #42.
+5. **Documentação do UID:** `KOQclmb5eshfkufioK03ayRh6Fi2` (variável `ADMIN_UID` em `.dev.vars` e `wrangler.jsonc`).
+
+### Plano de Remoção
+1. Provisionar `admin: true` como Firebase Custom Claim para o UID do administrador (via `POST /auth/claim` modificado ou script administrativo direto via Google Identity Toolkit API).
+2. Validar que o acesso administrativo funciona exclusivamente via Custom Claim.
+3. Remover o fallback `ADMIN_UID` de `getUserRole()`.
+4. Remover a variável de ambiente `ADMIN_UID` de `env.d.ts`, `wrangler.jsonc` e `.dev.vars`.
+5. Atualizar testes adversariais (#16, #42 e `orders.scope-admin.test.ts`, `products.scope-admin.test.ts`) para refletir a remoção.
+6. **Esta remoção deve possuir task própria** (ex: `ADMIN-002`), não ser executada implicitamente.
+
+### Adendo
+Enquanto esta exceção existir, o sistema NÃO é aderente integralmente à exclusividade de Custom Claims declarada em D-048. A aderência será completa somente após a execução do plano de remoção acima.
+
+---
+
+## D-052 — Auditoria SEC-002: Resultado e Escopo Futuro do Chat (2026-09-16) — VIGENTE
+
+### Resultado da Auditoria
+A auditoria SEC-002 inspecionou transversalmente toda a superfície HTTP do backend (15 endpoints, 4 arquivos de rotas, middleware de autenticação e autorização) e confirmou:
+
+1. **Nenhuma vulnerabilidade operacional de produção identificada.**
+2. Todos os endpoints estão protegidos conforme D-048, D-049 e D-050 (com a exceção transitória documentada em D-051).
+3. 45 testes adversariais (40 pré-existentes + 5 adicionados pela SEC-002) cobrem: sem token, sem role, comprador↔fornecedor, admin↔comprador, admin↔fornecedor, claims contraditórios (duplos e triplos), ownership cruzada, spoofing (body/query/header), role arbitrária e ADMIN_UID legacy.
+4. Nenhuma alteração de código de produção foi necessária.
+
+### Classificação
+**SEC-002 CONCLUÍDA — SEM VULNERABILIDADES OPERACIONAIS IDENTIFICADAS**
+
+### Dívidas Deliberadas Documentadas
+- **ADMIN_UID legado:** D-051.
+- **Fase conversacional futura:** `/chat/*` opera como `AUTENTICADO / FASE FUTURA`. Quando o chat ganhar ferramentas mutáveis (criação de pedidos, ofertas, leilões, checkout via function calling), RBAC por operação/tool será obrigatório. A cada nova tool que execute escrita ou altere estado, deve-se verificar role e ownership no harness (`executeToolHarness`) antes da execução, seguindo o mesmo padrão de autorização dos endpoints REST.

@@ -1,3 +1,30 @@
+## Marco (2026-09-16) - SEC-002: Auditoria Consolidada de Autorização e RBAC
+
+**Resumo da Sessão:**
+Conclusão da task SEC-002 realizando a auditoria transversal e consolidada de autorização em toda a superfície HTTP do backend, validando a aderência às decisões arquiteturais D-048 (Custom Claims), D-049 (exclusividade comprador/fornecedor) e D-050 (escopo do administrador). Implementados 5 novos testes adversariais (elevando a suíte para 45 testes), formalizadas as decisões D-051 (ADMIN_UID como exceção legada transitória com plano de remoção) e D-052 (resultado da auditoria e diretriz para tools mutáveis no chat), e gerado relatório formal em `.claude/docs/security/auditoria-sec-002-rbac.md`. Nenhuma vulnerabilidade operacional identificada; 100% de testes verdes.
+
+**O que foi feito:**
+1. **Inventário e Auditoria de Superfície (15 endpoints):** Mapeamento transversal de autenticação, middlewares de autorização, handlers e verificações de ownership. Confirmado que Firebase Custom Claims assinado no JWT é a autoridade de autorização efetiva.
+2. **Implementação de 5 Novos Testes Adversariais (`back/test/rbac-adversarial.test.ts` #41 a #45):**
+   - Teste #41: Conflito de claims `fornecedor + admin` bloqueado com 403 em rotas de fornecedor e admin.
+   - Teste #42: `ADMIN_UID` legado sem claims bloqueado com 403 em rotas de comprador e fornecedor (preservando apenas leitura global em `scope=admin`).
+   - Teste #43: Comprador tentando acessar `GET /products?scope=admin` e `GET /orders?scope=admin` bloqueado com 403.
+   - Teste #44: Role arbitrária (`hacker`) bloqueada com 403 em endpoints protegidos.
+   - Teste #45: Claims triplos simultâneos (`admin + comprador + fornecedor`) resultam em estado `conflict` com 403 em todas as rotas operacionais e administrativas.
+3. **Formalização de Decisões de Governança:**
+   - **D-051:** Registrada a classificação formal de `ADMIN_UID` como exceção legada transitória à D-048, com garantias fail-closed e plano de remoção detalhado a ser executado na futura task `ADMIN-002`.
+   - **D-052:** Registrado o resultado da auditoria SEC-002 e a diretriz para a rota `/chat/*` (fase conversacional futura, com RBAC por tool obrigatório no harness na introdução de ferramentas mutáveis).
+4. **Relatório Formal de Segurança:** Registrado em [.claude/docs/security/auditoria-sec-002-rbac.md](file:///.claude/docs/security/auditoria-sec-002-rbac.md).
+5. **Verificação de Suíte e Typecheck:** 22 arquivos de teste no backend (243 testes), 4 arquivos em contracts (33 testes) e 55 arquivos no frontend (548 testes) 100% verdes. `npx tsc --noEmit` aprovado em todos os pacotes.
+
+**Status:**
+Build limpo, typecheck com 0 erros, 45 testes adversariais aprovados, ADRs D-051 e D-052 vigentes, relatório formal de segurança emitido. Classificação final: **SEC-002 CONCLUÍDA — SEM VULNERABILIDADES OPERACIONAIS IDENTIFICADAS**.
+
+**Próximo Passo:**
+Dar continuidade ao backlog (ex: AUDIT-001 para trilha formal de auditoria administrativa, Feature 011 para gateway de pagamento, ou encerramento formal da sessão via skill `session-finish`).
+
+---
+
 ## Marco (2026-09-15) - AUTH-003: Escopo Administrativo da Plataforma e Desacoplamento de Operações de Fornecedor
 
 **Resumo da Sessão:**

@@ -6,6 +6,7 @@ import { productsGetHandler, productsPostHandler, productsPutHandler, productsDe
 import { createChatHandler } from './routes/chat'
 import { createAuthClaimHandler } from './routes/auth'
 import { createWorkersAiChatCompletion } from './lib/chat-completion'
+import { resolveRequestId, logger } from './lib/logger'
 import type { Env, AppContext } from './env'
 
 const app = new Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>()
@@ -23,9 +24,50 @@ app.use(
   cors({
     origin: (origin) => (ALLOWED_ORIGIN.test(origin) ? origin : null),
     allowMethods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key'],
+    allowHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key', 'X-Request-Id'],
+    exposeHeaders: ['X-Request-Id'],
   }),
 )
+
+// Middleware de Request ID & Lifecycle Logging (OBS-001B):
+// 1. Extrai ou gera X-Request-Id sanitizado e injeta no contexto.
+// 2. Garante que X-Request-Id esteja presente em todas as respostas.
+// 3. Emite log estruturado de conclusão da requisição com latência.
+app.use('*', async (c, next) => {
+  const incomingId = c.req.header('x-request-id') || c.req.header('X-Request-Id')
+  const requestId = resolveRequestId(incomingId)
+  c.set('requestId', requestId)
+  c.header('X-Request-Id', requestId)
+
+  const start = performance.now()
+  await next()
+  const durationMs = Math.round(performance.now() - start)
+
+  if (!c.res.headers.has('X-Request-Id')) {
+    c.res.headers.set('X-Request-Id', requestId)
+  }
+
+  const status = c.res.status
+  const level = status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info'
+
+  logger[level](c, 'http.request.completed', {
+    method: c.req.method,
+    path: c.req.path,
+    status,
+    durationMs,
+  })
+})
+
+app.onError((err, c) => {
+  const requestId = c.get('requestId') || resolveRequestId()
+  logger.error(requestId, 'http.request.unhandled_error', {
+    method: c.req.method,
+    path: c.req.path,
+    error: err instanceof Error ? err.message : String(err),
+  })
+  c.res.headers.set('X-Request-Id', requestId)
+  return c.text('Internal Server Error', 500)
+})
 
 app.get('/health', (c) => c.json({ ok: true }))
 

@@ -9,6 +9,7 @@ import type { Env, AppContext } from '../env'
 import { ZodError } from 'zod'
 import { notifySupplierOfNewOrder, sendViaResend } from '../lib/notifications'
 import { hasAnyRole } from '../middleware/auth'
+import { logger } from '../lib/logger'
 
 /**
  * Gera um UUID v4 usando a API de crypto disponível (Workers/Node).
@@ -191,6 +192,7 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
         })),
       }
       const validatedExisting = OrderSchema.parse(responseExistingOrder)
+      logger.info(c, 'order.idempotency.reused', { orderId: existingOrder.id })
       return c.json(validatedExisting, 200)
     }
 
@@ -212,6 +214,7 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
         return c.json({ error: `fornecedor divergente para produto: ${item.productId}` }, 400)
       }
       if (product.quantity < item.quantity) {
+        logger.warn(c, 'order.stock.insufficient', { productId: item.productId })
         return c.json({ error: `Estoque insuficiente para o produto ${item.productName || item.productId} no momento da finalização.` }, 409)
       }
     }
@@ -277,6 +280,7 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
       updateResults = await db.batch(productUpdates as any)
     } catch (batchError) {
       // Se estourar constraint no D1 (ex: CHECK products_quantity_check), aborta imediatamente com 409
+      logger.warn(c, 'stock.decrement.failed')
       return c.json({ error: 'Estoque insuficiente para um ou mais produtos no momento da finalização.' }, 409)
     }
 
@@ -296,9 +300,11 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
       }
       if (rollbacks.length > 0) {
         await db.batch(rollbacks as any)
+        logger.warn(c, 'stock.rollback.executed', { rollbacksCount: rollbacks.length })
       }
 
       const failedItem = createRequest.items[failedItemIndex]
+      logger.warn(c, 'order.stock.insufficient', { productId: failedItem.productId })
       return c.json({
         error: `Estoque insuficiente para o produto ${failedItem.productName || failedItem.productId} no momento da finalização.`
       }, 409)
@@ -315,6 +321,7 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
           .where(eq(products.id, item.productId))
       )
       await db.batch(fullRollbacks as any)
+      logger.warn(c, 'stock.rollback.executed', { rollbacksCount: fullRollbacks.length })
 
       // Tratamento de colisão / Race Condition da chave de idempotência
       const errStr = `${orderInsertError?.message || ''} ${orderInsertError?.cause?.message || ''}`
@@ -345,6 +352,7 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
             })),
           }
           const validatedCollided = OrderSchema.parse(responseCollidedOrder)
+          logger.info(c, 'order.idempotency.reused', { orderId: collidedOrder.id })
           return c.json(validatedCollided, 200)
         }
       }
@@ -366,6 +374,7 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
         // `?? 0` e' so pro TS (createRequest.price ja foi validado como definido
         // no early-return acima) — nunca e' 0 de verdade nesse ponto do fluxo.
         totalCents: createRequest.price ?? 0,
+        requestId: c.get('requestId'),
       },
       {
         notificationsEnabled: c.env.NOTIFICATIONS_ENABLED === 'true',
@@ -410,6 +419,7 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
 
     // Valida contra OrderSchema antes de responder
     const validatedOrder = OrderSchema.parse(responseOrder)
+    logger.info(c, 'order.created', { orderId, itemCount: createRequest.items.length, totalCents: createRequest.price })
 
     return c.json(validatedOrder, 201)
   } catch (error) {
@@ -452,12 +462,20 @@ export const ordersCancelHandler = async (c: Context<{ Bindings: Env; Variables:
     if (updatedOrders.length === 0) {
       // Se n˜åo atualizou nada, precisamos saber o motivo para retornar o erro correto (404, 403 ou 409).
       const current = await db.select().from(orders).where(sql`${orders.id} = ${orderId}`).all()
-      if (current.length === 0) return c.json({ error: 'order not found' }, 404)
-      if (current[0].uid !== uid) return c.json({ error: 'forbidden' }, 403)
+      if (current.length === 0) {
+        logger.warn(c, 'order.cancel.failed', { orderId, reason: 'not_found' })
+        return c.json({ error: 'order not found' }, 404)
+      }
+      if (current[0].uid !== uid) {
+        logger.warn(c, 'order.cancel.failed', { orderId, reason: 'forbidden' })
+        return c.json({ error: 'forbidden' }, 403)
+      }
+      logger.warn(c, 'order.cancel.failed', { orderId, reason: 'not_awaiting' })
       return c.json({ error: 'cannot cancel: order is not awaiting' }, 409)
     }
 
     const updatedOrder = updatedOrders[0]
+    logger.info(c, 'order.cancelled', { orderId })
 
     // Restaura o estoque dos itens cancelados
     const itemsToRestore = await db.select().from(orderItems).where(sql`${orderItems.orderId} = ${orderId}`).all()
@@ -466,6 +484,7 @@ export const ordersCancelHandler = async (c: Context<{ Bindings: Env; Variables:
     )
     if (restoreUpdates.length > 0) {
       await db.batch(restoreUpdates as any)
+      logger.info(c, 'stock.restore.after_cancel', { orderId, itemsCount: itemsToRestore.length })
     }
 
     // (a order atualizada já está em updatedOrder pelo returning)

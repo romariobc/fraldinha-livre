@@ -1,3 +1,40 @@
+## Marco (2026-09-16) - OBS-001B: Request ID + Structured Logging
+
+**Resumo da Sessão:**
+Implementação completa da task OBS-001B, estabelecendo a fundação de correlação e logging estruturado transversal do projeto Fraldinha Livre. Cada requisição tratada pelo backend agora possui um `requestId` único, propagado no contexto Hono, exposto no cabeçalho HTTP `X-Request-Id` de todas as respostas (2xx, 4xx, 5xx e erros não tratados) e integrado ao middleware de CORS (`allowHeaders` e `exposeHeaders`). O frontend injeta automaticamente o cabeçalho `X-Request-Id` através de `front/src/lib/api-client.ts`. Foi criado o módulo de logging estruturado leve e nativo `back/src/lib/logger.ts`, emitindo linhas JSON enriquecidas com `level`, `event`, `requestId`, `timestamp` e metadados contextuais operacionais, com total garantia de não registrar dados sensíveis (PII, senhas, tokens JWT).
+
+**O que foi feito:**
+1. **Módulo de Logging Estruturado (`back/src/lib/logger.ts`):**
+   - Criação de helpers `sanitizeRequestId` (allowlist estrita `^[a-zA-Z0-9_\-\.]{1,64}$`), `resolveRequestId` (preserva ID seguro ou gera novo UUID via `crypto.randomUUID()`) e `emitStructuredLog`.
+   - Objeto `logger` com métodos `info`, `warn`, `error` e `debug` que integram nativamente com o contexto Hono e emitem logs JSON formatados.
+2. **Contexto Hono e CORS (`back/src/env.d.ts` e `back/src/index.ts`):**
+   - Adicionada tipagem `requestId: string` a `AppContext['Variables']`.
+   - Inclusão de `X-Request-Id` em `allowHeaders` e `exposeHeaders` nas configurações de CORS.
+   - Middleware global de Request ID e medição de lifecycle (`http.request.completed` com `durationMs`).
+   - Handler global `app.onError` para registrar `http.request.unhandled_error` preservando a resposta 500 sem quebra de contrato.
+3. **Instrumentação Estruturada de Autenticação e RBAC (`back/src/middleware/auth.ts` e `back/src/routes/auth.ts`):**
+   - Eventos estáveis adicionados: `auth.token.missing_or_malformed`, `auth.token.invalid`, `auth.unauthenticated`, `auth.claim.conflict`, `auth.role.forbidden`.
+   - No provisionamento de claims: `auth.claim.provisioner_not_configured`, `auth.claim.lookup.failed`, `auth.claim.provision.failed` e `auth.claim.provisioned`.
+   - Logs em 401/403 classificados adequadamente como `warn`, evitando poluição de `error`. Zero PII (sem tokens ou e-mails).
+4. **Instrumentação de Pedidos, Estoque e Notificações (`back/src/routes/orders.ts` e `back/src/lib/notifications.ts`):**
+   - Eventos críticos mapeados: `order.idempotency.reused`, `order.stock.insufficient`, `stock.decrement.failed`, `stock.rollback.executed`, `order.created`, `order.cancelled`, `stock.restore.after_cancel`, `order.cancel.failed`.
+   - `OrderNotificationParams` expandido com `requestId?: string`, e emissão correlacionada de `notification.simulated`, `notification.sent` e `notification.failed`.
+5. **Injeção Centralizada no Frontend (`front/src/lib/api-client.ts`):**
+   - `apiFetch` gera automaticamente `X-Request-Id` com `crypto.randomUUID()` caso não fornecido, transmitindo a correlação de ponta a ponta sem espalhar lógica pela UI.
+6. **Bateria de Testes Automatizados:**
+   - `back/test/request-id-logger.test.ts` (11 testes cobrindo geração, sanitização de caracteres inválidos/tamanho, preflight CORS, status 200/401/404/500, formato JSON do logger e eventos de lifecycle).
+   - `front/src/lib/__tests__/api-client.test.ts` (2 testes validando geração e passagem de `X-Request-Id` customizado).
+   - Atualização de `back/test/observability-sanitization.test.ts` para verificar o JSON estruturado dos logs higienizados (4 testes verdes).
+7. **Governança:** Registrada a decisão arquitetural [D-054](file:///.claude/docs/governance/decisoes.md#D-054) detalhando a política de request ID, formato dos logs, eventos e garantia de privacidade.
+
+**Status:**
+Build limpo, typecheck com 0 erros nos três pacotes, 258 testes de backend e 550 testes de frontend 100% verdes. ADR D-054 vigente. Classificação final: **OBS-001B CONCLUÍDA — CORRELAÇÃO E LOGGING ESTRUTURADO ATIVOS**.
+
+**Próximo Passo:**
+Planejar a task **OBS-002 — Contrato Unificado de Erros** (padronização de payloads de erro `AppError` e códigos de erro tipados).
+
+---
+
 ## Marco (2026-09-16) - OBS-001A: Higienização de Logs Sensíveis e Habilitação da Observabilidade Cloudflare
 
 **Resumo da Sessão:**

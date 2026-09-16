@@ -1418,3 +1418,48 @@ O diagnóstico operacional OBS-000 identificou que o Cloudflare Worker do backen
 ### Status
 Implementada na task OBS-001A. Protegida por testes automatizados em `back/test/observability-sanitization.test.ts`. 100% verde.
 
+---
+
+## D-054 — Request ID e Structured Logging (OBS-001B) (2026-09-16) — VIGENTE
+
+### Contexto
+Após a higienização de logs sensíveis e habilitação da observabilidade da Cloudflare (OBS-001A / D-053), o backend Cloudflare Worker ainda não possuía rastreamento correlacionado entre o frontend e os múltiplos estágios internos de processamento (Auth, RBAC, Handlers de Orders, Catálogo, Notificações Resend e Workers AI). Os logs eram emitidos via `console.log` com mensagens em texto livre não padronizadas, impossibilitando agregação, filtros operacionais e diagnóstico preciso de falhas ou exceções.
+
+### Decisão Arquitetural
+1. **Identificador Universal de Requisição (`requestId`):**
+   - **Toda requisição HTTP processada pelo backend recebe um identificador único de correlação.**
+   - O frontend injeta automaticamente o cabeçalho `X-Request-Id` através do client central (`front/src/lib/api-client.ts`), utilizando `crypto.randomUUID()` quando disponível no navegador.
+   - **Validação de Entrada e Defesa em Profundidade:** O header `X-Request-Id` recebido do cliente é tratado como dado não confiável. O middleware valida o valor contra uma allowlist estrita (`^[a-zA-Z0-9_\-\.]{1,64}$`). Identificadores que contenham caracteres de controle, quebras de linha (`\r`, `\n`) ou comprimento superior a 64 caracteres são descartados silenciosamente e substituídos por um novo UUID gerado no runtime via `crypto.randomUUID()`.
+   - **Sem privilégios ou identidade:** O `requestId` é estritamente um identificador operacional de rastreamento e correlação. **Ele NÃO confere privilégios, identidade de sessão ou bypass de segurança.** O cliente não obtém nenhuma vantagem de autorização ou acesso por enviar um identificador customizado.
+   - **Propagação no Contexto e Resposta:** O `requestId` é armazenado no contexto Hono (`c.set('requestId', requestId)`) e retornado obrigatoriamente no cabeçalho `X-Request-Id` de todas as respostas HTTP (2xx, 4xx, 5xx e erros não tratados em `app.onError`). O cabeçalho foi adicionado às políticas de CORS do backend (`allowHeaders` e `exposeHeaders`).
+
+2. **Structured Logging Leve e Nativo:**
+   - Adotada uma implementação minimalista de logging estruturado nativa para Cloudflare Workers (`back/src/lib/logger.ts`), sem introdução de dependências pesadas de Node.js (como Pino ou Winston) e sem impacto de I/O remoto adicional (sem D1, sem banco externo).
+   - Cada entrada de log é emitida como uma linha JSON única (`console.log`, `console.warn`, `console.error`) contendo no mínimo:
+     - `level`: `'info' | 'warn' | 'error' | 'debug'`
+     - `event`: string estável no padrão `dominio.acao.resultado`
+     - `requestId`: UUID correlacionado da requisição
+     - `timestamp`: ISO-8601 UTC
+     - Metadados contextuais seguros adicionais (ex: `method`, `path`, `status`, `durationMs`, `orderId`, `reason`).
+
+3. **Taxonomia de Eventos Estáveis:**
+   - Nomes de eventos seguem a convenção `dominio.acao.resultado` para busca e agregação determinística:
+     - *Lifecycle HTTP:* `http.request.completed`, `http.request.unhandled_error`
+     - *Autenticação e RBAC:* `auth.token.missing_or_malformed`, `auth.token.invalid`, `auth.unauthenticated`, `auth.role.forbidden`, `auth.claim.conflict`, `auth.claim.provisioned`, `auth.claim.provision.failed`, `auth.claim.lookup.failed`
+     - *Pedidos e Estoque:* `order.created`, `order.idempotency.reused`, `order.stock.insufficient`, `stock.decrement.failed`, `stock.rollback.executed`, `order.cancelled`, `stock.restore.after_cancel`, `order.cancel.failed`
+     - *Notificações:* `notification.simulated`, `notification.sent`, `notification.failed`
+
+4. **Classificação Semântica de Níveis de Log (Não Rotular 4xx como Error):**
+   - Rejeições esperadas de negócio e validação (400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found, 409 Conflict/Insufficient Stock) são categorizadas como `warn` ou `info`.
+   - O nível `error` é estritamente reservado para exceções inesperadas do sistema (500), falhas de infraestrutura externa (D1, Google Identity, Resend) e quebras não tratadas.
+
+5. **Privacidade e Proteção de Dados (Zero PII/Secrets em Logs):**
+   - É terminantemente proibido registrar tokens JWT, headers de autorização, senhas, chaves privadas, dados de cartão, CPF, endereços completos, nomes ou e-mails de compradores e fornecedores nos logs estruturados.
+   - O `requestId` correlaciona as operações sem expor dados pessoais persistentes.
+
+6. **Relação com a Infraestrutura Cloudflare:**
+   - A observabilidade nativa do Cloudflare Workers (`observability.enabled: true`) atua como pipeline de ingestão e retenção, enquanto a formatação, correlação e governança dos logs estruturados são responsabilidade exclusiva da camada de aplicação.
+
+### Status
+Implementada na task OBS-001B. Coberta por 11 testes dedicados de Request ID e Logger (`back/test/request-id-logger.test.ts`), 2 testes de frontend (`front/src/lib/__tests__/api-client.test.ts`) e 24 suites de backend 100% verdes.
+

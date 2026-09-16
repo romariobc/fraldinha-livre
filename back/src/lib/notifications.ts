@@ -1,3 +1,5 @@
+import { logger } from './logger'
+
 export interface OrderNotificationItem {
   productName: string
   quantity: number
@@ -9,6 +11,7 @@ export interface OrderNotificationParams {
   orderId: string
   items: OrderNotificationItem[]
   totalCents: number
+  requestId?: string
 }
 
 /** Injetável — testes passam uma versão fake, produção usa `sendViaResend`. */
@@ -60,15 +63,16 @@ export async function notifySupplierOfNewOrder(
   const { subject, html, text } = buildOrderEmail(params)
 
   if (!options.notificationsEnabled) {
-    console.log(`[notifications] envio simulado para fornecedor configurado: ${subject}`)
+    logger.info(params.requestId, 'notification.simulated', { orderId: params.orderId, subject })
     return
   }
 
   try {
     await options.sendEmail({ to: params.supplierEmail, subject, html, text })
+    logger.info(params.requestId, 'notification.sent', { orderId: params.orderId, provider: 'resend' })
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
-    console.error('[notifications] falha ao enviar e-mail de novo pedido:', errorMessage)
+    logger.error(params.requestId, 'notification.failed', { orderId: params.orderId, provider: 'resend', error: errorMessage })
   }
 }
 

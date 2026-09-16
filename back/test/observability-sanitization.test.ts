@@ -107,7 +107,12 @@ describe('OBS-001A — Higienização de Logs e Observabilidade Cloudflare', () 
       for (const callArgs of logSpy.mock.calls) {
         const fullLogMessage = callArgs.map((arg) => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg))).join(' ')
         expect(fullLogMessage).not.toContain(secretEmail)
-        expect(fullLogMessage).toContain('[notifications] envio simulado para fornecedor configurado')
+        if (fullLogMessage.includes('notification.simulated')) {
+          const payload = JSON.parse(callArgs[0])
+          expect(payload).toHaveProperty('event', 'notification.simulated')
+          expect(payload).toHaveProperty('orderId', 'ord-test-999')
+          expect(payload).not.toHaveProperty('supplierEmail')
+        }
       }
 
       logSpy.mockRestore()
@@ -130,10 +135,13 @@ describe('OBS-001A — Higienização de Logs e Observabilidade Cloudflare', () 
         },
       )
 
-      expect(errorSpy).toHaveBeenCalledWith(
-        '[notifications] falha ao enviar e-mail de novo pedido:',
-        'Falha de conexão com Resend HTTP 503',
-      )
+      expect(errorSpy).toHaveBeenCalled()
+      const rawLog = errorSpy.mock.calls[0][0]
+      const payload = JSON.parse(rawLog)
+      expect(payload).toHaveProperty('level', 'error')
+      expect(payload).toHaveProperty('event', 'notification.failed')
+      expect(payload).toHaveProperty('orderId', 'ord-123')
+      expect(payload).toHaveProperty('error', 'Falha de conexão com Resend HTTP 503')
 
       errorSpy.mockRestore()
     })

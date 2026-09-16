@@ -169,6 +169,14 @@
       "status": "done",
       "criterio_aceite": "observability.enabled: true no wrangler.jsonc; remoção de lastUserMessage.content e rawResponseText do chat; mascaramento de e-mail em notificações; extração de erro seguro em chamadas externas; 100% de testes verdes sem vazamento de PII",
       "notas": "Executada em 2026-09-16 após diagnóstico OBS-000. ADR D-053 formalizada em decisoes.md. 4 testes unitários de regressão em back/test/observability-sanitization.test.ts. Suíte total 247/247 verde."
+    },
+    {
+      "id": "OBS-001B",
+      "titulo": "Request ID + Structured Logging",
+      "fase": 1,
+      "status": "done",
+      "criterio_aceite": "Geração/resolução de requestId nativo com crypto.randomUUID(); sanitização do header do cliente; propagação no contexto Hono; retorno de X-Request-Id em 2xx, 4xx e 5xx; CORS com allowHeaders e exposeHeaders; injeção central no front/api-client; logger estruturado emitindo JSON por linha sem PII; eventos de lifecycle, auth, orders, notificações correlacionados; testes automatizados verdes",
+      "notas": "Executada em 2026-09-16. ADR D-054 formalizada em decisoes.md. 11 testes em back/test/request-id-logger.test.ts, 2 em front/src/lib/__tests__/api-client.test.ts, 4 em back/test/observability-sanitization.test.ts. Suíte back 258/258, front 550/550, contracts 33/33 100% verdes."
     }
   ]
 }

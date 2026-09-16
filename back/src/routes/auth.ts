@@ -11,6 +11,7 @@ import {
   type ProvisionClaimsFn,
   type LookupClaimsFn,
 } from '../lib/claims-provisioner'
+import { logger } from '../lib/logger'
 import type { Env, AppContext } from '../env'
 
 export type { ProvisionClaimsFn, LookupClaimsFn }
@@ -84,7 +85,7 @@ export function createAuthClaimHandler(options?: AuthClaimHandlerOptions) {
       }
 
       if (!provisionFn) {
-        console.error('[auth-claim] Service Account do Firebase não configurada no ambiente.')
+        logger.error(c, 'auth.claim.provisioner_not_configured')
         return c.json({ error: 'claims provisioner not configured' }, 500)
       }
 
@@ -95,7 +96,7 @@ export function createAuthClaimHandler(options?: AuthClaimHandlerOptions) {
           const existingUser = await lookupFn(uid)
           existingAttributes = existingUser?.customAttributes
         } catch {
-          console.error('[auth-claim] Falha ao consultar estado prévio de autorização do usuário')
+          logger.error(c, 'auth.claim.lookup.failed')
           return c.json({ error: 'failed to resolve authorization state' }, 502)
         }
 
@@ -110,6 +111,7 @@ export function createAuthClaimHandler(options?: AuthClaimHandlerOptions) {
               role: requestedRole,
               alreadyProvisioned: true,
             }
+            logger.info(c, 'auth.claim.provisioned', { role: requestedRole, alreadyProvisioned: true })
             return c.json(response, 200)
           }
           if (existingRole && existingRole !== requestedRole) {
@@ -142,13 +144,14 @@ export function createAuthClaimHandler(options?: AuthClaimHandlerOptions) {
         role: requestedRole,
         alreadyProvisioned: false,
       }
+      logger.info(c, 'auth.claim.provisioned', { role: requestedRole, alreadyProvisioned: false })
       return c.json(response, 200)
     } catch (error) {
       if (error instanceof ZodError) {
         return c.json({ error: 'invalid request', details: error.errors }, 400)
       }
       const errorMessage = error instanceof Error ? error.message : String(error)
-      console.error('[auth-claim] Falha ao provisionar claims:', errorMessage)
+      logger.error(c, 'auth.claim.provision.failed', { error: errorMessage })
       return c.json({ error: 'failed to provision claims' }, 502)
     }
   }

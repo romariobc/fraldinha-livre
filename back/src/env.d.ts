@@ -33,6 +33,7 @@ export type Env = Cloudflare.Env
  */
 export interface AppContext {
   Variables: {
+    requestId: string
     uid: string
     email?: string
     role?: 'comprador' | 'fornecedor' | 'admin' | string

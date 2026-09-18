@@ -29,6 +29,12 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
 
     const testApp = new Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>()
     testApp.use('*', async (c, next) => {
+      const incomingId = c.req.header('x-request-id') || 'req-test-orders'
+      c.set('requestId', incomingId)
+      c.header('X-Request-Id', incomingId)
+      await next()
+    })
+    testApp.use('*', async (c, next) => {
       if (c.req.method === 'POST' && c.req.path === '/orders') {
         const hasKey = c.req.header('idempotency-key') || c.req.header('Idempotency-Key')
         const omit = c.req.header('x-omit-idempotency')
@@ -90,8 +96,8 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     const response = await app.fetch(request, env)
 
     expect(response.status).toBe(401)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'unauthorized' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('UNAUTHORIZED')
   })
 
   it('POST /orders com body inválido (items: []) → 400', async () => {
@@ -273,8 +279,8 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     const response = await app.fetch(request, env)
 
     expect(response.status).toBe(400)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'preco divergente para produto: p1' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('PRICE_MISMATCH')
   })
 
   it('POST /orders com productId inexistente → 400, produto nao encontrado', async () => {
@@ -313,8 +319,8 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     const response = await app.fetch(request, env)
 
     expect(response.status).toBe(400)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'produto nao encontrado: produto-fantasma' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('PRODUCT_NOT_FOUND')
   })
 
   it('POST /orders com supplierId divergente do produto → 400, fornecedor divergente', async () => {
@@ -353,8 +359,8 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     const response = await app.fetch(request, env)
 
     expect(response.status).toBe(400)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'fornecedor divergente para produto: p1' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('SUPPLIER_MISMATCH')
   })
 
   it('POST /orders sem price → 400, price ausente', async () => {
@@ -393,8 +399,8 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     const response = await app.fetch(request, env)
 
     expect(response.status).toBe(400)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'price ausente' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('INVALID_REQUEST')
   })
 
   it('POST /orders sem supplierId → 400, supplierId ausente', async () => {
@@ -433,8 +439,8 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     const response = await app.fetch(request, env)
 
     expect(response.status).toBe(400)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'supplierId ausente' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('INVALID_REQUEST')
   })
 
   it('POST /orders com total divergente → 400, total divergente', async () => {
@@ -473,8 +479,8 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     const response = await app.fetch(request, env)
 
     expect(response.status).toBe(400)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'total divergente' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('TOTAL_MISMATCH')
   })
 
   it('POST /orders com NOTIFICATIONS_ENABLED=false: nao chama Resend, pedido cria normalmente', async () => {
@@ -679,10 +685,8 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     const response = await app.fetch(request, env)
 
     expect(response.status).toBe(409)
-    const body = await response.json()
-    expect(body).toEqual({
-      error: 'Estoque insuficiente para o produto Fralda P no momento da finalização.',
-    })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('INSUFFICIENT_STOCK')
   })
 
   // ============================================================
@@ -726,8 +730,8 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     const response = await app.fetch(request, env)
 
     expect(response.status).toBe(400)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'Idempotency-Key header is required' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('IDEMPOTENCY_KEY_REQUIRED')
   })
 
   it('POST /orders com Idempotency-Key duplicado → 200 OK com mesmo pedido e estoque inalterado', async () => {

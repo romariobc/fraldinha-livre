@@ -10,6 +10,7 @@ import { ZodError } from 'zod'
 import { notifySupplierOfNewOrder, sendViaResend } from '../lib/notifications'
 import { hasAnyRole } from '../middleware/auth'
 import { logger } from '../lib/logger'
+import { respondError, respondZodError } from '../lib/errors'
 
 /**
  * Gera um UUID v4 usando a API de crypto disponível (Workers/Node).
@@ -36,7 +37,7 @@ export const ordersGetHandler = async (c: Context<{ Bindings: Env; Variables: Ap
   // uid foi colocado pelo middleware de autenticação
   const uid = c.get('uid')
   if (!uid) {
-    return c.json({ error: 'unauthorized' }, 401)
+    return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
   }
 
   try {
@@ -46,7 +47,7 @@ export const ordersGetHandler = async (c: Context<{ Bindings: Env; Variables: Ap
     let userOrders
     if (scope === 'fornecedor') {
       if (!hasAnyRole(c, ['fornecedor'])) {
-        return c.json({ error: 'forbidden' }, 403)
+        return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
       }
       // Busca order_items cujo product_id pertence a um produto do uid autenticado (fornecedor).
       const matchingItems = await db
@@ -63,13 +64,13 @@ export const ordersGetHandler = async (c: Context<{ Bindings: Env; Variables: Ap
           : []
     } else if (scope === 'admin') {
       if (!hasAnyRole(c, ['admin'])) {
-        return c.json({ error: 'forbidden' }, 403)
+        return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
       }
       userOrders = await db.select().from(orders).all()
     } else {
       // Escopo padrão (comprador): exige explicitamente role comprador
       if (!hasAnyRole(c, ['comprador'])) {
-        return c.json({ error: 'forbidden' }, 403)
+        return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
       }
       userOrders = await db
         .select()
@@ -132,16 +133,16 @@ export const ordersGetHandler = async (c: Context<{ Bindings: Env; Variables: Ap
 export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>) => {
   const uid = c.get('uid')
   if (!uid) {
-    return c.json({ error: 'unauthorized' }, 401)
+    return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
   }
   if (!hasAnyRole(c, ['comprador'])) {
-    return c.json({ error: 'forbidden' }, 403)
+    return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
   }
 
   try {
     const idempotencyKey = c.req.header('idempotency-key') || c.req.header('Idempotency-Key')
     if (!idempotencyKey || idempotencyKey.trim() === '') {
-      return c.json({ error: 'Idempotency-Key header is required' }, 400)
+      return respondError(c, 'IDEMPOTENCY_KEY_REQUIRED', 400, 'Cabeçalho Idempotency-Key é obrigatório.')
     }
 
     const body = await c.req.json()
@@ -152,12 +153,12 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
 
     // RN-P2b: price (total) e obrigatorio nesta rota, mesmo sendo .optional() no schema compartilhado.
     if (createRequest.price === undefined) {
-      return c.json({ error: 'price ausente' }, 400)
+      return respondError(c, 'INVALID_REQUEST', 400, 'Campo price é obrigatório.')
     }
 
     // RN-P2c: supplierId e obrigatorio nesta rota, mesmo sendo .optional() no schema compartilhado.
     if (createRequest.supplierId === undefined) {
-      return c.json({ error: 'supplierId ausente' }, 400)
+      return respondError(c, 'INVALID_REQUEST', 400, 'Campo supplierId é obrigatório.')
     }
 
     const db = drizzle(c.env.DB)
@@ -166,7 +167,7 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
     const existingOrder = await db.select().from(orders).where(eq(orders.idempotencyKey, idempotencyKey)).get()
     if (existingOrder) {
       if (existingOrder.uid !== uid) {
-        return c.json({ error: 'forbidden' }, 403)
+        return respondError(c, 'FORBIDDEN', 403, 'Acesso negado para esta chave de idempotência.')
       }
       const existingItems = await db.select().from(orderItems).where(eq(orderItems.orderId, existingOrder.id)).all()
       const deliveryAddressObj = JSON.parse(existingOrder.deliveryAddress)
@@ -205,17 +206,17 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
     for (const item of createRequest.items) {
       const product = productById.get(item.productId)
       if (!product) {
-        return c.json({ error: `produto nao encontrado: ${item.productId}` }, 400)
+        return respondError(c, 'PRODUCT_NOT_FOUND', 400, `Produto não encontrado: ${item.productId}`)
       }
       if (item.unitPrice !== product.priceCents) {
-        return c.json({ error: `preco divergente para produto: ${item.productId}` }, 400)
+        return respondError(c, 'PRICE_MISMATCH', 400, `Preço divergente para o produto: ${item.productId}`)
       }
       if (product.supplierId !== createRequest.supplierId) {
-        return c.json({ error: `fornecedor divergente para produto: ${item.productId}` }, 400)
+        return respondError(c, 'SUPPLIER_MISMATCH', 400, `Fornecedor divergente para o produto: ${item.productId}`)
       }
       if (product.quantity < item.quantity) {
         logger.warn(c, 'order.stock.insufficient', { productId: item.productId })
-        return c.json({ error: `Estoque insuficiente para o produto ${item.productName || item.productId} no momento da finalização.` }, 409)
+        return respondError(c, 'INSUFFICIENT_STOCK', 409, `Estoque insuficiente para o produto ${item.productName || item.productId} no momento da finalização.`)
       }
     }
 
@@ -225,7 +226,7 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
       0,
     )
     if (createRequest.price !== computedTotal) {
-      return c.json({ error: 'total divergente' }, 400)
+      return respondError(c, 'TOTAL_MISMATCH', 400, 'Total divergente da soma dos itens.')
     }
 
     // Servidor define metadados (RN-03)
@@ -281,7 +282,7 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
     } catch (batchError) {
       // Se estourar constraint no D1 (ex: CHECK products_quantity_check), aborta imediatamente com 409
       logger.warn(c, 'stock.decrement.failed')
-      return c.json({ error: 'Estoque insuficiente para um ou mais produtos no momento da finalização.' }, 409)
+      return respondError(c, 'INSUFFICIENT_STOCK', 409, 'Estoque insuficiente para um ou mais produtos no momento da finalização.')
     }
 
     const failedItemIndex = updateResults.findIndex((rows) => !rows || rows.length === 0)
@@ -305,9 +306,7 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
 
       const failedItem = createRequest.items[failedItemIndex]
       logger.warn(c, 'order.stock.insufficient', { productId: failedItem.productId })
-      return c.json({
-        error: `Estoque insuficiente para o produto ${failedItem.productName || failedItem.productId} no momento da finalização.`
-      }, 409)
+      return respondError(c, 'INSUFFICIENT_STOCK', 409, `Estoque insuficiente para o produto ${failedItem.productName || failedItem.productId} no momento da finalização.`)
     }
 
     // Com o estoque atomicamente garantido e decrementado, persiste a order e os items
@@ -427,7 +426,7 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
     // Pode vir com name === 'ZodError' ou ter .issues
     if (error instanceof ZodError || (error instanceof Error && error.name === 'ZodError') || (error && typeof error === 'object' && 'issues' in error)) {
       const err = error as ZodError
-      return c.json({ error: 'invalid request', details: err.errors }, 400)
+      return respondZodError(c, err)
     }
     // Para outros erros, deixa ser tratado pelo middleware de erro
     throw error
@@ -441,10 +440,10 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
 export const ordersCancelHandler = async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>) => {
   const uid = c.get('uid')
   if (!uid) {
-    return c.json({ error: 'unauthorized' }, 401)
+    return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
   }
   if (!hasAnyRole(c, ['comprador'])) {
-    return c.json({ error: 'forbidden' }, 403)
+    return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
   }
 
   const orderId = c.req.param('id')
@@ -464,14 +463,14 @@ export const ordersCancelHandler = async (c: Context<{ Bindings: Env; Variables:
       const current = await db.select().from(orders).where(sql`${orders.id} = ${orderId}`).all()
       if (current.length === 0) {
         logger.warn(c, 'order.cancel.failed', { orderId, reason: 'not_found' })
-        return c.json({ error: 'order not found' }, 404)
+        return respondError(c, 'ORDER_NOT_FOUND', 404, 'Pedido não encontrado.')
       }
       if (current[0].uid !== uid) {
         logger.warn(c, 'order.cancel.failed', { orderId, reason: 'forbidden' })
-        return c.json({ error: 'forbidden' }, 403)
+        return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
       }
       logger.warn(c, 'order.cancel.failed', { orderId, reason: 'not_awaiting' })
-      return c.json({ error: 'cannot cancel: order is not awaiting' }, 409)
+      return respondError(c, 'ORDER_NOT_AWAITING', 409, 'Não é possível cancelar: o pedido não está com status aguardando.')
     }
 
     const updatedOrder = updatedOrders[0]
@@ -533,10 +532,10 @@ export const ordersCancelHandler = async (c: Context<{ Bindings: Env; Variables:
 export const ordersReportHandler = async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>) => {
   const uid = c.get('uid')
   if (!uid) {
-    return c.json({ error: 'unauthorized' }, 401)
+    return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
   }
   if (!hasAnyRole(c, ['fornecedor'])) {
-    return c.json({ error: 'forbidden' }, 403)
+    return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
   }
 
   const orderId = c.req.param('id')
@@ -544,21 +543,21 @@ export const ordersReportHandler = async (c: Context<{ Bindings: Env; Variables:
   try {
     const body = await c.req.json()
     if (!body.message || typeof body.message !== 'string') {
-      return c.json({ error: 'message is required' }, 400)
+      return respondError(c, 'INVALID_REQUEST', 400, 'Campo message é obrigatório.')
     }
 
     const db = drizzle(c.env.DB)
     const ordersList = await db.select().from(orders).where(sql`${orders.id} = ${orderId}`).all()
 
     if (ordersList.length === 0) {
-      return c.json({ error: 'order not found' }, 404)
+      return respondError(c, 'ORDER_NOT_FOUND', 404, 'Pedido não encontrado.')
     }
 
     const order = ordersList[0]
 
     // Apenas o fornecedor do pedido pode reportar para o cliente
     if (order.supplierId !== uid) {
-      return c.json({ error: 'forbidden: only the supplier can report on this order' }, 403)
+      return respondError(c, 'FORBIDDEN', 403, 'Acesso negado: apenas o fornecedor deste pedido pode reportar.')
     }
 
     const reportId = generateUUID()

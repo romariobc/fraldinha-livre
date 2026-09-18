@@ -19,6 +19,7 @@ import { MockPaymentGateway } from '@/lib/adapters/mock-payment-gateway'
 import { MockFulfillmentService } from '@/lib/adapters/mock-fulfillment-service'
 import { orderToDirectOrder } from '@/lib/order-adapters'
 import { InsufficientStockError } from '@/lib/ports/order-repository'
+import { isApiError } from '@/lib/api-client'
 import { toast } from 'sonner'
 
 type CheckoutStep = 'endereco' | 'revisao' | 'pagamento' | 'confirmacao'
@@ -186,8 +187,17 @@ function CheckoutContent() {
       setStep('confirmacao')
     } catch (err) {
       console.error('Erro ao finalizar compra:', err)
-      if (err instanceof InsufficientStockError || (err instanceof Error && (err.name === 'InsufficientStockError' || err.message.includes('Estoque insuficiente')))) {
-        toast.error(err.message || 'Outro cliente finalizou a compra deste item antes. Por favor, revise sua sacola.', {
+      const isInsufficientStock =
+        err instanceof InsufficientStockError ||
+        (err instanceof Error && err.name === 'InsufficientStockError') ||
+        (isApiError(err) && err.code === 'INSUFFICIENT_STOCK')
+
+      if (isInsufficientStock) {
+        const errorMsg =
+          err instanceof Error && err.message
+            ? err.message
+            : 'Outro cliente finalizou a compra deste item antes. Por favor, revise sua sacola.'
+        toast.error(errorMsg, {
           duration: 6000,
         })
         // Redireciona de volta para a sacola para revisar e recarregar os dados

@@ -16,6 +16,10 @@ const createTestApp = (runChatCompletion: RunChatCompletion) => {
   }
 
   const testApp = new Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>()
+  testApp.use('*', async (c, next) => {
+    c.set('requestId', 'req-test-chat')
+    await next()
+  })
   testApp.use('/chat/*', (c, next) => createAuthMiddleware(fakeVerify)(c, next))
   testApp.post('/chat/message', (c) => createChatHandler(runChatCompletion)(c))
   return testApp
@@ -246,10 +250,10 @@ describe('POST /chat/message', () => {
       body: JSON.stringify({ messages: [{ role: 'user', content: 'fralda' }] }),
     })
     const response = await testApp.fetch(request, env)
-    const body = await response.json()
+    const body = (await response.json()) as any
 
     expect(response.status).toBe(502)
-    expect(body).toEqual({ error: 'assistente indisponivel, tente novamente' })
+    expect(body.error.code).toBe('AI_PROVIDER_ERROR')
     expect(run).toHaveBeenCalledTimes(4)
   })
 

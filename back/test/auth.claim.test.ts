@@ -36,6 +36,11 @@ describe('POST /auth/claim — Provisionamento Seguro de Custom Claims (AUTH-001
 
     const testApp = new Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>()
 
+    testApp.use('*', async (c, next) => {
+      c.set('requestId', 'req-test-auth-claim')
+      await next()
+    })
+
     testApp.use('/auth/*', createAuthMiddleware(fakeVerify))
     testApp.post(
       '/auth/claim',
@@ -65,8 +70,9 @@ describe('POST /auth/claim — Provisionamento Seguro de Custom Claims (AUTH-001
 
     const response = await app.fetch(request)
     expect(response.status).toBe(401)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'unauthorized' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('UNAUTHORIZED')
+    expect(body.error.requestId).toBe('req-test-auth-claim')
     expect(mockProvisionClaims).not.toHaveBeenCalled()
   })
 
@@ -86,8 +92,8 @@ describe('POST /auth/claim — Provisionamento Seguro de Custom Claims (AUTH-001
 
     const response = await app.fetch(request)
     expect(response.status).toBe(400)
-    const body = (await response.json()) as { error: string }
-    expect(body.error).toBe('invalid request')
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('INVALID_REQUEST')
     expect(mockProvisionClaims).not.toHaveBeenCalled()
   })
 
@@ -104,6 +110,8 @@ describe('POST /auth/claim — Provisionamento Seguro de Custom Claims (AUTH-001
 
     const response = await app.fetch(request)
     expect(response.status).toBe(400)
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('INVALID_REQUEST')
     expect(mockProvisionClaims).not.toHaveBeenCalled()
   })
 
@@ -213,8 +221,8 @@ describe('POST /auth/claim — Provisionamento Seguro de Custom Claims (AUTH-001
 
     const response = await app.fetch(request)
     expect(response.status).toBe(409)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'role change not allowed' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('ROLE_CHANGE_NOT_ALLOWED')
     expect(mockProvisionClaims).not.toHaveBeenCalled()
   })
 
@@ -231,8 +239,8 @@ describe('POST /auth/claim — Provisionamento Seguro de Custom Claims (AUTH-001
 
     const response = await app.fetch(request)
     expect(response.status).toBe(409)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'role change not allowed' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('ROLE_CHANGE_NOT_ALLOWED')
     expect(mockProvisionClaims).not.toHaveBeenCalled()
   })
 
@@ -277,8 +285,8 @@ describe('POST /auth/claim — Provisionamento Seguro de Custom Claims (AUTH-001
 
     const response = await app.fetch(request)
     expect(response.status).toBe(502)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'failed to provision claims' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('AUTH_PROVIDER_UPDATE_FAILED')
   })
 
   it('12. Lookup falha → fail-closed: nenhum provisionamento ocorre e retorna 502', async () => {
@@ -296,8 +304,8 @@ describe('POST /auth/claim — Provisionamento Seguro de Custom Claims (AUTH-001
 
     const response = await app.fetch(request)
     expect(response.status).toBe(502)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'failed to resolve authorization state' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('AUTH_PROVIDER_LOOKUP_FAILED')
     expect(mockProvisionClaims).not.toHaveBeenCalled()
   })
 
@@ -314,8 +322,8 @@ describe('POST /auth/claim — Provisionamento Seguro de Custom Claims (AUTH-001
 
     const response = await app.fetch(request)
     expect(response.status).toBe(409)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'role change not allowed' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('ROLE_CHANGE_NOT_ALLOWED')
     expect(mockProvisionClaims).not.toHaveBeenCalled()
   })
 
@@ -336,8 +344,8 @@ describe('POST /auth/claim — Provisionamento Seguro de Custom Claims (AUTH-001
 
     const response = await app.fetch(request)
     expect(response.status).toBe(409)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'role change not allowed' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('ROLE_CHANGE_NOT_ALLOWED')
     expect(mockProvisionClaims).not.toHaveBeenCalled()
   })
 
@@ -387,8 +395,8 @@ describe('POST /auth/claim — Provisionamento Seguro de Custom Claims (AUTH-001
 
     const response = await app.fetch(request)
     expect(response.status).toBe(409)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'conflicting authorization state' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('AUTHORIZATION_STATE_CONFLICT')
     expect(mockProvisionClaims).not.toHaveBeenCalled()
   })
 
@@ -409,8 +417,8 @@ describe('POST /auth/claim — Provisionamento Seguro de Custom Claims (AUTH-001
 
     const response = await app.fetch(request)
     expect(response.status).toBe(409)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'conflicting authorization state' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('AUTHORIZATION_STATE_CONFLICT')
     expect(mockProvisionClaims).not.toHaveBeenCalled()
   })
 
@@ -431,8 +439,8 @@ describe('POST /auth/claim — Provisionamento Seguro de Custom Claims (AUTH-001
 
     const response = await app.fetch(request)
     expect(response.status).toBe(409)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'conflicting authorization state' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('AUTHORIZATION_STATE_CONFLICT')
     expect(mockProvisionClaims).not.toHaveBeenCalled()
   })
 
@@ -453,8 +461,8 @@ describe('POST /auth/claim — Provisionamento Seguro de Custom Claims (AUTH-001
 
     const response = await app.fetch(request)
     expect(response.status).toBe(409)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'conflicting authorization state' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('AUTHORIZATION_STATE_CONFLICT')
     expect(mockProvisionClaims).not.toHaveBeenCalled()
   })
 })

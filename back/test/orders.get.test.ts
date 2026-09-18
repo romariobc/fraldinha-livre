@@ -25,6 +25,10 @@ describe('GET /orders', () => {
     }
 
     const testApp = new Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>()
+    testApp.use('*', async (c, next) => {
+      c.set('requestId', 'req-test-orders-get')
+      await next()
+    })
     testApp.use('*', createAuthMiddleware(fakeVerify))
     testApp.get('/orders', ordersGetHandler)
 
@@ -37,8 +41,8 @@ describe('GET /orders', () => {
     const response = await app.fetch(request, env)
 
     expect(response.status).toBe(401)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'unauthorized' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('UNAUTHORIZED')
   })
 
   it('GET /orders com Authorization: Bearer token-invalido → 401', async () => {
@@ -49,8 +53,8 @@ describe('GET /orders', () => {
     const response = await app.fetch(request, env)
 
     expect(response.status).toBe(401)
-    const body = (await response.json()) as unknown
-    expect(body).toEqual({ error: 'unauthorized' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('UNAUTHORIZED')
   })
 
   it('GET /orders com uid válido retorna apenas orders desse uid (RN-02)', async () => {

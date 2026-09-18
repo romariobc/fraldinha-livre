@@ -12,6 +12,7 @@ import {
   type LookupClaimsFn,
 } from '../lib/claims-provisioner'
 import { logger } from '../lib/logger'
+import { respondError, respondZodError } from '../lib/errors'
 import type { Env, AppContext } from '../env'
 
 export type { ProvisionClaimsFn, LookupClaimsFn }
@@ -35,14 +36,14 @@ export function createAuthClaimHandler(options?: AuthClaimHandlerOptions) {
   return async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>) => {
     const uid = c.get('uid')
     if (!uid) {
-      return c.json({ error: 'unauthorized' }, 401)
+      return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
     }
 
     try {
       const body = await c.req.json().catch(() => null)
       const parsed = ProvisionRoleRequestSchema.safeParse(body)
       if (!parsed.success) {
-        return c.json({ error: 'invalid request', details: parsed.error.errors }, 400)
+        return respondZodError(c, parsed.error)
       }
 
       const requestedRole = parsed.data.role
@@ -50,7 +51,7 @@ export function createAuthClaimHandler(options?: AuthClaimHandlerOptions) {
       // 1. Verifica papel já presente no token do usuário
       const currentRole = getUserRole(c)
       if (currentRole === 'conflict') {
-        return c.json({ error: 'conflicting authorization state' }, 409)
+        return respondError(c, 'AUTHORIZATION_STATE_CONFLICT', 409, 'Estado de autorização conflitante.')
       }
       if (currentRole) {
         if (currentRole === requestedRole) {
@@ -61,7 +62,7 @@ export function createAuthClaimHandler(options?: AuthClaimHandlerOptions) {
           }
           return c.json(response, 200)
         }
-        return c.json({ error: 'role change not allowed' }, 409)
+        return respondError(c, 'ROLE_CHANGE_NOT_ALLOWED', 409, 'Alteração de perfil não permitida.')
       }
 
       // 2. Resolve as funções de provisionamento/lookup (injetadas para teste ou padrão de produção)
@@ -86,7 +87,7 @@ export function createAuthClaimHandler(options?: AuthClaimHandlerOptions) {
 
       if (!provisionFn) {
         logger.error(c, 'auth.claim.provisioner_not_configured')
-        return c.json({ error: 'claims provisioner not configured' }, 500)
+        return respondError(c, 'AUTH_PROVIDER_NOT_CONFIGURED', 500, 'Provedor de autenticação não configurado.')
       }
 
       // 3. Se houver lookup configurado, verifica se o usuário já possui claims no Identity Toolkit (Fail-closed)
@@ -97,13 +98,13 @@ export function createAuthClaimHandler(options?: AuthClaimHandlerOptions) {
           existingAttributes = existingUser?.customAttributes
         } catch {
           logger.error(c, 'auth.claim.lookup.failed')
-          return c.json({ error: 'failed to resolve authorization state' }, 502)
+          return respondError(c, 'AUTH_PROVIDER_LOOKUP_FAILED', 502, 'Falha ao consultar estado de autorização no provedor.')
         }
 
         if (existingAttributes) {
           const existingRole = resolveEffectiveRole(existingAttributes)
           if (existingRole === 'conflict') {
-            return c.json({ error: 'conflicting authorization state' }, 409)
+            return respondError(c, 'AUTHORIZATION_STATE_CONFLICT', 409, 'Estado de autorização conflitante.')
           }
           if (existingRole === requestedRole) {
             const response: ProvisionRoleResponse = {
@@ -115,7 +116,7 @@ export function createAuthClaimHandler(options?: AuthClaimHandlerOptions) {
             return c.json(response, 200)
           }
           if (existingRole && existingRole !== requestedRole) {
-            return c.json({ error: 'role change not allowed' }, 409)
+            return respondError(c, 'ROLE_CHANGE_NOT_ALLOWED', 409, 'Alteração de perfil não permitida.')
           }
         }
       }
@@ -148,11 +149,11 @@ export function createAuthClaimHandler(options?: AuthClaimHandlerOptions) {
       return c.json(response, 200)
     } catch (error) {
       if (error instanceof ZodError) {
-        return c.json({ error: 'invalid request', details: error.errors }, 400)
+        return respondZodError(c, error)
       }
       const errorMessage = error instanceof Error ? error.message : String(error)
       logger.error(c, 'auth.claim.provision.failed', { error: errorMessage })
-      return c.json({ error: 'failed to provision claims' }, 502)
+      return respondError(c, 'AUTH_PROVIDER_UPDATE_FAILED', 502, 'Falha ao provisionar permissões no provedor.')
     }
   }
 }

@@ -21,6 +21,10 @@ describe('GET /orders?scope=admin', () => {
       return null
     }
     const testApp = new Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>()
+    testApp.use('*', async (c, next) => {
+      c.set('requestId', 'req-test-orders-admin')
+      await next()
+    })
     testApp.use('*', createAuthMiddleware(fakeVerify))
     testApp.get('/orders', ordersGetHandler)
     return testApp
@@ -33,7 +37,8 @@ describe('GET /orders?scope=admin', () => {
     })
     const response = await app.fetch(request, env)
     expect(response.status).toBe(403)
-    expect(await response.json()).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('GET /orders?scope=admin sem token → 401', async () => {

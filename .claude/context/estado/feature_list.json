@@ -177,6 +177,14 @@
       "status": "done",
       "criterio_aceite": "Geração/resolução de requestId nativo com crypto.randomUUID(); sanitização do header do cliente; propagação no contexto Hono; retorno de X-Request-Id em 2xx, 4xx e 5xx; CORS com allowHeaders e exposeHeaders; injeção central no front/api-client; logger estruturado emitindo JSON por linha sem PII; eventos de lifecycle, auth, orders, notificações correlacionados; testes automatizados verdes",
       "notas": "Executada em 2026-09-16. ADR D-054 formalizada em decisoes.md. 11 testes em back/test/request-id-logger.test.ts, 2 em front/src/lib/__tests__/api-client.test.ts, 4 em back/test/observability-sanitization.test.ts. Suíte back 258/258, front 550/550, contracts 33/33 100% verdes."
+    },
+    {
+      "id": "OBS-002",
+      "titulo": "Contrato Unificado de Erros",
+      "fase": 1,
+      "status": "done",
+      "criterio_aceite": "Contrato Zod compartilhado em packages/contracts com taxonomia estável de error codes; classe AppError e serialização defensiva no backend; corpo de erro padronizado { error: { code, message, requestId, details? } }; invariante body.error.requestId === X-Request-Id; cliente HTTP tipado (ApiError) no frontend eliminando dependência de parsing por strings; nenhum vazamento de stack traces ou PII; testes verdes",
+      "notas": "Executada em 2026-09-16. ADR D-055 formalizada em decisoes.md. 4 testes em contracts, 5 testes de regressão de invariantes em back/test/unified-error-contract.test.ts, 6 testes em front/src/lib/__tests__/api-client.test.ts. Suíte back 263/263, front 554/554, contracts 37/37 100% verdes."
     }
   ]
 }

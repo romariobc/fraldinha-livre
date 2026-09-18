@@ -67,6 +67,10 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
     }
 
     const testApp = new Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>()
+    testApp.use('*', async (c, next) => {
+      c.set('requestId', 'req-test-products-crud')
+      await next()
+    })
 
     // Middleware condicional para /products (GET publico, POST/PUT/DELETE/scope=fornecedor exigem auth)
     testApp.use('/products', async (c, next) => {
@@ -114,8 +118,8 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
     })
     const response = await testApp.fetch(request, env)
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('PUT /products/:id com token de admin → 403', async () => {
@@ -130,8 +134,8 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
     })
     const response = await testApp.fetch(request, env)
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('DELETE /products/:id com token de admin → 403', async () => {
@@ -142,8 +146,8 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
     })
     const response = await testApp.fetch(request, env)
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   // ===== POST /products =====
@@ -167,8 +171,8 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
     const response = await testApp.fetch(request, env)
 
     expect(response.status).toBe(401)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'unauthorized' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('UNAUTHORIZED')
   })
 
   it('POST /products com token de comprador → 403 (RBAC)', async () => {
@@ -193,8 +197,8 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
     })
     const response = await testApp.fetch(request, env)
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('POST /products com token sem role → 403 (RBAC)', async () => {
@@ -219,8 +223,8 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
     })
     const response = await testApp.fetch(request, env)
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('POST /products com token valido, body sem campos obrigatorios → 400', async () => {
@@ -239,9 +243,9 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
     const response = await testApp.fetch(request, env)
 
     expect(response.status).toBe(400)
-    const body = (await response.json()) as Record<string, unknown>
-    expect(body.error).toBe('invalid request')
-    expect(body).toHaveProperty('details')
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('INVALID_REQUEST')
+    expect(body.error).toHaveProperty('details')
   })
 
   it('POST /products com token valido, body valido + extras (id/supplierId/active) → 201, servidor define esses campos', async () => {
@@ -326,8 +330,8 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
     const response = await testApp.fetch(request, env)
 
     expect(response.status).toBe(404)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'product not found' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('PRODUCT_NOT_FOUND')
   })
 
   it('PUT /products/:id de produto de outro fornecedor → 403', async () => {
@@ -343,8 +347,8 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
     const response = await testApp.fetch(request, env)
 
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('PUT /products/:id do próprio produto com { active: false } → 200, desaparece do GET público', async () => {
@@ -406,8 +410,8 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
     const response = await testApp.fetch(request, env)
 
     expect(response.status).toBe(404)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'product not found' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('PRODUCT_NOT_FOUND')
   })
 
   it('DELETE /products/:id de produto de outro fornecedor → 403', async () => {
@@ -419,8 +423,8 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
     const response = await testApp.fetch(request, env)
 
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('DELETE /products/:id do próprio produto → 204 sem corpo, nao aparece mais em nenhuma consulta', async () => {
@@ -488,8 +492,8 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
     const response = await testApp.fetch(request, env)
 
     expect(response.status).toBe(401)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'unauthorized' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('UNAUTHORIZED')
   })
 
   it('DELETE /products/:id sem token → 401', async () => {
@@ -500,7 +504,7 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
     const response = await testApp.fetch(request, env)
 
     expect(response.status).toBe(401)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'unauthorized' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('UNAUTHORIZED')
   })
 })

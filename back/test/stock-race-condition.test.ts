@@ -205,11 +205,13 @@ describe('Stock decrement race condition & constraints', () => {
     const productAfter = await db.select().from(products).where(eq(products.id, raceProductId)).get()
     expect(productAfter?.quantity).toBe(0)
 
-    // O request que tomou 409 deve conter a mensagem esperada
+    // O request que tomou 409 deve conter o contrato unificado de erro
     const rejectedRes = resA.status === 409 ? resA : resB
-    const rejectedBody = await rejectedRes.json()
-    expect(rejectedBody).toEqual({
-      error: 'Estoque insuficiente para o produto Última Fralda Disponível no momento da finalização.',
-    })
+    const rejectedBody = (await rejectedRes.json()) as any
+    expect(rejectedBody.error.code).toBe('INSUFFICIENT_STOCK')
+    expect(rejectedBody.error.message).toBe(
+      'Estoque insuficiente para o produto Última Fralda Disponível no momento da finalização.',
+    )
+    expect(rejectedBody.error.requestId).toBeDefined()
   })
 })

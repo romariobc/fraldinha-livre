@@ -135,6 +135,14 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
 
     const testApp = new Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>()
 
+    testApp.use('*', async (c, next) => {
+      const incomingId = c.req.header('x-request-id') || c.req.header('X-Request-Id')
+      const requestId = incomingId || 'test-req-id'
+      c.set('requestId', requestId)
+      c.header('X-Request-Id', requestId)
+      await next()
+    })
+
     // Middleware condicional para /products (GET sem scope específico é público)
     testApp.use('/products', async (c, next) => {
       const scope = c.req.query('scope')
@@ -208,8 +216,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
 
     const response = await app.fetch(request, env)
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('3. Comprador tentando acessar GET /products?scope=fornecedor → 403', async () => {
@@ -221,8 +229,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('4. Comprador tentando acessar GET /orders?scope=fornecedor → 403', async () => {
@@ -234,8 +242,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('5. Comprador tentando PUT /products/:id → 403', async () => {
@@ -252,8 +260,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('6. Comprador tentando DELETE /products/:id → 403', async () => {
@@ -266,8 +274,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('7. Comprador tentando POST /orders/:id/report → 403', async () => {
@@ -284,8 +292,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   // -------------------------------------------------------------
@@ -375,8 +383,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('12. Fornecedor A tentando DELETE no produto do Fornecedor B → 403 (Ownership)', async () => {
@@ -389,8 +397,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   // -------------------------------------------------------------
@@ -564,8 +572,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('19. Fornecedor tentando GET /orders sem scope (fluxo de pedidos do comprador) → 403', async () => {
@@ -577,8 +585,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('20. Fornecedor tentando PATCH /orders/:id/cancel (cancelar pedido como comprador) → 403', async () => {
@@ -591,8 +599,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('21. Usuário sem role tentando POST /orders → 403', async () => {
@@ -619,8 +627,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('22. Usuário sem role tentando GET /orders sem scope → 403', async () => {
@@ -632,8 +640,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('23. Usuário sem role tentando PATCH /orders/:id/cancel → 403', async () => {
@@ -646,8 +654,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('24. Comprador legítimo cria pedido via POST /orders → 201', async () => {
@@ -734,8 +742,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('28. Spoofing de role: envio de role=comprador no body por fornecedor ou sem-role NÃO concede privilégio → 403', async () => {
@@ -802,8 +810,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('30. Admin tentando GET /orders sem scope (fluxo de comprador) → 403 Forbidden', async () => {
@@ -815,8 +823,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('31. Admin tentando PATCH /orders/:id/cancel → 403 Forbidden', async () => {
@@ -829,8 +837,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   // -------------------------------------------------------------
@@ -937,8 +945,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('35. Admin tentando PUT /products/:id em produto de fornecedor → 403 Forbidden', async () => {
@@ -955,8 +963,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('36. Admin tentando DELETE /products/:id em produto de fornecedor → 403 Forbidden', async () => {
@@ -969,8 +977,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('37. Admin tentando GET /products?scope=fornecedor → 403 Forbidden', async () => {
@@ -982,8 +990,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('38. Admin tentando GET /orders?scope=fornecedor → 403 Forbidden', async () => {
@@ -995,8 +1003,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('39. Admin tentando POST /orders/:id/report em pedido de fornecedor → 403 Forbidden', async () => {
@@ -1013,8 +1021,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('40. Fornecedor A tenta enviar report em pedido pertencente a Fornecedor B → 403 Forbidden (ownership)', async () => {
@@ -1032,8 +1040,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden: only the supplier can report on this order' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   // -------------------------------------------------------------
@@ -1174,8 +1182,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(prodRes.status).toBe(403)
-    const prodBody = await prodRes.json()
-    expect(prodBody).toEqual({ error: 'forbidden' })
+    const prodBody = (await prodRes.json()) as any
+    expect(prodBody.error.code).toBe('FORBIDDEN')
 
     const orderRes = await app.fetch(
       new Request('http://localhost/orders?scope=admin', {
@@ -1184,8 +1192,8 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
       env,
     )
     expect(orderRes.status).toBe(403)
-    const orderBody = await orderRes.json()
-    expect(orderBody).toEqual({ error: 'forbidden' })
+    const orderBody = (await orderRes.json()) as any
+    expect(orderBody.error.code).toBe('FORBIDDEN')
   })
 
   it('44. Role arbitrária ("hacker") → 403 em rotas protegidas de comprador, fornecedor e admin', async () => {

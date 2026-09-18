@@ -49,6 +49,10 @@ describe('GET /products', () => {
     }
 
     const testApp = new Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>()
+    testApp.use('*', async (c, next) => {
+      c.set('requestId', 'req-test-products-get')
+      await next()
+    })
 
     // Middleware condicional identico ao de index.ts
     testApp.use('/products', async (c, next) => {
@@ -72,8 +76,8 @@ describe('GET /products', () => {
     const response = await testApp.fetch(request, env)
 
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('GET /products sem scope → retorna 200 (rota publica)', async () => {
@@ -106,8 +110,8 @@ describe('GET /products', () => {
     const response = await testApp.fetch(request, env)
 
     expect(response.status).toBe(401)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'unauthorized' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('UNAUTHORIZED')
   })
 
   it('GET /products?scope=fornecedor com token invalido → retorna 401', async () => {
@@ -118,8 +122,8 @@ describe('GET /products', () => {
     const response = await testApp.fetch(request, env)
 
     expect(response.status).toBe(401)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'unauthorized' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('UNAUTHORIZED')
   })
 
   it('GET /products?scope=fornecedor com token valido → retorna todos os produtos do uid (ativos+inativos)', async () => {

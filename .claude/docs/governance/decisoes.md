@@ -1463,3 +1463,63 @@ Após a higienização de logs sensíveis e habilitação da observabilidade da 
 ### Status
 Implementada na task OBS-001B. Coberta por 11 testes dedicados de Request ID e Logger (`back/test/request-id-logger.test.ts`), 2 testes de frontend (`front/src/lib/__tests__/api-client.test.ts`) e 24 suites de backend 100% verdes.
 
+---
+
+## D-055 — Contrato Unificado de Erros (OBS-002) (2026-09-16) — VIGENTE
+
+### Contexto
+Até a task OBS-001B, os erros gerados pelo backend eram heterogêneos e dependentes de mensagens em texto livre (ex.: `{ error: "unauthorized" }`, `{ error: "invalid request", details: [...] }`, `{ error: "Estoque insuficiente para o produto..." }`). Isso forçava o frontend e seus adaptadores a realizarem parsing frágil de strings (`err.message.includes('Estoque insuficiente')`) para inferir regras de negócio, além de gerar inconsistências na presença de `requestId` no corpo e ausência de tipagem compartilhada para códigos de erro de máquina.
+
+### Decisão Arquitetural
+1. **Contrato Compartilhado de Erro (`packages/contracts`):**
+   - O formato oficial de resposta para qualquer erro da API é estritamente:
+     ```json
+     {
+       "error": {
+         "code": "API_ERROR_CODE",
+         "message": "Mensagem informativa e segura.",
+         "requestId": "uuid-da-requisicao",
+         "details": [] // opcional
+       }
+     }
+     ```
+   - Definido e validado via Zod schemas compartilhados em `packages/contracts/src/error.ts`: `ApiErrorCodeSchema`, `ApiErrorDetailItemSchema`, `ApiErrorDetailsSchema`, `ApiErrorSchema`, `ApiErrorResponseSchema`.
+   - O contrato é consumido tanto pelo backend (para validação e serialização) quanto pelo frontend (para parsing e tratamento tipado).
+
+2. **Taxonomia de Códigos Estáveis (`ApiErrorCode`):**
+   - Códigos em inglês técnico, `UPPER_SNAKE_CASE`, estáveis e machine-readable.
+   - **Clientes e camadas de UI devem reagir exclusivamente a `error.code`, e NUNCA a textos de `message`.**
+   - Mensagens são puramente informativas e human-readable; códigos são o contrato de máquina.
+   - Taxonomia adotada:
+     - *Validação e Requisição (400):* `INVALID_REQUEST`, `IDEMPOTENCY_KEY_REQUIRED`, `PRICE_MISMATCH`, `SUPPLIER_MISMATCH`, `TOTAL_MISMATCH`
+     - *Autenticação e RBAC (401 / 403 / 409):* `UNAUTHORIZED`, `FORBIDDEN`, `AUTHORIZATION_STATE_CONFLICT`, `ROLE_CHANGE_NOT_ALLOWED`
+     - *Recursos e Entidades (404 em rotas diretas por ID, ou 400 em divergência de itens em POST /orders):* `RESOURCE_NOT_FOUND` (404), `ORDER_NOT_FOUND` (404), `PRODUCT_NOT_FOUND` (404 em `GET/PUT/DELETE /products/:id`, e 400 em `POST /orders` onde a inexistência do item no catálogo invalida o payload de checkout sem alterar regra funcional pré-existente)
+     - *Regras de Domínio e Conflito (409):* `INSUFFICIENT_STOCK`, `ORDER_NOT_AWAITING`, `IDEMPOTENCY_CONFLICT`
+     - *Provedores e Infraestrutura (500 / 502):* `AUTH_PROVIDER_NOT_CONFIGURED`, `AUTH_PROVIDER_LOOKUP_FAILED`, `AUTH_PROVIDER_UPDATE_FAILED`, `AI_PROVIDER_ERROR`, `INTERNAL_ERROR`
+
+3. **Obrigatoriedade e Invariante de `requestId`:**
+   - Todo erro da API inclui obrigatoriamente `error.requestId` no payload JSON.
+   - **Invariante protegido por testes:** o valor de `body.error.requestId` deve ser idêntico ao cabeçalho HTTP `X-Request-Id`.
+
+4. **Abstração Central no Backend (`AppError`):**
+   - Criada a classe `AppError extends Error` em `back/src/lib/errors.ts`, separando: status HTTP, `code` (ApiErrorCode), `message` segura, `details` opcionais e `cause` interna opcional.
+   - Helpers de resposta (`respondError`, `respondZodError`, `sendAppError`) padronizam a geração do JSON e garantem propagação correta do `requestId` a partir do contexto Hono.
+   - Tratamento central de erros não capturados em `app.onError` e rotas inexistentes em `app.notFound`: garante que nenhum erro 500 ou 404 vaze stack traces, queries SQL, schemas D1 ou respostas brutas de provedores externos.
+
+5. **Interpretação e Tipagem no Frontend (`ApiError`):**
+   - O cliente HTTP central (`front/src/lib/api-client.ts`) valida respostas `!res.ok` contra `ApiErrorResponseSchema`.
+   - Se válida, lança uma instância da classe tipada `ApiError` (`code`, `status`, `message`, `requestId`, `details`).
+   - Se inválida ou não JSON (ex.: HTML 502 de proxy, falha de infraestrutura externa), aplica fallback defensivo sem quebrar a aplicação, gerando um `ApiError` estruturado com o status correspondente.
+   - Adapters e páginas (ex.: `HttpOrderRepository`, checkout) substituíram checagens por string (`includes('Estoque insuficiente')`) pela checagem formal `err.code === 'INSUFFICIENT_STOCK'`, mapeando para erros de porta (`InsufficientStockError`) ou mensagens amigáveis na UI.
+
+6. **Segurança e Privacidade em `details`:**
+   - O campo `details` é estritamente restrito a metadados técnicos não sensíveis e issues de validação do Zod (contendo `path`, `code` e `message` dos campos).
+   - É proibido expor request bodies completos, dados pessoais (CPF, e-mail, nomes, endereços), tokens JWT, credenciais de serviço ou mensagens brutas de APIs de provedores em `details`.
+
+### Status
+Implementada na task OBS-002. Coberta por:
+- Testes em `packages/contracts`: 37/37 verdes;
+- Testes em `back`: 263/263 verdes (incluindo suíte de regressão de invariantes do contrato de erros em `back/test/unified-error-contract.test.ts`);
+- Testes em `front`: 554/554 verdes (incluindo testes de cliente tipado e fallback em `front/src/lib/__tests__/api-client.test.ts`);
+- Typecheck (`tsc --noEmit`) 100% limpo em contracts, back e front.
+

@@ -6,6 +6,7 @@ import type { Env, AppContext } from '../env'
 import { buildSystemPrompt } from '../lib/ai/prompts'
 import { AI_TOOLS } from '../lib/ai/tools/index'
 import { runAgenticLoop } from '../lib/ai/orchestrator'
+import { respondError } from '../lib/errors'
 
 // Re-exportado para retrocompatibilidade com testes existentes (chat.test.ts).
 export { EMPTY_RESPONSE_FALLBACK } from '../lib/ai/orchestrator'
@@ -27,7 +28,7 @@ export function createChatHandler(runChatCompletion: RunChatCompletion) {
     const body = await c.req.json().catch(() => null)
     const parsed = ChatRequestSchema.safeParse(body)
     if (!parsed.success) {
-      return c.json({ error: 'payload invalido' }, 400)
+      return respondError(c, 'INVALID_REQUEST', 400, 'Payload inválido.')
     }
 
     const db = drizzle(c.env.DB)
@@ -65,7 +66,7 @@ export function createChatHandler(runChatCompletion: RunChatCompletion) {
     )
 
     if (status === 502 || response === null) {
-      return c.json({ error: 'assistente indisponivel, tente novamente' }, 502)
+      return respondError(c, 'AI_PROVIDER_ERROR', 502, 'Assistente indisponível, tente novamente.')
     }
 
     return c.json(response, status)

@@ -28,6 +28,10 @@ describe('GET /orders?scope=fornecedor', () => {
     }
 
     const testApp = new Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>()
+    testApp.use('*', async (c, next) => {
+      c.set('requestId', 'req-test-orders-fornecedor')
+      await next()
+    })
     testApp.use('*', createAuthMiddleware(fakeVerify))
     testApp.get('/orders', ordersGetHandler)
 
@@ -40,8 +44,8 @@ describe('GET /orders?scope=fornecedor', () => {
     const response = await app.fetch(request, env)
 
     expect(response.status).toBe(401)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'unauthorized' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('UNAUTHORIZED')
   })
 
   it('GET /orders?scope=fornecedor com token de comprador → 403 (RBAC)', async () => {
@@ -52,8 +56,8 @@ describe('GET /orders?scope=fornecedor', () => {
     const response = await app.fetch(request, env)
 
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('GET /orders?scope=fornecedor com token de admin → 403 (RBAC)', async () => {
@@ -64,8 +68,8 @@ describe('GET /orders?scope=fornecedor', () => {
     const response = await app.fetch(request, env)
 
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('GET /orders?scope=fornecedor com token sem role → 403 (RBAC)', async () => {
@@ -76,8 +80,8 @@ describe('GET /orders?scope=fornecedor', () => {
     const response = await app.fetch(request, env)
 
     expect(response.status).toBe(403)
-    const body = await response.json()
-    expect(body).toEqual({ error: 'forbidden' })
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('FORBIDDEN')
   })
 
   it('GET /orders?scope=fornecedor retorna pedidos cujos itens referenciam produtos do fornecedor', async () => {

@@ -10,6 +10,7 @@ export interface ProductRepository {
 
 /** Lançado por update()/remove() quando o produto não existe. */
 export class ProductNotFoundError extends Error {
+  public readonly code = 'PRODUCT_NOT_FOUND' as const
   constructor(productId: string) {
     super(`Product not found: ${productId}`)
     this.name = 'ProductNotFoundError'
@@ -18,6 +19,7 @@ export class ProductNotFoundError extends Error {
 
 /** Lançado por update()/remove() quando o produto existe mas não pertence ao fornecedor atual (403). */
 export class ProductForbiddenError extends Error {
+  public readonly code = 'FORBIDDEN' as const
   constructor(productId: string) {
     super(`Not allowed to modify product: ${productId}`)
     this.name = 'ProductForbiddenError'

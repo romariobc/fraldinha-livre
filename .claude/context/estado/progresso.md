@@ -1,3 +1,42 @@
+## Marco (2026-09-16) - OBS-002: Contrato Unificado de Erros
+
+**Resumo da Sessão:**
+Execução completa da task OBS-002 estabelecendo o contrato de erros padronizado e machine-readable entre backend, contracts e frontend. Eliminada integralmente a dependência de parsing por string de mensagens de erro livres na aplicação. Definidos Zod Schemas compartilhados em `packages/contracts`, abstração `AppError` e serialização defensiva no backend, e cliente HTTP tipado (`ApiError`) no frontend, assegurando o invariante `body.error.requestId === X-Request-Id` e garantindo que nenhuma exceção vaze dados sensíveis, stack traces, schemas SQL ou erros brutos de provedores.
+
+**O que foi feito:**
+1. **Contrato Compartilhado de Erro (`packages/contracts/src/error.ts`):**
+   - Criação de `ApiErrorCodeSchema`, `ApiErrorDetailItemSchema`, `ApiErrorDetailsSchema`, `ApiErrorSchema`, `ApiErrorResponseSchema`.
+   - Taxonomia estável de 18 códigos (`INVALID_REQUEST`, `UNAUTHORIZED`, `FORBIDDEN`, `RESOURCE_NOT_FOUND`, `PRODUCT_NOT_FOUND`, `ORDER_NOT_FOUND`, `INSUFFICIENT_STOCK`, `ORDER_NOT_AWAITING`, `IDEMPOTENCY_KEY_REQUIRED`, `IDEMPOTENCY_CONFLICT`, `PRICE_MISMATCH`, `SUPPLIER_MISMATCH`, `TOTAL_MISMATCH`, `AUTHORIZATION_STATE_CONFLICT`, `ROLE_CHANGE_NOT_ALLOWED`, `AUTH_PROVIDER_NOT_CONFIGURED`, `AUTH_PROVIDER_LOOKUP_FAILED`, `AUTH_PROVIDER_UPDATE_FAILED`, `AI_PROVIDER_ERROR`, `INTERNAL_ERROR`).
+   - Suíte de testes dedicada em `packages/contracts/src/__tests__/error.test.ts` (4 testes validando schemas, details e estruturas inválidas).
+2. **Abstração e Serialização Central no Backend (`back/src/lib/errors.ts`):**
+   - Criação da classe `AppError extends Error` desacoplando status HTTP, código semântico, mensagem amigável, details e causa interna.
+   - Helpers funcionais `respondError`, `respondZodError` e `formatZodIssues` para geração de respostas padronizadas com correlação ao `requestId` do contexto Hono.
+   - Centralização em `app.onError` para capturar falhas inesperadas e retornar 500 com code `INTERNAL_ERROR` sem vazar detalhes internos, e rota `app.notFound` com 404 e code `RESOURCE_NOT_FOUND`.
+3. **Migração Transversal das Rotas do Backend:**
+   - Middleware de Autenticação (`back/src/middleware/auth.ts`): respostas 401 (`UNAUTHORIZED`), 403 (`FORBIDDEN`) e 403 (`AUTHORIZATION_STATE_CONFLICT`).
+   - Provisionamento de Claims (`back/src/routes/auth.ts`): códigos estáveis para 400 (`INVALID_REQUEST`), 409 (`AUTHORIZATION_STATE_CONFLICT`, `ROLE_CHANGE_NOT_ALLOWED`) e 502 (`AUTH_PROVIDER_*`).
+   - Pedidos e Estoque (`back/src/routes/orders.ts`): códigos para `IDEMPOTENCY_KEY_REQUIRED` (400), `PRODUCT_NOT_FOUND` (400, divergência de item no checkout), `PRICE_MISMATCH` (400), `SUPPLIER_MISMATCH` (400), `TOTAL_MISMATCH` (400), `INSUFFICIENT_STOCK` (409), `ORDER_NOT_FOUND` (404), `ORDER_NOT_AWAITING` (409).
+   - Catálogo de Produtos (`back/src/routes/products.ts`): códigos para `PRODUCT_NOT_FOUND` (404 em recurso direto por ID), `FORBIDDEN` (403), `INVALID_REQUEST` (400).
+   - Chat Assistant (`back/src/routes/chat.ts`): códigos para `INVALID_REQUEST` (400) e `AI_PROVIDER_ERROR` (502).
+4. **Cliente HTTP Tipado e Eliminação de String Parsing no Frontend:**
+   - `front/src/lib/api-client.ts`: `apiFetch` interpreta respostas de erro através de `ApiErrorResponseSchema`, lança a classe tipada `ApiError` (`code`, `status`, `message`, `requestId`, `details`) e exporta type guard reutilizável `isApiError(err)`. Possui fallback defensivo para respostas legadas ou HTML 502 de proxies/infraestrutura externa.
+   - Erros de porta tipados (`front/src/lib/ports/order-repository.ts` e `product-repository.ts`) ganharam propriedade `code?: string`.
+   - Adaptadores `HttpOrderRepository` e `HttpProductRepository` capturam `ApiError` e mapeiam pelo `err.code` para suas classes de exceção de domínio (`InsufficientStockError`, `ProductNotFoundError`, etc.).
+   - Tela de checkout (`front/src/app/(comprador)/checkout/page.tsx`): removido o teste frágil `err.message.includes('Estoque insuficiente')` e todos os casts `(err as any)`, dependendo unicamente do erro de domínio `InsufficientStockError` e do type guard `isApiError`.
+5. **Bateria de Testes Automatizados:**
+   - `back/test/unified-error-contract.test.ts` (5 testes validando os invariantes HTTP status, `error.code`, igualdade estrita entre `body.error.requestId` e cabeçalho `X-Request-Id`, e ocultação de stack traces em erros inesperados).
+   - `front/src/lib/__tests__/api-client.test.ts` (6 testes cobrindo parsing de erro padronizado, captura de issues de validação Zod, fallback defensivo para HTML 502 e respostas legadas).
+   - Todas as 25 suítes de testes do backend (263 testes) e 56 suítes do frontend (554 testes) atualizadas e verdes.
+6. **Governança:** Registrada a decisão arquitetural [D-055](file:///.claude/docs/governance/decisoes.md#D-055).
+
+**Status:**
+Build limpo, `tsc --noEmit` com 0 erros nos três pacotes, 37 testes de contracts, 263 testes de backend e 554 testes de frontend 100% verdes. ADR D-055 vigente. Classificação final: **OBS-002 CONCLUÍDA — CONTRATO UNIFICADO DE ERROS ATIVO**.
+
+**Próximo Passo:**
+Planejar a task **OBS-004 — Frontend Diagnostics** (diagnóstico no cliente, toast/UX refinado e telemetria de erro no navegador).
+
+---
+
 ## Marco (2026-09-16) - OBS-001B: Request ID + Structured Logging
 
 **Resumo da Sessão:**

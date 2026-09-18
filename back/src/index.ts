@@ -7,6 +7,8 @@ import { createChatHandler } from './routes/chat'
 import { createAuthClaimHandler } from './routes/auth'
 import { createWorkersAiChatCompletion } from './lib/chat-completion'
 import { resolveRequestId, logger } from './lib/logger'
+import { AppError, respondError } from './lib/errors'
+import type { ApiErrorResponse } from '../../packages/contracts/src/error'
 import type { Env, AppContext } from './env'
 
 const app = new Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>()
@@ -60,13 +62,38 @@ app.use('*', async (c, next) => {
 
 app.onError((err, c) => {
   const requestId = c.get('requestId') || resolveRequestId()
+  c.res.headers.set('X-Request-Id', requestId)
+
+  if (err instanceof AppError) {
+    const level = err.status >= 500 ? 'error' : err.status >= 400 ? 'warn' : 'info'
+    logger[level](c, 'http.request.app_error', {
+      method: c.req.method,
+      path: c.req.path,
+      code: err.code,
+      status: err.status,
+      error: err.message,
+    })
+    return c.json(err.toResponse(requestId), err.status)
+  }
+
   logger.error(requestId, 'http.request.unhandled_error', {
     method: c.req.method,
     path: c.req.path,
     error: err instanceof Error ? err.message : String(err),
   })
-  c.res.headers.set('X-Request-Id', requestId)
-  return c.text('Internal Server Error', 500)
+
+  const internalResponse: ApiErrorResponse = {
+    error: {
+      code: 'INTERNAL_ERROR',
+      message: 'Erro interno do servidor.',
+      requestId,
+    },
+  }
+  return c.json(internalResponse, 500)
+})
+
+app.notFound((c) => {
+  return respondError(c, 'RESOURCE_NOT_FOUND', 404, 'Recurso não encontrado.')
 })
 
 app.get('/health', (c) => c.json({ ok: true }))

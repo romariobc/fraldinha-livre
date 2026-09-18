@@ -10,6 +10,7 @@ import {
 } from '../../../packages/contracts/src/product'
 import { hasAnyRole } from '../middleware/auth'
 import { ZodError } from 'zod'
+import { respondError, respondZodError } from '../lib/errors'
 
 function generateUUID(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(16))
@@ -53,10 +54,10 @@ export const productsGetHandler = async (c: Context<{ Bindings: Env; Variables: 
   if (scope === 'admin') {
     const uid = c.get('uid')
     if (!uid) {
-      return c.json({ error: 'unauthorized' }, 401)
+      return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
     }
     if (!hasAnyRole(c, ['admin'])) {
-      return c.json({ error: 'forbidden' }, 403)
+      return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
     }
     const rows = await db.select().from(products).all()
     return c.json(rows.map(normalizeProduct))
@@ -65,10 +66,10 @@ export const productsGetHandler = async (c: Context<{ Bindings: Env; Variables: 
   if (scope === 'fornecedor') {
     const uid = c.get('uid')
     if (!uid) {
-      return c.json({ error: 'unauthorized' }, 401)
+      return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
     }
     if (!hasAnyRole(c, ['fornecedor'])) {
-      return c.json({ error: 'forbidden' }, 403)
+      return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
     }
     const rows = await db.select().from(products).where(eq(products.supplierId, uid)).all()
     return c.json(rows.map(normalizeProduct))
@@ -84,10 +85,10 @@ export const productsGetHandler = async (c: Context<{ Bindings: Env; Variables: 
 export const productsPostHandler = async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>) => {
   const uid = c.get('uid')
   if (!uid) {
-    return c.json({ error: 'unauthorized' }, 401)
+    return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
   }
   if (!hasAnyRole(c, ['fornecedor'])) {
-    return c.json({ error: 'forbidden' }, 403)
+    return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
   }
   const supplierEmail = c.get('email')
 
@@ -127,7 +128,7 @@ export const productsPostHandler = async (c: Context<{ Bindings: Env; Variables:
   } catch (error) {
     if (error instanceof ZodError || (error instanceof Error && error.name === 'ZodError') || (error && typeof error === 'object' && 'issues' in error)) {
       const err = error as ZodError
-      return c.json({ error: 'invalid request', details: err.errors }, 400)
+      return respondZodError(c, err)
     }
     throw error
   }
@@ -138,10 +139,10 @@ export const productsPostHandler = async (c: Context<{ Bindings: Env; Variables:
 export const productsPutHandler = async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>) => {
   const uid = c.get('uid')
   if (!uid) {
-    return c.json({ error: 'unauthorized' }, 401)
+    return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
   }
   if (!hasAnyRole(c, ['fornecedor'])) {
-    return c.json({ error: 'forbidden' }, 403)
+    return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
   }
 
   const id = c.req.param('id') as string
@@ -149,10 +150,10 @@ export const productsPutHandler = async (c: Context<{ Bindings: Env; Variables: 
 
   const existingRows = await db.select().from(products).where(eq(products.id, id)).all()
   if (existingRows.length === 0) {
-    return c.json({ error: 'product not found' }, 404)
+    return respondError(c, 'PRODUCT_NOT_FOUND', 404, 'Produto não encontrado.')
   }
   if (existingRows[0].supplierId !== uid) {
-    return c.json({ error: 'forbidden' }, 403)
+    return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
   }
 
   try {
@@ -185,7 +186,7 @@ export const productsPutHandler = async (c: Context<{ Bindings: Env; Variables: 
   } catch (error) {
     if (error instanceof ZodError || (error instanceof Error && error.name === 'ZodError') || (error && typeof error === 'object' && 'issues' in error)) {
       const err = error as ZodError
-      return c.json({ error: 'invalid request', details: err.errors }, 400)
+      return respondZodError(c, err)
     }
     throw error
   }
@@ -195,10 +196,10 @@ export const productsPutHandler = async (c: Context<{ Bindings: Env; Variables: 
 export const productsDeleteHandler = async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>) => {
   const uid = c.get('uid')
   if (!uid) {
-    return c.json({ error: 'unauthorized' }, 401)
+    return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
   }
   if (!hasAnyRole(c, ['fornecedor'])) {
-    return c.json({ error: 'forbidden' }, 403)
+    return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
   }
 
   const id = c.req.param('id') as string
@@ -206,10 +207,10 @@ export const productsDeleteHandler = async (c: Context<{ Bindings: Env; Variable
 
   const existingRows = await db.select().from(products).where(eq(products.id, id)).all()
   if (existingRows.length === 0) {
-    return c.json({ error: 'product not found' }, 404)
+    return respondError(c, 'PRODUCT_NOT_FOUND', 404, 'Produto não encontrado.')
   }
   if (existingRows[0].supplierId !== uid) {
-    return c.json({ error: 'forbidden' }, 403)
+    return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
   }
 
   await db.delete(products).where(eq(products.id, id))

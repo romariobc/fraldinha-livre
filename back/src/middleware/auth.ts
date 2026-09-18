@@ -2,6 +2,7 @@ import { createRemoteJWKSet, jwtVerify } from 'jose'
 import type { Context, Next } from 'hono'
 import type { Env, AppContext } from '../env'
 import { logger } from '../lib/logger'
+import { respondError } from '../lib/errors'
 
 /**
  * JWKS público do Firebase — criado UMA VEZ no escopo do módulo (não a cada chamada).
@@ -38,7 +39,7 @@ export const createAuthMiddleware = (verifyToken: VerifyTokenFn) => {
     // Sem header ou sem prefixo Bearer → 401
     if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
       logger.warn(c, 'auth.token.missing_or_malformed')
-      return c.json({ error: 'unauthorized' }, 401)
+      return respondError(c, 'UNAUTHORIZED', 401, 'Token de autenticação ausente ou malformado.')
     }
 
     const token = authHeader.slice(7) // Remove "Bearer "
@@ -46,7 +47,7 @@ export const createAuthMiddleware = (verifyToken: VerifyTokenFn) => {
     const verified = await verifyToken(token)
     if (!verified) {
       logger.warn(c, 'auth.token.invalid')
-      return c.json({ error: 'unauthorized' }, 401)
+      return respondError(c, 'UNAUTHORIZED', 401, 'Token de autenticação inválido.')
     }
 
     c.set('uid', verified.uid)
@@ -188,16 +189,17 @@ export const requireAnyRole = (allowedRoles: string[]) => {
     const uid = c.get('uid')
     if (!uid) {
       logger.warn(c, 'auth.unauthenticated')
-      return c.json({ error: 'unauthorized' }, 401)
+      return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
     }
     if (!hasAnyRole(c, allowedRoles)) {
       const effectiveRole = getUserRole(c)
       if (effectiveRole === 'conflict') {
         logger.warn(c, 'auth.claim.conflict')
+        return respondError(c, 'AUTHORIZATION_STATE_CONFLICT', 403, 'Conflito de autorização: múltiplos papéis atribuídos.')
       } else {
         logger.warn(c, 'auth.role.forbidden', { expectedRoles: allowedRoles })
+        return respondError(c, 'FORBIDDEN', 403, 'Acesso negado para o perfil do usuário.', { expectedRoles: allowedRoles })
       }
-      return c.json({ error: 'forbidden' }, 403)
     }
     await next()
   }

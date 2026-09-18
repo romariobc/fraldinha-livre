@@ -51,8 +51,8 @@ export class HttpProductRepository implements ProductRepository {
       return ProductSchema.parse(json)
     } catch (error) {
       if (error instanceof ApiError) {
-        if (error.code === 'PRODUCT_NOT_FOUND' || error.status === 404) throw new ProductNotFoundError(id)
-        if (error.code === 'FORBIDDEN' || error.status === 403) throw new ProductForbiddenError(id)
+        if (error.code === 'PRODUCT_NOT_FOUND') throw new ProductNotFoundError(id)
+        if (error.code === 'FORBIDDEN') throw new ProductForbiddenError(id)
         throw new Error(`Failed to update product: HTTP ${error.status}`)
       }
       throw error
@@ -64,8 +64,8 @@ export class HttpProductRepository implements ProductRepository {
       await apiFetch(`/products/${id}`, { method: 'DELETE' })
     } catch (error) {
       if (error instanceof ApiError) {
-        if (error.code === 'PRODUCT_NOT_FOUND' || error.status === 404) throw new ProductNotFoundError(id)
-        if (error.code === 'FORBIDDEN' || error.status === 403) throw new ProductForbiddenError(id)
+        if (error.code === 'PRODUCT_NOT_FOUND') throw new ProductNotFoundError(id)
+        if (error.code === 'FORBIDDEN') throw new ProductForbiddenError(id)
         throw new Error(`Failed to remove product: HTTP ${error.status}`)
       }
       throw error

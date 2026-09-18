@@ -46,6 +46,8 @@ export const ApiErrorDetailsSchema = z.union([
   z.string(),
 ])
 
+export type ApiErrorDetails = z.infer<typeof ApiErrorDetailsSchema>
+
 export const ApiErrorSchema = z.object({
   code: ApiErrorCodeSchema,
   message: z.string(),

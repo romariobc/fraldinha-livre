@@ -44,7 +44,7 @@ export class HttpOrderRepository implements OrderRepository {
       const json = await res.json()
       return OrderSchema.parse(json)
     } catch (error) {
-      if (error instanceof ApiError && (error.code === 'INSUFFICIENT_STOCK' || error.status === 409)) {
+      if (error instanceof ApiError && error.code === 'INSUFFICIENT_STOCK') {
         throw new InsufficientStockError(error.message)
       }
       if (error instanceof ApiError) {
@@ -61,9 +61,9 @@ export class HttpOrderRepository implements OrderRepository {
       return OrderSchema.parse(json)
     } catch (error) {
       if (error instanceof ApiError) {
-        if (error.code === 'ORDER_NOT_FOUND' || error.status === 404) throw new OrderNotFoundError(orderId)
-        if (error.code === 'FORBIDDEN' || error.status === 403) throw new OrderForbiddenError(orderId)
-        if (error.code === 'ORDER_NOT_AWAITING' || error.status === 409) throw new OrderCancelNotAllowedError(orderId, 'unknown')
+        if (error.code === 'ORDER_NOT_FOUND') throw new OrderNotFoundError(orderId)
+        if (error.code === 'FORBIDDEN') throw new OrderForbiddenError(orderId)
+        if (error.code === 'ORDER_NOT_AWAITING') throw new OrderCancelNotAllowedError(orderId, 'unknown')
         throw new Error(`Failed to cancel order: HTTP ${error.status}`)
       }
       throw error

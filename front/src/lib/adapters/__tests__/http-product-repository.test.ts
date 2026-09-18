@@ -99,37 +99,94 @@ describe('HttpProductRepository - Parte A: comportamento específico de HTTP', (
     })
   })
 
-  describe('mapeamento de status HTTP para erros', () => {
-    it('update() com status 404 lança ProductNotFoundError', async () => {
+  describe('mapeamento de ApiError.code para erros de domínio', () => {
+    it('update() com code PRODUCT_NOT_FOUND lança ProductNotFoundError', async () => {
       fetchMock.mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: 'not found' }), { status: 404 })
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'PRODUCT_NOT_FOUND',
+              message: 'Produto não encontrado.',
+              requestId: 'test-req',
+            },
+          }),
+          { status: 404 }
+        )
       )
 
       const repo = new HttpProductRepository()
       await expect(repo.update('prod-missing', { active: false })).rejects.toThrow(ProductNotFoundError)
     })
 
-    it('update() com status 403 lança ProductForbiddenError', async () => {
+    it('update() com status 404 mas code genérico RESOURCE_NOT_FOUND NÃO lança ProductNotFoundError', async () => {
       fetchMock.mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 })
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'RESOURCE_NOT_FOUND',
+              message: 'Rota não encontrada.',
+              requestId: 'test-req',
+            },
+          }),
+          { status: 404 }
+        )
+      )
+
+      const repo = new HttpProductRepository()
+      const error = await repo.update('prod-missing', { active: false }).catch((e) => e)
+      expect(error).toBeInstanceOf(Error)
+      expect(error).not.toBeInstanceOf(ProductNotFoundError)
+      expect(error.message).toBe('Failed to update product: HTTP 404')
+    })
+
+    it('update() com code FORBIDDEN lança ProductForbiddenError', async () => {
+      fetchMock.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'FORBIDDEN',
+              message: 'Acesso negado.',
+              requestId: 'test-req',
+            },
+          }),
+          { status: 403 }
+        )
       )
 
       const repo = new HttpProductRepository()
       await expect(repo.update('prod-forbidden', { active: false })).rejects.toThrow(ProductForbiddenError)
     })
 
-    it('remove() com status 404 lança ProductNotFoundError', async () => {
+    it('remove() com code PRODUCT_NOT_FOUND lança ProductNotFoundError', async () => {
       fetchMock.mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: 'not found' }), { status: 404 })
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'PRODUCT_NOT_FOUND',
+              message: 'Produto não encontrado.',
+              requestId: 'test-req',
+            },
+          }),
+          { status: 404 }
+        )
       )
 
       const repo = new HttpProductRepository()
       await expect(repo.remove('prod-missing')).rejects.toThrow(ProductNotFoundError)
     })
 
-    it('remove() com status 403 lança ProductForbiddenError', async () => {
+    it('remove() com code FORBIDDEN lança ProductForbiddenError', async () => {
       fetchMock.mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 })
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'FORBIDDEN',
+              message: 'Acesso negado.',
+              requestId: 'test-req',
+            },
+          }),
+          { status: 403 }
+        )
       )
 
       const repo = new HttpProductRepository()
@@ -197,7 +254,18 @@ function createFakeFetch() {
     const idMatch = url.match(/\/products\/([^/?]+)$/)
     if (method === 'PUT' && idMatch) {
       const product = fakeDb.find((p) => p.id === idMatch[1])
-      if (!product) return new Response(JSON.stringify({ error: 'product not found' }), { status: 404 })
+      if (!product) {
+        return new Response(
+          JSON.stringify({
+            error: {
+              code: 'PRODUCT_NOT_FOUND',
+              message: 'product not found',
+              requestId: 'fake-req',
+            },
+          }),
+          { status: 404 }
+        )
+      }
       const body = JSON.parse(init!.body as string)
       Object.assign(product, body)
       return new Response(JSON.stringify(product), { status: 200 })
@@ -205,7 +273,18 @@ function createFakeFetch() {
 
     if (method === 'DELETE' && idMatch) {
       const index = fakeDb.findIndex((p) => p.id === idMatch[1])
-      if (index === -1) return new Response(JSON.stringify({ error: 'product not found' }), { status: 404 })
+      if (index === -1) {
+        return new Response(
+          JSON.stringify({
+            error: {
+              code: 'PRODUCT_NOT_FOUND',
+              message: 'product not found',
+              requestId: 'fake-req',
+            },
+          }),
+          { status: 404 }
+        )
+      }
       fakeDb.splice(index, 1)
       return new Response(null, { status: 204 })
     }

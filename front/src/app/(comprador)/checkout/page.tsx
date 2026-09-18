@@ -19,7 +19,6 @@ import { MockPaymentGateway } from '@/lib/adapters/mock-payment-gateway'
 import { MockFulfillmentService } from '@/lib/adapters/mock-fulfillment-service'
 import { orderToDirectOrder } from '@/lib/order-adapters'
 import { InsufficientStockError } from '@/lib/ports/order-repository'
-import { isApiError } from '@/lib/api-client'
 import { toast } from 'sonner'
 
 type CheckoutStep = 'endereco' | 'revisao' | 'pagamento' | 'confirmacao'
@@ -189,8 +188,7 @@ function CheckoutContent() {
       console.error('Erro ao finalizar compra:', err)
       const isInsufficientStock =
         err instanceof InsufficientStockError ||
-        (err instanceof Error && err.name === 'InsufficientStockError') ||
-        (isApiError(err) && err.code === 'INSUFFICIENT_STOCK')
+        (err instanceof Error && err.name === 'InsufficientStockError')
 
       if (isInsufficientStock) {
         const errorMsg =

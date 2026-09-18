@@ -1,3 +1,38 @@
+## Marco (2026-09-18) - OBS-002.1: Endurecimento do Contrato Tipado de Erros
+
+**Resumo da Sessão:**
+Execução da task corretiva e de endurecimento OBS-002.1 sem ampliação de escopo. Eliminadas todas as inferências ambíguas por status HTTP remanescentes nos adaptadores e no cliente HTTP. Corrigido o fallback defensivo de status 409 para não inferir `INSUFFICIENT_STOCK` (usando código genérico neutro `INVALID_REQUEST`). Adaptadores de domínio (`HttpOrderRepository` e `HttpProductRepository`) agora dependem exclusivamente de `error.code` como fonte semântica. Removidos todos os casts `any` introduzidos em `front/src/lib/api-client.ts` e `back/src/lib/errors.ts` (exportando tipagem estrita `ApiErrorDetails` de `packages/contracts`). Fortalecido o type guard `isApiError` com validação estrutural rigorosa e desacoplada a camada de UI do checkout, que agora responde diretamente a `InsufficientStockError`.
+
+**O que foi feito:**
+1. **Contrato Compartilhado (`packages/contracts/src/error.ts`):**
+   - Exportada a tipagem inferida oficial `ApiErrorDetails = z.infer<typeof ApiErrorDetailsSchema>`.
+   - Comentários de taxonomia atualizados explicitando a semântica dual de `PRODUCT_NOT_FOUND` (404 em `GET/PUT/DELETE /products/:id` vs 400 em divergência de itens em `POST /orders` sem alteração de regra funcional).
+2. **Eliminação de Casts `any` no Backend (`back/src/lib/errors.ts`):**
+   - `AppErrorParams.details`, `AppError.details` e `respondError` tipados estritamente com `ApiErrorDetails`.
+   - Removido o cast `this.details as any`. Zero ocorrências de `any` no arquivo.
+3. **Endurecimento de Fallback e Type Guard no Frontend (`front/src/lib/api-client.ts`):**
+   - Fallback para HTTP 409 não-estruturado corrigido para emitir `INVALID_REQUEST` (não inventa regra de estoque sem contrato válido).
+   - Removido `(rawJson as any)` com narrowing seguro via `in` e checagem de tipos. Zero `any`.
+   - `isApiError` agora realiza validação estrutural completa dos atributos essenciais (`name === 'ApiError'`, `status: number`, `message: string`, `requestId: string`, e validação Zod via `ApiErrorCodeSchema.safeParse`).
+4. **Desacoplamento e Semântica Estrita nos Adaptadores HTTP:**
+   - `HttpOrderRepository`: remoção de `|| error.status === 409` e `|| error.status === 404`. Mapeamento exclusivo por `error.code` (`INSUFFICIENT_STOCK` -> `InsufficientStockError`, `ORDER_NOT_FOUND` -> `OrderNotFoundError`, `FORBIDDEN` -> `OrderForbiddenError`, `ORDER_NOT_AWAITING` -> `OrderCancelNotAllowedError`).
+   - `HttpProductRepository`: mapeamento restrito a `error.code === 'PRODUCT_NOT_FOUND'` (`ProductNotFoundError`) e `error.code === 'FORBIDDEN'` (`ProductForbiddenError`).
+5. **Isolamento de Camadas na UI (`front/src/app/(comprador)/checkout/page.tsx`):**
+   - Removido conhecimento e importação de `ApiError` e `isApiError` da página de checkout.
+   - O fluxo segue a arquitetura em camadas limpa: `HTTP -> ApiError -> HttpOrderRepository -> InsufficientStockError -> UI`.
+6. **Bateria de Testes:**
+   - Testes em `front/src/lib/__tests__/api-client.test.ts` cobrindo fallback de 409 não-estruturado, preservação de 409 estruturado (`ORDER_NOT_AWAITING`) e validação estrutural rigorosa de `isApiError` (rejeitando objetos vazios ou incompletos).
+   - Testes em `front/src/lib/adapters/__tests__/http-order-repository.test.ts` e `http-product-repository.test.ts` garantindo que status 409 ou 404 com outros códigos NÃO disparem exceções de domínio incorretas.
+7. **Governança:** ADR [D-055](file:///.claude/docs/governance/decisoes.md#D-055) complementada com adenda de consumo no frontend e fallback neutro.
+
+**Status:**
+Build limpo, typecheck com 0 erros nos três pacotes, 37 testes de contracts, 263 testes de backend e 561 testes de frontend 100% verdes. Classificação final: **OBS-002.1 CONCLUÍDA — CONTRATO DE ERROS ENDURECIDO E SEM INFERÊNCIA AMBÍGUA POR STATUS**.
+
+**Próximo Passo:**
+Planejar e executar a task **OBS-004 — Frontend Diagnostics**.
+
+---
+
 ## Marco (2026-09-16) - OBS-002: Contrato Unificado de Erros
 
 **Resumo da Sessão:**

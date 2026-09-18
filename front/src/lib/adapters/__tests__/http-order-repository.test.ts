@@ -195,39 +195,109 @@ describe('HttpOrderRepository - Parte A: comportamento específico de HTTP', () 
     })
   })
 
-  describe('mapeamento de status HTTP para erros', () => {
-    it('cancel() com status 404 lança OrderNotFoundError', async () => {
+  describe('mapeamento de ApiError.code para erros de domínio', () => {
+    it('cancel() com code ORDER_NOT_FOUND (404) lança OrderNotFoundError', async () => {
       fetchMock.mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: 'not found' }), { status: 404 })
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'ORDER_NOT_FOUND',
+              message: 'Pedido não encontrado',
+              requestId: 'trace-404',
+            },
+          }),
+          { status: 404 }
+        )
       )
 
       const repo = new HttpOrderRepository()
       await expect(repo.cancel('ord-missing')).rejects.toThrow(OrderNotFoundError)
     })
 
-    it('cancel() com status 403 lança OrderForbiddenError', async () => {
+    it('cancel() com status 404 genérico (RESOURCE_NOT_FOUND) NÃO lança OrderNotFoundError', async () => {
       fetchMock.mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: 'forbidden' }), { status: 403 })
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'RESOURCE_NOT_FOUND',
+              message: 'Rota ou recurso genérico não encontrado',
+              requestId: 'trace-404-res',
+            },
+          }),
+          { status: 404 }
+        )
+      )
+
+      const repo = new HttpOrderRepository()
+      await expect(repo.cancel('ord-missing')).rejects.toThrow('Failed to cancel order: HTTP 404')
+    })
+
+    it('cancel() com code FORBIDDEN (403) lança OrderForbiddenError', async () => {
+      fetchMock.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'FORBIDDEN',
+              message: 'Acesso negado',
+              requestId: 'trace-403',
+            },
+          }),
+          { status: 403 }
+        )
       )
 
       const repo = new HttpOrderRepository()
       await expect(repo.cancel('ord-forbidden')).rejects.toThrow(OrderForbiddenError)
     })
 
-    it('cancel() com status 409 lança OrderCancelNotAllowedError', async () => {
+    it('cancel() com code ORDER_NOT_AWAITING (409) lança OrderCancelNotAllowedError', async () => {
       fetchMock.mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: 'not allowed' }), { status: 409 })
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'ORDER_NOT_AWAITING',
+              message: 'Apenas pedidos aguardando podem ser cancelados',
+              requestId: 'trace-409',
+            },
+          }),
+          { status: 409 }
+        )
       )
 
       const repo = new HttpOrderRepository()
-      await expect(repo.cancel('ord-not-allowed')).rejects.toThrow(
-        OrderCancelNotAllowedError
-      )
+      await expect(repo.cancel('ord-not-allowed')).rejects.toThrow(OrderCancelNotAllowedError)
     })
 
-    it('create() com status 409 lança InsufficientStockError com mensagem do servidor', async () => {
+    it('cancel() com outro conflito (ex: IDEMPOTENCY_CONFLICT 409) NÃO lança OrderCancelNotAllowedError', async () => {
       fetchMock.mockResolvedValueOnce(
-        new Response(JSON.stringify({ error: 'Estoque insuficiente para o produto X no momento da finalização.' }), { status: 409 })
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'IDEMPOTENCY_CONFLICT',
+              message: 'Conflito de idempotência',
+              requestId: 'trace-409-idemp',
+            },
+          }),
+          { status: 409 }
+        )
+      )
+
+      const repo = new HttpOrderRepository()
+      await expect(repo.cancel('ord-conflict')).rejects.toThrow('Failed to cancel order: HTTP 409')
+    })
+
+    it('create() com code INSUFFICIENT_STOCK (409) lança InsufficientStockError com mensagem do servidor', async () => {
+      fetchMock.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'INSUFFICIENT_STOCK',
+              message: 'Estoque insuficiente para o produto X no momento da finalização.',
+              requestId: 'trace-stock-409',
+            },
+          }),
+          { status: 409 }
+        )
       )
 
       const repo = new HttpOrderRepository()
@@ -250,6 +320,42 @@ describe('HttpOrderRepository - Parte A: comportamento específico de HTTP', () 
           items: [],
         })
       ).rejects.toThrow('Estoque insuficiente para o produto X no momento da finalização.')
+    })
+
+    it('create() com outro conflito 409 (ex: IDEMPOTENCY_CONFLICT) NÃO lança InsufficientStockError', async () => {
+      fetchMock.mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'IDEMPOTENCY_CONFLICT',
+              message: 'Operação concorrente detectada',
+              requestId: 'trace-idemp-409',
+            },
+          }),
+          { status: 409 }
+        )
+      )
+
+      const repo = new HttpOrderRepository()
+      await expect(
+        repo.create({
+          product: 'Test',
+          quantity: 1,
+          unit: 'un',
+          price: 1000,
+          supplierId: 'sup-1',
+          supplierName: 'Supplier',
+          deliveryAddress: {
+            logradouro: 'Rua A',
+            numero: '1',
+            bairro: 'Bairro',
+            cidade: 'Cidade',
+            estado: 'SP',
+            cep: '12345-678',
+          },
+          items: [],
+        })
+      ).rejects.toThrow('Failed to create order: HTTP 409')
     })
   })
 
@@ -385,9 +491,29 @@ function createFakeFetch() {
     const cancelMatch = url.match(/\/orders\/([^/]+)\/cancel$/)
     if (method === 'PATCH' && cancelMatch) {
       const order = fakeDb.find((o) => o.id === cancelMatch[1])
-      if (!order) return new Response(JSON.stringify({ error: 'not found' }), { status: 404 })
+      if (!order) {
+        return new Response(
+          JSON.stringify({
+            error: {
+              code: 'ORDER_NOT_FOUND',
+              message: 'not found',
+              requestId: 'test-trace',
+            },
+          }),
+          { status: 404, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
       if (order.status !== 'aguardando') {
-        return new Response(JSON.stringify({ error: 'not allowed' }), { status: 409 })
+        return new Response(
+          JSON.stringify({
+            error: {
+              code: 'ORDER_NOT_AWAITING',
+              message: 'not allowed',
+              requestId: 'test-trace',
+            },
+          }),
+          { status: 409, headers: { 'Content-Type': 'application/json' } }
+        )
       }
       order.status = 'cancelado'
       return new Response(JSON.stringify(order), { status: 200 })

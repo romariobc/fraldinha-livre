@@ -120,7 +120,7 @@ describe('apiFetch (OBS-001B + OBS-002)', () => {
       }
     })
 
-    it('aplica fallback seguro quando backend legar retornar { error: "mensagem" } antiga', async () => {
+    it('aplica fallback seguro quando backend legado retornar { error: "mensagem" } antiga', async () => {
       globalThis.fetch = vi.fn().mockResolvedValue(
         new Response(JSON.stringify({ error: 'unauthorized' }), {
           status: 401,
@@ -141,7 +141,56 @@ describe('apiFetch (OBS-001B + OBS-002)', () => {
       }
     })
 
-    it('isApiError type guard identifica instâncias reais e objetos com formato de ApiError', () => {
+    it('fallback de resposta 409 não estruturada NÃO deve inferir INSUFFICIENT_STOCK (gera INVALID_REQUEST)', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: 'conflict desconhecido' }), {
+          status: 409,
+          headers: { 'X-Request-Id': 'conflict-fallback-trace' },
+        })
+      )
+
+      try {
+        await apiFetch('/unknown-conflict')
+        expect.unreachable('Deveria ter lançado ApiError')
+      } catch (err) {
+        expect(err).toBeInstanceOf(ApiError)
+        const apiErr = err as ApiError
+        expect(apiErr.code).toBe('INVALID_REQUEST')
+        expect(apiErr.status).toBe(409)
+        expect(apiErr.code).not.toBe('INSUFFICIENT_STOCK')
+      }
+    })
+
+    it('preserva código semântico de 409 quando o backend retornar payload estruturado (ex: ORDER_NOT_AWAITING)', async () => {
+      globalThis.fetch = vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: {
+              code: 'ORDER_NOT_AWAITING',
+              message: 'Pedido já confirmado.',
+              requestId: 'awaiting-trace-123',
+            },
+          }),
+          {
+            status: 409,
+            headers: { 'X-Request-Id': 'awaiting-trace-123', 'Content-Type': 'application/json' },
+          }
+        )
+      )
+
+      try {
+        await apiFetch('/orders/1/cancel', { method: 'PATCH' })
+        expect.unreachable('Deveria ter lançado ApiError')
+      } catch (err) {
+        expect(err).toBeInstanceOf(ApiError)
+        const apiErr = err as ApiError
+        expect(apiErr.code).toBe('ORDER_NOT_AWAITING')
+        expect(apiErr.status).toBe(409)
+        expect(apiErr.message).toBe('Pedido já confirmado.')
+      }
+    })
+
+    it('isApiError type guard valida estruturalmente e rejeita objetos parciais ou com códigos inválidos', () => {
       const realError = new ApiError({
         code: 'INSUFFICIENT_STOCK',
         status: 409,
@@ -149,14 +198,30 @@ describe('apiFetch (OBS-001B + OBS-002)', () => {
         requestId: 'req-test-guard',
       })
       const regularError = new Error('Erro genérico')
-      const fakeError = { name: 'ApiError', code: 'FORBIDDEN' }
-      const primitive = 'string error'
+      const incompleteObject = { name: 'ApiError' }
+      const invalidCodeObject = {
+        name: 'ApiError',
+        code: 'CODIGO_INEXISTENTE_NO_SCHEMA',
+        status: 400,
+        message: 'msg',
+        requestId: 'req-1',
+      }
+      const validStructuralObject = {
+        name: 'ApiError',
+        code: 'INVALID_REQUEST',
+        status: 400,
+        message: 'msg',
+        requestId: 'req-1',
+      }
 
       expect(isApiError(realError)).toBe(true)
-      expect(isApiError(fakeError)).toBe(true)
+      expect(isApiError(validStructuralObject)).toBe(true)
+      expect(isApiError(incompleteObject)).toBe(false)
+      expect(isApiError(invalidCodeObject)).toBe(false)
       expect(isApiError(regularError)).toBe(false)
-      expect(isApiError(primitive)).toBe(false)
+      expect(isApiError('string error')).toBe(false)
       expect(isApiError(null)).toBe(false)
+      expect(isApiError(undefined)).toBe(false)
     })
   })
 })

@@ -1516,10 +1516,16 @@ Até a task OBS-001B, os erros gerados pelo backend eram heterogêneos e depende
    - O campo `details` é estritamente restrito a metadados técnicos não sensíveis e issues de validação do Zod (contendo `path`, `code` e `message` dos campos).
    - É proibido expor request bodies completos, dados pessoais (CPF, e-mail, nomes, endereços), tokens JWT, credenciais de serviço ou mensagens brutas de APIs de provedores em `details`.
 
+7. **Endurecimento de Consumo e Fallbacks Neutros (OBS-002.1):**
+   - **O status HTTP não deve ser utilizado pelo frontend para inferir semântica específica de domínio quando `error.code` estiver disponível.** Adapters de domínio devem mapear exclusivamente códigos semânticos válidos (`error.code === 'INSUFFICIENT_STOCK'`, `ORDER_NOT_FOUND`, `FORBIDDEN`, etc.) em exceções de domínio, nunca traduzindo cegamente códigos HTTP ambíguos (ex: HTTP 409 pode significar `INSUFFICIENT_STOCK`, `ORDER_NOT_AWAITING`, `IDEMPOTENCY_CONFLICT` ou `ROLE_CHANGE_NOT_ALLOWED`).
+   - **Fallbacks para respostas não estruturadas devem usar códigos genéricos, nunca inventar domínio específico.** Respostas não estruturadas (HTML de proxy/CDN, timeouts, gateways) recebem fallback seguro para códigos neutros (401 → `UNAUTHORIZED`, 403 → `FORBIDDEN`, 404 → `RESOURCE_NOT_FOUND`, 5xx → `INTERNAL_ERROR`, demais 4xx incluindo 409 → `INVALID_REQUEST`).
+   - O type guard `isApiError` realiza validação estrutural completa dos atributos essenciais (`name`, `status`, `message`, `requestId`, `code` válido no schema) e os arquivos do contrato operam sem asserções frouxas do tipo `any`.
+
 ### Status
-Implementada na task OBS-002. Coberta por:
+Implementada na task OBS-002 e refinada na OBS-002.1. Coberta por:
 - Testes em `packages/contracts`: 37/37 verdes;
 - Testes em `back`: 263/263 verdes (incluindo suíte de regressão de invariantes do contrato de erros em `back/test/unified-error-contract.test.ts`);
-- Testes em `front`: 554/554 verdes (incluindo testes de cliente tipado e fallback em `front/src/lib/__tests__/api-client.test.ts`);
+- Testes em `front`: 561/561 verdes (incluindo testes de cliente tipado, fallback não-estruturado, guard estrutural e isolamento de adapters em `front/src/lib/__tests__/api-client.test.ts` e adapters de pedido e produto);
 - Typecheck (`tsc --noEmit`) 100% limpo em contracts, back e front.
+
 

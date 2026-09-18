@@ -185,6 +185,14 @@
       "status": "done",
       "criterio_aceite": "Contrato Zod compartilhado em packages/contracts com taxonomia estável de error codes; classe AppError e serialização defensiva no backend; corpo de erro padronizado { error: { code, message, requestId, details? } }; invariante body.error.requestId === X-Request-Id; cliente HTTP tipado (ApiError) no frontend eliminando dependência de parsing por strings; nenhum vazamento de stack traces ou PII; testes verdes",
       "notas": "Executada em 2026-09-16. ADR D-055 formalizada em decisoes.md. 4 testes em contracts, 5 testes de regressão de invariantes em back/test/unified-error-contract.test.ts, 6 testes em front/src/lib/__tests__/api-client.test.ts. Suíte back 263/263, front 554/554, contracts 37/37 100% verdes."
+    },
+    {
+      "id": "OBS-002.1",
+      "titulo": "Endurecimento do Contrato Tipado de Erros",
+      "fase": 1,
+      "status": "done",
+      "criterio_aceite": "Fallback 409 neutro sem inferir INSUFFICIENT_STOCK; adapters guiados exclusivamente por error.code sem inferência espúria por status HTTP; eliminação total de casts any nos pontos alterados; type guard isApiError com validação estrutural completa; UI desacoplada de ApiError dependendo apenas de erro de domínio; suíte de testes 100% verde",
+      "notas": "Executada em 2026-09-18. ADR D-055 complementada com regras de consumo no front e fallback neutro. 45 testes afetados e 561 testes totais no frontend aprovados, 263 testes de backend e 37 testes de contracts verdes. Zero casts any."
     }
   ]
 }

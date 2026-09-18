@@ -1,6 +1,6 @@
 import { auth } from '@/lib/firebase'
 import type { ApiErrorCode } from '@contracts'
-import { ApiErrorResponseSchema } from '@contracts'
+import { ApiErrorResponseSchema, ApiErrorCodeSchema } from '@contracts'
 
 export interface ApiErrorParams {
   code: ApiErrorCode
@@ -30,12 +30,24 @@ export class ApiError extends Error {
 }
 
 /**
- * Type guard tipado e reutilizável para verificar se um erro é uma instância de ApiError.
+ * Type guard tipado e reutilizável para verificar se um erro é uma instância ou objeto estrutural de ApiError.
+ * Valida rigorosamente campos mínimos sem usar any.
  */
 export function isApiError(err: unknown): err is ApiError {
+  if (err instanceof ApiError) {
+    return true
+  }
+  if (typeof err !== 'object' || err === null) {
+    return false
+  }
+  const candidate = err as Record<string, unknown>
   return (
-    err instanceof ApiError ||
-    (typeof err === 'object' && err !== null && 'name' in err && (err as { name: string }).name === 'ApiError')
+    candidate.name === 'ApiError' &&
+    typeof candidate.status === 'number' &&
+    typeof candidate.message === 'string' &&
+    typeof candidate.requestId === 'string' &&
+    typeof candidate.code === 'string' &&
+    ApiErrorCodeSchema.safeParse(candidate.code).success
   )
 }
 
@@ -81,11 +93,14 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
       })
     }
 
-    // Fallback defensivo para compatibilidade com legados ou falhas de infraestrutura
-    const rawErrorStr =
-      typeof rawJson === 'object' && rawJson !== null && 'error' in rawJson && typeof (rawJson as any).error === 'string'
-        ? (rawJson as any).error
-        : null
+    // Fallback defensivo para compatibilidade com legados ou falhas de infraestrutura (sem any)
+    let rawErrorStr: string | null = null
+    if (typeof rawJson === 'object' && rawJson !== null && 'error' in rawJson) {
+      const legacyError = (rawJson as { error?: unknown }).error
+      if (typeof legacyError === 'string') {
+        rawErrorStr = legacyError
+      }
+    }
 
     const fallbackMessage = rawErrorStr || res.statusText || `Erro na requisição (HTTP ${res.status})`
 
@@ -96,8 +111,6 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
         ? 'FORBIDDEN'
         : res.status === 404
         ? 'RESOURCE_NOT_FOUND'
-        : res.status === 409
-        ? 'INSUFFICIENT_STOCK'
         : res.status >= 500
         ? 'INTERNAL_ERROR'
         : 'INVALID_REQUEST'

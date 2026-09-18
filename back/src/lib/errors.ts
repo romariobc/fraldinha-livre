@@ -1,14 +1,14 @@
 import type { Context } from 'hono'
 import type { ContentfulStatusCode } from 'hono/utils/http-status'
 import { ZodError } from 'zod'
-import type { ApiErrorCode, ApiErrorResponse } from '../../../packages/contracts/src/error'
+import type { ApiErrorCode, ApiErrorResponse, ApiErrorDetails } from '../../../packages/contracts/src/error'
 import type { Env, AppContext } from '../env'
 
 export interface AppErrorParams {
   code: ApiErrorCode
   status: ContentfulStatusCode
   message: string
-  details?: unknown
+  details?: ApiErrorDetails
   cause?: unknown
 }
 
@@ -19,7 +19,7 @@ export interface AppErrorParams {
 export class AppError extends Error {
   public readonly code: ApiErrorCode
   public readonly status: ContentfulStatusCode
-  public readonly details?: unknown
+  public readonly details?: ApiErrorDetails
   public readonly cause?: unknown
 
   constructor(params: AppErrorParams) {
@@ -39,7 +39,7 @@ export class AppError extends Error {
         code: this.code,
         message: this.message,
         requestId,
-        ...(this.details !== undefined ? { details: this.details as any } : {}),
+        ...(this.details !== undefined ? { details: this.details } : {}),
       },
     }
   }
@@ -77,7 +77,7 @@ export function respondError(
   code: ApiErrorCode,
   status: ContentfulStatusCode,
   message: string,
-  details?: unknown,
+  details?: ApiErrorDetails,
 ) {
   return sendAppError(c, new AppError({ code, status, message, details }))
 }

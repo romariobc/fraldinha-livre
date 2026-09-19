@@ -1,3 +1,47 @@
+## Marco (2026-09-18) - OBS-004: Frontend Diagnostics e Error Boundary
+
+**Resumo da Sessão:**
+Execução completa da task OBS-004 inaugurando o novo fluxo formal de branch + Pull Request (`obs/004-frontend-diagnostics` -> `main`). Desenvolvida a camada central de diagnósticos do frontend (`front/src/lib/frontend-diagnostics.ts`), estabelecendo classificação estrita de erros (`api`, `domain`, `validation`, `network`, `unexpected`), mensagens amigáveis de UX desacopladas de mensagens técnicas, preservação do `requestId` para suporte com botão de cópia via Clipboard API e logging estruturado seguro sem vazamento de PII. Criado o erro explícito de transporte `NetworkError` em `apiFetch`, implementado o Error Boundary do Next.js (`front/src/app/error.tsx`) com distinção semântica entre `digest` e `requestId`, e migrados pontos críticos de console cru (`checkout`, `OrderCard`, `ChatUI`, `orders-context`, `products-context`).
+
+**O que foi feito:**
+1. **Erro Explícito de Transporte (`front/src/lib/api-client.ts`):**
+   - Criação da classe `NetworkError extends Error` disparada pelo `apiFetch` ao capturar falhas antes de obter resposta HTTP (evitando inspeções frágeis de `TypeError`).
+   - Invariante estrito: falhas de rede nunca inventam `requestId` de backend.
+2. **Módulo Central de Diagnóstico (`front/src/lib/frontend-diagnostics.ts`):**
+   - Funções `diagnoseError`, `logFrontendDiagnostic`, `copySupportCode` e `showErrorToast`.
+   - Classificação estrita entre `ApiError`, `DomainError`, `ValidationError`, `NetworkError` e `UnexpectedError`.
+   - Mensagens amigáveis para 5xx, 401, 403, 404, 409 e regras de negócio.
+   - `logFrontendDiagnostic` recebe exclusivamente o `DiagnosticResult` sanitizado, garantindo zero vazamento de PII (tokens, CPFs, e-mails, prompts, imagens).
+   - `showErrorToast` integra com `sonner`, loga uma única vez e adiciona `description: "Código de suporte: <id>"` com botão de copiar código quando houver `requestId`.
+3. **Preservação de Contexto nos Adaptadores e Portas:**
+   - Adicionada interface `DomainErrorOptions { requestId?: string; cause?: unknown }` em `order-repository.ts` e `product-repository.ts`.
+   - `HttpOrderRepository` e `HttpProductRepository` propagam `requestId` e `{ cause: error }`.
+   - O `cause` de erros de domínio é mantido estritamente como contexto interno privado e nunca vaza para a UI ou logs.
+4. **Error Boundary no Next.js (`front/src/app/error.tsx`):**
+   - Client component cobrindo crashes inesperados de renderização da aplicação.
+   - Distinção semântica estrita: não confunde `error.digest` (hash de crash do Next.js) com `requestId` (correlação HTTP de backend).
+   - Ações de recuperação: "Tentar novamente" (`reset()`) e "Ir para o início".
+   - Nenhum stack trace exibido ao usuário final.
+5. **Migração Seletiva de Console Cru:**
+   - `front/src/app/(comprador)/checkout/page.tsx`: substituição de `console.error` cru por `showErrorToast` e `logFrontendDiagnostic`.
+   - `front/src/components/minha-conta/OrderCard.tsx`: substituição de `console.error` cru por `showErrorToast(err, { operation: 'orders.cancel_order' })`.
+   - `front/src/components/assistente/ChatUI.tsx`: diagnóstico estruturado sem vazar prompts, imagens ou conversas.
+   - `orders-context.tsx` e `products-context.tsx`: logs estruturados com `logFrontendDiagnostic`.
+6. **Bateria de Testes Automatizados:**
+   - 23 testes dedicados em `front/src/lib/__tests__/frontend-diagnostics.test.ts`.
+   - 5 testes em `front/src/app/__tests__/error.test.tsx`.
+   - 1 teste adicional em `front/src/lib/__tests__/api-client.test.ts` validando `NetworkError`.
+   - 100% dos testes verdes: 590 testes no frontend (58 arquivos), 263 testes no backend (25 arquivos) e 37 testes em contracts (5 arquivos).
+   - Typecheck aprovado com 0 erros nos três workspaces.
+
+**Status:**
+Build limpo, typecheck com 0 erros, todos os 890 testes verdes. Classificação: **OBS-004 CONCLUÍDA — FRONTEND DIAGNOSTICS ATIVO E PR ABERTO**.
+
+**Próximo Passo:**
+Planejar e executar a task **AUDIT-001 — Audit Trail** (trilha formal de auditoria administrativa).
+
+---
+
 ## Marco (2026-09-18) - OBS-002.1: Endurecimento do Contrato Tipado de Erros
 
 **Resumo da Sessão:**

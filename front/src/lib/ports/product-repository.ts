@@ -8,20 +8,29 @@ export interface ProductRepository {
   remove(id: string): Promise<void>
 }
 
+export interface DomainErrorOptions {
+  requestId?: string
+  cause?: unknown
+}
+
 /** Lançado por update()/remove() quando o produto não existe. */
 export class ProductNotFoundError extends Error {
   public readonly code = 'PRODUCT_NOT_FOUND' as const
-  constructor(productId: string) {
-    super(`Product not found: ${productId}`)
+  public readonly requestId?: string
+  constructor(productId: string, options?: DomainErrorOptions) {
+    super(`Product not found: ${productId}`, { cause: options?.cause })
     this.name = 'ProductNotFoundError'
+    this.requestId = options?.requestId
   }
 }
 
 /** Lançado por update()/remove() quando o produto existe mas não pertence ao fornecedor atual (403). */
 export class ProductForbiddenError extends Error {
   public readonly code = 'FORBIDDEN' as const
-  constructor(productId: string) {
-    super(`Not allowed to modify product: ${productId}`)
+  public readonly requestId?: string
+  constructor(productId: string, options?: DomainErrorOptions) {
+    super(`Not allowed to modify product: ${productId}`, { cause: options?.cause })
     this.name = 'ProductForbiddenError'
+    this.requestId = options?.requestId
   }
 }

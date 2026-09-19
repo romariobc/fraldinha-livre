@@ -20,6 +20,7 @@ import { MockFulfillmentService } from '@/lib/adapters/mock-fulfillment-service'
 import { orderToDirectOrder } from '@/lib/order-adapters'
 import { InsufficientStockError } from '@/lib/ports/order-repository'
 import { toast } from 'sonner'
+import { showErrorToast, diagnoseError, logFrontendDiagnostic } from '@/lib/frontend-diagnostics'
 
 type CheckoutStep = 'endereco' | 'revisao' | 'pagamento' | 'confirmacao'
 
@@ -185,12 +186,13 @@ function CheckoutContent() {
       idempotencyKeyRef.current = generateIdempotencyKey()
       setStep('confirmacao')
     } catch (err) {
-      console.error('Erro ao finalizar compra:', err)
       const isInsufficientStock =
         err instanceof InsufficientStockError ||
         (err instanceof Error && err.name === 'InsufficientStockError')
 
       if (isInsufficientStock) {
+        const diag = diagnoseError(err, { operation: 'checkout.create_order' })
+        logFrontendDiagnostic(diag, { operation: 'checkout.create_order' })
         const errorMsg =
           err instanceof Error && err.message
             ? err.message
@@ -201,7 +203,10 @@ function CheckoutContent() {
         // Redireciona de volta para a sacola para revisar e recarregar os dados
         router.push('/sacola')
       } else {
-        toast.error('Não foi possível finalizar a compra. Tente novamente.')
+        showErrorToast(err, {
+          operation: 'checkout.create_order',
+          customMessage: 'Não foi possível finalizar a compra. Tente novamente.',
+        })
       }
     } finally {
       setSubmitting(false)

@@ -12,7 +12,7 @@ export class HttpOrderRepository implements OrderRepository {
       return OrderListSchema.parse(json)
     } catch (error) {
       if (error instanceof ApiError) {
-        throw new Error(`Failed to list orders: HTTP ${error.status}`)
+        throw new Error(`Failed to list orders: HTTP ${error.status}`, { cause: error })
       }
       throw error
     }
@@ -25,7 +25,7 @@ export class HttpOrderRepository implements OrderRepository {
       return OrderListSchema.parse(json)
     } catch (error) {
       if (error instanceof ApiError) {
-        throw new Error(`Failed to list supplier orders: HTTP ${error.status}`)
+        throw new Error(`Failed to list supplier orders: HTTP ${error.status}`, { cause: error })
       }
       throw error
     }
@@ -45,10 +45,10 @@ export class HttpOrderRepository implements OrderRepository {
       return OrderSchema.parse(json)
     } catch (error) {
       if (error instanceof ApiError && error.code === 'INSUFFICIENT_STOCK') {
-        throw new InsufficientStockError(error.message)
+        throw new InsufficientStockError(error.message, { requestId: error.requestId, cause: error })
       }
       if (error instanceof ApiError) {
-        throw new Error(`Failed to create order: HTTP ${error.status}`)
+        throw new Error(`Failed to create order: HTTP ${error.status}`, { cause: error })
       }
       throw error
     }
@@ -61,10 +61,11 @@ export class HttpOrderRepository implements OrderRepository {
       return OrderSchema.parse(json)
     } catch (error) {
       if (error instanceof ApiError) {
-        if (error.code === 'ORDER_NOT_FOUND') throw new OrderNotFoundError(orderId)
-        if (error.code === 'FORBIDDEN') throw new OrderForbiddenError(orderId)
-        if (error.code === 'ORDER_NOT_AWAITING') throw new OrderCancelNotAllowedError(orderId, 'unknown')
-        throw new Error(`Failed to cancel order: HTTP ${error.status}`)
+        const opts = { requestId: error.requestId, cause: error }
+        if (error.code === 'ORDER_NOT_FOUND') throw new OrderNotFoundError(orderId, opts)
+        if (error.code === 'FORBIDDEN') throw new OrderForbiddenError(orderId, opts)
+        if (error.code === 'ORDER_NOT_AWAITING') throw new OrderCancelNotAllowedError(orderId, 'unknown', opts)
+        throw new Error(`Failed to cancel order: HTTP ${error.status}`, { cause: error })
       }
       throw error
     }

@@ -5,7 +5,13 @@ import { vi } from 'vitest'
 import ChatUI from '../ChatUI'
 import { PRODUCTS } from '@/lib/__tests__/products-fixture'
 
-vi.mock('@/lib/api-client', () => ({ apiFetch: vi.fn() }))
+vi.mock('@/lib/api-client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/api-client')>()
+  return {
+    ...actual,
+    apiFetch: vi.fn(),
+  }
+})
 import { apiFetch } from '@/lib/api-client'
 
 let mockPush = vi.fn()

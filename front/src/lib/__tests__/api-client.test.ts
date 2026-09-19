@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { apiFetch, ApiError, isApiError } from '../api-client'
+import { apiFetch, ApiError, isApiError, NetworkError } from '../api-client'
 
 describe('apiFetch (OBS-001B + OBS-002)', () => {
   const originalFetch = globalThis.fetch
@@ -222,6 +222,24 @@ describe('apiFetch (OBS-001B + OBS-002)', () => {
       expect(isApiError('string error')).toBe(false)
       expect(isApiError(null)).toBe(false)
       expect(isApiError(undefined)).toBe(false)
+    })
+  })
+
+  describe('Falha de Transporte / Rede (OBS-004)', () => {
+    it('lança NetworkError quando o fetch rejeita antes de obter resposta HTTP', async () => {
+      const rawError = new TypeError('Failed to fetch')
+      globalThis.fetch = vi.fn().mockRejectedValue(rawError)
+
+      try {
+        await apiFetch('/products')
+        expect.unreachable('Deveria ter lançado NetworkError')
+      } catch (err) {
+        expect(err).toBeInstanceOf(NetworkError)
+        const netErr = err as NetworkError
+        expect(netErr.name).toBe('NetworkError')
+        expect(netErr.message).toContain('Falha de conexão com a rede')
+        expect(netErr.cause).toBe(rawError)
+      }
     })
   })
 })

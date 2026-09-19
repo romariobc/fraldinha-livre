@@ -178,9 +178,8 @@ describe('Frontend Diagnostics (OBS-004)', () => {
       expect(diag.message).toBe('Outro cliente finalizou antes.')
       expect(diag.requestId).toBe('stock-req-789')
       expect(diag.recoverable).toBe(true)
-      // Garante que o cause interno NUNCA entre na mensagem de UX ou técnica
+      // Garante que o cause interno NUNCA entre na mensagem de UX
       expect(diag.message).not.toContain('internal cause')
-      expect(diag.technicalMessage).not.toContain('internal cause')
     })
 
     it('classifica OrderCancelNotAllowedError com mensagem de trava de processamento', () => {
@@ -249,7 +248,6 @@ describe('Frontend Diagnostics (OBS-004)', () => {
       expect(diag.kind).toBe('unexpected')
       expect(diag.code).toBe('UNEXPECTED_ERROR')
       expect(diag.message).toBe('Ocorreu um erro inesperado. Tente novamente em instantes.')
-      expect(diag.technicalMessage).toBe('Random unexpected client crash')
       expect(diag.recoverable).toBe(true)
     })
 
@@ -284,7 +282,6 @@ describe('Frontend Diagnostics (OBS-004)', () => {
         kind: 'api',
         code: 'INTERNAL_ERROR',
         message: 'Erro amigável',
-        technicalMessage: 'Sanitized tech message',
         requestId: 'trace-req-safe-123',
         status: 500,
         recoverable: true,
@@ -323,7 +320,6 @@ describe('Frontend Diagnostics (OBS-004)', () => {
         kind: 'api',
         code: 'INVALID_REQUEST',
         message: 'Dados inválidos',
-        technicalMessage: 'Missing field',
         status: 400,
         recoverable: true,
       }

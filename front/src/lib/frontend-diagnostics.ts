@@ -17,7 +17,6 @@ export interface DiagnosticResult {
   kind: DiagnosticKind
   code: string
   message: string // Mensagem amigável de UX para exibição ao usuário final
-  technicalMessage: string // Mensagem técnica sanitizada para diagnóstico
   requestId?: string
   status?: number
   recoverable: boolean
@@ -104,7 +103,6 @@ export function diagnoseError(err: unknown, context?: DiagnosticContext): Diagno
       kind: 'api',
       code: err.code,
       message,
-      technicalMessage: err.message,
       requestId,
       status: err.status,
       recoverable,
@@ -117,7 +115,6 @@ export function diagnoseError(err: unknown, context?: DiagnosticContext): Diagno
       kind: 'network',
       code: 'NETWORK_ERROR',
       message: 'Falha de conexão com a rede. Verifique sua internet e tente novamente.',
-      technicalMessage: err instanceof Error ? err.message : 'Network transport failure',
       requestId: undefined, // Nunca inventa requestId de backend para falha de transporte
       status: undefined,
       recoverable: true,
@@ -169,7 +166,6 @@ export function diagnoseError(err: unknown, context?: DiagnosticContext): Diagno
       kind: 'domain',
       code,
       message,
-      technicalMessage: (err as Error).message || code,
       requestId,
       recoverable,
     }
@@ -181,7 +177,6 @@ export function diagnoseError(err: unknown, context?: DiagnosticContext): Diagno
       kind: 'validation',
       code: 'VALIDATION_ERROR',
       message: 'Os dados fornecidos estão incompletos ou em formato inválido.',
-      technicalMessage: 'Zod schema validation failed',
       requestId: undefined,
       recoverable: true,
     }
@@ -200,7 +195,6 @@ export function diagnoseError(err: unknown, context?: DiagnosticContext): Diagno
     kind: 'unexpected',
     code: 'UNEXPECTED_ERROR',
     message: 'Ocorreu um erro inesperado. Tente novamente em instantes.',
-    technicalMessage: err instanceof Error ? err.message : 'Unexpected runtime error',
     requestId: extractedRequestId,
     recoverable: true,
   }

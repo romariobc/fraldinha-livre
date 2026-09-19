@@ -201,6 +201,14 @@
       "status": "done",
       "criterio_aceite": "Módulo frontend-diagnostics.ts com classificação estrita (api, domain, validation, network, unexpected); NetworkError explícito no apiFetch sem inventar requestId de backend; Error Boundary do Next.js (error.tsx) cobrindo crashes de renderização com distinção semântica entre digest e requestId; showErrorToast integrado com sonner e ação de copiar código de suporte via Clipboard API; logging seguro garantindo zero vazamento de PII; 590 testes de frontend, 263 testes de backend e 37 testes de contracts 100% verdes",
       "notas": "Executada em 2026-09-18 na branch obs/004-frontend-diagnostics com PR aberto contra main. Adicionados 23 testes em frontend-diagnostics.test.ts, 5 testes em error.test.tsx e 1 teste em api-client.test.ts."
+    },
+    {
+      "id": "AUDIT-001",
+      "titulo": "Trilha Formal de Auditoria Administrativa e Governança",
+      "fase": 1,
+      "status": "todo",
+      "criterio_aceite": "Tabela audit_logs no D1 com índices; helper recordAuditEvent com logger estruturado; endpoints /admin/audit-logs e /admin/products/:id/status restritos a admin; justificativa obrigatória (min 5 chars); aba Auditoria e modal de moderação no front; 100% testes verdes",
+      "notas": "Planejada e documentada em 2026-09-19 conforme D-050. Plano detalhado em .claude/docs/features/plans/AUDIT-001-audit-trail.md. Aguardando execução."
     }
   ]
 }

@@ -1,3 +1,29 @@
+## Marco (2026-09-19) - AUDIT-001 (Planejamento) e Diagnóstico Operacional de Claims
+
+**Resumo da Sessão:**
+Elaboração e registro formal do plano de implementação para a task AUDIT-001 (Trilha Formal de Auditoria Administrativa e Governança), estabelecendo schemas Zod em contracts, schema Drizzle e migration no D1, helpers de gravação e endpoints administrativos em conformidade com D-050. Diagnóstico do erro de autenticação e carregamento de pedidos em produção (/minha-conta), identificando a falta das credenciais da Service Account do Firebase no Cloudflare Worker fraldinha-livre-backend e orientando sua configuração e validação na Cloudflare e Google Cloud Identity Toolkit.
+
+**O que foi feito:**
+1. **Planejamento Formal de AUDIT-001:**
+   - Criação e armazenamento do plano detalhado em `.claude/docs/features/plans/AUDIT-001-audit-trail.md`.
+   - Especificação dos schemas de eventos imutáveis, queries de auditoria e payload de moderação administrativa com justificativa obrigatória (`reason >= 5`).
+   - Mapeamento da tabela `audit_logs` no D1 com índices por ator, ação, alvo e timestamp.
+   - Registro da task como planejada (`todo`) em `feature_list.json`.
+2. **Diagnóstico Operacional em Produção:**
+   - Análise dos logs do DevTools e Network na rota `/minha-conta`, mapeando a causa raiz da falha em cascata (500 em `POST /auth/claim` por `AUTH_PROVIDER_NOT_CONFIGURED` levando a 403 em `GET /orders`).
+   - Verificação e orientação de inclusão das variáveis/secrets `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` e `FIREBASE_PROJECT_ID` no Cloudflare Dashboard do Worker `fraldinha-livre-backend`.
+   - Validação da ativação da `Identity Toolkit API` no Google Cloud Console e inspeção do container local de frontend no Docker (`fraldinha-livre-frontend-frontendcontainer:65cca11d`, 100% ativo).
+3. **Verificação de Suíte e Typecheck:**
+   - Typecheck aprovado com 0 erros nos três workspaces (`packages/contracts`, `front`, `back`).
+
+**Status:**
+Plano AUDIT-001 documentado, credenciais operacionais provisionadas na Cloudflare, typecheck 100% verde.
+
+**Próximo Passo:**
+Na próxima sessão, validar a resposta de `POST /auth/claim` e `GET /orders` em `/minha-conta` com as credenciais salvas e prosseguir com a implementação da task **AUDIT-001** (ou blindagem do fallback de UI em `MinhaContaContent`).
+
+---
+
 ## Marco (2026-09-18) - OBS-004: Frontend Diagnostics e Error Boundary
 
 **Resumo da Sessão:**

@@ -10,6 +10,7 @@ import type { OrderRepository } from '@/lib/ports/order-repository'
 import { MockOrderRepository } from '@/lib/adapters/mock-order-repository'
 import { HttpOrderRepository } from '@/lib/adapters/http-order-repository'
 import type { Order as ContractOrder, CreateOrderRequest } from '@contracts'
+import { diagnoseError, logFrontendDiagnostic } from '@/lib/frontend-diagnostics'
 
 function contractOrderToAccountMockOrder(order: ContractOrder): Order {
   return {
@@ -68,8 +69,9 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         setOrders(result.map(contractOrderToAccountMockOrder))
       } catch (err) {
         if (cancelled) return
-        console.error('Erro ao carregar pedidos:', err)
-        setError('Não foi possível carregar seus pedidos. Tente novamente.')
+        const diag = diagnoseError(err, { operation: 'orders.load_list' })
+        logFrontendDiagnostic(diag, { operation: 'orders.load_list' })
+        setError(diag.message || 'Não foi possível carregar seus pedidos. Tente novamente.')
       } finally {
         if (cancelled) return
         setLoading(false)

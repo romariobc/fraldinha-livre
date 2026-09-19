@@ -5,6 +5,7 @@ import type { Product as LegacyProduct } from '@/lib/products'
 import type { ProductRepository } from '@/lib/ports/product-repository'
 import { HttpProductRepository } from '@/lib/adapters/http-product-repository'
 import type { Product as ContractProduct } from '@contracts'
+import { diagnoseError, logFrontendDiagnostic } from '@/lib/frontend-diagnostics'
 
 function contractProductToLegacyProduct(p: ContractProduct): LegacyProduct {
   return {
@@ -56,8 +57,9 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
         setProducts(result.map(contractProductToLegacyProduct))
       } catch (err) {
         if (cancelled) return
-        console.error('Erro ao carregar produtos:', err)
-        setError('Não foi possível carregar o catálogo. Tente novamente.')
+        const diag = diagnoseError(err, { operation: 'products.load_list' })
+        logFrontendDiagnostic(diag, { operation: 'products.load_list' })
+        setError(diag.message || 'Não foi possível carregar o catálogo. Tente novamente.')
       } finally {
         if (cancelled) return
         setLoading(false)

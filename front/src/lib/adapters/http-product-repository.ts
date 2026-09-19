@@ -12,7 +12,7 @@ export class HttpProductRepository implements ProductRepository {
       return ProductListSchema.parse(json)
     } catch (error) {
       if (error instanceof ApiError) {
-        throw new Error(`Failed to list products: HTTP ${error.status}`)
+        throw new Error(`Failed to list products: HTTP ${error.status}`, { cause: error })
       }
       throw error
     }
@@ -25,7 +25,7 @@ export class HttpProductRepository implements ProductRepository {
       return ProductListSchema.parse(json)
     } catch (error) {
       if (error instanceof ApiError) {
-        throw new Error(`Failed to list supplier products: HTTP ${error.status}`)
+        throw new Error(`Failed to list supplier products: HTTP ${error.status}`, { cause: error })
       }
       throw error
     }
@@ -38,7 +38,7 @@ export class HttpProductRepository implements ProductRepository {
       return ProductSchema.parse(json)
     } catch (error) {
       if (error instanceof ApiError) {
-        throw new Error(`Failed to create product: HTTP ${error.status}`)
+        throw new Error(`Failed to create product: HTTP ${error.status}`, { cause: error })
       }
       throw error
     }
@@ -51,9 +51,10 @@ export class HttpProductRepository implements ProductRepository {
       return ProductSchema.parse(json)
     } catch (error) {
       if (error instanceof ApiError) {
-        if (error.code === 'PRODUCT_NOT_FOUND') throw new ProductNotFoundError(id)
-        if (error.code === 'FORBIDDEN') throw new ProductForbiddenError(id)
-        throw new Error(`Failed to update product: HTTP ${error.status}`)
+        const opts = { requestId: error.requestId, cause: error }
+        if (error.code === 'PRODUCT_NOT_FOUND') throw new ProductNotFoundError(id, opts)
+        if (error.code === 'FORBIDDEN') throw new ProductForbiddenError(id, opts)
+        throw new Error(`Failed to update product: HTTP ${error.status}`, { cause: error })
       }
       throw error
     }
@@ -64,9 +65,10 @@ export class HttpProductRepository implements ProductRepository {
       await apiFetch(`/products/${id}`, { method: 'DELETE' })
     } catch (error) {
       if (error instanceof ApiError) {
-        if (error.code === 'PRODUCT_NOT_FOUND') throw new ProductNotFoundError(id)
-        if (error.code === 'FORBIDDEN') throw new ProductForbiddenError(id)
-        throw new Error(`Failed to remove product: HTTP ${error.status}`)
+        const opts = { requestId: error.requestId, cause: error }
+        if (error.code === 'PRODUCT_NOT_FOUND') throw new ProductNotFoundError(id, opts)
+        if (error.code === 'FORBIDDEN') throw new ProductForbiddenError(id, opts)
+        throw new Error(`Failed to remove product: HTTP ${error.status}`, { cause: error })
       }
       throw error
     }

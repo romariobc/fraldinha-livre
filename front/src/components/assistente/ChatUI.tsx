@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Send, Paperclip, RotateCcw } from 'lucide-react'
 import { apiFetch } from '@/lib/api-client'
+import { diagnoseError, logFrontendDiagnostic } from '@/lib/frontend-diagnostics'
 import { useCart } from '@/contexts/cart-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProducts } from '@/contexts/products-context'
@@ -92,7 +93,9 @@ export default function ChatUI() {
       }
       cart.addItem(cartItem)
       router.push('/checkout')
-    } catch {
+    } catch (err) {
+      const diag = diagnoseError(err, { operation: 'chat.message' })
+      logFrontendDiagnostic(diag, { operation: 'chat.message' })
       setError('Não foi possível falar com o assistente. Tente de novo.')
     } finally {
       setSending(false)

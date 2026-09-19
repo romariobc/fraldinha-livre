@@ -8,6 +8,7 @@ import { getOrderItems } from '@/lib/order-items'
 import { useOrders } from '@/contexts/orders-context'
 import { useMarket } from '@/contexts/market-context'
 import { toast } from 'sonner'
+import { showErrorToast } from '@/lib/frontend-diagnostics'
 import {
   Dialog,
   DialogContent,
@@ -95,8 +96,7 @@ export default function OrderCard({ order, mode }: OrderCardProps) {
       toast.success('Pedido cancelado')
       setCancelDialogOpen(false)
     } catch (err) {
-      console.error('Erro ao cancelar pedido:', err)
-      toast.error('Não foi possível cancelar o pedido. Tente novamente.')
+      showErrorToast(err, { operation: 'orders.cancel_order' })
     } finally {
       setIsCanceling(false)
     }

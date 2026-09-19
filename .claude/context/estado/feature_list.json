@@ -193,6 +193,14 @@
       "status": "done",
       "criterio_aceite": "Fallback 409 neutro sem inferir INSUFFICIENT_STOCK; adapters guiados exclusivamente por error.code sem inferência espúria por status HTTP; eliminação total de casts any nos pontos alterados; type guard isApiError com validação estrutural completa; UI desacoplada de ApiError dependendo apenas de erro de domínio; suíte de testes 100% verde",
       "notas": "Executada em 2026-09-18. ADR D-055 complementada com regras de consumo no front e fallback neutro. 45 testes afetados e 561 testes totais no frontend aprovados, 263 testes de backend e 37 testes de contracts verdes. Zero casts any."
+    },
+    {
+      "id": "OBS-004",
+      "titulo": "Frontend Diagnostics e Error Boundary",
+      "fase": 1,
+      "status": "done",
+      "criterio_aceite": "Módulo frontend-diagnostics.ts com classificação estrita (api, domain, validation, network, unexpected); NetworkError explícito no apiFetch sem inventar requestId de backend; Error Boundary do Next.js (error.tsx) cobrindo crashes de renderização com distinção semântica entre digest e requestId; showErrorToast integrado com sonner e ação de copiar código de suporte via Clipboard API; logging seguro garantindo zero vazamento de PII; 590 testes de frontend, 263 testes de backend e 37 testes de contracts 100% verdes",
+      "notas": "Executada em 2026-09-18 na branch obs/004-frontend-diagnostics com PR aberto contra main. Adicionados 23 testes em frontend-diagnostics.test.ts, 5 testes em error.test.tsx e 1 teste em api-client.test.ts."
     }
   ]
 }

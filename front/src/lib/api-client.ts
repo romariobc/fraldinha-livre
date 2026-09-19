@@ -30,6 +30,16 @@ export class ApiError extends Error {
 }
 
 /**
+ * Erro explícito de falha de transporte/rede disparado quando a chamada fetch() falha antes de obter resposta HTTP (OBS-004).
+ */
+export class NetworkError extends Error {
+  constructor(message = 'Falha de conexão com a rede. Verifique sua internet e tente novamente.', options?: { cause?: unknown }) {
+    super(message, options)
+    this.name = 'NetworkError'
+  }
+}
+
+/**
  * Type guard tipado e reutilizável para verificar se um erro é uma instância ou objeto estrutural de ApiError.
  * Valida rigorosamente campos mínimos sem usar any.
  */
@@ -69,7 +79,12 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   if (token) headers.set('Authorization', `Bearer ${token}`)
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
 
-  const res = await fetch(`${BASE_URL}${path}`, { ...init, headers })
+  let res: Response
+  try {
+    res = await fetch(`${BASE_URL}${path}`, { ...init, headers })
+  } catch (err) {
+    throw new NetworkError('Falha de conexão com a rede. Verifique sua internet e tente novamente.', { cause: err })
+  }
 
   if (!res.ok) {
     const headerRequestId = res.headers?.get ? res.headers.get('X-Request-Id') : null

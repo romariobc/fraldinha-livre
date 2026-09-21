@@ -5,9 +5,9 @@ description: Contexto completo do painel do fornecedor — tipos, componentes, r
 
 # Domain: Painel do Fornecedor
 
-Invoque esta skill antes de qualquer ação quando trabalhar em `src/components/fornecedor/` ou nas rotas sob `src/app/(fornecedor)/painel-fornecedor/`.
+Invoque esta skill antes de qualquer ação quando trabalhar em `front/src/components/fornecedor/` ou nas rotas sob `front/src/app/(fornecedor)/painel-fornecedor/`.
 
-> Reescrito em 24 de Agosto de 2026 para refletir a migração para REST (HttpProductRepository) e a nova estrutura de rotas Next.js 15 (Route Groups), além do sistema de edição dinâmica de preços.
+> Reescrito em 24 de Agosto de 2026 para refletir a migração para REST (HttpProductRepository) e a nova estrutura de rotas Next.js (consulte a versão em front/package.json) (Route Groups), além do sistema de edição dinâmica de preços.
 
 ---
 
@@ -15,8 +15,8 @@ Invoque esta skill antes de qualquer ação quando trabalhar em `src/components/
 
 O painel de produtos do fornecedor abandonou o `MarketProvider` mockado para gerenciamento do catálogo próprio.
 
-**Adaptador HTTP:** `src/lib/adapters/http-product-repository.ts` implementa `ProductRepository`.
-**Entidade Base:** O tipo `Product` em `@contracts` e `src/lib/products.ts`.
+**Adaptador HTTP:** `front/src/lib/adapters/http-product-repository.ts` implementa `ProductRepository`.
+**Entidade Base:** O tipo `Product` em `@contracts` e `front/src/lib/products.ts`.
 **Rotas da API:** Backend hospedado no Cloudflare Workers (`/products?scope=fornecedor`, `POST /products`, `PUT /products/:id`, `DELETE /products/:id`).
 
 > [!NOTE]
@@ -33,7 +33,7 @@ O painel de produtos do fornecedor abandonou o `MarketProvider` mockado para ger
 ## Componentes
 
 ```
-src/components/fornecedor/
+front/src/components/fornecedor/
   SupplierSidebar.tsx       ← Navegação lateral (inclui "Ver Meu Catálogo Ativo")
   SupplierTopNav.tsx        ← Barra superior do dashboard
   AddProductDialog.tsx      ← Modal para vincular produtos do Catálogo Mestre ao fornecedor
@@ -44,8 +44,8 @@ src/components/fornecedor/
 
 ## Rota e Arquitetura
 
-- **Route Group Exclusivo:** O painel migrou de `(main)/fornecedor` para `(fornecedor)/painel-fornecedor/`. Isso permitiu um layout isolado sem herdar o Global Context (Providers) da área de compradores.
-- **Controller do Catálogo:** `src/app/(fornecedor)/painel-fornecedor/catalogo/page.tsx`.
+- **Route Group Exclusivo:** O painel migrou de `(main)/fornecedor` para `(fornecedor)/painel-fornecedor/`. Isso separa o layout visual do painel; os providers de front/src/app/layout.tsx continuam compartilhados.
+- **Controller do Catálogo:** `front/src/app/(fornecedor)/painel-fornecedor/catalogo/page.tsx`.
 - **Gerenciamento de Estado:** Não usamos contextos globais para gerenciar a lista de produtos no painel; o state `products` e `loading/error` são gerenciados localmente no arquivo da página, e as ações de salvar (PUT), criar (POST) ou remover (DELETE) atualizam esse state.
 
 ---
@@ -63,7 +63,7 @@ src/components/fornecedor/
 
 ## Pitfalls críticos
 
-**Contextos e Layouts:** O painel B2B do fornecedor *não* compartilha os provedores globais como `CartProvider` que habitam em `(main)`. Modificações nestes providers podem quebrar o acesso ao painel caso não estejam configurados corretamente na raiz (`app/layout.tsx`).
+**Contextos e Layouts:** o painel possui layout visual próprio, mas herda os providers de front/src/app/layout.tsx, incluindo CartProvider. Confira ambos os layouts antes de alterar contextos ou presumir isolamento.
 **Rastreio do `priceCents` versus `priceInCents`:** Há uma ligeira divergência entre as tipagens de frontend legado (`priceInCents`) e do novo pacote de contratos `@contracts` (`priceCents`). O frontend possui funções de mapa, tenha cuidado com mapeamentos nulos.
 
 ---
@@ -71,20 +71,20 @@ src/components/fornecedor/
 ## Arquivos que este agente PODE tocar
 
 ```
-✅ src/components/fornecedor/**
-✅ src/app/(fornecedor)/painel-fornecedor/**
-✅ packages/contracts/src/product.ts
+✅ front/src/components/fornecedor/**
+✅ front/src/app/(fornecedor)/painel-fornecedor/**
+⚠️ packages/contracts/src/product.ts — compartilhado; seguir risk-zone-protocol
 ```
 
 ## Arquivos que este agente NÃO PODE tocar
 
 ```
-❌ src/components/ui/**              — primitivos compartilhados
-❌ src/components/minha-conta/**     — domínio do comprador
-❌ src/components/catalogo/**        — domínio do catálogo (vitrine do comprador)
-❌ src/app/(main)/**                 — layouts de compradores
-❌ tailwind.config.ts                — configuração global
-❌ src/app/globals.css
+❌ front/src/components/ui/**              — primitivos compartilhados
+❌ front/src/components/minha-conta/**     — domínio do comprador
+❌ front/src/components/catalogo/**        — domínio do catálogo (vitrine do comprador)
+❌ front/src/app/(main)/**                 — layouts de compradores
+❌ front/tailwind.config.ts                — configuração global
+❌ front/src/app/globals.css
 ```
 
 Se precisar alterar qualquer arquivo proibido, invoque `Skill(risk-zone-protocol)` antes.

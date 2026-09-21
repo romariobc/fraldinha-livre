@@ -1,8 +1,5 @@
-# Regras de Desenvolvimento Next.js
+# Desenvolvimento Next.js
 
-Esta versão do Next.js possui mudanças disruptivas em relação ao seu treinamento padrão (APIs, convenções e estrutura de arquivos podem diferir). 
-
-Antes de escrever qualquer código no frontend:
-1. Leia o guia de referência relevante localizado em `node_modules/next/dist/docs/`.
-2. Fique atento e respeite todos os avisos de depreciação de APIs no terminal e no editor de código.
-3. Não use padrões obsoletos do Next.js (como roteamento de páginas legadas fora da pasta `src/app/` ou importações incorretas).
+Confira a versão instalada e os scripts em front/package.json. Use as convenções do App Router em front/src/app/.
+Antes de alterar uma API que não conhece, consulte a documentação correspondente à versão instalada: primeiro a documentação local do pacote, se disponível, ou a documentação oficial. Não presuma que node_modules/next/dist/docs/ existe em toda instalação.
+Respeite avisos de depreciação e valide os workspaces afetados conforme docs/governance/ciclo-de-sessao.md.

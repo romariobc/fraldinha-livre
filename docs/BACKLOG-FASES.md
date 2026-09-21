@@ -237,7 +237,7 @@ Definir SLOs de API, frontend, chat e dependências. Medir p50/p95, concorrênci
 - Não ativar `NOTIFICATIONS_ENABLED` em produção sem domínio, segredo e templates validados.
 - Não trocar mocks por gateway/fulfillment sem decisão comercial e specs.
 - Não remover `ADMIN_UID` implicitamente dentro de outra tarefa.
-- Não editar `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.agents/`, `.claude/docs/governance/` ou outras partes do harness como efeito colateral deste backlog.
+- Não editar `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.agents/`, `docs/governance/` ou outras partes do harness como efeito colateral deste backlog.
 
 ## Critério de atualização
 

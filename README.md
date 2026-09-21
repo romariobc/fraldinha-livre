@@ -12,12 +12,14 @@ O projeto é executado em duas fases principais:
 
 O repositório é configurado como um monorepo que compartilha esquemas de validação e tipos entre o cliente e o servidor:
 
-* **[`front/`](file:///e:/Labdev/Projetos/fraldinha-livre/front)**: Aplicação web em Next.js 16 (React 19, TypeScript, TailwindCSS 3, Base UI / Shadcn). Controla o fluxo de navegação, painéis de fornecedores e painel do comprador. Integrado com Firebase Auth e Firestore para persistência de perfis.
-* **[`back/`](file:///e:/Labdev/Projetos/fraldinha-livre/back)**: API Backend e agentes executados como Cloudflare Worker usando o framework Hono. Integrado com banco de dados SQLite Cloudflare D1, Workers AI (para chat inteligente multimodal) e API Resend (para e-mails de notificação).
-* **[`packages/contracts/`](file:///e:/Labdev/Projetos/fraldinha-livre/packages/contracts)**: Contratos TypeScript e esquemas Zod compartilhados. Garante validação estrita de dados nos dois lados (frontend e backend).
-* **[`.claude/`](file:///e:/Labdev/Projetos/fraldinha-livre/.claude)**: Documentação histórica, decisões arquiteturais (ADRs), logs de sessões e prompts.
-  * **[`.claude/docs/security/`](file:///e:/Labdev/Projetos/fraldinha-livre/.claude/docs/security)**: Contém o protocolo de varredura periódica de segurança e os relatórios de análise de vulnerabilidades.
-* **[`legacy/`](file:///e:/Labdev/Projetos/fraldinha-livre/legacy)**: Código do protótipo histórico anterior (apenas para referência, desativado).
+* **[`front/`](front)**: Aplicação web em Next.js 16 (React 19, TypeScript, TailwindCSS 3, Base UI / Shadcn). Controla o fluxo de navegação, painéis de fornecedores e painel do comprador. Integrado com Firebase Auth e Firestore para persistência de perfis.
+* **[`back/`](back)**: API Backend e agentes executados como Cloudflare Worker usando o framework Hono. Integrado com banco de dados SQLite Cloudflare D1, Workers AI (para chat inteligente multimodal) e API Resend (para e-mails de notificação).
+* **[`packages/contracts/`](packages/contracts)**: Contratos TypeScript e esquemas Zod compartilhados. Garante validação estrita de dados nos dois lados (frontend e backend).
+* **[docs/](docs/)**: Documentação, decisões e planos.
+* **[context/](context/)**: Estado atual e histórico sob demanda.
+* **[AGENTS.md](AGENTS.md)**: Núcleo comum de orientação dos agentes.
+  * **[`docs/security/`](docs/security)**: Contém o protocolo de varredura periódica de segurança e os relatórios de análise de vulnerabilidades.
+* **[`legacy/`](legacy)**: Código do protótipo histórico anterior (apenas para referência, desativado).
 
 ---
 
@@ -75,7 +77,7 @@ Ambos os projetos possuem suítes de testes automatizados configurados via **Vit
 ## 🛡️ Segurança e Auditoria
 
 O projeto segue um protocolo estrito de segurança manual e periódica documentado em:
-* 📜 **[Protocolo de Varredura de Segurança](file:///e:/Labdev/Projetos/fraldinha-livre/.claude/docs/security/README.md)**
+* 📜 **[Protocolo de Varredura de Segurança](docs/security/README.md)**
 
 A auditoria manual foca nas seguintes travas de segurança:
 1. **Banco de Dados**: Prevenção de condições de corrida (TOCTOU) e validação de trancas/transações de estado em pedidos e controle de estoque.

@@ -1,24 +1,35 @@
-# Diretrizes de Agentes de IA — Fraldinha Livre
+# Diretrizes de agentes — Fraldinha Livre
 
-Este repositório possui regras e diretrizes de desenvolvimento estruturadas para coordenar múltiplos agentes concorrentes.
+Este é o núcleo comum a qualquer agente, modelo, editor ou terminal. Caminhos são relativos à raiz do repositório.
 
----
+## Fluxo e precedência
 
-## 1. Regras de Desenvolvimento Next.js
-Consulte a regra em [.agents/rules/nextjs-rules.md](file:///.agents/rules/nextjs-rules.md).
+- Siga a tarefa autorizada pelo usuário; não substitua seu escopo pela próxima feature do backlog.
+- Comece por [.agents/skills/session-start/SKILL.md](.agents/skills/session-start/SKILL.md). Consulte apenas estado atual e contexto necessário.
+- Regras operacionais vigentes: este arquivo e os guias em .agents/. Decisões de produto/arquitetura: [decisões](docs/governance/decisoes.md), considerando emendas posteriores. Histórico não redefine o processo atual.
+- Planejamento, execução e revisão são papéis, sem modelo obrigatório. Delegação só quando autorizada; isolamento depende do ambiente, nunca é presumido.
+- Ao concluir, siga [session-finish](.agents/skills/session-finish/SKILL.md). Preserve mudanças preexistentes e limite validações ao escopo.
 
----
+## Mapa do projeto
 
-## 2. Habilidades de Domínio (Custom Skills)
-
-Sub-agentes que atuem em domínios ou diretórios específicos **devem invocar** a respectiva habilidade antes de tomar qualquer ação:
-
-| Diretório / Escopo de Trabalho | Habilidade a Invocar | Caminho do Guia de Habilidade |
+| Escopo | Caminhos | Guia |
 |---|---|---|
-| `src/components/fornecedor/` ou `src/app/(main)/fornecedor/` | `Skill(domain-fornecedor)` | [.agents/skills/domain-fornecedor/SKILL.md](file:///.agents/skills/domain-fornecedor/SKILL.md) |
-| `src/components/minha-conta/` ou `src/app/(main)/minha-conta/` | `Skill(domain-comprador)` | [.agents/skills/domain-comprador/SKILL.md](file:///.agents/skills/domain-comprador/SKILL.md) |
-| `src/components/catalogo/` ou `src/app/(main)/catalogo/` | `Skill(domain-catalogo)` | [.agents/skills/domain-catalogo/SKILL.md](file:///.agents/skills/domain-catalogo/SKILL.md) |
-| Criação ou modificação de componentes de UI | `Skill(ui-system)` | [.agents/skills/ui-system/SKILL.md](file:///.agents/skills/ui-system/SKILL.md) |
-| Delegação ou disparo de sub-agentes concorrentes | `Skill(paralelize)` | [.agents/skills/paralelize/SKILL.md](file:///.agents/skills/paralelize/SKILL.md) |
-| Migração de dados mockados para endpoints reais (REST) | `Skill(api-contract)` | [.agents/skills/api-contract/SKILL.md](file:///.agents/skills/api-contract/SKILL.md) |
-| Modificar qualquer arquivo de Zona de Risco (`src/lib/`, `src/contexts/`, `src/components/ui/`, `tailwind.config.ts`, layout compartilhado) | `Skill(risk-zone-protocol)` | [.agents/skills/risk-zone-protocol/SKILL.md](file:///.agents/skills/risk-zone-protocol/SKILL.md) |
+| Frontend | front/src/, front/package.json | [Next.js](.agents/rules/nextjs-rules.md) |
+| Fornecedor | front/src/components/fornecedor/, front/src/app/(fornecedor)/painel-fornecedor/ | [Fornecedor](.agents/skills/domain-fornecedor/SKILL.md) |
+| Comprador | front/src/components/minha-conta/, front/src/app/(main)/minha-conta/ | [Comprador](.agents/skills/domain-comprador/SKILL.md) |
+| Catálogo | front/src/components/catalogo/, front/src/app/(main)/catalogo/ | [Catálogo](.agents/skills/domain-catalogo/SKILL.md) |
+| API | back/src/ | [Contrato](.agents/skills/api-contract/SKILL.md) |
+| Contratos compartilhados | packages/contracts/src/ | [Contrato](.agents/skills/api-contract/SKILL.md) e [risco](.agents/skills/risk-zone-protocol/SKILL.md) |
+| UI | front/src/components/ | [UI](.agents/skills/ui-system/SKILL.md) |
+| Código compartilhado e layouts | front/src/lib/, front/src/contexts/, front/src/components/ui/, back/src/lib/, back/src/middleware/, front/tailwind.config.ts, front/src/app/layout.tsx | [Risco](.agents/skills/risk-zone-protocol/SKILL.md) |
+
+Leia o guia relevante antes de alterar o escopo correspondente. Ler um SKILL.md é suficiente quando o ambiente não tem ferramenta própria de skills. Outros layouts compartilhados, configuração global e contratos também exigem análise de impacto.
+
+## Contexto seletivo
+
+- [Estado atual](context/estado/progresso.md): ponto de entrada.
+- [Backlog](context/estado/feature_list.json): critérios e status da tarefa selecionada.
+- [Planos](docs/features/plans/README.md), [specs](docs/features/specs/README.md) e [integração](docs/architecture/integration-guide.md): consultar por necessidade.
+- [Ciclo e comandos](docs/governance/ciclo-de-sessao.md): referência operacional.
+- Histórico em context/estado/progresso-historico.md, context/chatsessions/, docs/archive/ e docs/features/plans/archive/: não carregar nem pesquisar por padrão. Inclua explicitamente quando precisar de evidência histórica.
+- Configurações de ferramentas e memória pessoal são opcionais; nenhuma informação indispensável pode existir somente nelas.

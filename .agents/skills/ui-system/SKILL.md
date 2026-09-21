@@ -30,13 +30,13 @@ page.tsx (controller)
 - Tabs recebem dados + callbacks como props; sem estado próprio (exceto filtros internos de UI).
 - Cards não têm lógica de negócio; recebem tudo via props.
 - Modais são controlados pelo `page.tsx` via `open` + `onOpenChange`.
-- Nos domínios fornecedor e comprador, o `page.tsx` já não é o único dono dos dados — eles vêm de um Context (`useMarket`, `useOrders`, `useAuth`). `useState` local no controller hoje é usado só para UI (tab ativa, filtros). Confirme com a domain skill correspondente antes de assumir onde o estado mora.
+- A origem do estado varia por tela: comprador usa providers e o catálogo do fornecedor também tem estado local na página. Confira o controller e a skill do domínio antes de alterar o fluxo.
 
 ---
 
 ## `@base-ui/react` — quirks críticos
 
-Os componentes base-ui são consumidos através dos wrappers locais em `src/components/ui/` (`tabs.tsx`, `select.tsx`, `dialog.tsx`, etc.), que já aplicam `cn()`/`cva()` e defaults do projeto. **Importe de `@/components/ui/*`, não direto de `@base-ui/react`.**
+Os componentes base-ui são consumidos através dos wrappers locais em `front/src/components/ui/` (`tabs.tsx`, `select.tsx`, `dialog.tsx`, etc.), que já aplicam `cn()`/`cva()` e defaults do projeto. **Importe de `@/components/ui/*`, não direto de `@base-ui/react`.**
 
 ### Tabs
 
@@ -66,13 +66,13 @@ Os componentes base-ui são consumidos através dos wrappers locais em `src/comp
 
 ### Accordion (FaqAccordion)
 
-Componente existente em `src/components/FaqAccordion.tsx` — reutilizar em vez de criar novo.
+Componente existente em `front/src/components/FaqAccordion.tsx` — reutilizar em vez de criar novo.
 
 ---
 
 ## Hydration mismatch com `timeAgo()`
 
-`timeAgo()` (de `src/lib/supplier-mock.ts`) usa `Date.now()` — gera valor diferente no SSR vs. cliente. Hoje é usado nos componentes do domínio fornecedor (`DirectOrderCard`, `OfertasMercadoTab`, `LogisticaTab`); o domínio comprador usa um `formatDate` local sem esse problema.
+`timeAgo()` (de `front/src/lib/supplier-mock.ts`) usa `Date.now()` — gera valor diferente no SSR vs. cliente. Hoje é usado nos componentes do domínio fornecedor (`DirectOrderCard`, `OfertasMercadoTab`, `LogisticaTab`); o domínio comprador usa um `formatDate` local sem esse problema.
 
 ```tsx
 // ✅ CORRETO — suppressHydrationWarning no span
@@ -87,7 +87,7 @@ useEffect(() => { setTempo(timeAgo(order.createdAt)) }, [])
 
 ## Design tokens Tailwind
 
-Confirmado contra `tailwind.config.ts`:
+Confirmado contra `front/tailwind.config.ts`:
 
 | Classe | Valor hex | Uso |
 |---|---|---|
@@ -100,7 +100,7 @@ Confirmado contra `tailwind.config.ts`:
 | `text-brand-muted` | `#5A7385` | Texto secundário, labels, metadados |
 | `bg-brand-bg` | `#F0F8FD` | Fundo de seções alternadas |
 
-`rounded-card` = `16px`, `shadow-card` = `0 4px 20px rgba(91,191,234,0.12)` (`boxShadow.card` em `tailwind.config.ts`).
+`rounded-card` = `16px`, `shadow-card` = `0 4px 20px rgba(91,191,234,0.12)` (`boxShadow.card` em `front/tailwind.config.ts`).
 
 ---
 
@@ -180,4 +180,4 @@ O projeto segue **mobile-first**. Usar breakpoints do Tailwind progressivamente:
 
 ## Imports de UI
 
-Componentes de `src/components/ui/` são os primitivos base (`Button`, `Dialog`, `Tabs`, `Select`, `Badge`, `Avatar`, `Checkbox`, `Input`, `Label`, `Separator`, `Sheet`, `Textarea`, `Accordion`). Sempre preferir esses sobre implementar do zero ou importar `@base-ui/react` diretamente.
+Componentes de `front/src/components/ui/` são os primitivos base (`Button`, `Dialog`, `Tabs`, `Select`, `Badge`, `Avatar`, `Checkbox`, `Input`, `Label`, `Separator`, `Sheet`, `Textarea`, `Accordion`). Sempre preferir esses sobre implementar do zero ou importar `@base-ui/react` diretamente.

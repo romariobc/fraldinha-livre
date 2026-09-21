@@ -5,15 +5,15 @@ description: Contexto completo da área do comprador — tipos, componentes, rot
 
 # Domain: Área do Comprador (Minha Conta)
 
-Invoque esta skill antes de qualquer ação quando trabalhar em `src/components/minha-conta/` ou `src/app/(main)/minha-conta/`.
+Invoque esta skill antes de qualquer ação quando trabalhar em `front/src/components/minha-conta/` ou `front/src/app/(main)/minha-conta/`.
 
-> Revisado a partir do código real em 2026-07-23. A versão anterior descrevia `OfertasTab.tsx` e `NovoPedidoModal.tsx`, que não existem — o fluxo de criar cotação migrou para o domínio catálogo (`OfferModal` em `src/components/catalogo/`).
+> Revisado a partir do código real em 2026-07-23. A versão anterior descrevia `OfertasTab.tsx` e `NovoPedidoModal.tsx`, que não existem — o fluxo de criar cotação migrou para o domínio catálogo (`OfferModal` em `front/src/components/catalogo/`).
 
 ---
 
 ## Camada de dados
 
-**Arquivo:** `src/lib/account-mock.ts` — só os **tipos** e o seed inicial; o controller não lê `INITIAL_ORDERS` diretamente.
+**Arquivo:** `front/src/lib/account-mock.ts` — só os **tipos** e o seed inicial; o controller não lê `INITIAL_ORDERS` diretamente.
 
 **Tipos exportados:**
 ```typescript
@@ -25,15 +25,15 @@ MockUser      // { name, email, cpf, address: Address } — hoje só usado como 
 Order         // { id, type, product, quantity, unit, deliveryAddress, status, createdAt,
               //   price?, supplierId?, supplierName?, offers?, items?: OrderItem[] }
 ```
-`Order.items` (de `src/lib/order-items.ts`) é a representação canônica das linhas do pedido; use `getOrderItems(order)` para ler — ele faz fallback para pedidos antigos sem `items`.
+`Order.items` (de `front/src/lib/order-items.ts`) é a representação canônica das linhas do pedido; use `getOrderItems(order)` para ler — ele faz fallback para pedidos antigos sem `items`.
 
-**Perfil real do usuário logado não é `MOCK_USER`** — vem de `useAuth().profile` (`src/contexts/auth-context.tsx`), editável via `updateProfile()`.
+**Perfil real do usuário logado não é `MOCK_USER`** — vem de `useAuth().profile` (`front/src/contexts/auth-context.tsx`), editável via `updateProfile()`.
 
 ---
 
 ## Estado (Context, não `useState(INITIAL_ORDERS)`)
 
-**Arquivo:** `src/contexts/orders-context.tsx` — `useOrders()`:
+**Arquivo:** `front/src/contexts/orders-context.tsx` — `useOrders()`:
 ```typescript
 { orders, loading, error, createDirectOrder, createOrdersFromCart, cancelOrder }
 ```
@@ -44,7 +44,7 @@ Internamente usa um repositório (`MockOrderRepository` ou `HttpOrderRepository`
 ## Componentes
 
 ```
-src/components/minha-conta/
+front/src/components/minha-conta/
   PedidosTab.tsx        ← pedidos ativos (status != entregue/cancelado)
   HistoricoTab.tsx      ← pedidos finalizados (entregue ou cancelado), ordenados por data desc
   PerfilTab.tsx         ← visualização + edição do perfil (nome, CPF, telefone, endereço) via useAuth()
@@ -57,7 +57,7 @@ Não existem `OfertasTab.tsx` nem `NovoPedidoModal.tsx`. Pedidos `type: 'cotacao
 
 ## Rota e arquitetura
 
-- **Controller:** `src/app/(main)/minha-conta/page.tsx`, envolto em `<Suspense>` (usa `useSearchParams`).
+- **Controller:** `front/src/app/(main)/minha-conta/page.tsx`, envolto em `<Suspense>` (usa `useSearchParams`).
 - Tab inicial lida da URL: `?tab=pedidos|historico|perfil`.
 - `?returnTo=` é repassado para `PerfilTab` — usado quando o comprador é redirecionado do catálogo por perfil incompleto (ver `Skill(domain-catalogo)`, RN-06).
 - Guarda de auth idêntica ao painel do fornecedor: `useEffect` com `router.push('/login?redirect=/minha-conta')` se `!loading && !user`, hooks sempre antes de early return.
@@ -72,13 +72,13 @@ Não existem `OfertasTab.tsx` nem `NovoPedidoModal.tsx`. Pedidos `type: 'cotacao
 - `OrderCard` calcula `statusLabel` de forma type-aware: `status: 'aguardando'` em `compra-direta` mostra "Aguardando confirmação"; em `cotacao` usa o label padrão ("Aguardando ofertas").
 - Cancelamento (`canCancel`): só em `mode="pedidos"`, `status === 'aguardando'` e `type === 'compra-direta'`. Chama `useOrders().cancelOrder(id)` e, se `order.supplierId === 'sup-001'`, também `useMarket().cancelDirectOrder(id)` — acoplamento direto com o contexto do domínio fornecedor.
 
-**Criar cotação:** não acontece mais em `minha-conta`. O fluxo de "pedir oferta" está em `src/components/catalogo/OfferModal.tsx` (domínio catálogo).
+**Criar cotação:** não acontece mais em `minha-conta`. O fluxo de "pedir oferta" está em `front/src/components/catalogo/OfferModal.tsx` (domínio catálogo).
 
 ---
 
 ## Pitfalls críticos
 
-**`OrderCard` cruza para o domínio fornecedor:** importa `useMarket` de `src/contexts/market-context.tsx` para `cancelDirectOrder`. Se for alterar a shape do `MarketContextValue`, verifique este uso primeiro — invoke `Skill(risk-zone-protocol)`.
+**`OrderCard` cruza para o domínio fornecedor:** importa `useMarket` de `front/src/contexts/market-context.tsx` para `cancelDirectOrder`. Se for alterar a shape do `MarketContextValue`, verifique este uso primeiro — invoke `Skill(risk-zone-protocol)`.
 
 **`timeAgo()` não é usado neste domínio hoje** (`OrderCard` usa um `formatDate` local, não o `timeAgo` de `supplier-mock.ts`) — a nota de hydration mismatch da versão anterior desta skill não se aplica aqui.
 
@@ -87,21 +87,21 @@ Não existem `OfertasTab.tsx` nem `NovoPedidoModal.tsx`. Pedidos `type: 'cotacao
 ## Arquivos que este agente PODE tocar
 
 ```
-✅ src/components/minha-conta/**
-✅ src/app/(main)/minha-conta/**
-✅ src/lib/account-mock.ts        (cautela: tipos compartilhados com outros domínios — invoke risk-zone-protocol)
+✅ front/src/components/minha-conta/**
+✅ front/src/app/(main)/minha-conta/**
+✅ front/src/lib/account-mock.ts        (cautela: tipos compartilhados com outros domínios — invoke risk-zone-protocol)
 ```
 
 ## Arquivos que este agente NÃO PODE tocar
 
 ```
-❌ src/components/ui/**            — primitivos compartilhados
-❌ src/components/fornecedor/**    — domínio do fornecedor
-❌ src/components/catalogo/**      — domínio do catálogo
-❌ src/contexts/**                 — providers compartilhados (Orders/Market/Auth/Cart)
-❌ tailwind.config.ts              — configuração global
-❌ src/app/(main)/layout.tsx       — layout raiz
-❌ src/app/globals.css
+❌ front/src/components/ui/**            — primitivos compartilhados
+❌ front/src/components/fornecedor/**    — domínio do fornecedor
+❌ front/src/components/catalogo/**      — domínio do catálogo
+❌ front/src/contexts/**                 — providers compartilhados (Orders/Market/Auth/Cart)
+❌ front/tailwind.config.ts              — configuração global
+❌ front/src/app/(main)/layout.tsx       — layout raiz
+❌ front/src/app/globals.css
 ```
 
 Se precisar alterar qualquer arquivo proibido, invoke `Skill(risk-zone-protocol)` antes.

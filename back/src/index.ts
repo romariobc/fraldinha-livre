@@ -5,6 +5,7 @@ import { ordersGetHandler, ordersPostHandler, ordersCancelHandler, ordersReportH
 import { productsGetHandler, productsPostHandler, productsPutHandler, productsDeleteHandler } from './routes/products'
 import { createChatHandler } from './routes/chat'
 import { createAuthClaimHandler } from './routes/auth'
+import { adminAuditLogsGetHandler, adminProductStatusPatchHandler } from './routes/admin'
 import { createWorkersAiChatCompletion } from './lib/chat-completion'
 import { resolveRequestId, logger } from './lib/logger'
 import { AppError, respondError } from './lib/errors'
@@ -154,5 +155,14 @@ app.use('/auth/*', (c, next) => {
   return authMiddleware(c, next)
 })
 app.post('/auth/claim', (c) => createAuthClaimHandler()(c))
+
+app.use('/admin/*', (c, next) => {
+  const authMiddleware = createAuthMiddleware((token) =>
+    verifyFirebaseIdToken(token, c.env.FIREBASE_PROJECT_ID),
+  )
+  return authMiddleware(c, next)
+})
+app.get('/admin/audit-logs', requireAnyRole(['admin']), adminAuditLogsGetHandler)
+app.patch('/admin/products/:id/status', requireAnyRole(['admin']), adminProductStatusPatchHandler)
 
 export default app

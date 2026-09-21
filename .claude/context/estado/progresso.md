@@ -1,3 +1,40 @@
+## Marco (2026-09-21) - Correção do Fluxo de Pedidos e Drift de Migrações D1 (0008 e 0009)
+
+**Resumo da Sessão:**
+Diagnóstico e resolução do erro HTTP 500 no fluxo de criação de pedidos (`POST /orders`). Identificada a causa raiz como drift do banco Cloudflare D1 remoto (`fraldinha-livre-db`), onde as migrações locais `0008` e `0009` não haviam sido aplicadas. As migrações pendentes foram aplicadas no D1 remoto de forma isolada e segura (preservando `0010_audit_logs.sql` fora do escopo). O backend Worker foi publicado e todo o ciclo de checkout, visualização pelo fornecedor, idempotência com status 200 e decremento único de estoque foi validado com sucesso ponta a ponta.
+
+**O que foi feito:**
+1. **Diagnóstico da Causa Raiz:**
+   - Erro no log da Cloudflare: `Failed query ... from orders where orders.idempotency_key = ?`.
+   - O banco D1 remoto estava aplicado apenas até a migração `0007_swift_toxin.sql`, faltando a coluna `orders.idempotency_key` (da `0009`) e a constraint de estoque atômico `CHECK (quantity >= 0)` na tabela `products` (da `0008`).
+2. **Aplicação Segura das Migrações no D1 Remoto:**
+   - A migração `0010_audit_logs.sql` foi rigorosamente isolada para não ser executada, mantendo o escopo restrito da task AUDIT-001.
+   - Migrações `0008_outgoing_stryfe.sql` e `0009_tranquil_molly_hayes.sql` aplicadas com sucesso via Wrangler no banco `fraldinha-livre-db` (`a6da1bcf-ed51-4c8a-8dcb-cfd0c6c9e612`).
+   - Confirmada a presença de `idempotency_key` e do índice exclusivo `orders_idempotency_key_unique` em `orders`.
+   - Confirmada a integridade de todos os 312 produtos existentes na tabela `products`.
+3. **Validação Técnica e Deploy do Backend:**
+   - Suíte de 266 testes automatizados do backend aprovada com 100% de sucesso.
+   - Typecheck estrito (`tsc --noEmit`) sem erros.
+   - Deploy do Worker `fraldinha-livre-backend` realizado com sucesso (Version ID: `d41c562c-5d40-4f2e-8523-438ba59a9168`), mantendo variáveis de ambiente e bindings íntegros.
+4. **Validação Ponta a Ponta no Frontend Publicado:**
+   - Cliente de teste realizou a compra de 1 unidade do produto "Supersec Pants P" (fornecedor de teste).
+   - Checkout Pix simulado executado com sucesso: `POST /orders` retornou `201 Created` e gerou o pedido `984c8caf-0884-4e66-8f43-06afbb952116`.
+   - Pedido refletido na área do comprador (`/minha-conta`) com status "Aguardando confirmação".
+   - Login realizado como fornecedor de teste: pedido visualizado com sucesso em `/painel-fornecedor/pedidos`.
+5. **Comprovação de Idempotência e Controle Atômico de Estoque:**
+   - Teste de repetição controlada com a mesma `Idempotency-Key` retornou HTTP `200 OK` trazendo o mesmo pedido existente sem criar duplicatas (`total_orders = 1`).
+   - Estoque do produto passou de 20 para 19 no primeiro pedido e permaneceu estritamente em 19 na repetição (sem decremento duplo).
+
+**Limitações Atuais:**
+- O fluxo de pagamento permanece estritamente simulado na interface de checkout, não havendo transação bancária real ou repasse financeiro integrado.
+- A migração `0010_audit_logs.sql` e os endpoints de auditoria administrativa permanecem pendentes da homologação operacional da task `AUDIT-001`.
+
+**Próximos Passos:**
+- Conclusão da homologação operacional de `AUDIT-001` (aplicação da migração 0010 e validação de claims do admin).
+- Continuidade do backlog de integração de Gateway de Pagamento Real (Feature 011).
+
+---
+
 ## Marco (2026-09-19) - AUDIT-001 (Planejamento) e Diagnóstico Operacional de Claims
 
 **Resumo da Sessão:**
@@ -1764,3 +1801,30 @@ _A LLM preenche esta secao ao encerrar cada sessao antes de commitar._
 
 
 
+## Marco (2026-09-20) - AUDIT-001 (Implementação local)
+
+**Resumo da Sessão:**
+Implementação local da trilha formal de auditoria administrativa conforme D-050 e plano AUDIT-001. O harness e as regras de governança foram preservados.
+
+**O que foi feito:**
+1. Contratos compartilhados em `packages/contracts/src/audit.ts`, exportação e quatro testes de contrato.
+2. Tabela `audit_logs`, índices e migration `0010_audit_logs.sql` para D1.
+3. Helper `recordAuditEvent` com ator, ação, alvo, justificativa, metadata sanitizada e `requestId`.
+4. Rotas admin protegidas: `GET /admin/audit-logs` e `PATCH /admin/products/:id/status`.
+5. Aba de auditoria e modal de ativação/desativação de produto no painel administrativo.
+6. Testes de RBAC, persistência, justificativa, correlação e UI.
+
+**Verificação:**
+- Contracts: 41 testes verdes.
+- Backend: 266 testes verdes.
+- Frontend: 591 testes verdes.
+- Typecheck em contracts, back e front: exit 0.
+
+**Estado:**
+`AUDIT-001` permanece `in_progress`. A migration ainda não foi aplicada ao D1 remoto, os Workers ainda não foram implantados com esta mudança e falta validação humana do painel usando Custom Claim admin real.
+
+**Bloqueio de autorização encontrado via Firebase MCP:**
+O UID administrativo legado está com Custom Claims `role=comprador` e `comprador=true`. Como `getUserRole()` opera em fail-closed para claims conflitantes, esse estado não deve ser contornado pelo frontend nem por alteração incidental do fallback `ADMIN_UID`. É necessário provisionar a claim `admin` de forma controlada, validar o acesso e só então planejar a remoção da exceção legada em tarefa própria.
+
+**Próximo passo:**
+Revisar o diff, aplicar a migration no ambiente correto, implantar backend/frontend após aprovação operacional e validar a moderação e consulta de auditoria no painel.

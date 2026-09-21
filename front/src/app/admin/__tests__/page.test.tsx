@@ -59,7 +59,7 @@ describe('AdminPage — gate de acesso', () => {
     expect(mockPush).toHaveBeenCalledWith('/')
   })
 
-  it('usuario logado com UID admin legado → renderiza as 3 abas, sem redirecionar', () => {
+  it('usuario logado com UID admin legado → renderiza as 4 abas, sem redirecionar', () => {
     vi.mocked(useAuth).mockReturnValue(authValue({
       loading: false,
       user: { uid: process.env.NEXT_PUBLIC_ADMIN_UID!, email: 'admin@a.com', displayName: 'Admin' },
@@ -70,9 +70,10 @@ describe('AdminPage — gate de acesso', () => {
     expect(screen.getByText('Usuários')).toBeInTheDocument()
     expect(screen.getByText('Pedidos')).toBeInTheDocument()
     expect(screen.getByText('Produtos')).toBeInTheDocument()
+    expect(screen.getByText('Auditoria')).toBeInTheDocument()
   })
 
-  it('usuario logado com Custom Claim role: admin → renderiza as 3 abas, sem redirecionar (RBAC)', () => {
+  it('usuario logado com Custom Claim role: admin → renderiza as 4 abas, sem redirecionar (RBAC)', () => {
     vi.mocked(useAuth).mockReturnValue(authValue({
       loading: false,
       user: { uid: 'uid-custom-admin', email: 'admin@a.com', displayName: 'Admin' },
@@ -84,9 +85,10 @@ describe('AdminPage — gate de acesso', () => {
     expect(screen.getByText('Usuários')).toBeInTheDocument()
     expect(screen.getByText('Pedidos')).toBeInTheDocument()
     expect(screen.getByText('Produtos')).toBeInTheDocument()
+    expect(screen.getByText('Auditoria')).toBeInTheDocument()
   })
 
-  it('usuario logado com Custom Claim admin: true → renderiza as 3 abas, sem redirecionar (RBAC)', () => {
+  it('usuario logado com Custom Claim admin: true → renderiza as 4 abas, sem redirecionar (RBAC)', () => {
     vi.mocked(useAuth).mockReturnValue(authValue({
       loading: false,
       user: { uid: 'uid-custom-claim-admin', email: 'admin@a.com', displayName: 'Admin' },
@@ -98,5 +100,6 @@ describe('AdminPage — gate de acesso', () => {
     expect(screen.getByText('Usuários')).toBeInTheDocument()
     expect(screen.getByText('Pedidos')).toBeInTheDocument()
     expect(screen.getByText('Produtos')).toBeInTheDocument()
+    expect(screen.getByText('Auditoria')).toBeInTheDocument()
   })
 })

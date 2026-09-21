@@ -206,9 +206,9 @@
       "id": "AUDIT-001",
       "titulo": "Trilha Formal de Auditoria Administrativa e Governança",
       "fase": 1,
-      "status": "todo",
+      "status": "in_progress",
       "criterio_aceite": "Tabela audit_logs no D1 com índices; helper recordAuditEvent com logger estruturado; endpoints /admin/audit-logs e /admin/products/:id/status restritos a admin; justificativa obrigatória (min 5 chars); aba Auditoria e modal de moderação no front; 100% testes verdes",
-      "notas": "Planejada e documentada em 2026-09-19 conforme D-050. Plano detalhado em .claude/docs/features/plans/AUDIT-001-audit-trail.md. Aguardando execução."
+      "notas": "Implementação local concluída em 2026-09-20: contracts/audit.ts, migration 0010, schema D1, helper recordAuditEvent, rotas administrativas, aba Auditoria, modal de moderação e testes. Suites verdes: contracts 41, backend 266, frontend 591; tsc dos três workspaces sem erros. Pendente: aplicar migration/deploy no D1/Workers e validar o painel admin com Custom Claim real. Bloqueio encontrado no Firebase: UID administrativo legado possui role=comprador/comprador=true; o backend fail-closed trata isso como conflito até a claim admin ser provisionada corretamente."
     }
   ]
 }

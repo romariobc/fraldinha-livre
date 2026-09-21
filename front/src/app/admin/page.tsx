@@ -7,10 +7,11 @@ import { useAuth } from '@/contexts/auth-context'
 import AdminUsersTab from '@/components/admin/AdminUsersTab'
 import AdminOrdersTab from '@/components/admin/AdminOrdersTab'
 import AdminProductsTab from '@/components/admin/AdminProductsTab'
+import AdminAuditTab from '@/components/admin/AdminAuditTab'
 
 const ADMIN_UID = process.env.NEXT_PUBLIC_ADMIN_UID
 
-type TabKey = 'usuarios' | 'pedidos' | 'produtos'
+type TabKey = 'usuarios' | 'pedidos' | 'produtos' | 'auditoria'
 
 export default function AdminPage() {
   const router = useRouter()
@@ -36,10 +37,12 @@ export default function AdminPage() {
           <TabsTrigger value="usuarios">Usuários</TabsTrigger>
           <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
           <TabsTrigger value="produtos">Produtos</TabsTrigger>
+          <TabsTrigger value="auditoria">Auditoria</TabsTrigger>
         </TabsList>
         <TabsContent value="usuarios"><AdminUsersTab /></TabsContent>
         <TabsContent value="pedidos"><AdminOrdersTab /></TabsContent>
         <TabsContent value="produtos"><AdminProductsTab /></TabsContent>
+        <TabsContent value="auditoria"><AdminAuditTab /></TabsContent>
       </Tabs>
     </div>
   )

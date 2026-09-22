@@ -1,20 +1,24 @@
-# Estado atual — 2026-09-21
+# Estado atual — 2026-09-22
 
 ## Marco corrente
 
-Harness consolidado em AGENTS.md e .agents/, com documentação comum em docs/ e estado em context/. Entradas de ferramentas são adaptadores mínimos. Histórico anterior preservado integralmente em [progresso-historico.md](progresso-historico.md); triagem em [relatório](../../docs/governance/harness-revisao-2026-09-21.md).
+Harness comum em AGENTS.md e .agents/, documentação em docs/ e estado em context/. QA agora exige evidência por critério, cenários negativos e distinção entre revisão concluída e aprovação. [Relatório corrigido](../../docs/qa/AUDIT-001-QA-relatorio.md).
 
-## Último estado operacional registrado (não revalidado nesta limpeza)
+## Resultado local
 
-O registro de 2026-09-21 informa aplicação remota das migrations 0008/0009, publicação do backend e validação do checkout, pedidos e idempotência. Pagamento continua simulado. A migration 0010 de auditoria ficou fora daquele deploy.
+- AUDIT-001-QA: revisão concluída, incluindo correção de atomicidade da moderação, paginação SQL/UI, import de contratos e testes negativos. 909 testes nas suítes completas; tipos dos três workspaces passaram.
+- TOOLING-001: concluída em 2026-09-22. Node 22.23.2 ativo; lockfile sincronizado; 909 testes e tipos dos três workspaces passaram; lint 0 erros/19 avisos. Repetição com concorrência limitada após falhas de inicialização na primeira tentativa. [Evidências e limites](../../docs/qa/TOOLING-001-validacao-2026-09-22.md).
+- Documentação de arquitetura: [DER para agentes](../../docs/architecture/der-agentes.md) revisado contra schemas, migrations, contratos e rotas locais; corrigidas relações lógicas/FKs físicas, perfil opcional, autoria dos reportes e alvos polimórficos da auditoria. Vinculado ao AGENTS.md para consulta seletiva; não comprova estado remoto.
+- Alterações locais sem commit. Mudanças anteriores de documentação foram incorporadas; front/.claude/ preexistente preservado. Agendamento adiado pelo usuário.
 
-## Pendências de continuidade
+## Continuidade
 
-- AUDIT-001: implementação local registrada como concluída; pendem migration 0010, deploy/homologação e validação do admin com claims corretas. Claims conflitantes negam acesso. Plano: [AUDIT-001](../../docs/features/plans/AUDIT-001-audit-trail.md).
-- Feature 011: gateway de pagamento real ainda pendente.
-- Features 010 e 018 continuam in_progress no backlog; 008 está bloqueada. O texto antigo de 018/M7 antecede relatos posteriores de deploy: reconciliar com evidência ao retomar, sem assumir nem falta nem conclusão da homologação.
-- Demais tarefas e critérios: consultar seletivamente [feature_list.json](feature_list.json); nenhum status de produto foi alterado nesta limpeza.
+- AUDIT-001 permanece in_progress: ambiente remoto, migration 0010, claims e publicação não consultados nesta rodada. Homologação real e validação em navegador ainda necessárias; build não executado.
+- TOOLING-001 não depende mais de atualização do host. Avisos de lint/Vite triados; build e inspeção visual continuam fora da validação realizada.
+- Registro anterior de 2026-09-21 relatava migrations 0008/0009, deploy e checkout/pedidos validados, com 0010 fora daquele deploy. Informação histórica, não constatação remota atual. Pagamento permanece simulado conforme registro anterior.
+- Feature 011: gateway real pendente. 010 e 018 in_progress; 008 bloqueada. Confirmar evidência atual antes de retomar esses itens.
+- Demais critérios em [feature_list.json](feature_list.json). Histórico da consolidação em [progresso-historico.md](progresso-historico.md). O [relatório original de QA](../../docs/qa/archive/README.md) foi preservado e seu veredito superado.
 
 ## Próxima sessão
 
-Atender à tarefa solicitada pelo usuário. Se retomar operação, confirmar ambiente remoto antes de aplicar migrações ou publicar. Histórico, handoffs e planos arquivados não são instruções ativas.
+Atender à tarefa autorizada. Se retomar AUDIT-001, executar build e validação em navegador; confirmar estado remoto antes de qualquer migração/publicação. Não há agendamento ativo criado por esta rodada.

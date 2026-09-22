@@ -29,6 +29,7 @@ Leia o guia relevante antes de alterar o escopo correspondente. Ler um SKILL.md 
 
 - [Estado atual](context/estado/progresso.md): ponto de entrada.
 - [Backlog](context/estado/feature_list.json): critérios e status da tarefa selecionada.
+- [Modelo de dados para agentes](docs/architecture/der-agentes.md): consultar em tarefas de persistência, relações e contratos de dados; descreve o código local, não o estado homologado em produção.
 - [Planos](docs/features/plans/README.md), [specs](docs/features/specs/README.md) e [integração](docs/architecture/integration-guide.md): consultar por necessidade.
 - [Ciclo e comandos](docs/governance/ciclo-de-sessao.md): referência operacional.
 - Histórico em context/estado/progresso-historico.md, context/chatsessions/, docs/archive/ e docs/features/plans/archive/: não carregar nem pesquisar por padrão. Inclua explicitamente quando precisar de evidência histórica.

@@ -17,7 +17,7 @@ import { apiFetch } from '@/lib/api-client';
 
 export type UserRole = 'comprador' | 'fornecedor' | 'admin';
 
-interface AuthUser {
+export interface AuthUser {
   uid: string;
   email: string | null;
   displayName: string | null;
@@ -61,7 +61,7 @@ export interface UserProfile {
   updatedAt?: string;
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: AuthUser | null;
   profile: UserProfile | null;
   role: UserRole | null;

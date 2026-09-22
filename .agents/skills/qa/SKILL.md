@@ -10,3 +10,5 @@ description: Validação proporcional ao escopo e homologação com evidência r
 3. Para documentação, verifique caminhos, referências, JSON e integridade de conteúdo preservado.
 4. Registre resultados e limitações. Metadados, SEO, performance e segurança são avaliados quando pertencem ao escopo; não crie recursos ou contatos de segurança fictícios durante uma validação.
 5. Migrações remotas, publicação e alteração de segredos dependem de autorização específica e plano operacional. QA local não executa essas operações automaticamente.
+
+6. Use a matriz por critério de docs/qa/README.md e o checklist de docs/governance/review-checklist.md. Registre resultados finais dos comandos, lacunas e cenários negativos relevantes. Revisão concluída não significa produto aprovado; fatos remotos herdados devem ser identificados como não revalidados.

@@ -17,8 +17,8 @@ describe('apiFetch (OBS-001B + OBS-002)', () => {
       await apiFetch('/test-endpoint')
 
       expect(globalThis.fetch).toHaveBeenCalledOnce()
-      const [, init] = (globalThis.fetch as any).mock.calls[0]
-      const headers = init.headers as Headers
+      const [, init] = vi.mocked(globalThis.fetch).mock.calls[0]
+      const headers = init?.headers as Headers
 
       expect(headers.has('X-Request-Id')).toBe(true)
       const requestId = headers.get('X-Request-Id')
@@ -34,8 +34,8 @@ describe('apiFetch (OBS-001B + OBS-002)', () => {
         },
       })
 
-      const [, init] = (globalThis.fetch as any).mock.calls[0]
-      const headers = init.headers as Headers
+      const [, init] = vi.mocked(globalThis.fetch).mock.calls[0]
+      const headers = init?.headers as Headers
       expect(headers.get('X-Request-Id')).toBe(customId)
     })
   })

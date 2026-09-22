@@ -397,14 +397,12 @@ describe('Frontend Diagnostics (OBS-004)', () => {
       // 1. Log registrado exatamente uma vez
       expect(consoleErrorSpy).toHaveBeenCalledOnce()
 
-      // 2. Toast error chamado com descrição do código de suporte e ação
       expect(toast.error).toHaveBeenCalledOnce()
-      const [toastMsg, toastOptions] = (toast.error as any).mock.calls[0]
+      const [toastMsg, toastOptions] = vi.mocked(toast.error).mock.calls[0]
 
       expect(toastMsg).toBe('Não foi possível concluir esta operação agora. Tente novamente em instantes.')
-      expect(toastOptions.description).toBe('Código de suporte: 550e8400-e29b-41d4-a716-446655440000')
-      expect(toastOptions.action).toBeDefined()
-      expect(toastOptions.action.label).toBe('Copiar código')
+      expect(toastOptions?.description).toBe('Código de suporte: 550e8400-e29b-41d4-a716-446655440000')
+      expect(toastOptions?.action).toEqual(expect.objectContaining({ label: 'Copiar código' }))
 
       consoleErrorSpy.mockRestore()
     })

@@ -9,13 +9,16 @@ import { Button } from '@/components/ui/button'
 export default function AdminAuditTab() {
   const [data, setData] = useState<AdminAuditLogsResponse | null>(null)
   const [targetType, setTargetType] = useState('')
+  const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    const query = targetType ? `?targetType=${encodeURIComponent(targetType)}` : ''
+    const params = new URLSearchParams()
+    if (targetType) params.set('targetType', targetType)
+    if (page > 1) params.set('page', String(page))
+    const query = params.size ? `?${params}` : ''
     apiFetch(`/admin/audit-logs${query}`)
       .then((response) => response.json() as Promise<AdminAuditLogsResponse>)
       .then((nextData) => {
@@ -34,7 +37,7 @@ export default function AdminAuditTab() {
         if (!cancelled) setLoading(false)
       })
     return () => { cancelled = true }
-  }, [targetType])
+  }, [targetType, page])
 
   if (loading) return <div className="py-8 text-center text-brand-muted">Carregando auditoria...</div>
   if (error || !data) return <div className="py-8 text-center text-red-600">Erro ao carregar a trilha de auditoria.</div>
@@ -45,7 +48,7 @@ export default function AdminAuditTab() {
         <p className="text-sm text-brand-muted">{data.total} evento(s) administrativo(s)</p>
         <label className="flex items-center gap-2 text-sm">
           <span>Alvo</span>
-          <select value={targetType} onChange={(event) => setTargetType(event.target.value)} className="rounded border px-2 py-1">
+          <select value={targetType} onChange={(event) => { setLoading(true); setTargetType(event.target.value); setPage(1) }} className="rounded border px-2 py-1">
             <option value="">Todos</option>
             <option value="product">Produto</option>
             <option value="order">Pedido</option>
@@ -80,6 +83,11 @@ export default function AdminAuditTab() {
         </table>
         {data.logs.length === 0 && <p className="py-8 text-center text-brand-muted">Nenhum evento encontrado.</p>}
       </div>
+      <nav aria-label="Paginação da auditoria" className="flex flex-wrap items-center justify-between gap-3">
+        <Button variant="outline" disabled={page <= 1} onClick={() => { setLoading(true); setPage((current) => current - 1) }}>Anterior</Button>
+        <span>Página {page} de {Math.max(1, Math.ceil(data.total / data.limit))}</span>
+        <Button variant="outline" disabled={page * data.limit >= data.total} onClick={() => { setLoading(true); setPage((current) => current + 1) }}>Próxima</Button>
+      </nav>
     </div>
   )
 }

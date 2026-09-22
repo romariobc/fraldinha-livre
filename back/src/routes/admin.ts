@@ -1,5 +1,5 @@
 import { drizzle } from 'drizzle-orm/d1'
-import { desc, eq } from 'drizzle-orm'
+import { and, count, desc, eq, sql } from 'drizzle-orm'
 import type { Context } from 'hono'
 import { ZodError } from 'zod'
 import {
@@ -12,7 +12,7 @@ import { ProductSchema } from '../../../packages/contracts/src/product'
 import type { Env, AppContext } from '../env'
 import { products } from '../schema/products'
 import { auditLogs } from '../schema/audit-logs'
-import { recordAuditEvent } from '../lib/audit-trail'
+import { createAuditEvent, logAuditEvent } from '../lib/audit-trail'
 import { respondError, respondZodError } from '../lib/errors'
 
 type AdminContext = Context<{ Bindings: Env; Variables: AppContext['Variables'] }>
@@ -34,14 +34,18 @@ export const adminAuditLogsGetHandler = async (c: AdminContext) => {
     const rawQuery = Object.fromEntries(new URL(c.req.url).searchParams.entries())
     const query = AuditLogQuerySchema.parse(rawQuery)
     const db = drizzle(c.env.DB)
-    const rows = await db.select().from(auditLogs).orderBy(desc(auditLogs.createdAt)).all()
-    const filtered = rows.filter((row) =>
-      (query.targetType === undefined || row.targetType === query.targetType) &&
-      (query.targetId === undefined || row.targetId === query.targetId) &&
-      (query.action === undefined || row.action === query.action),
+    const filters = and(
+      query.targetType === undefined ? undefined : eq(auditLogs.targetType, query.targetType),
+      query.targetId === undefined ? undefined : eq(auditLogs.targetId, query.targetId),
+      query.action === undefined ? undefined : eq(auditLogs.action, query.action),
     )
-    const start = (query.page - 1) * query.limit
-    const logs = filtered.slice(start, start + query.limit).map((row) =>
+    const [rows, totals] = await db.batch([
+      db.select().from(auditLogs).where(filters)
+        .orderBy(desc(auditLogs.createdAt), desc(auditLogs.id))
+        .limit(query.limit).offset((query.page - 1) * query.limit),
+      db.select({ total: count() }).from(auditLogs).where(filters),
+    ])
+    const logs = rows.map((row) =>
       AuditEventSchema.parse({
         id: row.id,
         actorId: row.actorId,
@@ -57,7 +61,7 @@ export const adminAuditLogsGetHandler = async (c: AdminContext) => {
     )
     return c.json(AdminAuditLogsResponseSchema.parse({
       logs,
-      total: filtered.length,
+      total: totals[0].total,
       page: query.page,
       limit: query.limit,
     }))
@@ -75,19 +79,32 @@ export const adminProductStatusPatchHandler = async (c: AdminContext) => {
     const body = await c.req.json()
     const request = AdminModerateProductSchema.parse(body)
     const db = drizzle(c.env.DB)
-    const current = await db.select().from(products).where(eq(products.id, id)).get()
-    if (!current) return respondError(c, 'PRODUCT_NOT_FOUND', 404, 'Produto não encontrado.')
-
-    await db.update(products).set({ active: request.active }).where(eq(products.id, id))
-    const event = await recordAuditEvent(c, db, {
+    const event = createAuditEvent(c, {
       targetType: 'product',
       targetId: id,
       action: request.active ? 'product.activated' : 'product.deactivated',
       reason: request.reason,
-      metadata: { oldActive: current.active, newActive: request.active },
     })
-    const updated = await db.select().from(products).where(eq(products.id, id)).get()
-    if (!updated) throw new Error('Produto não encontrado após moderação')
+    // D1 batches are transactional. Read oldActive inside the same batch as the
+    // update, so concurrent requests cannot produce a stale audit snapshot.
+    const [, updatedRows] = await db.batch([
+      db.insert(auditLogs).select(db.select({
+        id: sql<string>`${event.id}`.as('id'),
+        actorId: sql<string>`${event.actorId}`.as('actor_id'),
+        actorRole: sql<string>`${event.actorRole}`.as('actor_role'),
+        targetType: sql<string>`${event.targetType}`.as('target_type'),
+        targetId: products.id,
+        action: sql<string>`${event.action}`.as('action'),
+        reason: sql<string>`${event.reason}`.as('reason'),
+        metadata: sql<string>`json_object('oldActive', json(case when ${products.active} then 'true' else 'false' end), 'newActive', json(${request.active ? 'true' : 'false'}))`.as('metadata'),
+        requestId: sql<string>`${event.requestId}`.as('request_id'),
+        createdAt: sql<string>`${event.createdAt}`.as('created_at'),
+      }).from(products).where(eq(products.id, id))),
+      db.update(products).set({ active: request.active }).where(eq(products.id, id)).returning(),
+    ])
+    const updated = updatedRows[0]
+    if (!updated) return respondError(c, 'PRODUCT_NOT_FOUND', 404, 'Produto não encontrado.')
+    logAuditEvent(c, event)
     const response = ProductSchema.parse({
       ...updated,
       badge: updated.badge ?? undefined,

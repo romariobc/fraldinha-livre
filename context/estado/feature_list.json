@@ -208,7 +208,23 @@
       "fase": 1,
       "status": "in_progress",
       "criterio_aceite": "Tabela audit_logs no D1 com índices; helper recordAuditEvent com logger estruturado; endpoints /admin/audit-logs e /admin/products/:id/status restritos a admin; justificativa obrigatória (min 5 chars); aba Auditoria e modal de moderação no front; 100% testes verdes",
-      "notas": "Implementação local concluída em 2026-09-20: contracts/audit.ts, migration 0010, schema D1, helper recordAuditEvent, rotas administrativas, aba Auditoria, modal de moderação e testes. Suites verdes: contracts 41, backend 266, frontend 591; tsc dos três workspaces sem erros. Pendente: aplicar migration/deploy no D1/Workers e validar o painel admin com Custom Claim real. Bloqueio encontrado no Firebase: UID administrativo legado possui role=comprador/comprador=true; o backend fail-closed trata isso como conflito até a claim admin ser provisionada corretamente."
+      "notas": "Implementação local concluída em 2026-09-20: contracts/audit.ts, migration 0010, schema D1, helper recordAuditEvent, rotas administrativas, aba Auditoria, modal de moderação e testes. Suites verdes: contracts 41, backend 266, frontend 591; tsc dos três workspaces sem erros. Pendente: aplicar migration/deploy no D1/Workers e validar o painel admin com Custom Claim real. Bloqueio encontrado no Firebase: UID administrativo legado possui role=comprador/comprador=true; o backend fail-closed trata isso como conflito até a claim admin ser provisionada corretamente. Revisão corretiva 2026-09-21: moderação/auditoria em batch atômico, paginação SQL/UI, testes de rollback, permissões e modal. Suites: contracts 41, back 274, front 594; tipos passaram. Lint global falha (TOOLING-001). Afirmações remotas anteriores nesta nota são históricas, não revalidadas. Ver docs/qa/AUDIT-001-QA-relatorio.md."
+    },
+    {
+      "id": "AUDIT-001-QA",
+      "titulo": "Validação local de AUDIT-001 em sessão autônoma",
+      "fase": 1,
+      "status": "done",
+      "criterio_aceite": "Conferir implementação e critérios de AUDIT-001; executar testes locais pertinentes e verificação de tipos dos três workspaces; registrar resultados, defeitos e limitações em docs/qa/AUDIT-001-QA-relatorio.md; atualizar contexto sem confundir validação local com homologação remota.",
+      "notas": "Revisão e correções locais concluídas em 2026-09-21. Relatório inicial preservado em docs/qa/archive/ e substituído por docs/qa/AUDIT-001-QA-relatorio.md: matriz por critério e limitações explícitas. 909 testes nas suites completas; tipos passaram; regressões afetadas repetidas. Lint dirigido passou; global com 22 erros/20 avisos. done significa revisão concluída, não aprovação de release. Agendamento adiado pelo usuário."
+    },
+    {
+      "id": "TOOLING-001",
+      "titulo": "Alinhar Node e recuperar lint global",
+      "fase": 1,
+      "status": "done",
+      "criterio_aceite": "Alinhar .nvmrc, engines e ambientes de execução; lint global sem erros, avisos triados; testes e tipos pertinentes passam sob Node suportado, sem desabilitar regras para ocultar falhas.",
+      "notas": "Concluída em 2026-09-22 sob Node 22.23.2 já ativo. Manifestos e lockfile sincronizados. 909 testes passaram com concorrência limitada (front 2 workers, back 1), tipos dos três workspaces passaram, lint 0 erros/19 avisos triados. Corrigida asserção condicional que podia ignorar label do toast. Tentativa concorrente inicial interrompida após problemas de inicialização; detalhes e limites em docs/qa/TOOLING-001-validacao-2026-09-22.md. Sem build ou homologação remota."
     }
   ]
 }

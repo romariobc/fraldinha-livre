@@ -30,14 +30,17 @@ export function EditPriceDialog({ open, onOpenChange, product, repo, onSuccess }
   const [mode, setMode] = React.useState<'direct' | 'percentage'>('direct')
   const [inputValue, setInputValue] = React.useState('')
   const [discountPercent, setDiscountPercent] = React.useState('')
+  const [prevKey, setPrevKey] = React.useState<string | null>(null)
 
-  React.useEffect(() => {
-    if (open && product) {
-      setMode('direct')
-      setInputValue((product.priceCents / 100).toFixed(2))
-      setDiscountPercent('10')
-    }
-  }, [open, product])
+  const currentKey = open && product ? `${product.id}:${product.priceCents}` : null
+  if (currentKey && currentKey !== prevKey) {
+    setPrevKey(currentKey)
+    setMode('direct')
+    setInputValue((product!.priceCents / 100).toFixed(2))
+    setDiscountPercent('10')
+  } else if (!currentKey && prevKey !== null) {
+    setPrevKey(null)
+  }
 
   if (!product) return null
 

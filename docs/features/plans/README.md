@@ -6,6 +6,7 @@ A pasta ativa contém planos pendentes, parciais ou sem evidência suficiente de
 
 ## Consulta seletiva
 
+- [AUDIT-001-QA-validacao-autonoma.md](AUDIT-001-QA-validacao-autonoma.md)
 - [AUDIT-001-audit-trail.md](AUDIT-001-audit-trail.md)
 - [F-perfil-fornecedor-breakdown.md](F-perfil-fornecedor-breakdown.md)
 - [H-010-deploy-frontend-cloudflare-containers.md](H-010-deploy-frontend-cloudflare-containers.md)

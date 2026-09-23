@@ -161,7 +161,7 @@ describe('CatalogoTab (fornecedor)', () => {
       supplierId: 'sup-1',
       idFactory: () => crypto.randomUUID(),
     });
-    (HttpProductRepository as any).mockImplementation(function() { return mockRepo as unknown as InstanceType<typeof HttpProductRepository> })
+    mockHttpProductRepository.mockImplementation(function() { return mockRepo as unknown as InstanceType<typeof HttpProductRepository> })
   })
 
   it('should load and display supplier products including inactive ones', async () => {

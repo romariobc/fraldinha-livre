@@ -35,11 +35,13 @@ function hasActiveFilters(filters: ProductFilters) {
 
 function FilterBody({ filters, onChange, onClear }: CatalogFiltersProps) {
   const [searchValue, setSearchValue] = useState(filters.search)
+  const [prevSearch, setPrevSearch] = useState(filters.search)
 
-  // Sincroniza estado local com filtros externos (ex.: quando limpa filtros)
-  useEffect(() => {
+  // Sincroniza estado local com filtros externos durante o render
+  if (filters.search !== prevSearch) {
+    setPrevSearch(filters.search)
     setSearchValue(filters.search)
-  }, [filters.search])
+  }
 
   // Debounce para atualizar os parâmetros da URL
   useEffect(() => {

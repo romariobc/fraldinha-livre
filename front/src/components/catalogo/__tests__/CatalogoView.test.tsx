@@ -129,7 +129,7 @@ describe('CatalogoView and useFilters Component Decoupling Suite', () => {
     })
 
     it('handles array fornecedorId in useParams safely', () => {
-      mockUseParams.mockReturnValue({ fornecedorId: ['sup-002'] as unknown as string })
+      mockUseParams.mockReturnValue({ fornecedorId: ['sup-002'] })
 
       const { result } = renderHook(() => useFilters())
       const [filters] = result.current
@@ -261,7 +261,7 @@ describe('CatalogoView and useFilters Component Decoupling Suite', () => {
       mockUsePathname.mockReturnValue('/catalogo/fornecedor/custom-supplier-uid')
       mockUseParams.mockReturnValue({ fornecedorId: 'custom-supplier-uid' })
       mockUseAuth.mockReturnValue({
-        user: { uid: 'custom-supplier-uid', displayName: 'Distribuidora Premium', email: 'contato@distribuidora.com' } as any,
+        user: { uid: 'custom-supplier-uid', displayName: 'Distribuidora Premium', email: 'contato@distribuidora.com' },
         profile: null,
         role: 'fornecedor',
         claims: { role: 'fornecedor', fornecedor: true },
@@ -330,13 +330,14 @@ describe('CatalogoView and useFilters Component Decoupling Suite', () => {
       mockUseParams.mockReturnValue({ fornecedorId: 'sup-002' })
 
       mockUseAuth.mockReturnValue({
-        user: { uid: 'user-incomplete', email: 'test@buyer.com' } as any,
+        user: { uid: 'user-incomplete', email: 'test@buyer.com', displayName: null },
         profile: {
-          fullName: 'Test User',
+          role: 'comprador',
+          name: 'Test User',
+          email: 'test@buyer.com',
           phone: '', // incomplete
-          cpfCnpj: '',
-          address: {} as any,
-        } as any,
+          cpf: '',
+        },
         role: 'comprador',
         claims: { role: 'comprador', comprador: true },
         isAdmin: false,
@@ -364,9 +365,11 @@ describe('CatalogoView and useFilters Component Decoupling Suite', () => {
       mockUseParams.mockReturnValue({ fornecedorId: 'sup-001' })
 
       mockUseAuth.mockReturnValue({
-        user: { uid: 'user-complete', email: 'buyer@test.com' } as any,
+        user: { uid: 'user-complete', email: 'buyer@test.com', displayName: 'Comprador Completo' },
         profile: {
-          fullName: 'Comprador Completo',
+          role: 'comprador',
+          name: 'Comprador Completo',
+          email: 'buyer@test.com',
           phone: '(11) 99999-9999',
           cpf: '11144477735',
           address: {
@@ -377,7 +380,7 @@ describe('CatalogoView and useFilters Component Decoupling Suite', () => {
             estado: 'SP',
             cep: '01000-000',
           },
-        } as any,
+        },
         role: 'comprador',
         claims: { role: 'comprador', comprador: true },
         isAdmin: false,

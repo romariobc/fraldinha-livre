@@ -6,9 +6,15 @@
     "back",
     "packages/contracts"
   ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "overrides": {
     "react-day-picker": {
       "date-fns": "^4.1.0"
     }
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
   }
 }

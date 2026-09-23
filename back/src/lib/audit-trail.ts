@@ -15,14 +15,14 @@ export interface RecordAuditEventParams {
   metadata?: Record<string, unknown>
 }
 
-export async function recordAuditEvent(c: AuditContext, db: ReturnType<typeof drizzle>, params: RecordAuditEventParams) {
+export function createAuditEvent(c: AuditContext, params: RecordAuditEventParams) {
   const actorId = c.get('uid')
   const requestId = c.get('requestId')
   if (!actorId || !requestId) {
     throw new Error('Contexto de auditoria incompleto')
   }
 
-  const event = AuditEventSchema.parse({
+  return AuditEventSchema.parse({
     id: crypto.randomUUID(),
     actorId,
     actorRole: 'admin',
@@ -35,6 +35,19 @@ export async function recordAuditEvent(c: AuditContext, db: ReturnType<typeof dr
     createdAt: new Date().toISOString(),
   })
 
+}
+
+export function logAuditEvent(c: AuditContext, event: ReturnType<typeof createAuditEvent>) {
+  logger.info(c, 'audit.event.recorded', {
+    auditId: event.id,
+    action: event.action,
+    targetType: event.targetType,
+    targetId: event.targetId,
+  })
+}
+
+export async function recordAuditEvent(c: AuditContext, db: ReturnType<typeof drizzle>, params: RecordAuditEventParams) {
+  const event = createAuditEvent(c, params)
   await db.insert(auditLogs).values({
     id: event.id,
     actorId: event.actorId,
@@ -48,12 +61,7 @@ export async function recordAuditEvent(c: AuditContext, db: ReturnType<typeof dr
     createdAt: event.createdAt,
   })
 
-  logger.info(c, 'audit.event.recorded', {
-    auditId: event.id,
-    action: event.action,
-    targetType: event.targetType,
-    targetId: event.targetId,
-  })
+  logAuditEvent(c, event)
 
   return event
 }

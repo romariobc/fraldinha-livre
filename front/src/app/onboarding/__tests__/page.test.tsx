@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import OnboardingPage from '../page'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth, type AuthContextType } from '@/contexts/auth-context'
 import { setDoc } from 'firebase/firestore'
 import { auth } from '@/lib/firebase'
 import { apiFetch } from '@/lib/api-client'
@@ -42,28 +42,52 @@ vi.mock('sonner', () => ({
 }))
 
 vi.mock('next/image', () => ({
-  default: (props: any) => <img {...props} alt={props.alt || ''} />,
+  default: ({ alt }: { alt?: string }) => <span role="img" aria-label={alt || ''} />,
 }))
+
+function createMockAuth(overrides: Partial<AuthContextType> = {}): AuthContextType {
+  return {
+    user: null,
+    profile: null,
+    role: null,
+    claims: null,
+    isAdmin: false,
+    loading: false,
+    signInGoogle: vi.fn(),
+    signInEmail: vi.fn(),
+    signUpEmail: vi.fn(),
+    signOutUser: vi.fn(),
+    updateProfile: vi.fn(),
+    ...overrides,
+  }
+}
 
 describe('OnboardingPage — Provisionamento e Renovação de Token (AUTH-001)', () => {
   const mockPush = vi.fn()
+  const mockRouter: ReturnType<typeof useRouter> = {
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    push: mockPush,
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+  }
 
   beforeEach(() => {
     vi.clearAllMocks()
-    ;(useRouter as any).mockReturnValue({ push: mockPush })
+    vi.mocked(useRouter).mockReturnValue(mockRouter)
   })
 
   it('provisiona claim comprador, renova ID token e salva perfil no Firestore', async () => {
-    ;(useAuth as any).mockReturnValue({
+    vi.mocked(useAuth).mockReturnValue(createMockAuth({
       user: { uid: 'user-123', email: 'mae@teste.com', displayName: 'Maria' },
       role: null,
       loading: false,
-    })
+    }))
 
-    ;(apiFetch as any).mockResolvedValue({
-      ok: true,
-      json: async () => ({ ok: true, role: 'comprador', claims: { comprador: true } }),
-    })
+    vi.mocked(apiFetch).mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, role: 'comprador', claims: { comprador: true } }), { status: 200 })
+    )
 
     render(<OnboardingPage />)
 
@@ -97,16 +121,15 @@ describe('OnboardingPage — Provisionamento e Renovação de Token (AUTH-001)',
   })
 
   it('provisiona claim fornecedor, renova ID token e redireciona para painel-fornecedor', async () => {
-    ;(useAuth as any).mockReturnValue({
+    vi.mocked(useAuth).mockReturnValue(createMockAuth({
       user: { uid: 'user-forn', email: 'forn@teste.com', displayName: 'Distribuidora' },
       role: null,
       loading: false,
-    })
+    }))
 
-    ;(apiFetch as any).mockResolvedValue({
-      ok: true,
-      json: async () => ({ ok: true, role: 'fornecedor', claims: { fornecedor: true } }),
-    })
+    vi.mocked(apiFetch).mockResolvedValue(
+      new Response(JSON.stringify({ ok: true, role: 'fornecedor', claims: { fornecedor: true } }), { status: 200 })
+    )
 
     render(<OnboardingPage />)
 
@@ -135,17 +158,15 @@ describe('OnboardingPage — Provisionamento e Renovação de Token (AUTH-001)',
   })
 
   it('se o backend rejeitar o provisionamento, exibe toast de erro e NÃO grava no Firestore', async () => {
-    ;(useAuth as any).mockReturnValue({
+    vi.mocked(useAuth).mockReturnValue(createMockAuth({
       user: { uid: 'user-fail', email: 'fail@teste.com', displayName: 'Falha' },
       role: null,
       loading: false,
-    })
+    }))
 
-    ;(apiFetch as any).mockResolvedValue({
-      ok: false,
-      status: 400,
-      json: async () => ({ error: 'Invalid role' }),
-    })
+    vi.mocked(apiFetch).mockResolvedValue(
+      new Response(JSON.stringify({ error: 'Invalid role' }), { status: 400 })
+    )
 
     render(<OnboardingPage />)
 

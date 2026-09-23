@@ -206,9 +206,9 @@
       "id": "AUDIT-001",
       "titulo": "Trilha Formal de Auditoria Administrativa e Governança",
       "fase": 1,
-      "status": "in_progress",
+      "status": "done",
       "criterio_aceite": "Tabela audit_logs no D1 com índices; helper recordAuditEvent com logger estruturado; endpoints /admin/audit-logs e /admin/products/:id/status restritos a admin; justificativa obrigatória (min 5 chars); aba Auditoria e modal de moderação no front; 100% testes verdes",
-      "notas": "Implementação local concluída em 2026-09-20: contracts/audit.ts, migration 0010, schema D1, helper recordAuditEvent, rotas administrativas, aba Auditoria, modal de moderação e testes. Suites verdes: contracts 41, backend 266, frontend 591; tsc dos três workspaces sem erros. Pendente: aplicar migration/deploy no D1/Workers e validar o painel admin com Custom Claim real. Bloqueio encontrado no Firebase: UID administrativo legado possui role=comprador/comprador=true; o backend fail-closed trata isso como conflito até a claim admin ser provisionada corretamente. Revisão corretiva 2026-09-21: moderação/auditoria em batch atômico, paginação SQL/UI, testes de rollback, permissões e modal. Suites: contracts 41, back 274, front 594; tipos passaram. Lint global falha (TOOLING-001). Afirmações remotas anteriores nesta nota são históricas, não revalidadas. Ver docs/qa/AUDIT-001-QA-relatorio.md."
+      "notas": "Implementação, segurança, revisão e deploys concluídos em 2026-09-23. Migration 0010_audit_logs.sql ativa no D1 remoto. Regras do Firestore endurecidas contra escalação de perfil e publicadas no Firebase produção. Front desacoplado de data.role para permissões de admin. PR #16 mergeada na main (4b66ac9). Backend Worker (39d7b1cb) e Frontend Container (05e5d56c) publicados na Cloudflare com 100% dos smoke tests remotos verdes. Suíte total com 933 testes verdes. Homologação final com usuário e token admin em navegador permanece como verificação pós-deploy. Ver docs/qa/AUDIT-001-QA-relatorio.md."
     },
     {
       "id": "AUDIT-001-QA",

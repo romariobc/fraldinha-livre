@@ -121,11 +121,31 @@ Sessão de diagnóstico e verificação da infraestrutura Cloudflare D1 e Worker
   - `tsc --noEmit` limpo nos 3 workspaces e ESLint 0 erros nos arquivos alterados.
 - **Limitações do Rules Emulator**: O Firebase Rules Emulator não estava configurado previamente no repositório; os testes de contrato foram implementados via Vitest espelhando as funções e invariantes da regra, e a compilação/publicação foi validada diretamente contra o compilador do Firebase.
 
+### 8. Merge da PR #16, Deploy dos Workers e Smoke Tests Remotos
+- **Merge da PR #16**: Aprovada pelo usuário e mergeada com sucesso na branch `main` via commit `4b66ac91277372146a1c7cbd5a852a9da50463ea`. A branch `main` local foi sincronizada via fast-forward.
+- **Deploy do Backend Worker (`fraldinha-livre-backend`)**:
+  - Comando: `npm exec --workspace back -- wrangler deploy`
+  - URL: `https://fraldinha-livre-backend.romariobc.workers.dev`
+  - Version ID ativo: `39d7b1cb-7b4d-4b7c-8d80-a7e213c95149` (código de saída 0).
+  - Bindings ativos: `env.DB (fraldinha-livre-db)`, `env.AI`, `env.FIREBASE_PROJECT_ID ("fraldinha-livre")`, `env.NOTIFICATIONS_ENABLED ("false")`.
+- **Deploy do Frontend Container (`fraldinha-livre-frontend`)**:
+  - Comando: `npm exec --workspace front -- wrangler deploy`
+  - URL: `https://fraldinha-livre-frontend.romariobc.workers.dev`
+  - Version ID ativo: `05e5d56c-6c08-49d4-8519-6193c395acf9` (código de saída 0).
+  - Imagem do Container: `registry.cloudflare.com/f8bc3d3f22071a646e6ace66a27647ca/fraldinha-livre-frontend-frontendcontainer@sha256:fd3648a287ac983a244a51188a1731ae4aecf9e681886f30a89831ac608b4725`.
+- **Smoke Tests Remotos Pós-Deploy**:
+  - `GET /health` (Backend): HTTP 200 `{"ok":true}`, com `X-Request-Id`.
+  - `GET /products?limit=1` (Backend): HTTP 200, resposta JSON lendo produtos do D1.
+  - `GET /admin/audit-logs` (Backend): HTTP 401 `{"error":{"code":"UNAUTHORIZED",...}}` (confirma rota ativa e protegida).
+  - `PATCH /admin/products/:id/status` (Backend): HTTP 401 `{"error":{"code":"UNAUTHORIZED",...}}` (confirma rota ativa e protegida).
+  - `POST /auth/claim` (Backend): HTTP 401 `{"error":{"code":"UNAUTHORIZED",...}}` (confirma rota ativa e protegida).
+  - `GET /` (Frontend): HTTP 200 OK.
+  - `GET /catalogo` (Frontend): HTTP 200 OK.
+  - `GET /admin` (Frontend): HTTP 200 OK.
+
 ## Pendências delimitadas
 
-- Deploy autorizado do Worker backend (`fraldinha-livre-backend`) contendo o código consolidado de AUDIT-001 (commit `3fbde48`).
-- Deploy autorizado do Frontend (`fraldinha-livre-frontend`) com a interface administrativa atualizada.
-- Homologação funcional dos fluxos administrativos pós-deploy com ID Token Firebase contendo role `admin`.
+- Homologação funcional dos fluxos administrativos em produção através de login com ID Token Firebase contendo role `admin` (Custom Claims).
 - Aplicação da proposta de migração automática no workflow `.github/workflows/cloudflare-deploy.yml` via PR.
 - Remoção definitiva dos fallbacks `ADMIN_UID` e `NEXT_PUBLIC_ADMIN_UID` após o provisionamento formal das Custom Claims da conta administradora em produção.
 
@@ -133,4 +153,4 @@ Sessão de diagnóstico e verificação da infraestrutura Cloudflare D1 e Worker
 
 O [relatório original do Antigravity](archive/AUDIT-001-QA-antigravity-original.md) foi preservado sem edição, SHA-256 35eda901153b3a93441571aa4d2d0f72c124bc7f92a5c9bdf214b77f7750f7fb. Seu veredito APROVADO e suas afirmações sobre paginação e estado remoto estão superados por este relatório.
 
-Procedimento vigente: [QA](README.md) e [checklist](../governance/review-checklist.md). Nesta sessão de 2026-09-23 foram executadas apenas consultas/read-only e o comando idempotente `wrangler d1 migrations apply DB --remote` (que confirmou ausência de migrações pendentes). Não houve alteração de código de aplicação, secrets, dados de negócio ou novo deploy.
+Procedimento vigente: [QA](README.md) e [checklist](../governance/review-checklist.md). Nesta sessão de 2026-09-23 foram executadas a verificação da migration D1 (0010), publicação das regras do Firestore no Firebase, merge da PR #16 na branch main, deploy dos Workers backend e frontend na Cloudflare e validação por smoke tests remotos.

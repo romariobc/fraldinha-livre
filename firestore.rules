@@ -1,14 +1,81 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // RN-04 (D-013): role imutavel + deletar bloqueado
+
+    // Lista estrita de campos permitidos no perfil de usuário
+    function allowedProfileKeys() {
+      return [
+        'role', 'name', 'email', 'cpf', 'cnpj', 'razaoSocial',
+        'nomeFantasia', 'phone', 'address', 'savedCards',
+        'lastPurchase', 'createdAt', 'updatedAt'
+      ];
+    }
+
+    // Campos permitidos exclusivamente no momento da criação (onboarding)
+    function allowedCreateKeys() {
+      return ['role', 'name', 'email', 'createdAt'];
+    }
+
+    // Verifica privilégio administrativo via Custom Claims ou fallback temporário
+    function isAdmin() {
+      return request.auth != null && (
+        request.auth.token.admin == true ||
+        request.auth.token.role == 'admin' ||
+        // Fallback temporário de transição (D-012)
+        request.auth.uid == 'KOQclmb5eshfkufioK03ayRh6Fi2'
+      );
+    }
+
+    // Validações de limites e tipos de campos de perfil
+    function hasValidFieldTypes(data) {
+      return data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 120
+        && (data.email == null || (data.email is string && data.email.size() <= 120))
+        && (!('cpf' in data) || (data.cpf is string && data.cpf.size() <= 20))
+        && (!('cnpj' in data) || (data.cnpj is string && data.cnpj.size() <= 25))
+        && (!('razaoSocial' in data) || (data.razaoSocial is string && data.razaoSocial.size() <= 150))
+        && (!('nomeFantasia' in data) || (data.nomeFantasia is string && data.nomeFantasia.size() <= 150))
+        && (!('phone' in data) || (data.phone is string && data.phone.size() <= 30))
+        && (!('address' in data) || data.address is map)
+        && (!('savedCards' in data) || (data.savedCards is list && data.savedCards.size() <= 10))
+        && (!('lastPurchase' in data) || data.lastPurchase is map)
+        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 50))
+        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 50));
+    }
+
+    // Validação estrita para criação (onboarding)
+    function isValidUserCreate(uid) {
+      let data = request.resource.data;
+      return request.auth != null
+        && request.auth.uid == uid
+        && data.keys().hasOnly(allowedCreateKeys())
+        && data.role in ['comprador', 'fornecedor']
+        && data.name is string
+        && data.name.size() > 0
+        && data.name.size() <= 120
+        && (data.email == null || (data.email is string && data.email.size() <= 120))
+        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 50));
+    }
+
+    // Validação estrita para atualização
+    function isValidUserUpdate(uid) {
+      let data = request.resource.data;
+      return request.auth != null
+        && request.auth.uid == uid
+        && data.keys().hasOnly(allowedProfileKeys())
+        && data.role == resource.data.role
+        && data.role in ['comprador', 'fornecedor']
+        && hasValidFieldTypes(data);
+    }
+
     match /users/{uid} {
-      allow read:   if request.auth != null
-                    && (request.auth.uid == uid || request.auth.uid == 'KOQclmb5eshfkufioK03ayRh6Fi2');
-      allow create: if request.auth != null && request.auth.uid == uid;
-      allow update: if request.auth != null && request.auth.uid == uid
-                    && request.resource.data.role == resource.data.role;
+      allow read:   if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow create: if isValidUserCreate(uid);
+      allow update: if isValidUserUpdate(uid);
       allow delete: if false;
     }
   }
 }
+
+

@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: cloudflare-production
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -21,6 +25,14 @@ jobs:
 
       - name: Install Dependencies (Root)
         run: npm ci
+
+      - name: Apply D1 Migrations
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: 'back'
+          command: d1 migrations apply DB --remote --config wrangler.jsonc
 
       - name: Deploy Backend
         uses: cloudflare/wrangler-action@v3

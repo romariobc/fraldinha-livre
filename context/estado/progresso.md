@@ -130,5 +130,11 @@ Atender à tarefa autorizada selecionada pelo usuário (homologação do login a
   - `npx vitest run test/orders.mutations.test.ts test/orders.get.test.ts` (back): 2 arquivos / 24 testes 100% verdes.
   - `npx tsc --noEmit` em `front/` e `back/`: 0 erros de tipo.
   - `npx eslint`: 0 erros de lint.
+- **Deploy de Produção Cloudflare (Workflow 36278561656)**:
+  - GitHub Actions [run 36278561656](https://github.com/romariobc/fraldinha-livre/actions/runs/36278561656): success em 2m39s.
+  - Migration remota D1 aplicada: `0011_simulated_payment.sql` executada com status ✅.
+  - Frontend publicado: Version ID `1f24a021-3437-49ea-9923-cc06bb55095b` (Image Digest `sha256:3d19a292a1a69630596130c0dddf028d06666866ee8619255c6f1d940b976b39`).
+  - Backend publicado e operacional.
+  - Smoke tests HTTP em produção: `/health` (200 OK com `X-Request-Id`), `/checkout` (200 OK), `/minha-conta` (200 OK) e `/admin` (200 OK).
 
 

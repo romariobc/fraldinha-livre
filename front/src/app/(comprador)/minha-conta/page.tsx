@@ -1,22 +1,22 @@
 // src/app/(main)/minha-conta/page.tsx
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useAuth } from '@/contexts/auth-context'
 import { useOrders } from '@/contexts/orders-context'
 import PedidosTab from '@/components/minha-conta/PedidosTab'
 import HistoricoTab from '@/components/minha-conta/HistoricoTab'
 import PerfilTab from '@/components/minha-conta/PerfilTab'
-import RoleProtectedRoute from '@/components/auth/RoleProtectedRoute'
+
 
 type TabKey = 'pedidos' | 'historico' | 'perfil'
 
 function MinhaContaContent() {
-  const router = useRouter()
+
   const searchParams = useSearchParams()
-  const { user, loading } = useAuth()
+  const { user } = useAuth()
   const { orders, loading: ordersLoading, error: ordersError } = useOrders()
 
   // Hooks SEMPRE devem ser chamados na mesma ordem, antes de qualquer early return

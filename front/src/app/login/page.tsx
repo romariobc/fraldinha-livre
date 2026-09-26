@@ -62,6 +62,7 @@ function LoginPageContent() {
   }, [loading, user, role, router, searchParams])
 
   async function handleGoogleSignIn() {
+    if (isLoading || loading) return
     try {
       setIsLoading(true)
       await signInGoogle()
@@ -76,6 +77,7 @@ function LoginPageContent() {
 
   async function handleEmailSignIn(e: FormEvent) {
     e.preventDefault()
+    if (isLoading || loading) return
     try {
       setIsLoading(true)
       await signInEmail(email, password)
@@ -124,10 +126,10 @@ function LoginPageContent() {
       </aside>
 
       {/* Form panel */}
-      <div className="flex flex-col justify-center px-6 py-12 bg-white sm:px-12 lg:px-16">
+      <div className="flex flex-col justify-center px-6 py-8 sm:py-12 bg-white sm:px-12 lg:px-16 overflow-y-auto">
 
         {/* Logo on mobile */}
-        <div className="flex items-center gap-2.5 mb-8 md:hidden">
+        <div className="flex items-center gap-2.5 mb-4 sm:mb-8 md:hidden">
           <Image
             src="/assets/img/cegonha.png"
             alt="Fraldinha Livre"
@@ -141,21 +143,21 @@ function LoginPageContent() {
           </div>
         </div>
 
-        <Link href="/" className="text-sm font-semibold text-primary-dark mb-6 inline-flex items-center gap-1 hover:underline">
+        <Link href="/" className="text-sm font-semibold text-primary-dark mb-4 sm:mb-6 inline-flex items-center gap-1 hover:underline">
           ← Voltar ao início
         </Link>
 
         <h3 className="font-display font-black text-2xl sm:text-3xl text-brand-text mb-1">
           Entrar na conta
         </h3>
-        <p className="text-sm text-brand-muted mb-8">
+        <p className="text-sm text-brand-muted mb-5 sm:mb-8">
           Não tem conta?{' '}
           <Link href="/cadastro" className="font-bold text-primary-dark hover:underline">
             Cadastre-se grátis
           </Link>
         </p>
 
-        <form className="flex flex-col gap-5" onSubmit={handleEmailSignIn}>
+        <form className="flex flex-col gap-4 sm:gap-5" onSubmit={handleEmailSignIn}>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="email" className="text-sm font-semibold text-brand-text">
               E-mail
@@ -202,13 +204,13 @@ function LoginPageContent() {
 
           <Button
             type="submit"
-            disabled={isLoading}
-            className="w-full rounded-xl py-6 bg-primary hover:bg-primary-dark font-display font-bold text-base text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isLoading || loading}
+            className="w-full rounded-xl py-5 sm:py-6 bg-primary hover:bg-primary-dark font-display font-bold text-base text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Entrando...' : 'Entrar na conta →'}
           </Button>
 
-          <div className="flex items-center gap-3 text-xs text-brand-muted">
+          <div className="flex items-center gap-3 text-xs text-brand-muted my-0.5">
             <span className="flex-1 h-px bg-slate-200" />
             ou entre com
             <span className="flex-1 h-px bg-slate-200" />
@@ -217,9 +219,9 @@ function LoginPageContent() {
           <Button
             type="button"
             onClick={handleGoogleSignIn}
-            disabled={isLoading}
+            disabled={isLoading || loading}
             variant="outline"
-            className="w-full rounded-xl py-6 border-2 border-slate-200 text-brand-muted font-semibold text-sm gap-2 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full rounded-xl py-5 sm:py-6 border-2 border-slate-200 text-brand-muted font-semibold text-sm gap-2 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
               <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>

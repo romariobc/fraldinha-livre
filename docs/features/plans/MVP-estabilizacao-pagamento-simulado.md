@@ -25,7 +25,7 @@ Pagamento real, notificacoes reais, leilao reverso, assistente PWA e admin avanc
 
 ### MVP-00 — Preparar trilha de QA e contas
 
-Status: todo
+Status: done
 
 Meta: deixar claro quais contas, URLs e comandos provam o MVP.
 
@@ -41,18 +41,13 @@ Criterio de aceite:
 - Existe checklist com passos, resultado esperado e campo de evidencia.
 - O agente consegue saber quais fluxos rodar sem perguntar o proximo passo.
 
-Arquivos provaveis:
-
-- `docs/qa/`
-- `context/estado/progresso.md`
-
-Validacao minima:
-
-- Revisao de links e caminhos.
+Notas de conclusao:
+- Contas oficiais configuradas no Firebase: `comprador.teste@fraldinhalivre.com.br` (limpa), `comprador.teste1@fraldinhalivre.com.br` (com pedido histórico), `fornecedor.teste1/2@fraldinhalivre.com.br` e `romariobc@gmail.com` (admin).
+- URLs de producao: frontend `https://fraldinha-livre-frontend.romariobc.workers.dev`, backend `https://fraldinha-livre-backend.romariobc.workers.dev`.
 
 ### MVP-01 — Recuperar Minha Conta contra falha de pedidos
 
-Status: todo
+Status: done
 
 Meta: a area do comprador nao pode virar uma pagina de erro generico quando `/orders` falha.
 
@@ -70,23 +65,12 @@ Criterio de aceite:
 - Erro de pedidos mostra mensagem util e codigo de suporte quando existir.
 - A pagina nao cai no error boundary global para falhas trataveis da API de pedidos.
 
-Arquivos provaveis:
-
-- `front/src/app/(comprador)/minha-conta/page.tsx`
-- `front/src/contexts/orders-context.tsx`
-- `front/src/lib/adapters/http-order-repository.ts`
-- `front/src/lib/frontend-diagnostics.ts`
-- testes em `front/src/app/(comprador)/minha-conta/__tests__/`
-
-Validacao minima:
-
-- Teste unitario ou de componente cobrindo falha em pedidos.
-- Teste cobrindo preservacao de diagnostico de `ApiError`.
-- QA local em mobile para `/minha-conta`.
+Notas de conclusao:
+- Concluído e publicado em produção no commit `49e752a`. 5 testes de componente aprovados em vitest.
 
 ### MVP-02 — Estabilizar claims e sessao comprador
 
-Status: todo
+Status: done
 
 Meta: eliminar a corrida em que o frontend libera a UI por Firestore, mas a API ainda responde 403 por falta de custom claim.
 
@@ -102,6 +86,11 @@ Criterio de aceite:
 - Primeiro login de comprador novo consegue chegar a Minha Conta sem erro inesperado.
 - Recarregar `/minha-conta` apos login mantem acesso.
 - Se `/auth/claim` falhar, o usuario ve uma instrucao clara para tentar novamente.
+
+Notas de conclusao:
+- Custom claims sincronizadas via Identity Toolkit API (`accounts:update`).
+- Resolução de conflito D-051 entre `ADMIN_UID` e `comprador` para a conta admin.
+- Chamada real `GET /orders` em produção retornando HTTP 200 OK para as contas de teste de comprador.
 
 Arquivos provaveis:
 

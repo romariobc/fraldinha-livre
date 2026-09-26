@@ -1,5 +1,10 @@
 # Estado atual — 2026-09-23
 
+## Plano de migração GPT-6 — 2026-09-26
+
+- Plano solicitado: [migração do assistente](../../docs/features/plans/migracao-gpt-6.md). Candidato principal GPT-6 Luna via Responses; comparar com Sol antes da escolha definitiva. Inspeção confirmou Llama 4 Scout, três ferramentas e necessidade de adaptar a continuação estruturada do loop.
+- Apenas planejamento e documentação. Sem inferência real, testes de aplicação ou deploy; feature 018 permanece pendente de homologação. Preservadas alterações locais preexistentes. Acesso à conta OpenAI, orçamento e métricas dependem da implementação/piloto.
+
 ## Marco corrente
 
 Harness comum em AGENTS.md e .agents/, documentação em docs/ e estado em context/. QA com evidência por critério e smoke tests remotos. Estado remoto da infraestrutura Cloudflare D1, Workers e Firebase sincronizado com a branch `main`. PR #16 mergeada e deploys de produção concluídos. [Relatório QA AUDIT-001](../../docs/qa/AUDIT-001-QA-relatorio.md).
@@ -66,3 +71,20 @@ Atender à tarefa autorizada selecionada pelo usuário (homologação do login a
   3. Avançar na integração do gateway de pagamento (Feature 011).
 
 
+
+## QA local de autenticação e navegação — 2026-09-25
+
+- Verificação das alterações locais existentes em login, cadastro, layout do comprador e minha conta, sem editar a implementação. Servidor Next iniciado em http://127.0.0.1:3000.
+- Chromium headless: /login e /cadastro responderam 200 em 360x800, 390x800 e 1440x900. Botões Google visíveis, habilitados, focáveis e dentro da primeira tela nesses tamanhos; sem overflow horizontal ou exceções de página. Captura do cadastro mobile inspecionada visualmente.
+- Menu mobile abriu com Início, Catálogo, Entrar e Criar conta. Acesso anônimo a /minha-conta, /sacola e /checkout redirecionou para /login.
+- Vitest dirigido aos quatro arquivos de testes de login, cadastro, layout comprador e minha conta: 4 arquivos / 27 testes passaram, código de saída 0. Navegação autenticada coberta com autenticação simulada, não homologada visualmente com conta real.
+- Limites: OAuth Google real não executado; nenhuma sessão real de comprador disponível no navegador de QA. Diagnóstico products.load_list registrou NETWORK_ERROR no ambiente local; integração com catálogo/pedidos não homologada. Sem deploy ou alteração das configurações de autenticação.
+
+## Deploy de cadastro Google e navegação — 2026-09-26
+
+- Publicação autorizada pelo usuário: commit `507e29db65e48cf9ebb12cb2a87f071fa6b8d9ce` enviado para main, limitado aos quatro arquivos de UI e seus quatro arquivos de testes. Documentação concorrente e front/.claude/ preservados fora do commit.
+- Tipos frontend e lint dos oito arquivos passaram (exit 0). Evidência anterior desta tarefa: 27 testes dirigidos passaram e QA visual local mobile/desktop em 2026-09-25; OAuth real e navegação autenticada real continuam sem homologação.
+- GitHub Actions [run 36266666408](https://github.com/romariobc/fraldinha-livre/actions/runs/36266666408): success, deploy em 2m31s, incluindo build do container; migrations: No migrations to apply.
+- Backend publicado: `7e41779c-2862-468e-8795-92d9b362357d`. Frontend publicado: `737acc4b-3940-4668-b56f-c583928d5f71`; imagem `sha256:2b6c519d64e1298b2bffe5c6efba86ddfc86322dea448f91503768d949307c66`.
+- Smoke HTTP após deploy: /, /login, /cadastro, /catalogo, /minha-conta, /sacola e /checkout retornaram 200; backend /health retornou 200 com {"ok":true}. Resposta 200 em rota protegida não homologa autenticação. HTML inicial de login/cadastro contém skeleton; bundle público `1v1rywbtk77w2.js` confirmou o texto Continuar com Google no cadastro.
+- Registro de publicação e plano de migração GPT-6 sincronizados com o repositório por autorização do usuário. Disco C: continua com pouco espaço livre; builds realizados no runner do GitHub Actions.

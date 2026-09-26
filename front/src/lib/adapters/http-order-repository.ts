@@ -6,16 +6,9 @@ import { OrderSchema, OrderListSchema } from '@contracts'
 
 export class HttpOrderRepository implements OrderRepository {
   async list(): Promise<Order[]> {
-    try {
-      const res = await apiFetch('/orders')
-      const json = await res.json()
-      return OrderListSchema.parse(json)
-    } catch (error) {
-      if (error instanceof ApiError) {
-        throw new Error(`Failed to list orders: HTTP ${error.status}`, { cause: error })
-      }
-      throw error
-    }
+    const res = await apiFetch('/orders')
+    const json = await res.json()
+    return OrderListSchema.parse(json)
   }
 
   async listForSupplier(): Promise<Order[]> {

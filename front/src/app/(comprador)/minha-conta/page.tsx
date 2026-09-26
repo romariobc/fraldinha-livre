@@ -3,41 +3,29 @@
 
 import { useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { AlertCircle, RotateCw } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useAuth } from '@/contexts/auth-context'
 import { useOrders } from '@/contexts/orders-context'
+import { copySupportCode } from '@/lib/frontend-diagnostics'
 import PedidosTab from '@/components/minha-conta/PedidosTab'
 import HistoricoTab from '@/components/minha-conta/HistoricoTab'
 import PerfilTab from '@/components/minha-conta/PerfilTab'
 
-
 type TabKey = 'pedidos' | 'historico' | 'perfil'
 
 function MinhaContaContent() {
-
   const searchParams = useSearchParams()
   const { user } = useAuth()
-  const { orders, loading: ordersLoading, error: ordersError } = useOrders()
+  const { orders, loading: ordersLoading, error: ordersError, errorDiagnostic, refreshOrders } = useOrders()
 
   // Hooks SEMPRE devem ser chamados na mesma ordem, antes de qualquer early return
-  const [activeTab, setActiveTab]   = useState<TabKey>(() => {
+  const [activeTab, setActiveTab] = useState<TabKey>(() => {
     const tabParam = searchParams.get('tab') as TabKey | null
     return (tabParam && ['pedidos', 'historico', 'perfil'].includes(tabParam)) ? tabParam : 'pedidos'
   })
 
-  // A proteção foi delegada ao (comprador)/layout.tsx
-
-  if (ordersLoading) {
-    return <div className="min-h-screen flex items-center justify-center">Carregando pedidos...</div>
-  }
-
-  if (ordersError) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-brand-muted">{ordersError}</p>
-      </div>
-    )
-  }
+  const [copiedCode, setCopiedCode] = useState(false)
 
   const returnTo = searchParams.get('returnTo')
 
@@ -69,7 +57,9 @@ function MinhaContaContent() {
                 onClick={() => setActiveTab('pedidos')}
                 className="flex flex-col items-center bg-white rounded-2xl px-5 py-3 shadow-card border border-primary/10 hover:border-primary/30 transition-colors min-w-[90px]"
               >
-                <span className="font-black text-2xl text-primary-dark leading-none">{activeOrdersCount}</span>
+                <span className="font-black text-2xl text-primary-dark leading-none">
+                  {ordersLoading ? '—' : activeOrdersCount}
+                </span>
                 <span className="text-xs text-brand-muted mt-1">Pedidos</span>
               </button>
             </div>
@@ -117,11 +107,84 @@ function MinhaContaContent() {
 
             <div className="pt-6">
               <TabsContent value="pedidos">
-                <PedidosTab orders={orders} />
+                {ordersLoading ? (
+                  <div className="text-center py-12 text-brand-muted">
+                    <p className="font-semibold text-sm">Carregando pedidos...</p>
+                  </div>
+                ) : ordersError ? (
+                  <div className="bg-white rounded-2xl p-6 sm:p-8 border border-red-200 shadow-card text-center max-w-lg mx-auto">
+                    <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-4">
+                      <AlertCircle size={24} />
+                    </div>
+                    <h3 className="text-base font-bold text-brand-text mb-2">
+                      Não foi possível carregar seus pedidos
+                    </h3>
+                    <p className="text-sm text-brand-muted mb-4">
+                      {ordersError}
+                    </p>
+                    {errorDiagnostic?.requestId && (
+                      <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-5 text-left text-xs text-brand-muted flex items-center justify-between gap-3">
+                        <span className="font-mono truncate">
+                          Código de suporte: <strong className="text-brand-text">{errorDiagnostic.requestId}</strong>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void copySupportCode(errorDiagnostic.requestId!).then((copied) => {
+                              if (copied) {
+                                setCopiedCode(true)
+                                setTimeout(() => setCopiedCode(false), 2000)
+                              }
+                            })
+                          }}
+                          className="text-xs font-semibold text-primary-dark hover:underline flex-none cursor-pointer"
+                        >
+                          {copiedCode ? 'Copiado!' : 'Copiar código'}
+                        </button>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => void refreshOrders?.()}
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary-dark text-white rounded-xl font-bold text-sm hover:bg-primary transition-colors shadow-sm cursor-pointer"
+                    >
+                      <RotateCw size={16} />
+                      Tentar novamente
+                    </button>
+                  </div>
+                ) : (
+                  <PedidosTab orders={orders} />
+                )}
               </TabsContent>
 
               <TabsContent value="historico">
-                <HistoricoTab orders={orders} />
+                {ordersLoading ? (
+                  <div className="text-center py-12 text-brand-muted">
+                    <p className="font-semibold text-sm">Carregando pedidos...</p>
+                  </div>
+                ) : ordersError ? (
+                  <div className="bg-white rounded-2xl p-6 sm:p-8 border border-red-200 shadow-card text-center max-w-lg mx-auto">
+                    <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-4">
+                      <AlertCircle size={24} />
+                    </div>
+                    <h3 className="text-base font-bold text-brand-text mb-2">
+                      Não foi possível carregar o histórico
+                    </h3>
+                    <p className="text-sm text-brand-muted mb-4">
+                      {ordersError}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void refreshOrders?.()}
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary-dark text-white rounded-xl font-bold text-sm hover:bg-primary transition-colors shadow-sm cursor-pointer"
+                    >
+                      <RotateCw size={16} />
+                      Tentar novamente
+                    </button>
+                  </div>
+                ) : (
+                  <HistoricoTab orders={orders} />
+                )}
               </TabsContent>
 
               <TabsContent value="perfil">
@@ -137,14 +200,8 @@ function MinhaContaContent() {
 
 export default function MinhaContaPage() {
   return (
-    
-      <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Carregando...</div>}>
-        <MinhaContaContent />
-      </Suspense>
-    
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Carregando...</div>}>
+      <MinhaContaContent />
+    </Suspense>
   )
 }
-
-
-
-

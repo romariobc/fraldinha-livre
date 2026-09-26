@@ -88,3 +88,20 @@ Atender à tarefa autorizada selecionada pelo usuário (homologação do login a
 - Backend publicado: `7e41779c-2862-468e-8795-92d9b362357d`. Frontend publicado: `737acc4b-3940-4668-b56f-c583928d5f71`; imagem `sha256:2b6c519d64e1298b2bffe5c6efba86ddfc86322dea448f91503768d949307c66`.
 - Smoke HTTP após deploy: /, /login, /cadastro, /catalogo, /minha-conta, /sacola e /checkout retornaram 200; backend /health retornou 200 com {"ok":true}. Resposta 200 em rota protegida não homologa autenticação. HTML inicial de login/cadastro contém skeleton; bundle público `1v1rywbtk77w2.js` confirmou o texto Continuar com Google no cadastro.
 - Registro de publicação e plano de migração GPT-6 sincronizados com o repositório por autorização do usuário. Disco C: continua com pouco espaço livre; builds realizados no runner do GitHub Actions.
+
+## Homologação Administrativa, Resolução de Claims e Estabilização de Minha Conta — 2026-09-26
+
+- **Homologação Administrativa (`/admin`) Concluída**: O usuário acessou com sucesso a rota `/admin` em produção no navegador com a conta `romariobc@gmail.com`. A tela carregou com sucesso a listagem completa de usuários do Firestore em `AdminUsersTab`. Registro de auditoria, moderação de produtos e pedidos globais desbloqueados.
+- **Resolução da Causa Raiz de 403 e Conflict de Claims**: A conta administrativa possuía resquício de claim `comprador: true` no Firebase Auth, gerando estado de `conflict` fail-closed (D-051) contra o `ADMIN_UID` do Cloudflare Worker. As Custom Claims foram atualizadas formalmente via Identity Toolkit para `{"role": "admin", "admin": true}`, eliminando o conflito.
+- **Contas de Teste Comprador (Sem Login Social / Email e Senha)**:
+  - `comprador.teste@fraldinhalivre.com.br` / `Teste123!`: provisionada com claims `comprador: true`. Chamada real `GET /orders` respondeu HTTP 200 `[]`.
+  - `comprador.teste1@fraldinhalivre.com.br` / `Teste123!`: conta com pedido histórico no D1 (`Supersec Pants P`). Chamada real `GET /orders` respondeu HTTP 200 com pedido mapeado.
+- **Resiliência da Área do Comprador (MVP-01 / MVP-02)**:
+  - `front/src/app/(comprador)/minha-conta/page.tsx`: eliminada a quebra de página inteira (early return global); erro de pedidos agora fica circunscrito à aba ativa, preservando saudação, navegação e Perfil, com suporte a cópia de `requestId` e botão de retry.
+  - `auth-context.tsx` e `orders-context.tsx`: eliminadas condições de corrida no refresh de claims e repasse de erro estruturado.
+  - 5 testes automatizados de componente passando (exit 0), typecheck limpo (`npx tsc --noEmit` exit 0) e ESLint sem erros.
+- **Melhorias Futuras Registradas para o Painel Administrativo (`/admin`)**:
+  - Layout e usabilidade: reposicionar as abas (Usuários, Pedidos, Produtos, Auditoria) para barra superior horizontal responsiva;
+  - Tabela de Usuários: adicionar busca/filtro por nome/email/papel, badges com cores por papel (`comprador` azul, `fornecedor` verde, `admin` roxo) e paginação;
+  - Navegação global: incluir atalho direto para "Painel Admin" no dropdown do Header para usuários com `isAdmin === true`.
+

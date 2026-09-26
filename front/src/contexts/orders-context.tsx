@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { Order, Address } from '@/lib/account-mock'
@@ -10,7 +10,7 @@ import type { OrderRepository } from '@/lib/ports/order-repository'
 import { MockOrderRepository } from '@/lib/adapters/mock-order-repository'
 import { HttpOrderRepository } from '@/lib/adapters/http-order-repository'
 import type { Order as ContractOrder, CreateOrderRequest } from '@contracts'
-import { diagnoseError, logFrontendDiagnostic } from '@/lib/frontend-diagnostics'
+import { diagnoseError, logFrontendDiagnostic, type DiagnosticResult } from '@/lib/frontend-diagnostics'
 
 function contractOrderToAccountMockOrder(order: ContractOrder): Order {
   return {
@@ -29,10 +29,12 @@ function contractOrderToAccountMockOrder(order: ContractOrder): Order {
   }
 }
 
-interface OrdersContextType {
+export interface OrdersContextType {
   orders: Order[]
   loading: boolean
   error: string | null
+  errorDiagnostic?: DiagnosticResult | null
+  refreshOrders?: () => Promise<void>
   createDirectOrder: (product: string, quantity: number, deliveryAddress: Address, price: number, supplierId?: string, supplierName?: string) => Order
   createOrdersFromCart: (items: CartItem[], address: Address, idempotencyKey?: string) => Promise<Order[]>
   cancelOrder: (orderId: string) => Promise<void>
@@ -44,6 +46,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [errorDiagnostic, setErrorDiagnostic] = useState<DiagnosticResult | null>(null)
 
   const useBackend = process.env.NEXT_PUBLIC_USE_BACKEND === 'true'
 
@@ -55,6 +58,12 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     })
   }, [useBackend])
 
+  const [reloadTick, setReloadTick] = useState(0)
+
+  const refreshOrders = useCallback(async () => {
+    setReloadTick((prev) => prev + 1)
+  }, [])
+
   useEffect(() => {
     let cancelled = false
 
@@ -62,8 +71,12 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       if (cancelled) return
       setLoading(true)
       setError(null)
+      setErrorDiagnostic(null)
 
       try {
+        if (reloadTick > 0 && auth?.currentUser && typeof auth.currentUser.getIdToken === 'function') {
+          await auth.currentUser.getIdToken(true)
+        }
         const result = await repo.list()
         if (cancelled) return
         setOrders(result.map(contractOrderToAccountMockOrder))
@@ -72,6 +85,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         const diag = diagnoseError(err, { operation: 'orders.load_list' })
         logFrontendDiagnostic(diag, { operation: 'orders.load_list' })
         setError(diag.message || 'Não foi possível carregar seus pedidos. Tente novamente.')
+        setErrorDiagnostic(diag)
       } finally {
         if (cancelled) return
         setLoading(false)
@@ -94,6 +108,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       } else {
         setOrders([])
         setError(null)
+        setErrorDiagnostic(null)
         setLoading(false)
       }
     })
@@ -102,7 +117,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       cancelled = true
       unsubscribe()
     }
-  }, [repo, useBackend])
+  }, [repo, useBackend, reloadTick])
 
   // Codigo morto (sem chamador em producao, sobrou do flip S5b/D-023) - NAO MEXER, fora de escopo B8.
   const createDirectOrder = (
@@ -188,7 +203,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <OrdersContext.Provider value={{ orders, loading, error, createDirectOrder, createOrdersFromCart, cancelOrder }}>
+    <OrdersContext.Provider value={{ orders, loading, error, errorDiagnostic, refreshOrders, createDirectOrder, createOrdersFromCart, cancelOrder }}>
       {children}
     </OrdersContext.Provider>
   )

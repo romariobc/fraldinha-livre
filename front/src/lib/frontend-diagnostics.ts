@@ -52,7 +52,8 @@ export async function copySupportCode(code: string): Promise<boolean> {
  * Extrai de forma pura e segura a classificação e os metadados de diagnóstico de qualquer erro.
  * Nunca vaza PII, tokens ou schemas internos nas mensagens de UX.
  */
-export function diagnoseError(err: unknown, context?: DiagnosticContext): DiagnosticResult {
+export function diagnoseError(err: unknown, _context?: DiagnosticContext): DiagnosticResult {
+  void _context
   // 1. ApiError (erro HTTP estruturado do backend)
   if (isApiError(err)) {
     const requestId = err.requestId && err.requestId !== 'unknown' ? err.requestId : undefined
@@ -182,19 +183,37 @@ export function diagnoseError(err: unknown, context?: DiagnosticContext): Diagno
     }
   }
 
-  // 5. Unexpected Error (inspeciona apenas se há requestId encapsulado em cause interno de ApiError)
+  // 5. Unexpected Error (inspeciona se há requestId e status/código encapsulados em cause interno de ApiError)
   let extractedRequestId: string | undefined
+  let extractedStatus: number | undefined
+  let extractedCode = 'UNEXPECTED_ERROR'
+  let extractedMessage = 'Ocorreu um erro inesperado. Tente novamente em instantes.'
+
   if (typeof err === 'object' && err !== null && 'cause' in err) {
     const innerCause = (err as { cause?: unknown }).cause
-    if (isApiError(innerCause) && innerCause.requestId && innerCause.requestId !== 'unknown') {
-      extractedRequestId = innerCause.requestId
+    if (isApiError(innerCause)) {
+      if (innerCause.requestId && innerCause.requestId !== 'unknown') {
+        extractedRequestId = innerCause.requestId
+      }
+      extractedStatus = innerCause.status
+      if (innerCause.code) {
+        extractedCode = innerCause.code
+      }
+      if (innerCause.status === 401 || innerCause.code === 'UNAUTHORIZED') {
+        extractedMessage = 'Sua sessão expirou ou requer autenticação para continuar.'
+      } else if (innerCause.status === 403 || innerCause.code === 'FORBIDDEN') {
+        extractedMessage = 'Você não tem permissão para realizar esta ação.'
+      } else if (innerCause.status >= 500) {
+        extractedMessage = 'Não foi possível concluir esta operação agora. Tente novamente em instantes.'
+      }
     }
   }
 
   return {
     kind: 'unexpected',
-    code: 'UNEXPECTED_ERROR',
-    message: 'Ocorreu um erro inesperado. Tente novamente em instantes.',
+    code: extractedCode,
+    message: extractedMessage,
+    status: extractedStatus,
     requestId: extractedRequestId,
     recoverable: true,
   }

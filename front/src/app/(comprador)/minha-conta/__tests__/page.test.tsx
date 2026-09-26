@@ -196,12 +196,22 @@ describe('MinhaContaPage', () => {
     expect(screen.getByRole('contentinfo')).toBeInTheDocument()
   })
 
-  it('shows orders error state with global navigation intact', () => {
+  it('shows orders error state with localized message, support code, retry action, and tabs/perfil accessible', async () => {
+    const mockRefresh = vi.fn()
     vi.mocked(useAuth).mockReturnValue(createMockAuth())
     vi.mocked(useOrders).mockReturnValue({
       orders: [],
       loading: false,
-      error: 'Falha ao buscar pedidos no servidor',
+      error: 'Você não tem permissão para realizar esta ação.',
+      errorDiagnostic: {
+        kind: 'api',
+        code: 'FORBIDDEN',
+        status: 403,
+        message: 'Você não tem permissão para realizar esta ação.',
+        requestId: 'req-403-test-trace',
+        recoverable: true,
+      },
+      refreshOrders: mockRefresh,
       createDirectOrder: vi.fn(),
       createOrdersFromCart: vi.fn(),
       cancelOrder: vi.fn(),
@@ -217,9 +227,36 @@ describe('MinhaContaPage', () => {
       </MarketProvider>
     )
 
-    expect(screen.getByText('Falha ao buscar pedidos no servidor')).toBeInTheDocument()
+    // Global navigation intact
     expect(screen.getByRole('banner')).toBeInTheDocument()
     expect(screen.getByRole('contentinfo')).toBeInTheDocument()
+
+    // Hero intact
+    expect(screen.getByText(/Olá, Maria/i)).toBeInTheDocument()
+
+    // Tabs intact
+    expect(screen.getByRole('tab', { name: /Pedidos/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Histórico/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /Perfil/i })).toBeInTheDocument()
+
+    // Localized error inside pedidos tab
+    expect(screen.getByText('Não foi possível carregar seus pedidos')).toBeInTheDocument()
+    expect(screen.getByText('Você não tem permissão para realizar esta ação.')).toBeInTheDocument()
+    expect(screen.getByText('req-403-test-trace')).toBeInTheDocument()
+
+    // Retry action
+    const retryBtn = screen.getByRole('button', { name: /Tentar novamente/i })
+    fireEvent.click(retryBtn)
+    expect(mockRefresh).toHaveBeenCalledOnce()
+
+    // Perfil tab can be clicked and navigated to without error
+    const perfilTab = screen.getByRole('tab', { name: /Perfil/i })
+    fireEvent.click(perfilTab)
+
+    await waitFor(() => {
+      expect(screen.getByText('Endereço de cadastro')).toBeInTheDocument()
+      expect(screen.getByText('Cartões de Crédito Salvos')).toBeInTheDocument()
+    })
   })
 
   it('switches between tabs (Pedidos -> Histórico -> Perfil)', async () => {
@@ -228,6 +265,8 @@ describe('MinhaContaPage', () => {
       orders: [mockOrder],
       loading: false,
       error: null,
+      errorDiagnostic: null,
+      refreshOrders: vi.fn(),
       createDirectOrder: vi.fn(),
       createOrdersFromCart: vi.fn(),
       cancelOrder: vi.fn(),

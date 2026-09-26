@@ -141,24 +141,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               !migratedUsersCache.has(fbUser.uid)
             ) {
               migratedUsersCache.add(fbUser.uid);
-              apiFetch('/auth/claim', {
-                method: 'POST',
-                body: JSON.stringify({ role: data.role }),
-              })
-                .then(async (res) => {
-                  if (res.ok && typeof fbUser.getIdTokenResult === 'function') {
-                    // Força renovação do token e atualiza estado local de claims/role
-                    const tokenResult = await fbUser.getIdTokenResult(true);
-                    const freshClaims = (tokenResult.claims as Record<string, unknown>) || null;
-                    setClaims(freshClaims);
-                    if (freshClaims?.role === 'comprador' || freshClaims?.role === 'fornecedor') {
-                      setRole(freshClaims.role as UserRole);
-                    }
-                  }
-                })
-                .catch((err) => {
-                  console.warn('[auth-context] Falha na auto-migração de Custom Claim:', err);
+              try {
+                const res = await apiFetch('/auth/claim', {
+                  method: 'POST',
+                  body: JSON.stringify({ role: data.role }),
                 });
+                if (res.ok && typeof fbUser.getIdTokenResult === 'function') {
+                  // Força renovação do token e atualiza estado local de claims/role
+                  const tokenResult = await fbUser.getIdTokenResult(true);
+                  const freshClaims = (tokenResult.claims as Record<string, unknown>) || null;
+                  tokenClaims = freshClaims;
+                  setClaims(freshClaims);
+                  if (freshClaims?.role === 'comprador' || freshClaims?.role === 'fornecedor') {
+                    tokenRole = freshClaims.role as UserRole;
+                  }
+                }
+              } catch (err) {
+                console.warn('[auth-context] Falha na auto-migração de Custom Claim:', err);
+              }
             }
 
             // Fallback de role do Firestore é restrito exclusivamente a papéis legítimos não-administrativos

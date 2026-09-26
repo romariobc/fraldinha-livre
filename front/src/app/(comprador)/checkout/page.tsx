@@ -34,7 +34,7 @@ function generateIdempotencyKey(): string {
 function CheckoutContent() {
   const { items, subtotal, bySupplier, clear, addItem } = useCart()
   const { products, loading: productsLoading } = useProducts()
-  const { user, loading, profile, updateProfile } = useAuth()
+  const { profile, updateProfile } = useAuth()
   const { createOrdersFromCart } = useOrders()
   const { addDirectOrder } = useMarket()
   const router = useRouter()
@@ -98,8 +98,13 @@ function CheckoutContent() {
       }
     }
   }, [urlProductId, urlQuantity, productsLoading, products, addItem, router])
+
   const [createdOrders, setCreatedOrders] = useState<Order[]>([])
   const [submitting, setSubmitting] = useState(false)
+  const [simulationOutcome, setSimulationOutcome] = useState<'approved' | 'declined'>('approved')
+  const [paymentState, setPaymentState] = useState<'idle' | 'processing' | 'approved' | 'declined'>('idle')
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [completedPayment, setCompletedPayment] = useState<{ transactionId: string; method: PaymentMethod } | null>(null)
   const idempotencyKeyRef = useRef<string>(generateIdempotencyKey())
 
   // Determine default address: profile.address or MOCK_USER.address
@@ -115,49 +120,73 @@ function CheckoutContent() {
       customAddress.cidade.trim() &&
       customAddress.estado.trim())
 
-  // Handler: Pagar (idempotent payment + order creation + fulfillment)
+  // Handler: Pagar (pagamento simulado primeiro, pedido apenas se aprovado — MVP-03)
   const handlePagar = async () => {
     // Guard: already submitted
     if (submitting) {
       return
     }
     setSubmitting(true)
+    setPaymentState('processing')
+    setPaymentError(null)
 
     try {
-      // 1. Create orders from cart (idempotent across multiple clicks or network retries)
-      const orders = await createOrdersFromCart(items, deliveryAddress, idempotencyKeyRef.current)
-
-      // 2. Instantiate adapters (STUB)
+      // 1. Processar cobrança simulada ANTES de criar pedidos
       let txnIdCounter = 0
       const payment = new MockPaymentGateway({
         now: () => new Date().toISOString(),
-        idFactory: () => `txn-${Date.now()}-${++txnIdCounter}`,
-        outcome: 'approved',
+        idFactory: () => `txn-sim-${Date.now()}-${++txnIdCounter}`,
+        outcome: simulationOutcome,
       })
 
+      const paymentResult = await payment.charge({
+        amount: subtotal,
+        method: paymentMethod,
+        simulationOutcome,
+      })
+
+      // Se recusado: não cria pedidos e não limpa o carrinho
+      if (paymentResult.status === 'declined') {
+        setPaymentState('declined')
+        const refusalMsg = paymentResult.refusalReason || 'Pagamento simulado recusado pela operadora.'
+        setPaymentError(refusalMsg)
+        toast.error(refusalMsg, { duration: 5000 })
+        setSubmitting(false)
+        return
+      }
+
+      setPaymentState('approved')
+      setCompletedPayment({
+        transactionId: paymentResult.transactionId,
+        method: paymentMethod,
+      })
+
+      // 2. Pagamento simulado aprovado: criar pedidos no D1 com metadados do pagamento
+      const orders = await createOrdersFromCart(
+        items,
+        deliveryAddress,
+        idempotencyKeyRef.current,
+        {
+          paymentMethod,
+          paymentTransactionId: paymentResult.transactionId,
+          paymentStatus: 'approved',
+        }
+      )
+
+      // 3. Agendar fulfillment (STUB)
       let trackingIdCounter = 0
       const fulfillment = new MockFulfillmentService({
         idFactory: () => `trk-${Date.now()}-${++trackingIdCounter}`,
         outcome: 'scheduled',
       })
 
-      // 3. Process payment and fulfillment for each order
       for (const order of orders) {
-        // Charge payment
-        await payment.charge({
-          orderId: order.id,
-          amount: order.price!,
-          method: paymentMethod,
-        })
-
-        // Schedule fulfillment
         await fulfillment.schedule({
           orderId: order.id,
           address: deliveryAddress,
           items: order.items!,
         })
 
-        // 4. Materialize in supplier panel for sup-001
         if (order.supplierId === 'sup-001') {
           const directOrder = orderToDirectOrder(order)
           if (directOrder) {
@@ -166,7 +195,7 @@ function CheckoutContent() {
         }
       }
 
-      // Record last purchase in profile
+      // 4. Salvar última compra no perfil
       if (items.length > 0) {
         const firstItem = items[0]
         updateProfile({
@@ -180,12 +209,13 @@ function CheckoutContent() {
         })
       }
 
-      // 5. Save created orders, clear cart, and move to confirmacao
+      // 5. Salva pedidos criados, limpa o carrinho e vai para confirmacao
       setCreatedOrders(orders)
       clear()
       idempotencyKeyRef.current = generateIdempotencyKey()
       setStep('confirmacao')
     } catch (err) {
+      setPaymentState('idle')
       const isInsufficientStock =
         err instanceof InsufficientStockError ||
         (err instanceof Error && err.name === 'InsufficientStockError')
@@ -200,7 +230,6 @@ function CheckoutContent() {
         toast.error(errorMsg, {
           duration: 6000,
         })
-        // Redireciona de volta para a sacola para revisar e recarregar os dados
         router.push('/sacola')
       } else {
         showErrorToast(err, {
@@ -484,7 +513,7 @@ function CheckoutContent() {
           </div>
         )}
 
-        {/* Step: Pagamento (STUB) */}
+        {/* Step: Pagamento */}
         {step === 'pagamento' && (
           <div className="max-w-2xl mx-auto">
             <h1 className="font-display font-black text-2xl text-brand-text mb-8">
@@ -492,51 +521,131 @@ function CheckoutContent() {
             </h1>
 
             <div className="bg-white rounded-card shadow-card p-6 space-y-6">
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-sm text-yellow-800">
-                  <strong>Pagamento simulado</strong> — nenhuma cobrança real será realizada.
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p className="text-sm font-bold text-amber-900 mb-1">
+                  Pagamento simulado
+                </p>
+                <p className="text-xs text-amber-800 leading-relaxed">
+                  Ambiente de demonstração — nenhuma cobrança real será realizada. Esta etapa valida os contratos de pagamento e a criação de pedidos no sistema.
                 </p>
               </div>
 
+              {/* Erro de pagamento recusado */}
+              {paymentState === 'declined' && paymentError && (
+                <div
+                  role="alert"
+                  className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800 space-y-1"
+                >
+                  <p className="font-bold">Pagamento simulado recusado</p>
+                  <p className="text-xs text-red-700">{paymentError}</p>
+                  <p className="text-xs text-brand-muted mt-2">
+                    Nenhum pedido foi gerado e sua sacola continua intacta. Para prosseguir no teste, selecione &quot;Aprovar simulação&quot; abaixo.
+                  </p>
+                </div>
+              )}
+
+              {/* Forma de pagamento */}
               <div className="space-y-3">
-                <label className="flex items-center gap-3 cursor-pointer">
+                <p className="text-xs font-bold text-brand-muted uppercase tracking-wider">
+                  Método de pagamento
+                </p>
+                <label className="flex items-center gap-3 cursor-pointer p-3 border border-slate-200 rounded-lg hover:border-primary-dark/40 transition-colors">
                   <input
                     type="radio"
                     name="payment"
                     value="pix"
                     checked={paymentMethod === 'pix'}
                     onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                    className="w-4 h-4"
+                    className="w-4 h-4 text-primary-dark"
                   />
-                  <span className="text-sm font-semibold text-brand-text">Pix</span>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-brand-text">Pix</span>
+                    <span className="text-xs text-brand-muted">Aprovação instantânea na simulação</span>
+                  </div>
                 </label>
 
-                <label className="flex items-center gap-3 cursor-pointer">
+                <label className="flex items-center gap-3 cursor-pointer p-3 border border-slate-200 rounded-lg hover:border-primary-dark/40 transition-colors">
                   <input
                     type="radio"
                     name="payment"
                     value="card"
                     checked={paymentMethod === 'card'}
                     onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                    className="w-4 h-4"
+                    className="w-4 h-4 text-primary-dark"
                   />
-                  <span className="text-sm font-semibold text-brand-text">Cartão de crédito</span>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-brand-text">Cartão de crédito</span>
+                    <span className="text-xs text-brand-muted">Simulação sem coleta de dados do cartão (RN de segurança)</span>
+                  </div>
                 </label>
+              </div>
+
+              {/* Controle de Simulação para QA / Teste */}
+              <div className="border-t border-slate-100 pt-5 space-y-3">
+                <p className="text-xs font-bold text-brand-muted uppercase tracking-wider">
+                  Cenário de teste da simulação
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className={`flex items-center gap-2.5 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    simulationOutcome === 'approved'
+                      ? 'border-emerald-500 bg-emerald-50/50'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="simulationOutcome"
+                      value="approved"
+                      checked={simulationOutcome === 'approved'}
+                      onChange={() => {
+                        setSimulationOutcome('approved')
+                        if (paymentState === 'declined') {
+                          setPaymentState('idle')
+                          setPaymentError(null)
+                        }
+                      }}
+                      className="w-4 h-4 text-emerald-600"
+                    />
+                    <div className="text-xs">
+                      <p className="font-bold text-emerald-900">Aprovar simulação</p>
+                      <p className="text-emerald-700">Cria o pedido e conclui a compra</p>
+                    </div>
+                  </label>
+
+                  <label className={`flex items-center gap-2.5 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    simulationOutcome === 'declined'
+                      ? 'border-rose-500 bg-rose-50/50'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="simulationOutcome"
+                      value="declined"
+                      checked={simulationOutcome === 'declined'}
+                      onChange={() => setSimulationOutcome('declined')}
+                      className="w-4 h-4 text-rose-600"
+                    />
+                    <div className="text-xs">
+                      <p className="font-bold text-rose-900">Recusar simulação</p>
+                      <p className="text-rose-700">Testa recusa sem gerar pedido</p>
+                    </div>
+                  </label>
+                </div>
               </div>
 
               <div className="border-t border-slate-100 pt-6 flex gap-3">
                 <button
                   onClick={() => setStep('revisao')}
-                  className="flex-1 py-3 px-4 border border-slate-300 rounded-full font-display font-bold text-sm hover:bg-slate-50 transition-colors text-brand-text"
+                  disabled={submitting}
+                  className="flex-1 py-3 px-4 border border-slate-300 rounded-full font-display font-bold text-sm hover:bg-slate-50 transition-colors text-brand-text disabled:opacity-50"
                 >
                   Voltar
                 </button>
                 <button
                   onClick={handlePagar}
                   disabled={submitting}
-                  className="flex-1 py-3 px-4 bg-primary-dark text-white rounded-full font-display font-bold text-sm hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex-1 py-3 px-4 bg-primary-dark text-white rounded-full font-display font-bold text-sm hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                 >
-                  Pagar
+                  {paymentState === 'processing' ? 'Processando pagamento...' : 'Pagar'}
                 </button>
               </div>
             </div>
@@ -570,6 +679,19 @@ function CheckoutContent() {
               <p className="text-sm text-brand-muted mb-2">
                 {createdOrders.length} pedido{createdOrders.length !== 1 ? 's' : ''} criado{createdOrders.length !== 1 ? 's' : ''} com sucesso.
               </p>
+
+              {completedPayment && (
+                <div className="my-6 p-4 bg-slate-50 rounded-lg text-xs text-brand-text inline-block text-left border border-slate-200">
+                  <p className="font-bold text-brand-text mb-1">Comprovante de pagamento simulado</p>
+                  <p className="text-brand-muted">
+                    Método: <span className="font-medium text-brand-text">{completedPayment.method === 'pix' ? 'Pix' : 'Cartão de crédito'}</span>
+                  </p>
+                  <p className="text-brand-muted">
+                    Transação: <span className="font-mono text-brand-text">{completedPayment.transactionId}</span>
+                  </p>
+                  <p className="text-emerald-700 font-semibold mt-1">Status: Simulado e Aprovado</p>
+                </div>
+              )}
 
               <p className="text-sm text-brand-muted mb-8">
                 Acompanhe seu pedido em Minha Conta.

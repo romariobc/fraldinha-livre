@@ -849,4 +849,76 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     const res2 = await app.fetch(req2, env)
     expect(res2.status).toBe(403)
   })
+
+  it('POST /orders com metadados de pagamento simulado persiste campos no D1 e retorna no GET', async () => {
+    await env.DB.prepare('UPDATE products SET quantity = 50 WHERE id = ?').bind('p1').run()
+    const app = createTestApp()
+    const idempotencyKey = `idemp-sim-pay-${Date.now()}`
+    const payload = {
+      product: 'Fralda',
+      quantity: 1,
+      unit: 'cx',
+      deliveryAddress: {
+        logradouro: 'Rua A',
+        numero: '123',
+        bairro: 'Centro',
+        cidade: 'São Paulo',
+        estado: 'SP',
+        cep: '01000-000',
+      },
+      items: [
+        {
+          productId: 'p1',
+          productName: 'Fralda P',
+          unitPrice: 1800,
+          quantity: 1,
+          unit: 'cx',
+        },
+      ],
+      supplierId: 'sup-001',
+      price: 1800,
+      paymentMethod: 'pix',
+      paymentTransactionId: 'txn-sim-12345',
+      paymentStatus: 'approved',
+    }
+
+    const postReq = new Request('http://localhost/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-uid-a',
+        'Idempotency-Key': idempotencyKey,
+      },
+      body: JSON.stringify(payload),
+    })
+    const postRes = await app.fetch(postReq, env)
+    expect(postRes.status).toBe(201)
+    const created = await postRes.json() as any
+    expect(created.paymentMethod).toBe('pix')
+    expect(created.paymentTransactionId).toBe('txn-sim-12345')
+    expect(created.paymentStatus).toBe('approved')
+
+    // Confirma via D1 direto
+    const db = drizzle(env.DB)
+    const dbOrder = await db.select().from(orders).where(eq(orders.id, created.id)).get()
+    expect(dbOrder?.paymentMethod).toBe('pix')
+    expect(dbOrder?.paymentTransactionId).toBe('txn-sim-12345')
+    expect(dbOrder?.paymentStatus).toBe('approved')
+
+    // Confirma via GET /orders
+    const getReq = new Request('http://localhost/orders', {
+      headers: {
+        Authorization: 'Bearer token-uid-a',
+      },
+    })
+    const getRes = await app.fetch(getReq, env)
+    expect(getRes.status).toBe(200)
+    const list = await getRes.json() as any[]
+    const found = list.find((o) => o.id === created.id)
+    expect(found).toBeDefined()
+    expect(found.paymentMethod).toBe('pix')
+    expect(found.paymentTransactionId).toBe('txn-sim-12345')
+    expect(found.paymentStatus).toBe('approved')
+  })
 })
+

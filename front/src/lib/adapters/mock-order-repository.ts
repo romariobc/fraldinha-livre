@@ -64,6 +64,9 @@ export class MockOrderRepository implements OrderRepository {
       deliveryAddress: req.deliveryAddress,
       createdAt: this.now(),
       items: req.items,
+      paymentMethod: req.paymentMethod,
+      paymentTransactionId: req.paymentTransactionId,
+      paymentStatus: req.paymentStatus,
     })
     this.orders.push(order)
     return order

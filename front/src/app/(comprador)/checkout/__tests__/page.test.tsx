@@ -374,9 +374,53 @@ describe('CheckoutPage', () => {
       const pixRadio = screen.getByDisplayValue('pix') as HTMLInputElement
       expect(pixRadio.checked).toBe(true)
     })
+
+    it('quando a simulação é recusada, exibe mensagem de recusa, não cria pedido e mantém a sacola', async () => {
+      renderCheckout([mockItem1])
+      const user = userEvent.setup()
+
+      // Navegar para pagamento
+      let continueButton = screen.getByRole('button', { name: /Continuar/i })
+      await user.click(continueButton)
+      continueButton = screen.getByRole('button', { name: /Continuar/i })
+      await user.click(continueButton)
+
+      // Seleciona opção de recusar simulação
+      const declinedRadio = screen.getByRole('radio', { name: /Recusar simulação/i })
+      await user.click(declinedRadio)
+
+      // Clica em pagar
+      const pagarButton = screen.getByRole('button', { name: /Pagar/i })
+      await user.click(pagarButton)
+
+      // Deve exibir mensagem de erro na tela
+      expect(await screen.findByText('Pagamento simulado recusado')).toBeInTheDocument()
+      expect(screen.queryByText('Pedido confirmado!')).not.toBeInTheDocument()
+
+      // A sacola NÃO deve ser limpa
+      const stored = window.localStorage.getItem('fl.cart.v1')
+      expect(stored).not.toBe('[]')
+    })
   })
 
   describe('Passo: Confirmacao', () => {
+    it('exibe comprovante com id de transação e método de pagamento simulado', async () => {
+      renderCheckout([mockItem1])
+      const user = userEvent.setup()
+
+      // Navega e conclui pagamento
+      let continueButton = screen.getByRole('button', { name: /Continuar/i })
+      await user.click(continueButton)
+      continueButton = screen.getByRole('button', { name: /Continuar/i })
+      await user.click(continueButton)
+      const pagarButton = screen.getByRole('button', { name: /Pagar/i })
+      await user.click(pagarButton)
+
+      expect(screen.getByText('Pedido confirmado!')).toBeInTheDocument()
+      expect(screen.getByText('Comprovante de pagamento simulado')).toBeInTheDocument()
+      expect(screen.getByText(/Simulado e Aprovado/i)).toBeInTheDocument()
+    })
+
     it('should display success message', async () => {
       renderCheckout([mockItem1])
       const user = userEvent.setup()

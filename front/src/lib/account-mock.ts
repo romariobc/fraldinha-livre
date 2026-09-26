@@ -50,6 +50,9 @@ export interface Order {
   supplierName?: string // para compra-direta e oferta aceita
   offers?: Offer[]    // presente apenas em cotacao
   items?: OrderItem[] // D-018: linhas do pedido (canonico). Opcional na transicao; getOrderItems faz o fallback.
+  paymentMethod?: 'pix' | 'card'
+  paymentTransactionId?: string
+  paymentStatus?: 'approved' | 'declined' | 'pending'
 }
 
 const SP_ADDRESS: Address = {

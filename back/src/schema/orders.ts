@@ -14,6 +14,9 @@ export const orders = sqliteTable('orders', {
   deliveryAddress: text('delivery_address').notNull(),
   createdAt: text('created_at').notNull(),
   idempotencyKey: text('idempotency_key').unique(),
+  paymentMethod: text('payment_method'),
+  paymentTransactionId: text('payment_transaction_id'),
+  paymentStatus: text('payment_status'),
 }, (table) => ({
   uidIdx: index('idx_orders_uid').on(table.uid),
 }))

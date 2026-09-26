@@ -105,3 +105,30 @@ Atender à tarefa autorizada selecionada pelo usuário (homologação do login a
   - Tabela de Usuários: adicionar busca/filtro por nome/email/papel, badges com cores por papel (`comprador` azul, `fornecedor` verde, `admin` roxo) e paginação;
   - Navegação global: incluir atalho direto para "Painel Admin" no dropdown do Header para usuários com `isAdmin === true`.
 
+## MVP-03 — Pagamento Simulado como Contrato Explícito (Compra Direta) — 2026-09-26
+
+- **Contratos Compartilhados (`packages/contracts`)**:
+  - Criado `packages/contracts/src/payment.ts`: schemas Zod `PaymentMethodSchema` (`'pix' | 'card'`), `SimulatedPaymentOutcomeSchema` (`'approved' | 'declined' | 'pending'`), `SimulatedPaymentRequestSchema` e `SimulatedPaymentResultSchema`.
+  - Atualizado `packages/contracts/src/order.ts`: estendidos `OrderSchema` e `CreateOrderRequestSchema` com campos opcionais `paymentMethod`, `paymentTransactionId` e `paymentStatus`.
+  - 13 novos testes de contrato em `packages/contracts/src/__tests__/payment.test.ts`; suíte completa de contratos com 54 testes 100% verdes.
+- **Banco de Dados D1 e Rotas da API (`back/`)**:
+  - Criada migration `back/migrations/0011_simulated_payment.sql` adicionando `payment_method`, `payment_transaction_id` e `payment_status` à tabela `orders`.
+  - Atualizado `back/src/schema/orders.ts` (Drizzle) e `back/src/routes/orders.ts` para persistir e mapear os metadados de pagamento em `ordersPostHandler`, `ordersGetHandler` e `ordersCancelHandler`.
+  - Teste automatizado adicionado em `back/test/orders.mutations.test.ts` validando persistência no D1 e retorno via GET /orders. Suíte de mutações com 20 testes 100% verdes.
+- **Integração no Frontend (`front/`)**:
+  - Alinhado `front/src/lib/ports/payment.ts` e `front/src/lib/adapters/mock-payment-gateway.ts` aos contratos compartilhados, suportando `simulationOutcome` dinâmico e `refusalReason`.
+  - Atualizados `front/src/lib/account-mock.ts`, `front/src/lib/adapters/mock-order-repository.ts` e `front/src/contexts/orders-context.tsx` (`createOrdersFromCart` recebe `paymentInfo` e repassa ao adapter).
+  - Invertido o fluxo de checkout em `front/src/app/(comprador)/checkout/page.tsx`:
+    1. A cobrança simulada é disparada PRIMEIRO;
+    2. Se recusada: exibe alerta de erro, não cria pedido no D1 e preserva a sacola intacta;
+    3. Se aprovada: cria pedidos no D1 com metadados do pagamento, agenda fulfillment (stub), atualiza última compra no perfil, limpa o carrinho e avança para confirmação com comprovante detalhado.
+    4. Adicionado seletor de cenário de simulação na etapa de pagamento ("Aprovar simulação" vs "Recusar simulação") para viabilizar homologação manual sem cartão real.
+  - Atualizado `front/src/components/minha-conta/OrderCard.tsx` para exibir comprovante e identificador de pagamento simulado nos detalhes expansíveis do pedido.
+- **Validação Automatizada Completa**:
+  - `npm test --prefix front`: 65 arquivos de teste / 647 testes 100% verdes (incluindo 26 testes de checkout e 28 de pedidos/minha conta).
+  - `npx vitest run packages/contracts/src/__tests__/`: 7 arquivos / 54 testes 100% verdes.
+  - `npx vitest run test/orders.mutations.test.ts test/orders.get.test.ts` (back): 2 arquivos / 24 testes 100% verdes.
+  - `npx tsc --noEmit` em `front/` e `back/`: 0 erros de tipo.
+  - `npx eslint`: 0 erros de lint.
+
+

@@ -108,7 +108,7 @@ Validacao minima:
 
 ### MVP-03 — Pagamento simulado como contrato explicito
 
-Status: todo
+Status: done
 
 Meta: transformar o pagamento stub em simulador claro, rastreavel e testavel.
 

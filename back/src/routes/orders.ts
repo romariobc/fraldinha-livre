@@ -104,6 +104,9 @@ export const ordersGetHandler = async (c: Context<{ Bindings: Env; Variables: Ap
           supplierName: order.supplierName ?? undefined,
           deliveryAddress: deliveryAddressJson,
           createdAt: order.createdAt,
+          paymentMethod: (order.paymentMethod as any) ?? undefined,
+          paymentTransactionId: order.paymentTransactionId ?? undefined,
+          paymentStatus: (order.paymentStatus as any) ?? undefined,
           items: items.map((item) => ({
             productId: item.productId,
             productName: item.productName,
@@ -184,6 +187,9 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
         supplierName: existingOrder.supplierName ?? undefined,
         deliveryAddress: deliveryAddressObj,
         createdAt: existingOrder.createdAt,
+        paymentMethod: (existingOrder.paymentMethod as any) ?? undefined,
+        paymentTransactionId: existingOrder.paymentTransactionId ?? undefined,
+        paymentStatus: (existingOrder.paymentStatus as any) ?? undefined,
         items: existingItems.map((item) => ({
           productId: item.productId,
           productName: item.productName,
@@ -253,6 +259,9 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
       deliveryAddress: deliveryAddressJson,
       createdAt,
       idempotencyKey,
+      paymentMethod: createRequest.paymentMethod ?? null,
+      paymentTransactionId: createRequest.paymentTransactionId ?? null,
+      paymentStatus: createRequest.paymentStatus ?? null,
     })
 
     // Constrói queries de inserção para cada item
@@ -342,6 +351,9 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
             supplierName: collidedOrder.supplierName ?? undefined,
             deliveryAddress: deliveryAddressObj,
             createdAt: collidedOrder.createdAt,
+            paymentMethod: (collidedOrder.paymentMethod as any) ?? undefined,
+            paymentTransactionId: collidedOrder.paymentTransactionId ?? undefined,
+            paymentStatus: (collidedOrder.paymentStatus as any) ?? undefined,
             items: collidedItems.map((item) => ({
               productId: item.productId,
               productName: item.productName,
@@ -407,6 +419,9 @@ export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: A
       supplierName: savedOrder.supplierName ?? undefined,
       deliveryAddress: deliveryAddressObject,
       createdAt: savedOrder.createdAt,
+      paymentMethod: (savedOrder.paymentMethod as any) ?? undefined,
+      paymentTransactionId: savedOrder.paymentTransactionId ?? undefined,
+      paymentStatus: (savedOrder.paymentStatus as any) ?? undefined,
       items: savedItems.map((item) => ({
         productId: item.productId,
         productName: item.productName,
@@ -507,6 +522,9 @@ export const ordersCancelHandler = async (c: Context<{ Bindings: Env; Variables:
       supplierName: updatedOrder.supplierName ?? undefined,
       deliveryAddress: deliveryAddressObject,
       createdAt: updatedOrder.createdAt,
+      paymentMethod: (updatedOrder.paymentMethod as any) ?? undefined,
+      paymentTransactionId: updatedOrder.paymentTransactionId ?? undefined,
+      paymentStatus: (updatedOrder.paymentStatus as any) ?? undefined,
       items: items.map((item) => ({
         productId: item.productId,
         productName: item.productName,

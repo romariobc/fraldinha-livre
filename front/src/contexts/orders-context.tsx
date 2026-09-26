@@ -26,6 +26,9 @@ function contractOrderToAccountMockOrder(order: ContractOrder): Order {
     supplierId: order.supplierId,
     supplierName: order.supplierName,
     items: order.items,
+    paymentMethod: order.paymentMethod,
+    paymentTransactionId: order.paymentTransactionId,
+    paymentStatus: order.paymentStatus,
   }
 }
 
@@ -36,7 +39,16 @@ export interface OrdersContextType {
   errorDiagnostic?: DiagnosticResult | null
   refreshOrders?: () => Promise<void>
   createDirectOrder: (product: string, quantity: number, deliveryAddress: Address, price: number, supplierId?: string, supplierName?: string) => Order
-  createOrdersFromCart: (items: CartItem[], address: Address, idempotencyKey?: string) => Promise<Order[]>
+  createOrdersFromCart: (
+    items: CartItem[],
+    address: Address,
+    idempotencyKey?: string,
+    paymentInfo?: {
+      paymentMethod?: 'pix' | 'card'
+      paymentTransactionId?: string
+      paymentStatus?: 'approved' | 'declined' | 'pending'
+    }
+  ) => Promise<Order[]>
   cancelOrder: (orderId: string) => Promise<void>
 }
 
@@ -153,7 +165,16 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     return newOrder
   }
 
-  const createOrdersFromCart = async (items: CartItem[], address: Address, idempotencyKey?: string): Promise<Order[]> => {
+  const createOrdersFromCart = async (
+    items: CartItem[],
+    address: Address,
+    idempotencyKey?: string,
+    paymentInfo?: {
+      paymentMethod?: 'pix' | 'card'
+      paymentTransactionId?: string
+      paymentStatus?: 'approved' | 'declined' | 'pending'
+    }
+  ): Promise<Order[]> => {
     let idCounter = 0
     const idFactory = () => {
       idCounter++
@@ -182,6 +203,9 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
         supplierName: domainOrder.supplierName,
         deliveryAddress: address,
         items: domainOrder.items,
+        paymentMethod: paymentInfo?.paymentMethod,
+        paymentTransactionId: paymentInfo?.paymentTransactionId,
+        paymentStatus: paymentInfo?.paymentStatus,
       }
 
       // Garante que cada pedido do split receba uma chave determinística e única

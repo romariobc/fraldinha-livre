@@ -23,11 +23,11 @@ export class MockPaymentGateway implements PaymentGateway {
     this.outcome = options.outcome ?? 'approved'
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async charge(_req: PaymentRequest): Promise<PaymentResult> {
+  async charge(req: PaymentRequest): Promise<PaymentResult> {
+    const outcome = req.simulationOutcome ?? this.outcome
     const transactionId = this.idFactory()
 
-    if (this.outcome === 'approved') {
+    if (outcome === 'approved') {
       return {
         status: 'approved',
         transactionId,
@@ -35,10 +35,11 @@ export class MockPaymentGateway implements PaymentGateway {
       }
     }
 
-    if (this.outcome === 'declined') {
+    if (outcome === 'declined') {
       return {
         status: 'declined',
         transactionId,
+        refusalReason: 'Transação simulada não autorizada.',
       }
     }
 

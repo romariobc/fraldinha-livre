@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { AddressSchema } from './address'
+import { PaymentMethodSchema, SimulatedPaymentOutcomeSchema } from './payment'
 
 export const OrderItemSchema = z.object({
   productId: z.string().min(1),
@@ -29,6 +30,9 @@ export const OrderSchema = z.object({
   deliveryAddress: AddressSchema,
   createdAt: z.string(), // ISO 8601
   items: z.array(OrderItemSchema),
+  paymentMethod: PaymentMethodSchema.optional(),
+  paymentTransactionId: z.string().optional(),
+  paymentStatus: SimulatedPaymentOutcomeSchema.optional(),
 })
 export type Order = z.infer<typeof OrderSchema>
 
@@ -48,5 +52,9 @@ export const CreateOrderRequestSchema = z.object({
   supplierName: z.string().optional(),
   deliveryAddress: AddressSchema,
   items: z.array(OrderItemSchema).min(1),
+  paymentMethod: PaymentMethodSchema.optional(),
+  paymentTransactionId: z.string().optional(),
+  paymentStatus: SimulatedPaymentOutcomeSchema.optional(),
 })
 export type CreateOrderRequest = z.infer<typeof CreateOrderRequestSchema>
+

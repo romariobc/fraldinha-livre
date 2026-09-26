@@ -187,6 +187,18 @@ export default function OrderCard({ order, mode }: OrderCardProps) {
               <p className="text-xs font-semibold text-brand-text">Data do pedido</p>
               <p className="text-xs text-brand-muted">{formatDate(order.createdAt)}</p>
             </div>
+
+            {/* Pagamento simulado */}
+            {order.paymentMethod && (
+              <div>
+                <p className="text-xs font-semibold text-brand-text">Pagamento (Simulado)</p>
+                <p className="text-xs text-brand-muted">
+                  {order.paymentMethod === 'pix' ? 'Pix' : 'Cartão de crédito'}
+                  {order.paymentTransactionId && ` • ID: ${order.paymentTransactionId}`}
+                  {order.paymentStatus && ` • Status: ${order.paymentStatus === 'approved' ? 'Aprovado' : order.paymentStatus}`}
+                </p>
+              </div>
+            )}
           </div>
         )}
 

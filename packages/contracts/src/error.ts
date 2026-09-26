@@ -22,6 +22,7 @@ export const ApiErrorCodeSchema = z.enum([
   // Regras de Negócio e Conflito (409)
   'INSUFFICIENT_STOCK',
   'ORDER_NOT_AWAITING',
+  'ORDER_STATUS_NOT_ALLOWED',
   'IDEMPOTENCY_CONFLICT',
 
   // Provedores Externos e Servidor (500 / 502)

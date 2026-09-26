@@ -1,7 +1,7 @@
 import { apiFetch, ApiError } from '@/lib/api-client'
 import type { OrderRepository } from '@/lib/ports/order-repository'
 import { OrderNotFoundError, OrderCancelNotAllowedError, OrderForbiddenError, InsufficientStockError } from '@/lib/ports/order-repository'
-import type { Order, CreateOrderRequest } from '@contracts'
+import type { Order, CreateOrderRequest, OrderStatus } from '@contracts'
 import { OrderSchema, OrderListSchema } from '@contracts'
 
 export class HttpOrderRepository implements OrderRepository {
@@ -63,4 +63,25 @@ export class HttpOrderRepository implements OrderRepository {
       throw error
     }
   }
+
+  async updateStatus(orderId: string, status: OrderStatus): Promise<Order> {
+    try {
+      const res = await apiFetch(`/orders/${orderId}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      })
+      const json = await res.json()
+      return OrderSchema.parse(json)
+    } catch (error) {
+      if (error instanceof ApiError) {
+        const opts = { requestId: error.requestId, cause: error }
+        if (error.code === 'ORDER_NOT_FOUND') throw new OrderNotFoundError(orderId, opts)
+        if (error.code === 'FORBIDDEN') throw new OrderForbiddenError(orderId, opts)
+        if (error.code === 'ORDER_STATUS_NOT_ALLOWED') throw new OrderCancelNotAllowedError(orderId, status, opts)
+        throw new Error(`Failed to update order status: HTTP ${error.status}`, { cause: error })
+      }
+      throw error
+    }
+  }
 }
+

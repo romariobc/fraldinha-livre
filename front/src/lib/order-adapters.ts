@@ -19,14 +19,20 @@ export function orderToDirectOrder(order: Order): DirectOrder | null {
     buyerCity: order.deliveryAddress.cidade,
     buyerState: order.deliveryAddress.estado,
     createdAt: order.createdAt,
-    status: order.status === 'aguardando' ? 'aguardando' : order.status === 'confirmado' ? 'confirmado' : 'cancelado',
+    status:
+      order.status === 'aguardando' ? 'aguardando' :
+      order.status === 'confirmado' ? 'confirmado' :
+      order.status === 'a-caminho' ? 'a-caminho' :
+      order.status === 'entregue' ? 'entregue' : 'cancelado',
   }
 }
 
 export function contractOrderToDirectOrder(order: ContractOrder): DirectOrder {
   const status: DirectOrderStatus =
     order.status === 'aguardando' ? 'aguardando' :
-    order.status === 'confirmado' ? 'confirmado' : 'cancelado'
+    order.status === 'confirmado' ? 'confirmado' :
+    order.status === 'a-caminho' ? 'a-caminho' :
+    order.status === 'entregue' ? 'entregue' : 'cancelado'
 
   return {
     id: order.id,

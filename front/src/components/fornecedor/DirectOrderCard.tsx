@@ -10,9 +10,11 @@ interface DirectOrderCardProps {
 }
 
 const STATUS_CONFIG: Record<DirectOrderStatus, { label: string; className: string }> = {
-  aguardando: { label: 'Aguardando',  className: 'bg-amber-100 text-amber-800' },
-  confirmado: { label: 'Confirmado',  className: 'bg-green-100 text-green-700' },
-  cancelado:  { label: 'Cancelado',   className: 'bg-red-100 text-red-600' },
+  aguardando:  { label: 'Aguardando',  className: 'bg-amber-100 text-amber-800' },
+  confirmado:  { label: 'Confirmado',  className: 'bg-green-100 text-green-700' },
+  'a-caminho': { label: 'A Caminho',   className: 'bg-blue-100 text-blue-700' },
+  entregue:    { label: 'Entregue',    className: 'bg-teal-100 text-teal-700' },
+  cancelado:   { label: 'Cancelado',   className: 'bg-red-100 text-red-600' },
 }
 
 export default function DirectOrderCard({

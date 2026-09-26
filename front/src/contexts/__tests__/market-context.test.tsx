@@ -53,6 +53,7 @@ function makeFakeRepo(overrides: Partial<OrderRepository>): OrderRepository {
     listForSupplier: vi.fn(),
     create: vi.fn(),
     cancel: vi.fn(),
+    updateStatus: vi.fn(),
     ...overrides,
   }
 }
@@ -253,4 +254,59 @@ describe('MarketContext - directOrders loading (backend mode)', () => {
     expect(listForSupplierMock).not.toHaveBeenCalled()
     expect(result.current.directOrdersLoading).toBe(true)
   })
+
+  it('modo backend: handleConfirmarDireto chama repo.updateStatus com "confirmado"', async () => {
+    const updateStatusMock = vi.fn().mockResolvedValue(fakeContractOrder)
+    const listForSupplierMock = vi.fn().mockResolvedValue([fakeContractOrder])
+    mockedHttpOrderRepository.mockImplementation(
+      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock, updateStatus: updateStatusMock }) as unknown as HttpOrderRepository }
+    )
+
+    const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
+    await waitFor(() => expect(result.current.directOrdersLoading).toBe(false))
+
+    await act(async () => {
+      await result.current.handleConfirmarDireto('ord-fake-1')
+    })
+
+    expect(updateStatusMock).toHaveBeenCalledWith('ord-fake-1', 'confirmado')
+    expect(result.current.directOrders[0].status).toBe('confirmado')
+  })
+
+  it('modo backend: handleRecusarDireto chama repo.updateStatus com "cancelado"', async () => {
+    const updateStatusMock = vi.fn().mockResolvedValue(fakeContractOrder)
+    const listForSupplierMock = vi.fn().mockResolvedValue([fakeContractOrder])
+    mockedHttpOrderRepository.mockImplementation(
+      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock, updateStatus: updateStatusMock }) as unknown as HttpOrderRepository }
+    )
+
+    const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
+    await waitFor(() => expect(result.current.directOrdersLoading).toBe(false))
+
+    await act(async () => {
+      await result.current.handleRecusarDireto('ord-fake-1')
+    })
+
+    expect(updateStatusMock).toHaveBeenCalledWith('ord-fake-1', 'cancelado')
+    expect(result.current.directOrders[0].status).toBe('cancelado')
+  })
+
+  it('modo backend: handleAtualizarStatusDireto chama repo.updateStatus com status desejado', async () => {
+    const updateStatusMock = vi.fn().mockResolvedValue(fakeContractOrder)
+    const listForSupplierMock = vi.fn().mockResolvedValue([fakeContractOrder])
+    mockedHttpOrderRepository.mockImplementation(
+      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock, updateStatus: updateStatusMock }) as unknown as HttpOrderRepository }
+    )
+
+    const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
+    await waitFor(() => expect(result.current.directOrdersLoading).toBe(false))
+
+    await act(async () => {
+      await result.current.handleAtualizarStatusDireto('ord-fake-1', 'a-caminho')
+    })
+
+    expect(updateStatusMock).toHaveBeenCalledWith('ord-fake-1', 'a-caminho')
+    expect(result.current.directOrders[0].status).toBe('a-caminho')
+  })
 })
+

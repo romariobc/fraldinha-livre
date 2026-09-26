@@ -142,7 +142,7 @@ Validacao minima:
 
 ### MVP-04 — Pedido fornecedor ponta a ponta
 
-Status: todo
+Status: done
 
 Meta: fornecedor precisa receber e operar o pedido minimo da loja.
 
@@ -159,6 +159,12 @@ Criterio de aceite:
 - Fornecedor altera status permitido.
 - Comprador ve o novo status apos refresh.
 - Fornecedor nao ve pedidos de outro fornecedor.
+
+Notas de conclusao:
+- Rota `PATCH /orders/:id/status` criada no backend com verificação estrita de RBAC e vínculo do fornecedor com os produtos do pedido.
+- Transições de ciclo de vida validadas (`aguardando` -> `confirmado` -> `a-caminho` -> `entregue` e cancelamento com restauração atômica de estoque em D1).
+- Frontend adaptado em `OrderRepository`, `MarketContext` e `OrdersDataTable` com ações no menu e no modal para despachar, entregar e cancelar pedidos.
+- Suítes de testes 100% aprovadas (`contracts`: 56 testes, `back`: 282 testes, `front`: 653 testes).
 
 Arquivos provaveis:
 

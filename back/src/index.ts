@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { createAuthMiddleware, verifyFirebaseIdToken, requireAnyRole } from './middleware/auth'
-import { ordersGetHandler, ordersPostHandler, ordersCancelHandler, ordersReportHandler } from './routes/orders'
+import { ordersGetHandler, ordersPostHandler, ordersCancelHandler, ordersReportHandler, ordersStatusPatchHandler } from './routes/orders'
 import { productsGetHandler, productsPostHandler, productsPutHandler, productsDeleteHandler } from './routes/products'
 import { createChatHandler } from './routes/chat'
 import { createAuthClaimHandler } from './routes/auth'
@@ -137,6 +137,7 @@ app.use('/orders/*', (c, next) => {
 app.get('/orders', ordersGetHandler)
 app.post('/orders', requireAnyRole(['comprador']), ordersPostHandler)
 app.patch('/orders/:id/cancel', requireAnyRole(['comprador']), ordersCancelHandler)
+app.patch('/orders/:id/status', requireAnyRole(['fornecedor', 'admin']), ordersStatusPatchHandler)
 app.post('/orders/:id/report', requireAnyRole(['fornecedor']), ordersReportHandler)
 
 app.use('/chat/*', (c, next) => {

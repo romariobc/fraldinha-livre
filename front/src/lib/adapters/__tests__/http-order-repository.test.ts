@@ -286,6 +286,44 @@ describe('HttpOrderRepository - Parte A: comportamento específico de HTTP', () 
       await expect(repo.cancel('ord-conflict')).rejects.toThrow('Failed to cancel order: HTTP 409')
     })
 
+    it('updateStatus() envia PATCH /orders/:id/status com body { status } e retorna pedido parseado', async () => {
+      const mockOrder: Order = {
+        id: 'ord-update-1',
+        uid: 'uid-1',
+        type: 'compra-direta',
+        status: 'confirmado',
+        createdAt: new Date().toISOString(),
+        product: 'Test Product',
+        quantity: 2,
+        unit: 'cx',
+        price: 2000,
+        supplierId: 'sup-1',
+        deliveryAddress: {
+          logradouro: 'Rua A',
+          numero: '1',
+          bairro: 'Bairro',
+          cidade: 'Cidade',
+          estado: 'SP',
+          cep: '12345-678',
+        },
+        items: [],
+      }
+
+      fetchMock.mockResolvedValueOnce(
+        new Response(JSON.stringify(mockOrder), { status: 200 })
+      )
+
+      const repo = new HttpOrderRepository()
+      const updated = await repo.updateStatus('ord-update-1', 'confirmado')
+
+      expect(fetchMock).toHaveBeenCalledOnce()
+      const [url, init] = fetchMock.mock.calls[0]
+      expect(url).toContain('/orders/ord-update-1/status')
+      expect(init?.method).toBe('PATCH')
+      expect(JSON.parse(init?.body as string)).toEqual({ status: 'confirmado' })
+      expect(updated.status).toBe('confirmado')
+    })
+
     it('create() com code INSUFFICIENT_STOCK (409) lança InsufficientStockError com mensagem do servidor', async () => {
       fetchMock.mockResolvedValueOnce(
         new Response(
@@ -516,6 +554,26 @@ function createFakeFetch() {
         )
       }
       order.status = 'cancelado'
+      return new Response(JSON.stringify(order), { status: 200 })
+    }
+
+    const statusMatch = url.match(/\/orders\/([^/]+)\/status$/)
+    if (method === 'PATCH' && statusMatch) {
+      const order = fakeDb.find((o) => o.id === statusMatch[1])
+      if (!order) {
+        return new Response(
+          JSON.stringify({
+            error: {
+              code: 'ORDER_NOT_FOUND',
+              message: 'not found',
+              requestId: 'test-trace',
+            },
+          }),
+          { status: 404, headers: { 'Content-Type': 'application/json' } }
+        )
+      }
+      const body = JSON.parse(init!.body as string)
+      order.status = body.status
       return new Response(JSON.stringify(order), { status: 200 })
     }
 

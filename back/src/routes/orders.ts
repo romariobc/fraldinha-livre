@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/d1'
 import { eq, sql, inArray, and, gte } from 'drizzle-orm'
 import type { Context } from 'hono'
-import { OrderSchema, CreateOrderRequestSchema } from '../../../packages/contracts/src/order'
+import { OrderSchema, CreateOrderRequestSchema, UpdateOrderStatusRequestSchema } from '../../../packages/contracts/src/order'
 import { orders, orderItems } from '../schema/orders'
 import { products } from '../schema/products'
 import { reports } from '../schema/reports'
@@ -596,3 +596,159 @@ export const ordersReportHandler = async (c: Context<{ Bindings: Env; Variables:
     throw error
   }
 }
+
+/**
+ * PATCH /orders/:id/status — atualiza o status de um pedido.
+ * Exclusivo para fornecedor (do pedido) ou admin.
+ * Transições permitidas:
+ * - aguardando -> confirmado | cancelado
+ * - confirmado -> a-caminho | cancelado
+ * - a-caminho -> entregue | cancelado
+ * Se cancelado, restaura estoque dos itens no banco D1 atomicamente.
+ */
+export const ordersStatusPatchHandler = async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>) => {
+  const uid = c.get('uid')
+  if (!uid) {
+    return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
+  }
+  if (!hasAnyRole(c, ['fornecedor', 'admin'])) {
+    return respondError(c, 'FORBIDDEN', 403, 'Acesso negado: apenas fornecedores ou administradores podem atualizar o status do pedido.')
+  }
+
+  const orderId = c.req.param('id')
+
+  try {
+    const body = await c.req.json()
+    const updateRequest = UpdateOrderStatusRequestSchema.parse(body)
+    const targetStatus = updateRequest.status
+
+    const db = drizzle(c.env.DB)
+    const currentOrders = await db.select().from(orders).where(sql`${orders.id} = ${orderId}`).all()
+    if (currentOrders.length === 0) {
+      return respondError(c, 'ORDER_NOT_FOUND', 404, 'Pedido não encontrado.')
+    }
+    const currentOrder = currentOrders[0]
+
+    // Se fornecedor, verifica se o pedido pertence a ele
+    if (!hasAnyRole(c, ['admin'])) {
+      const matchingItems = await db
+        .select({ orderId: orderItems.orderId })
+        .from(orderItems)
+        .innerJoin(products, eq(orderItems.productId, products.id))
+        .where(and(sql`${orderItems.orderId} = ${orderId}`, eq(products.supplierId, uid)))
+        .all()
+      const isSupplier = currentOrder.supplierId === uid || matchingItems.length > 0
+      if (!isSupplier) {
+        return respondError(c, 'FORBIDDEN', 403, 'Acesso negado: apenas o fornecedor deste pedido pode atualizar seu status.')
+      }
+    }
+
+    // Se já estiver no targetStatus, retorno idempotente
+    if (currentOrder.status === targetStatus) {
+      const items = await db.select().from(orderItems).where(sql`${orderItems.orderId} = ${orderId}`).all()
+      const deliveryAddressObj = JSON.parse(currentOrder.deliveryAddress)
+      const resOrder = {
+        id: currentOrder.id,
+        uid: currentOrder.uid,
+        type: currentOrder.type,
+        status: currentOrder.status,
+        product: currentOrder.product,
+        quantity: currentOrder.quantity,
+        unit: currentOrder.unit,
+        price: currentOrder.price ?? undefined,
+        supplierId: currentOrder.supplierId ?? undefined,
+        supplierName: currentOrder.supplierName ?? undefined,
+        deliveryAddress: deliveryAddressObj,
+        createdAt: currentOrder.createdAt,
+        paymentMethod: (currentOrder.paymentMethod as any) ?? undefined,
+        paymentTransactionId: currentOrder.paymentTransactionId ?? undefined,
+        paymentStatus: (currentOrder.paymentStatus as any) ?? undefined,
+        items: items.map((item) => ({
+          productId: item.productId,
+          productName: item.productName,
+          unitPrice: item.unitPrice,
+          quantity: item.quantity,
+          unit: item.unit,
+        })),
+      }
+      return c.json(OrderSchema.parse(resOrder), 200)
+    }
+
+    const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+      'aguardando': ['confirmado', 'cancelado'],
+      'confirmado': ['a-caminho', 'cancelado'],
+      'a-caminho': ['entregue', 'cancelado'],
+      'entregue': [],
+      'cancelado': [],
+    }
+
+    const allowed = ALLOWED_TRANSITIONS[currentOrder.status] || []
+    if (!allowed.includes(targetStatus)) {
+      logger.warn(c, 'order.status_transition.disallowed', { orderId, from: currentOrder.status, to: targetStatus })
+      return respondError(
+        c,
+        'ORDER_STATUS_NOT_ALLOWED',
+        409,
+        `Transição de status inválida: não é permitido alterar de '${currentOrder.status}' para '${targetStatus}'.`
+      )
+    }
+
+    // Se transição para 'cancelado', restaura estoque dos itens atomicamente
+    if (targetStatus === 'cancelado') {
+      const itemsToRestore = await db.select().from(orderItems).where(sql`${orderItems.orderId} = ${orderId}`).all()
+      const restoreUpdates = itemsToRestore.map((item) =>
+        db.update(products).set({ quantity: sql`${products.quantity} + ${item.quantity}` }).where(eq(products.id, item.productId))
+      )
+      if (restoreUpdates.length > 0) {
+        await db.batch(restoreUpdates as any)
+        logger.info(c, 'stock.restore.after_supplier_cancel', { orderId, itemsCount: itemsToRestore.length })
+      }
+    }
+
+    const updatedOrders = await db.update(orders)
+      .set({ status: targetStatus })
+      .where(sql`${orders.id} = ${orderId}`)
+      .returning()
+    const updatedOrder = updatedOrders[0]
+
+    const items = await db.select().from(orderItems).where(sql`${orderItems.orderId} = ${orderId}`).all()
+    const deliveryAddressObject = JSON.parse(updatedOrder.deliveryAddress)
+
+    const responseOrder = {
+      id: updatedOrder.id,
+      uid: updatedOrder.uid,
+      type: updatedOrder.type,
+      status: updatedOrder.status,
+      product: updatedOrder.product,
+      quantity: updatedOrder.quantity,
+      unit: updatedOrder.unit,
+      price: updatedOrder.price ?? undefined,
+      supplierId: updatedOrder.supplierId ?? undefined,
+      supplierName: updatedOrder.supplierName ?? undefined,
+      deliveryAddress: deliveryAddressObject,
+      createdAt: updatedOrder.createdAt,
+      paymentMethod: (updatedOrder.paymentMethod as any) ?? undefined,
+      paymentTransactionId: updatedOrder.paymentTransactionId ?? undefined,
+      paymentStatus: (updatedOrder.paymentStatus as any) ?? undefined,
+      items: items.map((item) => ({
+        productId: item.productId,
+        productName: item.productName,
+        unitPrice: item.unitPrice,
+        quantity: item.quantity,
+        unit: item.unit,
+      })),
+    }
+
+    const validatedOrder = OrderSchema.parse(responseOrder)
+    logger.info(c, 'order.status.updated', { orderId, oldStatus: currentOrder.status, newStatus: targetStatus, uid })
+
+    return c.json(validatedOrder, 200)
+  } catch (error) {
+    if (error instanceof ZodError || (error instanceof Error && error.name === 'ZodError') || (error && typeof error === 'object' && 'issues' in error)) {
+      const err = error as ZodError
+      return respondZodError(c, err)
+    }
+    throw error
+  }
+}
+

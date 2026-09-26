@@ -19,6 +19,7 @@ vi.mock('@/contexts/market-context', () => ({
     directOrdersLoading: false,
     handleConfirmarDireto: vi.fn(),
     handleRecusarDireto: vi.fn(),
+    handleAtualizarStatusDireto: vi.fn(),
   })),
 }))
 
@@ -292,5 +293,24 @@ describe('OrdersDataTable Component', () => {
   it('renders empty state when no orders exist', () => {
     render(<OrdersDataTable orders={[]} isLoading={false} />)
     expect(screen.getByText('Nenhum pedido encontrado')).toBeInTheDocument()
+  })
+
+  it('allows dispatching a confirmed order from detail modal', async () => {
+    const user = userEvent.setup()
+    const handleUpdateStatus = vi.fn()
+    render(<OrdersDataTable orders={MOCK_ROWS} onUpdateStatus={handleUpdateStatus} />)
+
+    // Open detail for DIR-0025 (confirmado)
+    const orderIdLink = screen.getByTestId('order-id-DIR-0025')
+    await user.click(orderIdLink)
+
+    await waitFor(() => {
+      expect(screen.getByText('Pedido #DIR-0025')).toBeInTheDocument()
+    })
+
+    const dispatchBtn = screen.getByRole('button', { name: /despachar pedido/i })
+    await user.click(dispatchBtn)
+
+    expect(handleUpdateStatus).toHaveBeenCalledWith('DIR-0025', 'a-caminho')
   })
 })

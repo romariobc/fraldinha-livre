@@ -2,13 +2,14 @@
 
 import { createContext, useContext, useState, useEffect } from 'react'
 import { toast } from 'sonner'
-import type { MarketOrder, DirectOrder, SupplierOffer, DeliveryType, DispatchStatus } from '@/lib/supplier-mock'
+import type { MarketOrder, DirectOrder, DirectOrderStatus, SupplierOffer, DeliveryType, DispatchStatus } from '@/lib/supplier-mock'
 import { MOCK_MARKET_ORDERS, MOCK_DIRECT_ORDERS, MOCK_OFFERS } from '@/lib/supplier-mock'
 import { buildOfferSnapshot } from '@/lib/market-utils'
 import type { OrderRepository } from '@/lib/ports/order-repository'
 import { HttpOrderRepository } from '@/lib/adapters/http-order-repository'
 import { contractOrderToDirectOrder } from '@/lib/order-adapters'
 import { useAuth } from '@/contexts/auth-context'
+import type { OrderStatus } from '@contracts'
 
 interface MarketContextValue {
   marketOrders: MarketOrder[]
@@ -21,6 +22,7 @@ interface MarketContextValue {
   handleDeclineMercado(orderId: string): void
   handleConfirmarDireto(orderId: string): Promise<void>
   handleRecusarDireto(orderId: string): Promise<void>
+  handleAtualizarStatusDireto(orderId: string, status: OrderStatus): Promise<void>
   handleAtualizarDespacho(orderId: string, orderType: 'market' | 'direct', status: DispatchStatus): Promise<void>
   addDirectOrder(directOrder: DirectOrder): void
   cancelDirectOrder(orderId: string): void
@@ -104,19 +106,36 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function handleConfirmarDireto(orderId: string) {
+    if (useBackend) {
+      const repo: OrderRepository = new HttpOrderRepository()
+      await repo.updateStatus(orderId, 'confirmado')
+    }
     setDirectOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: 'confirmado' as const } : o))
     )
-    // TODO: await fetch(`/api/direct-orders/${orderId}/confirm`, { method: 'POST' })
     toast.success('Pedido confirmado! O comprador será notificado.')
   }
 
   async function handleRecusarDireto(orderId: string) {
+    if (useBackend) {
+      const repo: OrderRepository = new HttpOrderRepository()
+      await repo.updateStatus(orderId, 'cancelado')
+    }
     setDirectOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: 'cancelado' as const } : o))
     )
-    // TODO: await fetch(`/api/direct-orders/${orderId}/refuse`, { method: 'POST' })
     toast.info('Pedido recusado.')
+  }
+
+  async function handleAtualizarStatusDireto(orderId: string, status: OrderStatus) {
+    if (useBackend) {
+      const repo: OrderRepository = new HttpOrderRepository()
+      await repo.updateStatus(orderId, status)
+    }
+    setDirectOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, status: status as DirectOrderStatus } : o))
+    )
+    toast.success('Status do pedido atualizado com sucesso!')
   }
 
   async function handleAtualizarDespacho(orderId: string, orderType: 'market' | 'direct', status: DispatchStatus) {
@@ -158,6 +177,7 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
         handleDeclineMercado,
         handleConfirmarDireto,
         handleRecusarDireto,
+        handleAtualizarStatusDireto,
         handleAtualizarDespacho,
         addDirectOrder,
         cancelDirectOrder,

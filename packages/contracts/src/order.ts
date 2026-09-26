@@ -58,3 +58,10 @@ export const CreateOrderRequestSchema = z.object({
 })
 export type CreateOrderRequest = z.infer<typeof CreateOrderRequestSchema>
 
+// Body do PATCH /orders/:id/status — atualizacao de status pelo fornecedor ou admin
+export const UpdateOrderStatusRequestSchema = z.object({
+  status: OrderStatusSchema,
+})
+export type UpdateOrderStatusRequest = z.infer<typeof UpdateOrderStatusRequestSchema>
+
+

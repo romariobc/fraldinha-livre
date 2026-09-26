@@ -1,10 +1,11 @@
-import type { Order, CreateOrderRequest } from '@contracts'
+import type { Order, CreateOrderRequest, OrderStatus } from '@contracts'
 
 export interface OrderRepository {
   list(): Promise<Order[]>
   listForSupplier(): Promise<Order[]>
   create(req: CreateOrderRequest, idempotencyKey?: string): Promise<Order>
   cancel(orderId: string): Promise<Order>
+  updateStatus(orderId: string, status: OrderStatus): Promise<Order>
 }
 
 export interface DomainErrorOptions {

@@ -4,6 +4,7 @@ import {
   OrderItemSchema,
   OrderSchema,
   CreateOrderRequestSchema,
+  UpdateOrderStatusRequestSchema,
 } from '../index'
 
 describe('AddressSchema', () => {
@@ -236,3 +237,25 @@ describe('CreateOrderRequestSchema', () => {
     }
   })
 })
+
+describe('UpdateOrderStatusRequestSchema', () => {
+  it('aceita status válidos de ciclo de vida de pedido', () => {
+    const validStatuses = ['aguardando', 'confirmado', 'a-caminho', 'entregue', 'cancelado'] as const
+    for (const status of validStatuses) {
+      const result = UpdateOrderStatusRequestSchema.safeParse({ status })
+      expect(result.success).toBe(true)
+      if (result.success) {
+        expect(result.data.status).toBe(status)
+      }
+    }
+  })
+
+  it('rejeita status inválidos', () => {
+    const invalidStatuses = ['invalid_status', 'pago', '', 123, null]
+    for (const status of invalidStatuses) {
+      const result = UpdateOrderStatusRequestSchema.safeParse({ status })
+      expect(result.success).toBe(false)
+    }
+  })
+})
+

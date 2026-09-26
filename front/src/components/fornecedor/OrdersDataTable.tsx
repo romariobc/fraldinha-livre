@@ -33,6 +33,7 @@ import {
   User,
   ShoppingBag,
   MessageSquareWarning,
+  Truck,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -222,6 +223,7 @@ interface OrdersDataTableProps {
   isLoading?: boolean
   onConfirm?: (orderId: string) => Promise<void> | void
   onRefuse?: (orderId: string) => Promise<void> | void
+  onUpdateStatus?: (orderId: string, status: 'confirmado' | 'a-caminho' | 'entregue' | 'cancelado') => Promise<void> | void
 }
 
 export function OrdersDataTable({
@@ -229,6 +231,7 @@ export function OrdersDataTable({
   isLoading: customLoading,
   onConfirm,
   onRefuse,
+  onUpdateStatus,
 }: OrdersDataTableProps) {
   const market = useMarket()
 
@@ -311,6 +314,25 @@ export function OrdersDataTable({
       }
     } catch {
       toast.error('Erro ao recusar pedido')
+    }
+  }
+
+  const handleUpdateStatus = async (
+    orderId: string,
+    status: 'confirmado' | 'a-caminho' | 'entregue' | 'cancelado'
+  ) => {
+    try {
+      if (onUpdateStatus) {
+        await onUpdateStatus(orderId, status)
+      } else if (market.handleAtualizarStatusDireto) {
+        await market.handleAtualizarStatusDireto(orderId, status)
+      }
+      toast.success(`Pedido #${orderId} atualizado com sucesso!`)
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder((prev) => (prev ? { ...prev, status } : null))
+      }
+    } catch {
+      toast.error('Erro ao atualizar status do pedido')
     }
   }
 
@@ -549,6 +571,44 @@ export function OrdersDataTable({
                         >
                           <CheckCircle2 className="size-4 mr-2 text-emerald-600" />
                           Confirmar Pedido
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleRefuseOrder(order.id)}
+                          className="cursor-pointer text-red-600 focus:text-red-700 font-medium"
+                        >
+                          <XCircle className="size-4 mr-2 text-red-600" />
+                          Cancelar
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    {order.status === 'confirmado' && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleUpdateStatus(order.id, 'a-caminho')}
+                          className="cursor-pointer text-blue-600 focus:text-blue-700 font-medium"
+                        >
+                          <Truck className="size-4 mr-2 text-blue-600" />
+                          Despachar (A Caminho)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleRefuseOrder(order.id)}
+                          className="cursor-pointer text-red-600 focus:text-red-700 font-medium"
+                        >
+                          <XCircle className="size-4 mr-2 text-red-600" />
+                          Cancelar
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    {order.status === 'a-caminho' && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleUpdateStatus(order.id, 'entregue')}
+                          className="cursor-pointer text-teal-600 focus:text-teal-700 font-medium"
+                        >
+                          <CheckCircle2 className="size-4 mr-2 text-teal-600" />
+                          Marcar como Entregue
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleRefuseOrder(order.id)}
@@ -983,6 +1043,62 @@ export function OrdersDataTable({
                     >
                       <CheckCircle2 className="size-4 mr-1.5" />
                       Confirmar Pedido
+                    </Button>
+                  </>
+                )}
+                {selectedOrder.status === 'confirmado' && (
+                  <>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        handleRefuseOrder(selectedOrder.id)
+                        setIsDetailOpen(false)
+                      }}
+                      className="mr-auto"
+                    >
+                      <XCircle className="size-4 mr-1.5" />
+                      Cancelar Pedido
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => {
+                        handleUpdateStatus(selectedOrder.id, 'a-caminho')
+                        setIsDetailOpen(false)
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Truck className="size-4 mr-1.5" />
+                      Despachar Pedido
+                    </Button>
+                  </>
+                )}
+                {selectedOrder.status === 'a-caminho' && (
+                  <>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => {
+                        handleRefuseOrder(selectedOrder.id)
+                        setIsDetailOpen(false)
+                      }}
+                      className="mr-auto"
+                    >
+                      <XCircle className="size-4 mr-1.5" />
+                      Cancelar Pedido
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => {
+                        handleUpdateStatus(selectedOrder.id, 'entregue')
+                        setIsDetailOpen(false)
+                      }}
+                      className="bg-teal-600 hover:bg-teal-700 text-white"
+                    >
+                      <CheckCircle2 className="size-4 mr-1.5" />
+                      Confirmar Entrega
                     </Button>
                   </>
                 )}

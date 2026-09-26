@@ -58,7 +58,7 @@ export interface MarketOrder {
   status: MarketOrderStatus
 }
 
-export type DirectOrderStatus = 'aguardando' | 'confirmado' | 'cancelado'
+export type DirectOrderStatus = 'aguardando' | 'confirmado' | 'a-caminho' | 'entregue' | 'cancelado'
 
 export interface DirectOrder {
   id: string

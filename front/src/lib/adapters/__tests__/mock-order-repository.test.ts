@@ -326,6 +326,39 @@ describe('MockOrderRepository', () => {
     expect(result.length).toBe(0)
   })
 
+  it('updateStatus() altera o status do pedido em memória', async () => {
+    const orders = [
+      {
+        id: 'ord-status-test',
+        uid: 'mock-uid-ana',
+        type: 'compra-direta' as const,
+        status: 'aguardando' as const,
+        product: 'Produto Teste',
+        quantity: 1,
+        unit: 'un' as const,
+        price: 100,
+        supplierId: 'sup-1',
+        deliveryAddress: {
+          logradouro: 'Rua',
+          numero: '1',
+          bairro: 'Bairro',
+          cidade: 'Cidade',
+          estado: 'SP',
+          cep: '00000-000',
+        },
+        createdAt: mockNow(),
+        items: [],
+      },
+    ]
+
+    const repo = new MockOrderRepository({ now: mockNow, idFactory: mockIdFactory, seed: orders })
+    const updated = await repo.updateStatus('ord-status-test', 'confirmado')
+    expect(updated.status).toBe('confirmado')
+
+    const list = await repo.list()
+    expect(list[0].status).toBe('confirmado')
+  })
+
   // Contract tests with empty seed
   runOrderRepositoryContract('MockOrderRepository (empty seed)', () =>
     new MockOrderRepository({ now: mockNow, idFactory: mockIdFactory, seed: [] })

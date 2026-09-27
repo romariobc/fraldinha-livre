@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { STORE_SUPPLIERS } from '@/lib/suppliers'
-import { formatPrice, isProfileComplete } from '@/lib/utils'
+import { formatPrice } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useAuth } from '@/contexts/auth-context'
 import { useProducts } from '@/contexts/products-context'
@@ -18,7 +18,7 @@ export default function ProductPage() {
   const [quantity, setQuantity] = useState(1)
   const router = useRouter()
   const cart = useCart()
-  const { user, profile } = useAuth()
+  const { user } = useAuth()
   const { products, loading, error } = useProducts()
 
   const product = products.find((p) => p.slug === slug)
@@ -117,11 +117,6 @@ export default function ProductPage() {
   function handleBuyNow() {
     if (!isLoggedIn) {
       router.push(`/login?redirect=/produto/${slug}`)
-      return
-    }
-
-    if (!isProfileComplete(profile)) {
-      router.push(`/minha-conta?tab=perfil&returnTo=/produto/${slug}`)
       return
     }
 

@@ -318,7 +318,7 @@ describe('ProductPage', () => {
       expect(mockPush).toHaveBeenCalledWith('/login?redirect=/produto/pampers-supersec-pants-p')
     })
 
-    it('should redirect to minha-conta when profile is incomplete', async () => {
+    it('should go to checkout when profile is incomplete', async () => {
       mockUseAuth.mockReturnValue(
         authValue({
           user: { uid: 'user-1', email: 'test@example.com', displayName: 'Test User' },
@@ -333,9 +333,7 @@ describe('ProductPage', () => {
       const buyButton = screen.getByRole('button', { name: /Comprar agora/i })
       await user.click(buyButton)
 
-      expect(mockPush).toHaveBeenCalledWith(
-        '/minha-conta?tab=perfil&returnTo=/produto/pampers-supersec-pants-p'
-      )
+      expect(mockPush).toHaveBeenCalledWith('/checkout')
     })
 
     it('should call addItem and push to checkout when profile is complete', async () => {

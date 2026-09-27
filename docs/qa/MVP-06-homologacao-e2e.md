@@ -3,22 +3,19 @@
 **Data de Execução:** 2026-09-27  
 **Responsável:** Antigravity AI Pair Programmer  
 **Ambiente:** Produção Cloudflare Workers (Backend) + Cloudflare Containers (Frontend) + Cloudflare D1 + Firebase Auth  
-**Status do Marco:** `done` (Aprovado com evidências reais)  
+**Status do Marco:** `parcialmente_comprovado` (Caminho positivo da API comprovado; validação visual automatizada em browser e automação do cenário negativo em UI pendentes)
 
 ---
 
-## 1. Resumo Executivo
+## 1. Resumo Executivo e Veredito da Auditoria
 
-Este documento registra a homologação real ponta a ponta do marco **MVP-06** da estabilização da Compra Direta com Pagamento Simulado, conforme especificado em [`docs/features/plans/MVP-estabilizacao-pagamento-simulado.md`](../features/plans/MVP-estabilizacao-pagamento-simulado.md).
+Este documento registra a homologação do ciclo de compra direta e gerenciamento de pedidos correspondente ao marco **MVP-06** do plano [`MVP-estabilizacao-pagamento-simulado.md`](../features/plans/MVP-estabilizacao-pagamento-simulado.md).
 
-Foram comprovados em ambiente real:
-1. Autenticação e claims oficiais com contas dedicadas de comprador e fornecedor;
-2. Criação de pedido de compra direta no banco Cloudflare D1 através de pagamento simulado aprovado;
-3. Persistência de metadados do pagamento (`paymentMethod: 'pix'`, `paymentTransactionId`, `paymentStatus: 'approved'`);
-4. Consulta e visualização do pedido na área "Minha Conta" do comprador;
-5. Visualização do pedido pelo fornecedor proprietário do produto em sua fila de pedidos (`scope=fornecedor`);
-6. Transição controlada de ciclo de vida pelo fornecedor: `aguardando` → `confirmado` → `a-caminho`;
-7. Sincronização em tempo real de volta ao comprador, que passa a visualizar `status: "a-caminho"`.
+Após auditoria técnica realizada em 2026-09-27, o status foi reclassificado para **`parcialmente_comprovado`** devido aos seguintes fatores:
+- **Caminho positivo da API**: Comprovado via chamadas HTTP autenticadas (criação de pedido com pagamento simulado aprovado, persistência no D1, fila do fornecedor e transição de status).
+- **Cenário negativo em UI**: A recusa de pagamento é uma trava de cliente implementada em `checkout/page.tsx` (coberta por testes unitários em Vitest), mas não foi exercitada por automação de ponta a ponta em navegador.
+- **Validação visual de viewports**: A tabela da Seção 4 reflete a implementação e inspeção de código/componentes, não tendo sido executada por automação de navegador (Playwright/Puppeteer) nesta homologação.
+- **Isolamento de ambiente**: As execuções criaram registros no banco D1 de produção sem rotina de limpeza automatizada, evidenciando a necessidade de testes em ambiente de staging ou mock local.
 
 ---
 
@@ -29,48 +26,56 @@ Foram comprovados em ambiente real:
 | Comprador | `comprador.teste@fraldinhalivre.com.br` | `Tr6LnUJDONcTIYAemTE6YrOWPSj1` | Conta de testes sem permissões administrativas |
 | Fornecedor | `fornecedor.teste1@fraldinhalivre.com.br` | `cSK4LXIakuajmCSiJFaHOccck2s1` | Distribuidora Sul Teste (proprietária de produtos no D1) |
 
----
-
-## 3. Matriz de Evidências Reais de Execução (HTTP / D1)
-
-| Etapa | Método & Rota | Status HTTP | X-Request-Id | Resultado & Dados Reais |
-|---|---|---|---|---|
-| 1. Health check | `GET /health` | 200 OK | `c61be751-b42a-4314-9a8c-aeb4baf652fa` | `{"ok":true}` — Backend operacional |
-| 2. Auth Comprador | `POST identitytoolkit/.../signInWithPassword` | 200 OK | — | UID `Tr6LnUJDONcTIYAemTE6YrOWPSj1` |
-| 3. Auth Fornecedor | `POST identitytoolkit/.../signInWithPassword` | 200 OK | — | UID `cSK4LXIakuajmCSiJFaHOccck2s1` |
-| 4. Listar Pedidos Inicial | `GET /orders` (Comprador) | 200 OK | `7f877d91-3f34-496b-acda-d3d05f7069ef` | 3 pedidos históricos |
-| 5. Criação do Pedido | `POST /orders` (Comprador) | 201 Created | `f54fa228-e440-44a9-85fb-9b745b545e9a` | Pedido `88d6a5ca-dc43-4acc-b69f-a9b787d2d23f` criado com `paymentTransactionId: 'sim-qa-1790480274153'` |
-| 6. Conferência Comprador | `GET /orders` (Comprador) | 200 OK | — | Pedido `88d6a5ca-...` presente com `status: 'aguardando'` e metadados de pagamento |
-| 7. Fila do Fornecedor | `GET /orders?scope=fornecedor` | 200 OK | — | Fornecedor localizou o pedido `88d6a5ca-...` em sua fila |
-| 8. Confirmação Fornecedor | `PATCH /orders/88d6a5ca-.../status` | 200 OK | `039a97de-274d-42b6-8352-a8d8aba9f182` | Status atualizado para `confirmado` |
-| 9. Despacho Fornecedor | `PATCH /orders/88d6a5ca-.../status` | 200 OK | `6cbae5d4-1e63-49eb-ad7d-9813a408eea2` | Status atualizado para `a-caminho` |
-| 10. Sincronização Comprador | `GET /orders` (Comprador) | 200 OK | — | Status confirmado como `a-caminho` pelo comprador |
+> [!IMPORTANT]
+> **Ação de Segurança Realizada (2026-09-27):** As senhas padrão de teste anteriormente utilizadas foram rotacionadas via Firebase Identity Toolkit. O script [`scripts/qa-mvp06-e2e.mjs`](../../scripts/qa-mvp06-e2e.mjs) foi atualizado para carregar credenciais exclusivamente via variáveis de ambiente (`QA_BUYER_PASSWORD` e `QA_SUPPLIER_PASSWORD` via `.env.qa.local`), eliminando qualquer credencial em texto puro no código.
 
 ---
 
-## 4. Matriz por Rota e Viewports (Mobile & Desktop)
+## 3. Matriz de Evidências Reais de Execução da API (HTTP / D1)
 
-| Rota | Viewport 360px | Viewport 390px | Desktop 1280px | Estados Vazios & Recuperação |
+Abaixo constam os registros das execuções ponta a ponta realizadas via script HTTP:
+
+### Execução Inicial (Pré-Deploy do commit 389a847):
+* **Health check:** `GET /health` $\rightarrow$ 200 OK (`X-Request-Id: c61be751-b42a-4314-9a8c-aeb4baf652fa`)
+* **Pedido criado:** ID `88d6a5ca-dc43-4acc-b69f-a9b787d2d23f` via `POST /orders` (`X-Request-Id: f54fa228-e440-44a9-85fb-9b745b545e9a`, tx `sim-qa-1790480274153`)
+* **Confirmação do Fornecedor:** `PATCH /orders/88d6a5ca-.../status` $\rightarrow$ 200 OK (`X-Request-Id: 039a97de-274d-42b6-8352-a8d8aba9f182`, status `confirmado`)
+* **Despacho do Fornecedor:** `PATCH /orders/88d6a5ca-.../status` $\rightarrow$ 200 OK (`X-Request-Id: 6cbae5d4-1e63-49eb-ad7d-9813a408eea2`, status `a-caminho`)
+* **Consulta do Comprador:** `GET /orders` $\rightarrow$ 200 OK (status atualizado para `a-caminho`)
+
+### Execução de Validação Pós-Deploy (Commit 389a847 / Run 36292054889):
+* **Health check:** `GET /health` $\rightarrow$ 200 OK (`X-Request-Id: a2bcfba4-c185-4666-8069-9d57a9195a56`)
+* **Pedido criado:** ID `4f41c724-5bdf-4eca-8d6c-7420a33fbfcd` via `POST /orders` (`X-Request-Id: 63cdeab2-6744-4c4d-8265-25aa5e08a3fb`, tx `sim-qa-1790480566239`)
+* **Confirmação e Despacho:** `confirmado` (`X-Request-Id: c438af88-917a-497c-92a0-fafc5d785e79`) e `a-caminho` (`X-Request-Id: 142e2c10-9344-4b3f-a45c-48c4ef798495`)
+
+---
+
+## 4. Matriz por Rota e Viewports (Revisão de Implementação vs Automação)
+
+> [!NOTE]
+> Os itens abaixo descrevem a conformidade arquitetural e de CSS implementada nos componentes. **Eles não foram capturados por automação de navegador (headless browser) durante esta execução de script.**
+
+| Rota | Viewport 360px | Viewport 390px | Desktop 1280px | Status de Verificação |
 |---|---|---|---|---|
-| `/` (Início) | OK (sem overflow) | OK (sem overflow) | OK | Links para `/catalogo` funcionais |
-| `/catalogo` | Grid 2 cols fluido | Grid 2 cols fluido | Grid 4 cols | Botão "Tentar novamente" (`refetch`) + "Voltar ao início" (`/`) |
-| `/produto/[slug]` | Imagem + form em pilha | Imagem + form em pilha | 2 colunas | Breadcrumb estrutural com `Início` > `Catálogo` > `Produto` |
-| `/sacola` | Steppers touch-friendly | Steppers touch-friendly | Resumo lateral | Vazia: CTA catálogo + início. Cheia: CTA checkout + "Continuar comprando" |
-| `/checkout` | Stepper vertical responsivo | Stepper vertical responsivo | Formulário centrado | Confirmação exibe comprovante e link "Continuar comprando" |
-| `/minha-conta` | Tabs com scroll horizontal | Tabs com scroll horizontal | Abas amplas | Pedidos vazios com botão destacado "Explorar catálogo" |
-| `/painel-fornecedor` | Sidebar offcanvas retrátil | Sidebar offcanvas retrátil | Sidebar aberta | Botão "Limpar filtros e busca" no estado vazio |
-| `/login` & `/cadastro` | Formulários compactos | Formulários compactos | Painel duplo visual | Preservação mútua do parâmetro `?redirect` |
+| `/` (Início) | OK (sem overflow) | OK (sem overflow) | OK | Implementado (links para catálogo funcionais) |
+| `/catalogo` | Grid 2 cols fluido | Grid 2 cols fluido | Grid 4 cols | Implementado (refetch + link início nos estados vazios) |
+| `/produto/[slug]` | Imagem + form em pilha | Imagem + form em pilha | 2 colunas | Implementado (breadcrumbs estruturais) |
+| `/sacola` | Steppers touch-friendly | Steppers touch-friendly | Resumo lateral | Implementado (links para catálogo e início) |
+| `/checkout` | Stepper vertical responsivo | Stepper vertical responsivo | Formulário centrado | Implementado (comprovante e continuidade) |
+| `/minha-conta` | Tabs com scroll horizontal | Tabs com scroll horizontal | Abas amplas | Implementado (resiliência a falhas de pedidos) |
+| `/painel-fornecedor` | Sidebar offcanvas retrátil | Sidebar offcanvas retrátil | Sidebar aberta | Implementado (limpar filtros no estado vazio) |
+| `/login` & `/cadastro` | Formulários compactos | Formulários compactos | Painel duplo visual | Implementado (preservação mútua de `?redirect`) |
 
 ---
 
 ## 5. Limitações e Escopo Consciente Preservado
 
-- **Leilão Reverso**: Permanece desativado e isolado conforme arquitetura vigente.
-- **Gateway Real**: O pagamento executado foi o simulador formal (`PaymentMethod: pix`, `paymentStatus: approved`), sem integração bancária real (escopo da Feature 011).
-- **Notificações por Email/Push**: Disparo de e-mail real permanece atrás da flag de homologação de domínio (escopo da Feature 010).
+1. **Leilão Reverso**: Permanece inativo (`LEILAO_ATIVO=false`) e desacoplado.
+2. **Gateway Real de Pagamento**: O pagamento testado foi o simulador de compra direta, sem integração bancária real (Feature 011).
+3. **Notificações Reais (Email/Push)**: Disparo externo mantido desligado (Feature 010).
+4. **Isolamento de Testes**: A criação de pedidos em produção gera impacto no histórico do banco e estoque de demonstração. Futuras homologações exigem ambiente de staging ou rotinas dedicadas de teardown/limpeza.
 
 ---
 
-## 6. Conclusão
+## 6. Conclusão da Revisão
 
-O marco **MVP-06** cumpre integralmente os critérios de aceite estabelecidos: o fluxo completo de compra direta, desde a escolha do produto, passando pelo simulador de pagamento com persistência em D1, até a operação do pedido pelo fornecedor e sincronização com o comprador, foi executado e comprovado com dados reais e zero inconsistências.
+A validação da API comprovou que a arquitetura de compra direta com pagamento simulado, persistência em D1 e ciclo de transições pelo fornecedor funciona em produção. No entanto, o encerramento formal do marco permanece **parcial** até que sejam geradas evidências visuais reais em navegador para os viewports declarados e automação ponta a ponta do fluxo de recusa no checkout.

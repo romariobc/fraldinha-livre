@@ -1,6 +1,45 @@
 // scripts/qa-mvp06-e2e.mjs
-const API_URL = 'https://fraldinha-livre-backend.romariobc.workers.dev'
-const FIREBASE_API_KEY = 'AIzaSyBPsjYjlaTKJ7KuP-SMd2O6M878hKNG2Vw'
+// Script de validação de integração da API do ciclo de compra direta e ciclo de status
+// ATENÇÃO: Este script testa endpoints HTTP da API. Ele NÃO executa automação de navegador (UI/viewports).
+
+import fs from 'node:fs'
+import path from 'node:path'
+
+// Carregamento de variáveis de ambiente de .env.qa.local (se existir)
+const envLocalPath = path.resolve(process.cwd(), '.env.qa.local')
+if (fs.existsSync(envLocalPath)) {
+  const envContent = fs.readFileSync(envLocalPath, 'utf8')
+  for (const line of envContent.split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+    const idx = trimmed.indexOf('=')
+    if (idx !== -1) {
+      const key = trimmed.slice(0, idx).trim()
+      const val = trimmed.slice(idx + 1).trim()
+      if (!process.env[key]) {
+        process.env[key] = val
+      }
+    }
+  }
+}
+
+const API_URL = process.env.API_URL || 'https://fraldinha-livre-backend.romariobc.workers.dev'
+const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || 'AIzaSyBPsjYjlaTKJ7KuP-SMd2O6M878hKNG2Vw'
+
+const BUYER_EMAIL = process.env.QA_BUYER_EMAIL || 'comprador.teste@fraldinhalivre.com.br'
+const BUYER_PASSWORD = process.env.QA_BUYER_PASSWORD
+const SUPPLIER_EMAIL = process.env.QA_SUPPLIER_EMAIL || 'fornecedor.teste1@fraldinhalivre.com.br'
+const SUPPLIER_PASSWORD = process.env.QA_SUPPLIER_PASSWORD
+
+if (!BUYER_PASSWORD || !SUPPLIER_PASSWORD) {
+  console.error('\n❌ ERRO: Credenciais de teste ausentes!')
+  console.error('Defina QA_BUYER_PASSWORD e QA_SUPPLIER_PASSWORD via variáveis de ambiente ou no arquivo .env.qa.local.')
+  console.error('Consulte .env.qa.example para referência.\n')
+  process.exit(1)
+}
+
+const isProduction = API_URL.includes('workers.dev') || API_URL.includes('fraldinhalivre.com.br')
+const allowProductionWrite = process.env.QA_ALLOW_PRODUCTION_WRITE === 'true' || process.argv.includes('--allow-production-write')
 
 async function authenticate(email, password) {
   const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`, {
@@ -16,52 +55,69 @@ async function authenticate(email, password) {
 }
 
 async function runQa() {
-  console.log('=====================================================')
-  console.log('  MVP-06 — Homologação End-to-End Autenticada Real')
-  console.log('=====================================================\n')
+  console.log('===================================================================')
+  console.log('  Validação de Integração da API — Compra Direta e Fornecedor')
+  console.log(`  Alvo: ${API_URL}`)
+  console.log('===================================================================\n')
+
+  if (isProduction && !allowProductionWrite) {
+    console.warn('⚠️  AVISO DE SEGURANÇA: O alvo é o ambiente de PRODUÇÃO.')
+    console.warn('Para evitar criação de pedidos e alterações de estoque acidentais no D1 de produção,')
+    console.warn('o teste de escrita está bloqueado por padrão.')
+    console.warn('Para executar conscientemente, passe a flag --allow-production-write ou QA_ALLOW_PRODUCTION_WRITE=true.\n')
+  }
 
   const results = []
 
   // 1. Health check
-  console.log('[1/8] Checando /health...')
+  console.log('[1/7] Checando /health...')
   const healthRes = await fetch(`${API_URL}/health`)
   const healthXId = healthRes.headers.get('x-request-id')
   const healthBody = await healthRes.json()
+  const healthOk = healthRes.status === 200 && healthBody.ok === true
   console.log(`  Status: ${healthRes.status}, X-Request-Id: ${healthXId}, Body:`, healthBody)
-  results.push({ step: 'Health check', ok: healthRes.status === 200 && healthBody.ok === true, xId: healthXId })
+  results.push({ step: 'Health check', ok: healthOk, xId: healthXId })
 
   // 2. Auth do comprador
-  console.log('\n[2/8] Autenticando comprador (comprador.teste@fraldinhalivre.com.br)...')
-  const buyer = await authenticate('comprador.teste@fraldinhalivre.com.br', 'Teste123!')
+  console.log(`\n[2/7] Autenticando comprador (${BUYER_EMAIL})...`)
+  const buyer = await authenticate(BUYER_EMAIL, BUYER_PASSWORD)
   console.log(`  Comprador autenticado: UID ${buyer.uid}`)
   results.push({ step: 'Auth comprador', ok: !!buyer.idToken, uid: buyer.uid })
 
   // 3. Auth do fornecedor
-  console.log('\n[3/8] Autenticando fornecedor (fornecedor.teste1@fraldinhalivre.com.br)...')
-  const supplier = await authenticate('fornecedor.teste1@fraldinhalivre.com.br', 'Teste123!')
+  console.log(`\n[3/7] Autenticando fornecedor (${SUPPLIER_EMAIL})...`)
+  const supplier = await authenticate(SUPPLIER_EMAIL, SUPPLIER_PASSWORD)
   console.log(`  Fornecedor autenticado: UID ${supplier.uid}`)
   results.push({ step: 'Auth fornecedor', ok: !!supplier.idToken, uid: supplier.uid })
 
-  // 4. Pedidos prévios do comprador
-  console.log('\n[4/9] Listando pedidos prévios do comprador (GET /orders)...')
-  const initialOrdersRes = await fetch(`${API_URL}/orders`, {
-    headers: { Authorization: `Bearer ${buyer.idToken}` },
+  // 4. Cenário Negativo Real de API: Requisição sem Idempotency-Key
+  console.log('\n[4/7] Testando cenário negativo de validação da API (POST /orders sem Idempotency-Key)...')
+  const negativeRes = await fetch(`${API_URL}/orders`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${buyer.idToken}`,
+    },
+    body: JSON.stringify({ product: 'Teste', quantity: 1, unit: 'un', price: 100 }),
   })
-  const initialOrdersXId = initialOrdersRes.headers.get('x-request-id')
-  const initialOrders = await initialOrdersRes.json()
-  const initialCount = initialOrders.length
-  console.log(`  Status: ${initialOrdersRes.status}, X-Request-Id: ${initialOrdersXId}, Total pedidos atuais: ${initialCount}`)
+  const negativeXId = negativeRes.headers.get('x-request-id')
+  const negativeBody = await negativeRes.json()
+  const negativeOk = negativeRes.status === 400 && negativeBody?.error?.code === 'IDEMPOTENCY_KEY_REQUIRED'
+  console.log(`  Status: ${negativeRes.status} (esperado 400), Code: ${negativeBody?.error?.code}, X-Request-Id: ${negativeXId}`)
+  results.push({
+    step: 'Cenário negativo API (falha sem Idempotency-Key, sem criar pedido)',
+    ok: negativeOk,
+    xId: negativeXId,
+  })
 
-  // 4b. Cenário Negativo: Pagamento simulado com status 'declined'
-  console.log('\n[4b/9] Testando cenário negativo: rejeição de pagamento simulado...')
-  // No frontend, a recusa simulada bloqueia a chamada ao POST /orders.
-  // Testamos que se um cliente tentar enviar paymentStatus: 'declined', o backend rejeita ou o cliente não cria:
-  console.log('  Cenário negativo validado: na regra de negócio do frontend (checkout/page.tsx:150-155),')
-  console.log('  simulationOutcome === "declined" interrompe imediatamente antes de createOrdersFromCart.')
-  results.push({ step: 'Cenário negativo (recusa não cria pedido)', ok: true })
+  if (isProduction && !allowProductionWrite) {
+    console.log('\n[!] Execução de escrita suspensa conforme proteção de produção. Testes de leitura e negativas concluídos.')
+    console.table(results)
+    return { allOk: results.every((r) => r.ok), results }
+  }
 
   // 5. Criação do pedido com Pagamento Simulado Aprovado
-  console.log('\n[5/8] Criando pedido direto com pagamento simulado aprovado (POST /orders)...')
+  console.log('\n[5/7] Criando pedido direto com pagamento simulado aprovado (POST /orders)...')
   const simTxId = `sim-qa-${Date.now()}`
   const targetProductId = '940ae36c-b1be-4e6a-9442-1dcd3b585e25' // Produto de fornecedor.teste1
   const orderPayload = {
@@ -105,46 +161,57 @@ async function runQa() {
   })
   const createXId = createRes.headers.get('x-request-id')
   const createBody = await createRes.json()
+  const createOk = createRes.status === 201 && !!createBody.id
   console.log(`  Status: ${createRes.status}, X-Request-Id: ${createXId}, Pedido retornado:`, createBody)
 
-  if (!createRes.ok || !createBody.id) {
+  if (!createOk) {
     throw new Error(`Falha ao criar pedido: ${createRes.status} ${JSON.stringify(createBody)}`)
   }
   const createdOrderId = createBody.id
-  results.push({ step: 'Criação pedido com pagamento simulado', ok: createRes.status === 201, orderId: createdOrderId, txId: simTxId, xId: createXId })
+  results.push({
+    step: 'Criação pedido com pagamento simulado (POST /orders)',
+    ok: createOk,
+    orderId: createdOrderId,
+    txId: simTxId,
+    xId: createXId,
+  })
 
   // 6. Confirmação da gravação no D1 via GET do comprador
-  console.log('\n[6/8] Conferindo pedido gravado no D1 pelo comprador (GET /orders)...')
+  console.log('\n[6/7] Conferindo pedido gravado no D1 pelo comprador (GET /orders)...')
   const buyerOrdersRes = await fetch(`${API_URL}/orders`, {
     headers: { Authorization: `Bearer ${buyer.idToken}` },
   })
   const buyerOrders = await buyerOrdersRes.json()
-  const foundInBuyer = buyerOrders.find((o) => o.id === createdOrderId)
+  const foundInBuyer = Array.isArray(buyerOrders) ? buyerOrders.find((o) => o.id === createdOrderId) : null
+  const buyerGetOk = buyerOrdersRes.status === 200 && !!foundInBuyer && foundInBuyer.paymentStatus === 'approved' && foundInBuyer.status === 'aguardando'
   console.log('  Pedido localizado em Minha Conta:', {
     id: foundInBuyer?.id,
     status: foundInBuyer?.status,
     paymentMethod: foundInBuyer?.paymentMethod,
     paymentTransactionId: foundInBuyer?.paymentTransactionId,
     paymentStatus: foundInBuyer?.paymentStatus,
-    total: foundInBuyer?.total,
   })
   results.push({
-    step: 'Verificação em Minha Conta',
-    ok: !!foundInBuyer && foundInBuyer.paymentStatus === 'approved' && foundInBuyer.status === 'aguardando',
+    step: 'Consulta do comprador em Minha Conta (GET /orders)',
+    ok: buyerGetOk,
     status: foundInBuyer?.status,
   })
 
-  // 7. Fornecedor enxerga o pedido e atualiza o ciclo de vida
-  console.log('\n[7/8] Ciclo de vida do pedido no painel do fornecedor...')
+  // 7. Ciclo de status no painel do fornecedor e consulta final do comprador
+  console.log('\n[7/7] Ciclo de vida do pedido pelo fornecedor e acompanhamento pelo comprador...')
   const suppOrdersRes = await fetch(`${API_URL}/orders?scope=fornecedor`, {
     headers: { Authorization: `Bearer ${supplier.idToken}` },
   })
   const suppOrders = await suppOrdersRes.json()
-  const foundInSupplier = suppOrders.find((o) => o.id === createdOrderId)
+  const foundInSupplier = Array.isArray(suppOrders) ? suppOrders.find((o) => o.id === createdOrderId) : null
+  const supplierQueueOk = suppOrdersRes.status === 200 && !!foundInSupplier
   console.log('  Fornecedor localizou o pedido na fila:', {
     id: foundInSupplier?.id,
     status: foundInSupplier?.status,
-    buyerName: foundInSupplier?.buyerName,
+  })
+  results.push({
+    step: 'Fornecedor consulta fila (GET /orders?scope=fornecedor)',
+    ok: supplierQueueOk,
   })
 
   // 7a. Fornecedor confirma pedido (aguardando -> confirmado)
@@ -159,7 +226,13 @@ async function runQa() {
   })
   const confirmXId = confirmRes.headers.get('x-request-id')
   const confirmBody = await confirmRes.json()
+  const confirmOk = confirmRes.status === 200 && confirmBody?.status === 'confirmado'
   console.log(`     Status HTTP: ${confirmRes.status}, X-Request-Id: ${confirmXId}, Resposta:`, confirmBody)
+  results.push({
+    step: 'Fornecedor confirma pedido (PATCH confirmado)',
+    ok: confirmOk,
+    xId: confirmXId,
+  })
 
   // 7b. Fornecedor despacha pedido (confirmado -> a-caminho)
   console.log('  -> Fornecedor despacha o pedido (PATCH /orders/:id/status { status: "a-caminho" })...')
@@ -173,37 +246,44 @@ async function runQa() {
   })
   const dispatchXId = dispatchRes.headers.get('x-request-id')
   const dispatchBody = await dispatchRes.json()
+  const dispatchOk = dispatchRes.status === 200 && dispatchBody?.status === 'a-caminho'
   console.log(`     Status HTTP: ${dispatchRes.status}, X-Request-Id: ${dispatchXId}, Resposta:`, dispatchBody)
+  results.push({
+    step: 'Fornecedor despacha pedido (PATCH a-caminho)',
+    ok: dispatchOk,
+    xId: dispatchXId,
+  })
 
-  // 8. Retorno ao comprador para provar persistência do status atualizado
-  console.log('\n[8/8] Retorno ao comprador para validação da sincronização de status...')
+  // 7c. Retorno ao comprador para validação da sincronização de status
+  console.log('  -> Comprador consulta status atualizado (GET /orders)...')
   const finalBuyerRes = await fetch(`${API_URL}/orders`, {
     headers: { Authorization: `Bearer ${buyer.idToken}` },
   })
   const finalBuyerOrders = await finalBuyerRes.json()
-  const finalOrder = finalBuyerOrders.find((o) => o.id === createdOrderId)
-  console.log('  Comprador visualiza status final após refresh:', {
+  const finalOrder = Array.isArray(finalBuyerOrders) ? finalBuyerOrders.find((o) => o.id === createdOrderId) : null
+  const buyerSyncOk = finalBuyerRes.status === 200 && finalOrder?.status === 'a-caminho'
+  console.log('     Comprador visualiza status final após refresh:', {
     id: finalOrder?.id,
     status: finalOrder?.status,
     expected: 'a-caminho',
-    match: finalOrder?.status === 'a-caminho',
+    match: buyerSyncOk,
   })
   results.push({
-    step: 'Sincronização de status Fornecedor -> Comprador',
-    ok: finalOrder?.status === 'a-caminho',
+    step: 'Comprador consulta atualização de status (GET /orders -> a-caminho)',
+    ok: buyerSyncOk,
     finalStatus: finalOrder?.status,
   })
 
-  console.log('\n=====================================================')
-  console.log('  RESUMO DA HOMOLOGAÇÃO END-TO-END')
-  console.log('=====================================================')
+  console.log('\n===================================================================')
+  console.log('  RESUMO DA EXECUÇÃO')
+  console.log('===================================================================')
   console.table(results)
   const allOk = results.every((r) => r.ok)
-  console.log(`\nResultado Geral: ${allOk ? '✅ APROVADO COM EVIDÊNCIA REAL' : '❌ REPROVADO'}`)
+  console.log(`\nResultado Geral: ${allOk ? '✅ SUCESSO' : '❌ FALHA'}`)
   return { allOk, results, createdOrderId }
 }
 
 runQa().catch((err) => {
-  console.error('ERRO FATAL NA HOMOLOGAÇÃO:', err)
+  console.error('ERRO FATAL NA EXECUÇÃO:', err)
   process.exit(1)
 })

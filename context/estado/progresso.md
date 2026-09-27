@@ -177,37 +177,49 @@ Atender à tarefa autorizada selecionada pelo usuário (homologação do login a
   - Contratos: 7 arquivos / 56 testes 100% aprovados.
   - Total: 998 testes automatizados verdes. Typecheck `tsc --noEmit` limpo.
 
-## MVP-06 — Homologação End-to-End Autenticada Real — 2026-09-27
+## MVP-06 — Homologação da API e Ciclo de Pedidos — 2026-09-27
 
-- **Homologação Autenticada Ponta a Ponta**:
-  - Execução contra produção real via script automatizado `scripts/qa-mvp06-e2e.mjs`.
+- **Homologação Autenticada da API**:
+  - Execução contra produção real via script `scripts/qa-mvp06-e2e.mjs`.
   - Contas testadas: `comprador.teste@fraldinhalivre.com.br` (UID `Tr6LnUJDONcTIYAemTE6YrOWPSj1`) e `fornecedor.teste1@fraldinhalivre.com.br` (UID `cSK4LXIakuajmCSiJFaHOccck2s1`).
   - Pedido real de compra direta criado no D1: ID `88d6a5ca-dc43-4acc-b69f-a9b787d2d23f` com `paymentTransactionId: 'sim-qa-1790480274153'` e status `approved` (`X-Request-Id: f54fa228-e440-44a9-85fb-9b745b545e9a`).
   - Fornecedor consultou a fila de pedidos, confirmou (`confirmado`) e despachou (`a-caminho`).
   - Comprador validou o status atualizado para `a-caminho` em Minha Conta.
-  - Matriz de testes e evidências documentados em [`docs/qa/MVP-06-homologacao-e2e.md`](../../docs/qa/MVP-06-homologacao-e2e.md).
+  - Relatório detalhado em [`docs/qa/MVP-06-homologacao-e2e.md`](../../docs/qa/MVP-06-homologacao-e2e.md).
 
-## MVP-07 — Deploy e Smoke Autenticado em Produção — 2026-09-27
+## MVP-07 — Deploy Cloudflare e Smoke HTTP — 2026-09-27
 
 - **Publicação em Produção (Cloudflare CI/CD)**:
-  - Commit `389a847` integrado à branch `main` e publicado via GitHub Actions [Run 36292054889](https://github.com/romariobc/fraldinha-livre/actions/runs/36292054889) (concluído em 2m43s com `status: completed` e `conclusion: success`).
+  - Commit `389a847` publicado via GitHub Actions [Run 36292054889](https://github.com/romariobc/fraldinha-livre/actions/runs/36292054889) (concluído em 2m43s com `status: completed` e `conclusion: success`).
   - D1 Migrations: executadas sem pendências.
   - Backend Worker e Frontend Container publicados e operacionais.
-- **Smoke Tests Autenticados Pós-Deploy**:
   - `GET /health`: HTTP 200 `{"ok":true}` (`X-Request-Id: 55d92ffa-c499-4e95-81ec-aabec95af657`).
-  - Criação de pedido autenticado: HTTP 201 (`X-Request-Id: 13dac30e-8423-43a5-a4fc-8f76fc96e1a1`), pedido `234fe0e6-92af-44fa-9c6e-1674de36661b`, comprovante `sim-qa-1790480611422`.
-  - Transições no D1 pelo fornecedor: `confirmado` (`X-Request-Id: aa4e6142-fbd9-4c37-807e-26487a48ee05`) e despachado `a-caminho` (`X-Request-Id: 97f1a6ee-e70c-4107-b5a1-96781f7cfc3f`).
-  - Sincronização do comprador em Minha Conta: confirmada exibição de `a-caminho`.
-  - Cenário negativo comprovado: recusa de pagamento não gera pedido no D1.
-- **Conclusão do Plano de Estabilização do MVP**:
-  - Todos os 7 marcos de [`docs/features/plans/MVP-estabilizacao-pagamento-simulado.md`](../../docs/features/plans/MVP-estabilizacao-pagamento-simulado.md) estão 100% concluídos (`done`), testados e homologados ponta a ponta com dados reais.
+  - Chamadas autenticadas pós-deploy confirmaram a API de pedidos operacional.
+
+## Auditoria Técnica e Correções de Segurança — 2026-09-27
+
+- **Achados da Auditoria**:
+  1. *Credenciais em texto puro:* O script `scripts/qa-mvp06-e2e.mjs` versionava senha de contas de teste no Git.
+  2. *Cenário negativo não exercitado:* A recusa de pagamento era registrada sem execução de teste real de ponta a ponta.
+  3. *Matriz visual sem automação:* A validação de viewports (360px, 390px, desktop) não foi executada por headless browser ou screenshots.
+  4. *Poluição de produção:* A execução gerava pedidos no D1 de produção sem rotina de limpeza.
+- **Ações Imediatas de Remediação**:
+  - **Rotação de Senhas:** Senhas de teste de todas as contas (`comprador.teste`, `fornecedor.teste1`, `fornecedor.teste2`, `comprador.teste1`) foram rotacionadas via Firebase Identity Toolkit; credenciais antigas retornam 400 (rejeitadas).
+  - **Isolamento de Credenciais:** Criado `.env.qa.local` (ignorado pelo git) e `.env.qa.example` como template.
+  - **Proteção do Script:** `scripts/qa-mvp06-e2e.mjs` refatorado para consumir variáveis de ambiente, verificar explicitamente códigos HTTP/respostas de cada etapa, e bloquear por padrão escritas acidentais em produção (`--allow-production-write`).
+  - **Cenário Negativo da API:** Script validou rejeição HTTP 400 (`IDEMPOTENCY_KEY_REQUIRED`) ao tentar criar pedido sem chave de idempotência. A recusa client-side permanece coberta por testes unitários do checkout.
+- **Reclassificação de Status**:
+  - O plano de estabilização compreende 8 marcos (MVP-00 a MVP-07).
+  - MVP-00 a MVP-05: `done`.
+  - MVP-06 e MVP-07: reclassificados para `in_progress` / parcialmente comprovados, aguardando validação visual em navegador e automação completa do cenário negativo.
 
 ## Próximas sessões / Prioridades do Backlog
 
-1. **Feature 018**: Assistente PWA / Chat-Agent M7 (estratégia de migração GPT-6 vs Workers AI e validação).
-2. **Feature 010**: Notificações por e-mail (ativação de `RESEND_API_KEY` e templates transacionais).
-3. **Feature 011**: Gateway de pagamento real (PIX dinâmico / Cartão de Crédito).
-4. **Melhorias de Usabilidade do Painel Admin (`/admin`)**: navegação superior por abas e busca/filtros na tabela de usuários.
+1. **Homologação visual e negativa em navegador**: Capturar evidências reais em 360px/390px e fluxo de recusa no checkout.
+2. **Feature 018**: Assistente PWA / Chat-Agent M7 (migração GPT-6 vs Workers AI).
+3. **Feature 010**: Notificações por e-mail (ativação de `RESEND_API_KEY`).
+4. **Feature 011**: Gateway de pagamento real (PIX dinâmico / Cartão de Crédito).
+5. **Melhorias do Painel Admin (`/admin`)**: navegação superior por abas e filtros na tabela de usuários.
 
 
 

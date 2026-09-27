@@ -222,7 +222,7 @@ Validacao minima:
 
 ### MVP-06 — Homologacao local end-to-end
 
-Status: done
+Status: in_progress
 
 Meta: provar o MVP antes de publicar.
 
@@ -240,12 +240,14 @@ Criterio de aceite:
 - Limites do ambiente documentados.
 
 Notas de conclusao:
-- Homologação autenticada executada com contas oficiais de teste (`comprador.teste@fraldinhalivre.com.br` e `fornecedor.teste1@fraldinhalivre.com.br`).
-- Fluxo de compra direta ponta a ponta validado com sucesso: criação de pedido com pagamento simulado aprovado (ID `88d6a5ca-dc43-4acc-b69f-a9b787d2d23f`, `X-Request-Id: f54fa228-e440-44a9-85fb-9b745b545e9a`).
-- Persistência e metadados de pagamento comprovados no D1.
-- Fornecedor consultou o pedido, confirmou e despachou (`aguardando` -> `confirmado` -> `a-caminho`).
-- Comprador confirmou atualização do status para `a-caminho` em Minha Conta.
-- Relatório formal e evidências registrados em [`docs/qa/MVP-06-homologacao-e2e.md`](../../qa/MVP-06-homologacao-e2e.md).
+- Homologação da API autenticada executada com contas de teste (`comprador.teste@fraldinhalivre.com.br` e `fornecedor.teste1@fraldinhalivre.com.br`).
+- Fluxo de compra direta positivo validado via chamadas HTTP (criação de pedido com pagamento simulado aprovado, persistência no D1, fila do fornecedor e transição de status `aguardando` -> `confirmado` -> `a-caminho`).
+- Auditoria de 2026-09-27 apontou pendências materiais:
+  1. Senhas expostas no script rotacionadas imediatamente via Firebase Identity Toolkit; script refatorado para usar `.env.qa.local` e trava de escrita em produção.
+  2. Cenário negativo de recusa de pagamento simulado no checkout é garantido em testes unitários Vitest, mas não foi exercitado por automação ponta a ponta.
+  3. Matriz visual de viewports (360px, 390px, desktop) não foi capturada por automação de navegador (headless browser/screenshots).
+  4. Testes alteraram o banco D1 de produção sem rotina de limpeza/teardown.
+- Relatório de QA e limitações detalhados em [`docs/qa/MVP-06-homologacao-e2e.md`](../../docs/qa/MVP-06-homologacao-e2e.md).
 
 Validacao minima:
 
@@ -256,7 +258,7 @@ Validacao minima:
 
 ### MVP-07 — Deploy e smoke autenticado
 
-Status: done
+Status: in_progress
 
 Meta: publicar somente depois do fluxo local passar.
 
@@ -275,14 +277,11 @@ Criterio de aceite:
 - Fluxo autenticado comprador compra com pagamento simulado e fornecedor acompanha em producao.
 
 Notas de conclusao:
-- Deploy concluído via GitHub Actions [Run 36292054889](https://github.com/romariobc/fraldinha-livre/actions/runs/36292054889) (sucesso em 2m43s).
-- Smoke HTTP pós-deploy: `/health` respondeu HTTP 200 com `X-Request-Id: 55d92ffa-c499-4e95-81ec-aabec95af657`.
-- Ciclo autenticado de compra direta com pagamento simulado executado contra a infraestrutura de produção:
-  - Pedido ID `234fe0e6-92af-44fa-9c6e-1674de36661b` criado pelo comprador (`Tr6LnUJDONcTIYAemTE6YrOWPSj1`) com status `aguardando`, `paymentStatus: 'approved'` e `paymentTransactionId: 'sim-qa-1790480611422'` (`X-Request-Id: 13dac30e-8423-43a5-a4fc-8f76fc96e1a1`).
-  - Fornecedor (`cSK4LXIakuajmCSiJFaHOccck2s1`) consultou fila e atualizou status: `confirmado` (`X-Request-Id: aa4e6142-fbd9-4c37-807e-26487a48ee05`) -> `a-caminho` (`X-Request-Id: 97f1a6ee-e70c-4107-b5a1-96781f7cfc3f`).
-  - Comprador validou persistência no D1 e status final atualizado para `a-caminho`.
-  - Cenário negativo validado: recusa de simulação não gera pedidos no D1 e preserva a sacola intacta.
-- Todos os 7 marcos (MVP-01 a MVP-07) do plano estão formalmente concluídos e comprovados com evidência real.
+- Deploy de produção concluído com sucesso via GitHub Actions [Run 36292054889](https://github.com/romariobc/fraldinha-livre/actions/runs/36292054889) (2m43s).
+- Smoke HTTP pós-deploy: `/health` respondeu HTTP 200 com `X-Request-Id`.
+- Caminho positivo da API de pedidos executado com sucesso pós-deploy.
+- Marco mantido como `in_progress` até que a homologação visual e o teste negativo de ponta a ponta sejam comprovados com evidência no navegador.
+- O plano compreende 8 marcos (MVP-00 a MVP-07). MVP-00 a MVP-05 concluídos; MVP-06 e MVP-07 aguardam homologação visual/negativa completa.
 
 Validacao minima:
 

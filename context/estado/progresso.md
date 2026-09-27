@@ -177,4 +177,15 @@ Atender à tarefa autorizada selecionada pelo usuário (homologação do login a
   - Contratos: 7 arquivos / 56 testes 100% aprovados.
   - Total: 998 testes automatizados verdes. Typecheck `tsc --noEmit` limpo.
 
+## MVP-06 — Homologação End-to-End Autenticada Real — 2026-09-27
+
+- **Homologação Autenticada Ponta a Ponta**:
+  - Execução contra produção real via script automatizado `scripts/qa-mvp06-e2e.mjs`.
+  - Contas testadas: `comprador.teste@fraldinhalivre.com.br` (UID `Tr6LnUJDONcTIYAemTE6YrOWPSj1`) e `fornecedor.teste1@fraldinhalivre.com.br` (UID `cSK4LXIakuajmCSiJFaHOccck2s1`).
+  - Pedido real de compra direta criado no D1: ID `88d6a5ca-dc43-4acc-b69f-a9b787d2d23f` com `paymentTransactionId: 'sim-qa-1790480274153'` e status `approved` (`X-Request-Id: f54fa228-e440-44a9-85fb-9b745b545e9a`).
+  - Fornecedor consultou a fila de pedidos, confirmou (`confirmado`) e despachou (`a-caminho`).
+  - Comprador validou o status atualizado para `a-caminho` em Minha Conta.
+  - Matriz de testes e evidências documentados em [`docs/qa/MVP-06-homologacao-e2e.md`](../../docs/qa/MVP-06-homologacao-e2e.md).
+
+
 

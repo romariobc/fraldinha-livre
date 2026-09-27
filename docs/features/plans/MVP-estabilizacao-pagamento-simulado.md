@@ -222,7 +222,7 @@ Validacao minima:
 
 ### MVP-06 — Homologacao local end-to-end
 
-Status: todo
+Status: done
 
 Meta: provar o MVP antes de publicar.
 
@@ -238,6 +238,14 @@ Criterio de aceite:
 - Checklist local preenchido.
 - Nenhum erro bloqueante no fluxo comprador compra fornecedor acompanha.
 - Limites do ambiente documentados.
+
+Notas de conclusao:
+- Homologação autenticada executada com contas oficiais de teste (`comprador.teste@fraldinhalivre.com.br` e `fornecedor.teste1@fraldinhalivre.com.br`).
+- Fluxo de compra direta ponta a ponta validado com sucesso: criação de pedido com pagamento simulado aprovado (ID `88d6a5ca-dc43-4acc-b69f-a9b787d2d23f`, `X-Request-Id: f54fa228-e440-44a9-85fb-9b745b545e9a`).
+- Persistência e metadados de pagamento comprovados no D1.
+- Fornecedor consultou o pedido, confirmou e despachou (`aguardando` -> `confirmado` -> `a-caminho`).
+- Comprador confirmou atualização do status para `a-caminho` em Minha Conta.
+- Relatório formal e evidências registrados em [`docs/qa/MVP-06-homologacao-e2e.md`](../../qa/MVP-06-homologacao-e2e.md).
 
 Validacao minima:
 

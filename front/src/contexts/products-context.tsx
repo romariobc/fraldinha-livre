@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react'
 import type { Product as LegacyProduct } from '@/lib/products'
 import type { ProductRepository } from '@/lib/ports/product-repository'
 import { HttpProductRepository } from '@/lib/adapters/http-product-repository'
@@ -30,6 +30,7 @@ interface ProductsContextType {
   products: LegacyProduct[]
   loading: boolean
   error: string | null
+  refetch?: () => Promise<void>
 }
 
 const ProductsContext = createContext<ProductsContextType | undefined>(undefined)
@@ -43,10 +44,26 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
     return new HttpProductRepository()
   }, [])
 
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const result = await repo.list()
+      setProducts(result.map(contractProductToLegacyProduct))
+    } catch (err) {
+      const diag = diagnoseError(err, { operation: 'products.load_list' })
+      logFrontendDiagnostic(diag, { operation: 'products.load_list' })
+      setError(diag.message || 'Não foi possível carregar o catálogo. Tente novamente.')
+    } finally {
+      setLoading(false)
+    }
+  }, [repo])
+
   useEffect(() => {
     let cancelled = false
 
-    const load = async () => {
+    const runInitialLoad = async () => {
       if (cancelled) return
       setLoading(true)
       setError(null)
@@ -67,12 +84,12 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
     }
 
     // list() e rota publica - nunca exige auth, carrega direto (diferente de OrdersProvider).
-    load()
+    runInitialLoad()
     return () => { cancelled = true }
   }, [repo])
 
   return (
-    <ProductsContext.Provider value={{ products, loading, error }}>
+    <ProductsContext.Provider value={{ products, loading, error, refetch: load }}>
       {children}
     </ProductsContext.Provider>
   )

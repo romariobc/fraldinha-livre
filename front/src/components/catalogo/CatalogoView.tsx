@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams, useParams } from 'next/navigation'
 import { filterProducts, Product, ProductFilters } from '@/lib/products'
 import { STORE_SUPPLIERS } from '@/lib/suppliers'
@@ -78,7 +79,7 @@ export function CatalogoView() {
   const searchParams = useSearchParams()
   const { user, profile } = useAuth()
   const { addItem } = useCart()
-  const { products, loading, error } = useProducts()
+  const { products, loading, error, refetch } = useProducts()
 
   const { items, total, totalPages } = filterProducts(products, filters)
 
@@ -180,31 +181,53 @@ export function CatalogoView() {
                 </div>
               )}
               {error && !loading && (
-                <div className="flex flex-col items-center justify-center py-24 text-center">
-                  <span className="text-5xl mb-4">⚠️</span>
-                  <p className="font-display font-extrabold text-lg text-brand-text mb-2">
+                <div className="flex flex-col items-center justify-center py-20 px-4 text-center max-w-md mx-auto">
+                  <span className="text-5xl mb-4" role="img" aria-label="Aviso">⚠️</span>
+                  <p className="font-display font-extrabold text-xl text-brand-text mb-2">
                     Erro ao carregar catálogo
                   </p>
                   <p className="text-sm text-brand-muted mb-6">
                     {error}
                   </p>
+                  <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                    <button
+                      onClick={() => refetch?.()}
+                      className="w-full sm:w-auto px-6 py-2.5 rounded-full bg-primary-dark text-white font-display font-bold text-sm hover:bg-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-dark"
+                    >
+                      Tentar novamente
+                    </button>
+                    <Link
+                      href="/"
+                      className="w-full sm:w-auto px-6 py-2.5 rounded-full border-2 border-primary/30 text-primary-dark font-display font-semibold text-sm hover:bg-primary-light transition-colors text-center"
+                    >
+                      Voltar ao início
+                    </Link>
+                  </div>
                 </div>
               )}
               {!loading && !error && items.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-24 text-center">
-                  <span className="text-5xl mb-4">🔍</span>
-                  <p className="font-display font-extrabold text-lg text-brand-text mb-2">
+                <div className="flex flex-col items-center justify-center py-20 px-4 text-center max-w-md mx-auto">
+                  <span className="text-5xl mb-4" role="img" aria-label="Busca">🔍</span>
+                  <p className="font-display font-extrabold text-xl text-brand-text mb-2">
                     Nenhum produto encontrado
                   </p>
                   <p className="text-sm text-brand-muted mb-6">
                     Tente ajustar os filtros ou limpar a busca.
                   </p>
-                  <button
-                    onClick={clearFilters}
-                    className="px-5 py-2.5 rounded-full border-2 border-primary text-primary-dark font-display font-bold text-sm hover:bg-primary-light transition-colors"
-                  >
-                    Limpar filtros
-                  </button>
+                  <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                    <button
+                      onClick={clearFilters}
+                      className="w-full sm:w-auto px-6 py-2.5 rounded-full border-2 border-primary text-primary-dark font-display font-bold text-sm hover:bg-primary-light transition-colors"
+                    >
+                      Limpar filtros
+                    </button>
+                    <Link
+                      href="/"
+                      className="w-full sm:w-auto px-6 py-2.5 rounded-full bg-slate-100 text-brand-text font-display font-semibold text-sm hover:bg-slate-200 transition-colors text-center"
+                    >
+                      Voltar ao início
+                    </Link>
+                  </div>
                 </div>
               )}
               {!loading && !error && items.length > 0 && (

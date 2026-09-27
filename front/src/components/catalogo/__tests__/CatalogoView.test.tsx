@@ -294,6 +294,30 @@ describe('CatalogoView and useFilters Component Decoupling Suite', () => {
       expect(screen.getByText('Nenhum produto encontrado')).toBeInTheDocument()
       expect(screen.getByText('Tente ajustar os filtros ou limpar a busca.')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: /limpar filtros/i })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /voltar ao início/i })).toHaveAttribute('href', '/')
+    })
+
+    it('renders error state with retry button and return home link', () => {
+      const mockRefetch = vi.fn()
+      mockUseProducts.mockReturnValue({
+        products: [],
+        loading: false,
+        error: 'Falha de conexão com a API',
+        refetch: mockRefetch,
+      })
+
+      render(<CatalogoView />)
+
+      expect(screen.getByText('Erro ao carregar catálogo')).toBeInTheDocument()
+      expect(screen.getByText('Falha de conexão com a API')).toBeInTheDocument()
+
+      const retryButton = screen.getByRole('button', { name: /tentar novamente/i })
+      expect(retryButton).toBeInTheDocument()
+      fireEvent.click(retryButton)
+      expect(mockRefetch).toHaveBeenCalledTimes(1)
+
+      const homeLink = screen.getByRole('link', { name: /voltar ao início/i })
+      expect(homeLink).toHaveAttribute('href', '/')
     })
 
     it('handles pagination navigation with dynamic route pathname preservation', () => {

@@ -293,6 +293,26 @@ describe('OrdersDataTable Component', () => {
   it('renders empty state when no orders exist', () => {
     render(<OrdersDataTable orders={[]} isLoading={false} />)
     expect(screen.getByText('Nenhum pedido encontrado')).toBeInTheDocument()
+    expect(screen.getByText('Você ainda não recebeu nenhum pedido direto.')).toBeInTheDocument()
+  })
+
+  it('renders clear filters button when search yields no orders and clears it on click', async () => {
+    const user = userEvent.setup()
+    render(<OrdersDataTable orders={MOCK_ROWS} isLoading={false} />)
+
+    const searchInput = screen.getByTestId('orders-search-input')
+    await user.type(searchInput, 'termo_inexistente_12345')
+
+    expect(screen.getByText('Nenhum pedido encontrado')).toBeInTheDocument()
+    expect(screen.getByText('Tente ajustar os filtros ou termo de busca.')).toBeInTheDocument()
+
+    const clearButton = screen.getByRole('button', { name: /limpar filtros e busca/i })
+    expect(clearButton).toBeInTheDocument()
+
+    await user.click(clearButton)
+
+    expect(screen.queryByText('Nenhum pedido encontrado')).not.toBeInTheDocument()
+    expect(screen.getByText('Pampers Supersec G')).toBeInTheDocument()
   })
 
   it('allows dispatching a confirmed order from detail modal', async () => {

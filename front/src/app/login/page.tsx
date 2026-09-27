@@ -152,7 +152,10 @@ function LoginPageContent() {
         </h3>
         <p className="text-sm text-brand-muted mb-5 sm:mb-8">
           Não tem conta?{' '}
-          <Link href="/cadastro" className="font-bold text-primary-dark hover:underline">
+          <Link
+            href={searchParams.get('redirect') ? `/cadastro?redirect=${encodeURIComponent(searchParams.get('redirect')!)}` : '/cadastro'}
+            className="font-bold text-primary-dark hover:underline"
+          >
             Cadastre-se grátis
           </Link>
         </p>

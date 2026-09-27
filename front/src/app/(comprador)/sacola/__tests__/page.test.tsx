@@ -64,11 +64,14 @@ describe('SacolaPage', () => {
       expect(screen.getByText('Comece a comprar para preencher sua sacola')).toBeInTheDocument()
     })
 
-    it('should display link to catalogo in empty state', () => {
+    it('should display link to catalogo and inicio in empty state', () => {
       renderWithCart([])
 
-      const link = screen.getByRole('link', { name: /Explorar catálogo/i })
-      expect(link).toHaveAttribute('href', '/catalogo')
+      const linkCatalogo = screen.getByRole('link', { name: /Explorar catálogo/i })
+      expect(linkCatalogo).toHaveAttribute('href', '/catalogo')
+
+      const linkInicio = screen.getByRole('link', { name: /Voltar ao início/i })
+      expect(linkInicio).toHaveAttribute('href', '/')
     })
   })
 
@@ -201,6 +204,13 @@ describe('SacolaPage', () => {
       const badges = screen.getAllByText('Em breve')
       // Should have exactly 1 badge (one for Buscar ofertas only)
       expect(badges.length).toBe(1)
+    })
+
+    it('should display "Continuar comprando" link pointing to /catalogo', () => {
+      renderWithCart([mockItem1])
+
+      const link = screen.getByRole('link', { name: /Continuar comprando/i })
+      expect(link).toHaveAttribute('href', '/catalogo')
     })
   })
 

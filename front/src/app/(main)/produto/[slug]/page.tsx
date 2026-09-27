@@ -47,12 +47,20 @@ export default function ProductPage() {
           <p className="text-brand-muted mb-6">
             {error}
           </p>
-          <Link
-            href="/catalogo"
-            className="inline-block px-6 py-3 rounded-full bg-primary-dark text-white font-display font-bold hover:bg-primary transition-colors"
-          >
-            Voltar ao catálogo
-          </Link>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              href="/catalogo"
+              className="inline-block px-6 py-2.5 rounded-full bg-primary-dark text-white font-display font-bold text-sm hover:bg-primary transition-colors"
+            >
+              Voltar ao catálogo
+            </Link>
+            <Link
+              href="/"
+              className="inline-block px-6 py-2.5 rounded-full border-2 border-primary/30 text-primary-dark font-display font-semibold text-sm hover:bg-primary-light transition-colors"
+            >
+              Ir para o início
+            </Link>
+          </div>
         </div>
       </div>
     )
@@ -68,12 +76,20 @@ export default function ProductPage() {
           <p className="text-brand-muted mb-6">
             Desculpe, o produto que você buscava não existe ou foi removido.
           </p>
-          <Link
-            href="/catalogo"
-            className="inline-block px-6 py-3 rounded-full bg-primary-dark text-white font-display font-bold hover:bg-primary transition-colors"
-          >
-            Voltar ao catálogo
-          </Link>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              href="/catalogo"
+              className="inline-block px-6 py-2.5 rounded-full bg-primary-dark text-white font-display font-bold text-sm hover:bg-primary transition-colors"
+            >
+              Voltar ao catálogo
+            </Link>
+            <Link
+              href="/"
+              className="inline-block px-6 py-2.5 rounded-full border-2 border-primary/30 text-primary-dark font-display font-semibold text-sm hover:bg-primary-light transition-colors"
+            >
+              Ir para o início
+            </Link>
+          </div>
         </div>
       </div>
     )
@@ -136,13 +152,17 @@ export default function ProductPage() {
   return (
     <div className="container-fl py-8 sm:py-12">
       {/* Breadcrumb */}
-      <div className="mb-8 text-sm text-brand-muted">
+      <nav aria-label="Navegação estrutural" className="mb-8 text-sm text-brand-muted flex items-center gap-1.5 flex-wrap">
+        <Link href="/" className="hover:text-primary-dark transition-colors">
+          Início
+        </Link>
+        <span aria-hidden="true">/</span>
         <Link href="/catalogo" className="hover:text-primary-dark transition-colors">
           Catálogo
         </Link>
-        {' / '}
-        <span className="text-brand-text">{definiteProduct.name}</span>
-      </div>
+        <span aria-hidden="true">/</span>
+        <span className="text-brand-text font-medium truncate max-w-[240px] sm:max-w-none">{definiteProduct.name}</span>
+      </nav>
 
       {/* Main content: image + info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">

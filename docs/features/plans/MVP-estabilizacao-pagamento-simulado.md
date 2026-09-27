@@ -181,7 +181,7 @@ Validacao minima:
 
 ### MVP-05 — Navegacao e estados vazios das rotas principais
 
-Status: todo
+Status: done
 
 Meta: o usuario nunca deve cair em uma tela sem saida.
 
@@ -197,6 +197,17 @@ Criterio de aceite:
 - Toda rota principal tem navegacao para continuar a jornada.
 - Estados vazios tem CTA funcional.
 - Nenhuma rota critica fica em tela crua sem acao.
+
+Notas de conclusao:
+- `CatalogoView`: adicionado botão "Tentar novamente" com `refetch()` e link "Voltar ao início" (`/`) no estado de erro, além de link para início no estado de lista vazia.
+- `SacolaPage`: adicionado link "Voltar ao início" no estado vazio e botão secundário "Continuar comprando" (`/catalogo`) na sacola com itens.
+- `ProductPage`: breadcrumbs enriquecidos com `Início` (`/`), e links secundários de retorno ao início em produto não encontrado e erro de carregamento.
+- `Header`: adicionado atalho "Painel Admin" (`/admin`) nos menus desktop e mobile quando `role === 'admin'`.
+- `Login` e `Cadastro`: propagação do parâmetro `redirect` na alternância entre formulários para evitar perda de contexto da jornada de checkout.
+- `PedidosTab`: estado vazio enriquecido com CTA estilizado "Explorar catálogo" (`/catalogo`).
+- `CheckoutPage`: link para retorno ao início na sacola vazia e CTA "Continuar comprando" na tela de confirmação de pedido.
+- `OrdersDataTable`: botão "Limpar filtros e busca" no estado vazio filtrado.
+- Suíte completa de testes atualizada e aprovada: 660 testes front, 282 back, 56 contracts (total 998 testes).
 
 Arquivos provaveis:
 

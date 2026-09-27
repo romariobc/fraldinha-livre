@@ -23,12 +23,20 @@ export default function SacolaPage() {
               <p className="text-sm text-brand-muted mb-6">
                 Comece a comprar para preencher sua sacola
               </p>
-              <Link
-                href="/catalogo"
-                className="inline-block py-2 px-6 rounded-full font-display font-bold text-sm transition-colors bg-primary-dark text-white hover:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-dark focus-visible:ring-offset-2"
-              >
-                Explorar catálogo
-              </Link>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Link
+                  href="/catalogo"
+                  className="inline-block py-2.5 px-6 rounded-full font-display font-bold text-sm transition-colors bg-primary-dark text-white hover:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-dark focus-visible:ring-offset-2"
+                >
+                  Explorar catálogo
+                </Link>
+                <Link
+                  href="/"
+                  className="inline-block py-2.5 px-6 rounded-full font-display font-semibold text-sm transition-colors border-2 border-primary/30 text-primary-dark hover:bg-primary-light"
+                >
+                  Voltar ao início
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -208,6 +216,14 @@ export default function SacolaPage() {
                   </span>
                 )}
               </div>
+
+              {/* CTA 3: Continuar comprando */}
+              <Link
+                href="/catalogo"
+                className="block w-full py-2.5 rounded-full font-display font-semibold text-sm transition-colors text-primary-dark hover:bg-primary-light text-center border border-primary/30"
+              >
+                ← Continuar comprando
+              </Link>
             </div>
           </div>
         </div>

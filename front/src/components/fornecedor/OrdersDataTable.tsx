@@ -807,6 +807,18 @@ export function OrdersDataTable({
                         ? 'Tente ajustar os filtros ou termo de busca.'
                         : 'Você ainda não recebeu nenhum pedido direto.'}
                     </span>
+                    {Boolean(globalFilter || statusFilter !== 'todos') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGlobalFilter('')
+                          setStatusFilter('todos')
+                        }}
+                        className="mt-2 text-xs font-semibold text-primary hover:underline cursor-pointer"
+                      >
+                        Limpar filtros e busca
+                      </button>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>

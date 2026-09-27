@@ -225,6 +225,24 @@ describe('Header', () => {
       expect(minhaContaLink).toHaveAttribute('href', '/painel-fornecedor')
     })
 
+    it('should show Painel Admin link in dropdown for admin role', async () => {
+      mockUseAuth.mockReturnValue(authValue({
+        user: { uid: 'admin-123', email: 'admin@fraldinhalivre.com.br', displayName: 'Admin User' },
+        role: 'admin',
+        isAdmin: true,
+        claims: { role: 'admin', admin: true },
+      }))
+
+      const user = userEvent.setup()
+      render(<Header />)
+
+      const trigger = screen.getByRole('button', { name: /Admin User/i })
+      await user.click(trigger)
+
+      const adminLink = screen.getByRole('menuitem', { name: /Painel Admin/i })
+      expect(adminLink).toHaveAttribute('href', '/admin')
+    })
+
     it('should call signOutUser when clicking "Sair"', async () => {
       const user = userEvent.setup()
       render(<Header />)

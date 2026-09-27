@@ -137,4 +137,44 @@ Atender à tarefa autorizada selecionada pelo usuário (homologação do login a
   - Backend publicado e operacional.
   - Smoke tests HTTP em produção: `/health` (200 OK com `X-Request-Id`), `/checkout` (200 OK), `/minha-conta` (200 OK) e `/admin` (200 OK).
 
+## MVP-04 — Pedido Fornecedor Ponta a Ponta — 2026-09-26
+
+- **Contratos e Backend (`packages/contracts` & `back/`)**:
+  - `UpdateOrderStatusRequestSchema` adicionado em `packages/contracts/src/order.ts`.
+  - Código de erro `ORDER_STATUS_NOT_ALLOWED` adicionado em `packages/contracts/src/error.ts`.
+  - Endpoint `PATCH /orders/:id/status` em `back/src/routes/orders.ts` com validação de ciclo de vida (`aguardando` -> `confirmado` -> `a-caminho` -> `entregue` e cancelamento), verificação de vínculo do fornecedor aos itens do pedido e restauração atômica de estoque em D1 ao cancelar.
+- **Frontend (`front/`)**:
+  - `OrderRepository` e `HttpOrderRepository`: método `updateStatus(orderId, status)` implementado.
+  - `MarketContext`: `handleAtualizarStatusDireto` conectado ao backend real.
+  - `OrdersDataTable`: ações para despachar e entregar no menu e no modal de detalhes.
+  - Deploy em produção via commit `6f61e02` e correção `1542ac2` (comprador logado vai direto para checkout).
+
+## MVP-05 — Navegação e Estados Vazios das Rotas Principais — 2026-09-26
+
+- **Catálogo (`CatalogoView.tsx` & `products-context.tsx`)**:
+  - Exposto `refetch()` no contexto de produtos para atualização sem reload de página.
+  - Estado de erro: card amigável com botão "Tentar novamente" (`refetch()`) e link "Voltar ao início" (`/`).
+  - Estado de nenhum produto: link "Voltar ao início" (`/`) adicionado junto ao botão "Limpar filtros".
+- **Sacola (`sacola/page.tsx`)**:
+  - Estado vazio: adicionado link "Voltar ao início" (`/`) junto a "Explorar catálogo" (`/catalogo`).
+  - Sacola com itens: adicionado link de continuidade "Continuar comprando" (`/catalogo`) na barra de resumo.
+- **Página de Produto (`produto/[slug]/page.tsx`)**:
+  - Breadcrumbs estruturais com `Início` (`/`) > `Catálogo` (`/catalogo`) > `[Nome do Produto]`.
+  - Estados de erro e produto não encontrado enriquecidos com botão para catálogo e link para o início.
+- **Header Global (`Header.tsx`)**:
+  - Atalho para o "Painel Admin" (`/admin`) nos menus desktop e mobile quando `role === 'admin'`.
+- **Autenticação (`login/page.tsx` & `cadastro/page.tsx`)**:
+  - Preservação do parâmetro `redirect` ao alternar entre "Cadastre-se grátis" e "Faça login".
+- **Minha Conta (`PedidosTab.tsx`)**:
+  - Estado vazio de pedidos ativos enriquecido com CTA estilizado "Explorar catálogo" (`/catalogo`).
+- **Checkout (`checkout/page.tsx`)**:
+  - Estado vazio com retorno ao início e confirmação de pedido com CTA secundário "Continuar comprando" (`/catalogo`).
+- **Painel do Fornecedor (`OrdersDataTable.tsx`)**:
+  - Adicionado botão "Limpar filtros e busca" no estado vazio quando filtros estão ativos.
+- **Validação Automatizada Completa**:
+  - Front: 66 arquivos / 660 testes 100% aprovados.
+  - Back: 27 arquivos / 282 testes 100% aprovados.
+  - Contratos: 7 arquivos / 56 testes 100% aprovados.
+  - Total: 998 testes automatizados verdes. Typecheck `tsc --noEmit` limpo.
+
 

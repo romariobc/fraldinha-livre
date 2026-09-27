@@ -29,6 +29,7 @@ export default function Header() {
   const { itemCount, clear } = useCart()
 
   const accountHref = role === 'fornecedor' ? '/painel-fornecedor' : '/minha-conta'
+  const isAdmin = role === 'admin'
 
   // Fecha dropdown ao clicar fora
   useEffect(() => {
@@ -153,6 +154,16 @@ export default function Header() {
                     >
                       Minha conta
                     </Link>
+                    {isAdmin && (
+                      <Link
+                        href="/admin"
+                        role="menuitem"
+                        className="block px-4 py-2 text-sm text-brand-muted hover:text-primary-dark hover:bg-primary-light transition-colors"
+                        onClick={() => setDropdownOpen(false)}
+                      >
+                        Painel Admin
+                      </Link>
+                    )}
                     <button
                       role="menuitem"
                       onClick={handleLogout}
@@ -234,6 +245,15 @@ export default function Header() {
               >
                 Minha conta
               </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="px-4 py-3 rounded-xl text-sm font-semibold text-brand-muted hover:text-primary-dark hover:bg-primary-light transition-colors"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Painel Admin
+                </Link>
+              )}
             </div>
           )}
           <div className="flex gap-2 pt-3 mt-2 border-t border-primary/10">

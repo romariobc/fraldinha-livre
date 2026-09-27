@@ -86,9 +86,26 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       setErrorDiagnostic(null)
 
       try {
-        if (reloadTick > 0 && auth?.currentUser && typeof auth.currentUser.getIdToken === 'function') {
+        // Se a rota atual é do painel do fornecedor, não dispara GET /orders (escopo de comprador)
+        if (typeof window !== 'undefined' && window.location.pathname.startsWith('/painel-fornecedor')) {
+          setOrders([])
+          setLoading(false)
+          return
+        }
+
+        // Se o usuário possui claim de fornecedor, não dispara GET /orders (escopo de comprador)
+        if (auth?.currentUser && typeof auth.currentUser.getIdTokenResult === 'function') {
+          const tokenResult = await auth.currentUser.getIdTokenResult(reloadTick > 0)
+          const claims = tokenResult?.claims
+          if (claims?.role === 'fornecedor' || claims?.fornecedor === true) {
+            setOrders([])
+            setLoading(false)
+            return
+          }
+        } else if (reloadTick > 0 && auth?.currentUser && typeof auth.currentUser.getIdToken === 'function') {
           await auth.currentUser.getIdToken(true)
         }
+
         const result = await repo.list()
         if (cancelled) return
         setOrders(result.map(contractOrderToAccountMockOrder))
@@ -116,6 +133,27 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
       if (cancelled) return
       if (fbUser) {
+        if (typeof fbUser.getIdTokenResult === 'function') {
+          fbUser
+            .getIdTokenResult()
+            .then((tokenResult) => {
+              if (cancelled) return
+              const claims = tokenResult?.claims
+              if (claims?.role === 'fornecedor' || claims?.fornecedor === true) {
+                setOrders([])
+                setError(null)
+                setErrorDiagnostic(null)
+                setLoading(false)
+                return
+              }
+              load()
+            })
+            .catch(() => {
+              if (cancelled) return
+              load()
+            })
+          return
+        }
         load()
       } else {
         setOrders([])

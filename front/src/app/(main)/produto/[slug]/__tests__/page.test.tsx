@@ -6,9 +6,11 @@ import { vi } from 'vitest'
 
 // Mock next/navigation
 let mockPush = vi.fn()
+let mockSearchParams = new URLSearchParams()
 vi.mock('next/navigation', () => ({
   useParams: vi.fn(),
   useRouter: vi.fn(),
+  useSearchParams: vi.fn(() => mockSearchParams),
 }))
 
 // Mock sonner
@@ -71,6 +73,7 @@ describe('ProductPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPush = vi.fn()
+    mockSearchParams = new URLSearchParams()
 
     // Default mocks
     mockUseParams.mockReturnValue({ slug: 'pampers-supersec-pants-p' })
@@ -388,6 +391,152 @@ describe('ProductPage', () => {
       })
 
       expect(mockPush).toHaveBeenCalledWith('/checkout')
+    })
+  })
+
+  describe('Resolução de produtos com mesmo slug e múltiplos fornecedores (desambiguação)', () => {
+    const MULTI_SUPPLIER_PRODUCTS = [
+      {
+        id: 'prod-seed-1',
+        name: 'Basic Hiper',
+        brand: 'Amorável',
+        size: 'XG',
+        quantity: 50,
+        priceInCents: 3054,
+        supplierId: 'sup-001',
+        slug: 'amoravel-basic-hiper-xg',
+        categoria: 'fraldas-descartaveis',
+        descricao: 'Fralda Amorável Basic Hiper XG - Fornecedor Seed',
+        atributos: {
+          faixaPeso: '12-15 kg',
+          genero: 'unissex',
+          absorcao: 'até 12 horas',
+          tecnologia: 'camada seca',
+        },
+        active: true,
+      },
+      {
+        id: 'prod-novo-fornecedor-2',
+        name: 'Basic Hiper',
+        brand: 'Amorável',
+        size: 'XG',
+        quantity: 50,
+        priceInCents: 2990,
+        supplierId: 'fornecedor-real-uid-xyz',
+        slug: 'amoravel-basic-hiper-xg',
+        categoria: 'fraldas-descartaveis',
+        descricao: 'Fralda Amorável Basic Hiper XG - Fornecedor Real',
+        atributos: {
+          faixaPeso: '12-15 kg',
+          genero: 'unissex',
+          absorcao: 'até 12 horas',
+          tecnologia: 'camada seca',
+        },
+        active: true,
+      },
+    ]
+
+    beforeEach(() => {
+      mockUseProducts.mockReturnValue({
+        products: MULTI_SUPPLIER_PRODUCTS as any,
+        loading: false,
+        error: null,
+      })
+      mockUseParams.mockReturnValue({ slug: 'amoravel-basic-hiper-xg' })
+    })
+
+    it('quando query param ?p=id é do novo fornecedor, carrega produto e preço exatos do novo fornecedor', async () => {
+      mockSearchParams = new URLSearchParams('p=prod-novo-fornecedor-2')
+      const mockAddItem = vi.fn()
+      mockUseAuth.mockReturnValue(
+        authValue({
+          user: { uid: 'user-buyer-1', email: 'buyer@test.com', displayName: 'Buyer' },
+          profile: { role: 'comprador', name: 'Buyer', email: 'buyer@test.com' },
+          role: 'comprador',
+        })
+      )
+      mockUseCart.mockReturnValue({
+        items: [],
+        itemCount: 0,
+        subtotal: 0,
+        bySupplier: new Map(),
+        addItem: mockAddItem,
+        removeItem: vi.fn(),
+        updateQty: vi.fn(),
+        clear: vi.fn(),
+      })
+
+      const user = userEvent.setup()
+      render(<ProductPage />)
+
+      // Preço de R$ 29,90 do novo fornecedor deve estar visível
+      expect(screen.getByText(/R\$ 29,90/)).toBeInTheDocument()
+
+      // Ao adicionar à sacola, o cartItem deve ter exatamente o ID e supplierId do novo fornecedor
+      const addButton = screen.getByRole('button', { name: /à sacola/i })
+      await user.click(addButton)
+
+      expect(mockAddItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          productId: 'prod-novo-fornecedor-2',
+          supplierId: 'fornecedor-real-uid-xyz',
+          unitPrice: 2990,
+        })
+      )
+    })
+
+    it('quando query param ?p=id é do fornecedor seed, carrega o produto do fornecedor seed', async () => {
+      mockSearchParams = new URLSearchParams('p=prod-seed-1')
+      const mockAddItem = vi.fn()
+      mockUseAuth.mockReturnValue(
+        authValue({
+          user: { uid: 'user-buyer-1', email: 'buyer@test.com', displayName: 'Buyer' },
+          profile: { role: 'comprador', name: 'Buyer', email: 'buyer@test.com' },
+          role: 'comprador',
+        })
+      )
+      mockUseCart.mockReturnValue({
+        items: [],
+        itemCount: 0,
+        subtotal: 0,
+        bySupplier: new Map(),
+        addItem: mockAddItem,
+        removeItem: vi.fn(),
+        updateQty: vi.fn(),
+        clear: vi.fn(),
+      })
+
+      const user = userEvent.setup()
+      render(<ProductPage />)
+
+      expect(screen.getByText(/R\$ 30,54/)).toBeInTheDocument()
+
+      const addButton = screen.getByRole('button', { name: /à sacola/i })
+      await user.click(addButton)
+
+      expect(mockAddItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          productId: 'prod-seed-1',
+          supplierId: 'sup-001',
+          unitPrice: 3054,
+        })
+      )
+    })
+
+    it('suporta slug composto com id (slug--id)', async () => {
+      mockSearchParams = new URLSearchParams()
+      mockUseParams.mockReturnValue({ slug: 'amoravel-basic-hiper-xg--prod-novo-fornecedor-2' })
+
+      render(<ProductPage />)
+      expect(screen.getByText(/R\$ 29,90/)).toBeInTheDocument()
+    })
+
+    it('exibe seção de outras ofertas quando múltiplos fornecedores vendem o mesmo slug', () => {
+      mockSearchParams = new URLSearchParams('p=prod-novo-fornecedor-2')
+      render(<ProductPage />)
+
+      expect(screen.getByText(/Outras ofertas deste produto/i)).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /Ver oferta →/i })).toBeInTheDocument()
     })
   })
 })

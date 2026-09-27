@@ -65,6 +65,7 @@ back/scripts/*.sql
 *.patch
 
 back/.wrangler/
- 
- . d e v . v a r s  
- b a c k / . d e v . v a r s  
+.dev.vars
+back/.dev.vars
+docs/qa-artifacts/
+docs/qa/screenshots/

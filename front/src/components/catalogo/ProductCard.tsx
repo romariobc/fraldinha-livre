@@ -32,8 +32,8 @@ export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn
 
   // Buscar fornecedor
   const supplier = STORE_SUPPLIERS.find(s => s.id === product.supplierId)
-  const supplierName = supplier?.name || 'Fornecedor desconhecido'
-  const supplierRating = supplier?.rating || 0
+  const supplierName = supplier?.name || (product.supplierId.startsWith('sup-') ? 'Fornecedor desconhecido' : 'Distribuidora Parceira')
+  const supplierRating = supplier?.rating || (product.supplierId.startsWith('sup-') ? 0 : 5)
 
   function handleAddToCart() {
     if (!isLoggedIn) {
@@ -82,8 +82,8 @@ export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn
 
   return (
     <div className="bg-white rounded-card shadow-card overflow-hidden hover:-translate-y-1.5 hover:shadow-card-hover transition-all flex flex-col">
-      {/* Imagem / placeholder + título (linkado) */}
-      <Link href={`/produto/${product.slug}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-dark focus-visible:ring-offset-2">
+      {/* Imagem / placeholder + título (linkado com ?p=id para desambiguação multi-fornecedor) */}
+      <Link href={`/produto/${product.slug}?p=${product.id}`} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-dark focus-visible:ring-offset-2">
         <div className="aspect-square bg-primary-light flex items-center justify-center text-4xl sm:text-5xl relative overflow-hidden">
           {product.imageUrl ? (
             <img

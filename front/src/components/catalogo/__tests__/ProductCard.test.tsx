@@ -106,7 +106,7 @@ describe('ProductCard', () => {
     )
 
     const productLink = screen.getByRole('link')
-    expect(productLink).toHaveAttribute('href', `/produto/${TEST_PRODUCT.slug}`)
+    expect(productLink).toHaveAttribute('href', `/produto/${TEST_PRODUCT.slug}?p=${TEST_PRODUCT.id}`)
   })
 
   describe('Adicionar à sacola', () => {

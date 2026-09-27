@@ -22,19 +22,20 @@ const mockUseMarket = vi.mocked(useMarket)
 
 const mockActiveOrder: Order = {
   id: 'ped-001',
-  date: '2026-03-20',
+  type: 'compra-direta',
   createdAt: '2026-03-20T10:00:00Z',
   status: 'confirmado',
-  total: 12000,
+  price: 12000,
   product: 'Fralda Conforto M',
+  quantity: 2,
+  unit: 'un',
   items: [
     {
       productId: 'prod-1',
-      name: 'Fralda Conforto M',
-      brand: 'Pampers',
-      size: 'M',
+      productName: 'Fralda Conforto M',
       quantity: 2,
-      price: 6000,
+      unitPrice: 6000,
+      unit: 'un',
     },
   ],
   deliveryAddress: {
@@ -59,7 +60,7 @@ describe('PedidosTab', () => {
       refetch: vi.fn(),
       cancelOrder: vi.fn(),
       createOrdersFromCart: vi.fn(),
-    })
+    } as any)
     mockUseMarket.mockReturnValue({
       quotes: [],
       directOrders: [],
@@ -86,7 +87,7 @@ describe('PedidosTab', () => {
       directOrdersError: null,
       directOrdersSupportCode: null,
       refetchDirectOrders: vi.fn(),
-    })
+    } as any)
   })
 
   it('renders empty state with CTA to catalogo when there are no active orders', () => {

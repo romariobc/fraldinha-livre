@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useState, Suspense } from 'react'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { STORE_SUPPLIERS } from '@/lib/suppliers'
 import { formatPrice } from '@/lib/utils'
@@ -10,30 +10,62 @@ import { useAuth } from '@/contexts/auth-context'
 import { useProducts } from '@/contexts/products-context'
 import { type CartItem } from '@/lib/domain/cart'
 import { toast } from 'sonner'
-import { Minus, Plus } from 'lucide-react'
+import { Minus, Plus, Store } from 'lucide-react'
+
+function ProductPageSkeleton() {
+  return (
+    <div className="container-fl py-16 text-center">
+      <div className="max-w-md mx-auto">
+        <div className="mb-4 w-12 h-12 border-4 border-primary-light border-t-primary-dark rounded-full animate-spin mx-auto"></div>
+        <p className="font-display font-extrabold text-lg text-brand-text">
+          Carregando produto...
+        </p>
+      </div>
+    </div>
+  )
+}
 
 export default function ProductPage() {
+  return (
+    <Suspense fallback={<ProductPageSkeleton />}>
+      <ProductPageContent />
+    </Suspense>
+  )
+}
+
+function ProductPageContent() {
   const params = useParams<{ slug: string }>()
-  const slug = params.slug as string
+  const searchParams = useSearchParams()
+  const rawSlug = (params?.slug as string) || ''
+  const queryProductId = searchParams?.get('p') || searchParams?.get('id')
+
+  // Suporte a slug composto: slug--[productId]
+  let slug = rawSlug
+  let candidateId = queryProductId || undefined
+  const compositeMatch = rawSlug.match(/^(.*)--(.*)$/)
+  if (compositeMatch) {
+    slug = compositeMatch[1]
+    if (!candidateId) {
+      candidateId = compositeMatch[2]
+    }
+  }
+
   const [quantity, setQuantity] = useState(1)
   const router = useRouter()
   const cart = useCart()
   const { user } = useAuth()
   const { products, loading, error } = useProducts()
 
-  const product = products.find((p) => p.slug === slug)
+  // Resolução unívoca de produto (multi-fornecedor com mesmo slug):
+  // 1. Se candidateId fornecido, busca prioritariamente por ID (garante produto e fornecedor exatos)
+  // 2. Se não encontrou por ID ou ID não fornecido, busca por slug (compatibilidade retroativa)
+  let product = candidateId ? products.find((p) => p.id === candidateId) : undefined
+  if (!product) {
+    product = products.find((p) => p.slug === slug)
+  }
 
   if (loading) {
-    return (
-      <div className="container-fl py-16 text-center">
-        <div className="max-w-md mx-auto">
-          <div className="mb-4 w-12 h-12 border-4 border-primary-light border-t-primary-dark rounded-full animate-spin mx-auto"></div>
-          <p className="font-display font-extrabold text-lg text-brand-text">
-            Carregando produto...
-          </p>
-        </div>
-      </div>
-    )
+    return <ProductPageSkeleton />
   }
 
   if (error) {
@@ -100,14 +132,15 @@ export default function ProductPage() {
 
   // Supplier info
   const supplier = STORE_SUPPLIERS.find(s => s.id === definiteProduct.supplierId)
-  const supplierName = supplier?.name || 'Fornecedor desconhecido'
-  const supplierRating = supplier?.rating || 0
+  const supplierName = supplier?.name || (definiteProduct.supplierId === user?.uid ? (user?.displayName || 'Minha Distribuidora') : 'Distribuidora Parceira')
+  const supplierRating = supplier?.rating || 5
 
   const isLoggedIn = user !== null
 
   function handleAddToCart() {
     if (!isLoggedIn) {
-      router.push(`/login?redirect=/produto/${slug}`)
+      const redirectUrl = candidateId ? `/produto/${slug}?p=${candidateId}` : `/produto/${slug}`
+      router.push(`/login?redirect=${redirectUrl}`)
       return
     }
 
@@ -132,7 +165,8 @@ export default function ProductPage() {
 
   function handleBuyNow() {
     if (!isLoggedIn) {
-      router.push(`/login?redirect=/produto/${slug}`)
+      const redirectUrl = candidateId ? `/produto/${slug}?p=${candidateId}` : `/produto/${slug}`
+      router.push(`/login?redirect=${redirectUrl}`)
       return
     }
 
@@ -148,6 +182,11 @@ export default function ProductPage() {
     cart.addItem(cartItem)
     router.push('/checkout')
   }
+
+  // Outras ofertas deste mesmo produto por outros fornecedores (mesmo slug, id diferente)
+  const otherOffers = products.filter(
+    (p) => p.slug === slug && p.id !== definiteProduct.id
+  )
 
   return (
     <div className="container-fl py-8 sm:py-12">
@@ -306,6 +345,41 @@ export default function ProductPage() {
               Comprar agora
             </button>
           </div>
+
+          {/* Outras ofertas do mesmo produto por outros fornecedores */}
+          {otherOffers.length > 0 && (
+            <div className="mt-8 p-4 rounded-xl border border-primary/20 bg-primary/5">
+              <h3 className="font-display font-bold text-sm text-brand-text mb-2 flex items-center gap-1.5">
+                <Store className="w-4 h-4 text-primary-dark" />
+                Outras ofertas deste produto ({otherOffers.length})
+              </h3>
+              <div className="space-y-2">
+                {otherOffers.map((offer) => {
+                  const offerSupplier = STORE_SUPPLIERS.find((s) => s.id === offer.supplierId)
+                  const offerSupplierName = offerSupplier?.name || 'Distribuidora Parceira'
+                  return (
+                    <div
+                      key={offer.id}
+                      className="flex items-center justify-between text-xs py-2 border-b border-primary/10 last:border-0"
+                    >
+                      <div>
+                        <span className="font-semibold text-brand-text">{offerSupplierName}</span>
+                        <span className="text-primary-dark font-bold ml-2">
+                          {formatPrice(offer.priceInCents)}
+                        </span>
+                      </div>
+                      <Link
+                        href={`/produto/${offer.slug}?p=${offer.id}`}
+                        className="font-semibold text-primary-dark hover:underline"
+                      >
+                        Ver oferta →
+                      </Link>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* TODO(T4.1): extrair hook compartilhado de compra com ProductCard (evitar drift do gate/quantidade) */}
         </div>

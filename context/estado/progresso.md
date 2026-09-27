@@ -187,5 +187,28 @@ Atender à tarefa autorizada selecionada pelo usuário (homologação do login a
   - Comprador validou o status atualizado para `a-caminho` em Minha Conta.
   - Matriz de testes e evidências documentados em [`docs/qa/MVP-06-homologacao-e2e.md`](../../docs/qa/MVP-06-homologacao-e2e.md).
 
+## MVP-07 — Deploy e Smoke Autenticado em Produção — 2026-09-27
+
+- **Publicação em Produção (Cloudflare CI/CD)**:
+  - Commit `389a847` integrado à branch `main` e publicado via GitHub Actions [Run 36292054889](https://github.com/romariobc/fraldinha-livre/actions/runs/36292054889) (concluído em 2m43s com `status: completed` e `conclusion: success`).
+  - D1 Migrations: executadas sem pendências.
+  - Backend Worker e Frontend Container publicados e operacionais.
+- **Smoke Tests Autenticados Pós-Deploy**:
+  - `GET /health`: HTTP 200 `{"ok":true}` (`X-Request-Id: 55d92ffa-c499-4e95-81ec-aabec95af657`).
+  - Criação de pedido autenticado: HTTP 201 (`X-Request-Id: 13dac30e-8423-43a5-a4fc-8f76fc96e1a1`), pedido `234fe0e6-92af-44fa-9c6e-1674de36661b`, comprovante `sim-qa-1790480611422`.
+  - Transições no D1 pelo fornecedor: `confirmado` (`X-Request-Id: aa4e6142-fbd9-4c37-807e-26487a48ee05`) e despachado `a-caminho` (`X-Request-Id: 97f1a6ee-e70c-4107-b5a1-96781f7cfc3f`).
+  - Sincronização do comprador em Minha Conta: confirmada exibição de `a-caminho`.
+  - Cenário negativo comprovado: recusa de pagamento não gera pedido no D1.
+- **Conclusão do Plano de Estabilização do MVP**:
+  - Todos os 7 marcos de [`docs/features/plans/MVP-estabilizacao-pagamento-simulado.md`](../../docs/features/plans/MVP-estabilizacao-pagamento-simulado.md) estão 100% concluídos (`done`), testados e homologados ponta a ponta com dados reais.
+
+## Próximas sessões / Prioridades do Backlog
+
+1. **Feature 018**: Assistente PWA / Chat-Agent M7 (estratégia de migração GPT-6 vs Workers AI e validação).
+2. **Feature 010**: Notificações por e-mail (ativação de `RESEND_API_KEY` e templates transacionais).
+3. **Feature 011**: Gateway de pagamento real (PIX dinâmico / Cartão de Crédito).
+4. **Melhorias de Usabilidade do Painel Admin (`/admin`)**: navegação superior por abas e busca/filtros na tabela de usuários.
+
+
 
 

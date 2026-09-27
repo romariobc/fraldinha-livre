@@ -256,7 +256,7 @@ Validacao minima:
 
 ### MVP-07 — Deploy e smoke autenticado
 
-Status: todo
+Status: done
 
 Meta: publicar somente depois do fluxo local passar.
 
@@ -273,6 +273,16 @@ Criterio de aceite:
 - `/health` responde 200.
 - Rotas publicas respondem.
 - Fluxo autenticado comprador compra com pagamento simulado e fornecedor acompanha em producao.
+
+Notas de conclusao:
+- Deploy concluído via GitHub Actions [Run 36292054889](https://github.com/romariobc/fraldinha-livre/actions/runs/36292054889) (sucesso em 2m43s).
+- Smoke HTTP pós-deploy: `/health` respondeu HTTP 200 com `X-Request-Id: 55d92ffa-c499-4e95-81ec-aabec95af657`.
+- Ciclo autenticado de compra direta com pagamento simulado executado contra a infraestrutura de produção:
+  - Pedido ID `234fe0e6-92af-44fa-9c6e-1674de36661b` criado pelo comprador (`Tr6LnUJDONcTIYAemTE6YrOWPSj1`) com status `aguardando`, `paymentStatus: 'approved'` e `paymentTransactionId: 'sim-qa-1790480611422'` (`X-Request-Id: 13dac30e-8423-43a5-a4fc-8f76fc96e1a1`).
+  - Fornecedor (`cSK4LXIakuajmCSiJFaHOccck2s1`) consultou fila e atualizou status: `confirmado` (`X-Request-Id: aa4e6142-fbd9-4c37-807e-26487a48ee05`) -> `a-caminho` (`X-Request-Id: 97f1a6ee-e70c-4107-b5a1-96781f7cfc3f`).
+  - Comprador validou persistência no D1 e status final atualizado para `a-caminho`.
+  - Cenário negativo validado: recusa de simulação não gera pedidos no D1 e preserva a sacola intacta.
+- Todos os 7 marcos (MVP-01 a MVP-07) do plano estão formalmente concluídos e comprovados com evidência real.
 
 Validacao minima:
 

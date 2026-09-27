@@ -705,8 +705,8 @@ atualizados.
 
 **2 fornecedores de teste criados de verdade** (via Browser tool, usando o próprio fluxo novo — que
 também serviu de teste end-to-end real do fix 2):
-- `fornecedor.teste1@fraldinhalivre.com.br` / `Teste123!` — nome "Distribuidora Sul Teste"
-- `fornecedor.teste2@fraldinhalivre.com.br` / `Teste123!` — nome "Baby Stock SP Teste"
+- `fornecedor.teste1@fraldinhalivre.com.br` / `[senha de teste rotacionada]` — nome "Distribuidora Sul Teste"
+- `fornecedor.teste2@fraldinhalivre.com.br` / `[senha de teste rotacionada]` — nome "Baby Stock SP Teste"
 
 Ambos passaram pelo onboarding real (escolheram "Sou Fornecedor"), role gravada no Firestore de
 verdade, painel do fornecedor confirmado funcionando (aba 📦 Catálogo visível, CRUD de produtos

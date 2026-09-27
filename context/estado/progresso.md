@@ -94,8 +94,8 @@ Atender à tarefa autorizada selecionada pelo usuário (homologação do login a
 - **Homologação Administrativa (`/admin`) Concluída**: O usuário acessou com sucesso a rota `/admin` em produção no navegador com a conta `romariobc@gmail.com`. A tela carregou com sucesso a listagem completa de usuários do Firestore em `AdminUsersTab`. Registro de auditoria, moderação de produtos e pedidos globais desbloqueados.
 - **Resolução da Causa Raiz de 403 e Conflict de Claims**: A conta administrativa possuía resquício de claim `comprador: true` no Firebase Auth, gerando estado de `conflict` fail-closed (D-051) contra o `ADMIN_UID` do Cloudflare Worker. As Custom Claims foram atualizadas formalmente via Identity Toolkit para `{"role": "admin", "admin": true}`, eliminando o conflito.
 - **Contas de Teste Comprador (Sem Login Social / Email e Senha)**:
-  - `comprador.teste@fraldinhalivre.com.br` / `Teste123!`: provisionada com claims `comprador: true`. Chamada real `GET /orders` respondeu HTTP 200 `[]`.
-  - `comprador.teste1@fraldinhalivre.com.br` / `Teste123!`: conta com pedido histórico no D1 (`Supersec Pants P`). Chamada real `GET /orders` respondeu HTTP 200 com pedido mapeado.
+  - `comprador.teste@fraldinhalivre.com.br` / `[senha de teste rotacionada]`: provisionada com claims `comprador: true`. Chamada real `GET /orders` respondeu HTTP 200 `[]`.
+  - `comprador.teste1@fraldinhalivre.com.br` / `[senha de teste rotacionada]`: conta com pedido histórico no D1 (`Supersec Pants P`). Chamada real `GET /orders` respondeu HTTP 200 com pedido mapeado.
 - **Resiliência da Área do Comprador (MVP-01 / MVP-02)**:
   - `front/src/app/(comprador)/minha-conta/page.tsx`: eliminada a quebra de página inteira (early return global); erro de pedidos agora fica circunscrito à aba ativa, preservando saudação, navegação e Perfil, com suporte a cópia de `requestId` e botão de retry.
   - `auth-context.tsx` e `orders-context.tsx`: eliminadas condições de corrida no refresh de claims e repasse de erro estruturado.
@@ -204,14 +204,15 @@ Atender à tarefa autorizada selecionada pelo usuário (homologação do login a
   3. *Matriz visual sem automação:* A validação de viewports (360px, 390px, desktop) não foi executada por headless browser ou screenshots.
   4. *Poluição de produção:* A execução gerava pedidos no D1 de produção sem rotina de limpeza.
 - **Ações Imediatas de Remediação**:
-  - **Rotação de Senhas:** Senhas de teste de todas as contas (`comprador.teste`, `fornecedor.teste1`, `fornecedor.teste2`, `comprador.teste1`) foram rotacionadas via Firebase Identity Toolkit; credenciais antigas retornam 400 (rejeitadas).
-  - **Isolamento de Credenciais:** Criado `.env.qa.local` (ignorado pelo git) e `.env.qa.example` como template.
-  - **Proteção do Script:** `scripts/qa-mvp06-e2e.mjs` refatorado para consumir variáveis de ambiente, verificar explicitamente códigos HTTP/respostas de cada etapa, e bloquear por padrão escritas acidentais em produção (`--allow-production-write`).
-  - **Cenário Negativo da API:** Script validou rejeição HTTP 400 (`IDEMPOTENCY_KEY_REQUIRED`) ao tentar criar pedido sem chave de idempotência. A recusa client-side permanece coberta por testes unitários do checkout.
+  - **Rotação de Senhas Segura:** Todas as contas de teste (`comprador.teste`, `fornecedor.teste1`, `fornecedor.teste2`, `comprador.teste1`) foram rotacionadas via Firebase Identity Toolkit em canal silencioso (sem saída no stdout/logs da sessão); todas as senhas anteriores retornam HTTP 400 (rejeitadas).
+  - **Higienização Documental Completa:** Todas as menções da senha legada em arquivos rastreados (`context/estado/progresso.md`, `docs/governance/decisoes.md`, `context/estado/progresso-historico.md`) foram substituídas por `[senha de teste rotacionada]`.
+  - **Isolamento de Credenciais:** As novas senhas residem exclusivamente no `.env.qa.local` (ignorado pelo Git). Template criado em `scripts/env.qa.example`.
+  - **Proteção do Script:** `scripts/qa-mvp06-e2e.mjs` refatorado com trava fail-closed (escritas em produção exigem `--allow-production-write`, alertando sobre criação de pedidos e consumo de estoque no D1) e resolução dinâmica da `FIREBASE_API_KEY` a partir do ambiente / `front/.env.production`.
+  - **Cenário Negativo da API com Invariante no D1:** O script consulta a contagem de pedidos no D1 antes e depois da chamada inválida (POST sem `Idempotency-Key` $\rightarrow$ 400 `IDEMPOTENCY_KEY_REQUIRED`), comprovando empiricamente que nenhum pedido foi criado no banco. A recusa client-side de simulação no checkout segue coberta por testes unitários do frontend.
 - **Reclassificação de Status**:
   - O plano de estabilização compreende 8 marcos (MVP-00 a MVP-07).
   - MVP-00 a MVP-05: `done`.
-  - MVP-06 e MVP-07: reclassificados para `in_progress` / parcialmente comprovados, aguardando validação visual em navegador e automação completa do cenário negativo.
+  - MVP-06 e MVP-07: reclassificados para `in_progress` / parcialmente comprovados, aguardando validação visual em navegador e automação completa do cenário negativo em UI.
 
 ## Próximas sessões / Prioridades do Backlog
 

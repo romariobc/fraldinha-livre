@@ -754,8 +754,8 @@ Fix do login Google em mobile (`signInWithRedirect`, achado real de usuÃ¡rio A
 de verdade (`signInEmail`/`signUpEmail`, reusa `/onboarding` jÃ¡ existente). 2 contas de fornecedor de
 teste criadas via o prÃ³prio fluxo novo, confirmadas funcionando (painel + aba CatÃ¡logo visÃ­veis):
 
-- `fornecedor.teste1@fraldinhalivre.com.br` / `Teste123!`
-- `fornecedor.teste2@fraldinhalivre.com.br` / `Teste123!`
+- `fornecedor.teste1@fraldinhalivre.com.br` / `[senha de teste rotacionada]`
+- `fornecedor.teste2@fraldinhalivre.com.br` / `[senha de teste rotacionada]`
 
 Detalhes completos em D-034. Deploy `297df1bc`, 351/351 testes verdes.
 

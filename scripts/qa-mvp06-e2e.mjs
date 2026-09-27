@@ -23,8 +23,29 @@ if (fs.existsSync(envLocalPath)) {
   }
 }
 
+// Resolução dinâmica de variáveis de ambiente do Frontend (se necessário)
+if (!process.env.FIREBASE_API_KEY && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
+  const frontEnvPath = path.resolve(process.cwd(), 'front/.env.production')
+  if (fs.existsSync(frontEnvPath)) {
+    const frontEnv = fs.readFileSync(frontEnvPath, 'utf8')
+    for (const rawLine of frontEnv.split(/\r?\n/)) {
+      const line = rawLine.trim()
+      const match = line.match(/^NEXT_PUBLIC_FIREBASE_API_KEY\s*=\s*(.+)$/)
+      if (match) {
+        process.env.FIREBASE_API_KEY = match[1].trim()
+        break
+      }
+    }
+  }
+}
+
 const API_URL = process.env.API_URL || 'https://fraldinha-livre-backend.romariobc.workers.dev'
-const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || 'AIzaSyBPsjYjlaTKJ7KuP-SMd2O6M878hKNG2Vw'
+const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+
+if (!FIREBASE_API_KEY) {
+  console.error('\n❌ ERRO: FIREBASE_API_KEY não encontrada em variáveis de ambiente nem em front/.env.production!')
+  process.exit(1)
+}
 
 const BUYER_EMAIL = process.env.QA_BUYER_EMAIL || 'comprador.teste@fraldinhalivre.com.br'
 const BUYER_PASSWORD = process.env.QA_BUYER_PASSWORD
@@ -34,7 +55,7 @@ const SUPPLIER_PASSWORD = process.env.QA_SUPPLIER_PASSWORD
 if (!BUYER_PASSWORD || !SUPPLIER_PASSWORD) {
   console.error('\n❌ ERRO: Credenciais de teste ausentes!')
   console.error('Defina QA_BUYER_PASSWORD e QA_SUPPLIER_PASSWORD via variáveis de ambiente ou no arquivo .env.qa.local.')
-  console.error('Consulte .env.qa.example para referência.\n')
+  console.error('Consulte scripts/env.qa.example para referência.\n')
   process.exit(1)
 }
 
@@ -62,9 +83,10 @@ async function runQa() {
 
   if (isProduction && !allowProductionWrite) {
     console.warn('⚠️  AVISO DE SEGURANÇA: O alvo é o ambiente de PRODUÇÃO.')
-    console.warn('Para evitar criação de pedidos e alterações de estoque acidentais no D1 de produção,')
+    console.warn('Para evitar criação de pedidos e consumo de estoque acidental no D1 de produção,')
     console.warn('o teste de escrita está bloqueado por padrão.')
-    console.warn('Para executar conscientemente, passe a flag --allow-production-write ou QA_ALLOW_PRODUCTION_WRITE=true.\n')
+    console.warn('Para executar conscientemente (ciente de que criará pedidos reais no D1), passe:')
+    console.warn('  --allow-production-write ou defina QA_ALLOW_PRODUCTION_WRITE=true.\n')
   }
 
   const results = []
@@ -90,24 +112,44 @@ async function runQa() {
   console.log(`  Fornecedor autenticado: UID ${supplier.uid}`)
   results.push({ step: 'Auth fornecedor', ok: !!supplier.idToken, uid: supplier.uid })
 
-  // 4. Cenário Negativo Real de API: Requisição sem Idempotency-Key
+  // 4. Cenário Negativo Real de API: Requisição sem Idempotency-Key com conferência antes/depois no D1
   console.log('\n[4/7] Testando cenário negativo de validação da API (POST /orders sem Idempotency-Key)...')
+  const beforeOrdersRes = await fetch(`${API_URL}/orders`, {
+    headers: { Authorization: `Bearer ${buyer.idToken}` },
+  })
+  const beforeOrders = await beforeOrdersRes.json()
+  const beforeCount = Array.isArray(beforeOrders) ? beforeOrders.length : 0
+
   const negativeRes = await fetch(`${API_URL}/orders`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${buyer.idToken}`,
     },
-    body: JSON.stringify({ product: 'Teste', quantity: 1, unit: 'un', price: 100 }),
+    body: JSON.stringify({ product: 'Teste Invalido', quantity: 1, unit: 'un', price: 100 }),
   })
   const negativeXId = negativeRes.headers.get('x-request-id')
   const negativeBody = await negativeRes.json()
-  const negativeOk = negativeRes.status === 400 && negativeBody?.error?.code === 'IDEMPOTENCY_KEY_REQUIRED'
+
+  const afterOrdersRes = await fetch(`${API_URL}/orders`, {
+    headers: { Authorization: `Bearer ${buyer.idToken}` },
+  })
+  const afterOrders = await afterOrdersRes.json()
+  const afterCount = Array.isArray(afterOrders) ? afterOrders.length : 0
+
+  const countUnchanged = afterCount === beforeCount
+  const negativeOk = negativeRes.status === 400 &&
+                     negativeBody?.error?.code === 'IDEMPOTENCY_KEY_REQUIRED' &&
+                     countUnchanged
+
   console.log(`  Status: ${negativeRes.status} (esperado 400), Code: ${negativeBody?.error?.code}, X-Request-Id: ${negativeXId}`)
+  console.log(`  Contagem de pedidos no D1 antes: ${beforeCount}, depois: ${afterCount} (invariante: ${countUnchanged ? 'INALTERADA - nenhum pedido criado' : 'FALHA'})`)
   results.push({
-    step: 'Cenário negativo API (falha sem Idempotency-Key, sem criar pedido)',
+    step: 'Cenário negativo API (rejeição 400 + invariante de contagem D1 antes/depois)',
     ok: negativeOk,
     xId: negativeXId,
+    beforeCount,
+    afterCount,
   })
 
   if (isProduction && !allowProductionWrite) {

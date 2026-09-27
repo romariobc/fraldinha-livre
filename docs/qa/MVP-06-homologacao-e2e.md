@@ -27,25 +27,30 @@ Após auditoria técnica realizada em 2026-09-27, o status foi reclassificado pa
 | Fornecedor | `fornecedor.teste1@fraldinhalivre.com.br` | `cSK4LXIakuajmCSiJFaHOccck2s1` | Distribuidora Sul Teste (proprietária de produtos no D1) |
 
 > [!IMPORTANT]
-> **Ação de Segurança Realizada (2026-09-27):** As senhas padrão de teste anteriormente utilizadas foram rotacionadas via Firebase Identity Toolkit. O script [`scripts/qa-mvp06-e2e.mjs`](../../scripts/qa-mvp06-e2e.mjs) foi atualizado para carregar credenciais exclusivamente via variáveis de ambiente (`QA_BUYER_PASSWORD` e `QA_SUPPLIER_PASSWORD` via `.env.qa.local`), eliminando qualquer credencial em texto puro no código.
+> **Ação de Segurança e Higienização Documental (2026-09-27):**
+> 1. Todas as contas de teste (`comprador.teste`, `fornecedor.teste1`, `fornecedor.teste2`, `comprador.teste1`) foram rotacionadas de forma segura via API do Firebase Identity Toolkit sem exposição em logs de console.
+> 2. Todas as ocorrências da senha legada foram higienizadas e substituídas por `[senha de teste rotacionada]` nos arquivos rastreados (`context/estado/progresso.md`, `docs/governance/decisoes.md` e `context/estado/progresso-historico.md`).
+> 3. O script [`scripts/qa-mvp06-e2e.mjs`](../../scripts/qa-mvp06-e2e.mjs) consome as novas credenciais a partir do arquivo local `.env.qa.local` (ignorado pelo Git) e lê `FIREBASE_API_KEY` dinamicamente de `front/.env.production`.
 
 ---
 
 ## 3. Matriz de Evidências Reais de Execução da API (HTTP / D1)
 
-Abaixo constam os registros das execuções ponta a ponta realizadas via script HTTP:
+Abaixo constam os registros das execuções realizadas via script HTTP:
 
-### Execução Inicial (Pré-Deploy do commit 389a847):
-* **Health check:** `GET /health` $\rightarrow$ 200 OK (`X-Request-Id: c61be751-b42a-4314-9a8c-aeb4baf652fa`)
-* **Pedido criado:** ID `88d6a5ca-dc43-4acc-b69f-a9b787d2d23f` via `POST /orders` (`X-Request-Id: f54fa228-e440-44a9-85fb-9b745b545e9a`, tx `sim-qa-1790480274153`)
-* **Confirmação do Fornecedor:** `PATCH /orders/88d6a5ca-.../status` $\rightarrow$ 200 OK (`X-Request-Id: 039a97de-274d-42b6-8352-a8d8aba9f182`, status `confirmado`)
-* **Despacho do Fornecedor:** `PATCH /orders/88d6a5ca-.../status` $\rightarrow$ 200 OK (`X-Request-Id: 6cbae5d4-1e63-49eb-ad7d-9813a408eea2`, status `a-caminho`)
-* **Consulta do Comprador:** `GET /orders` $\rightarrow$ 200 OK (status atualizado para `a-caminho`)
+### Teste de Validação Negativa Segura (Sem escrita/alteração no D1):
+* **Health check:** `GET /health` $\rightarrow$ 200 OK (`X-Request-Id: 5c55d003-f913-4668-ba02-fdfe2a33c936`)
+* **Contagem de pedidos antes:** `GET /orders` $\rightarrow$ 6 pedidos
+* **Tentativa inválida:** `POST /orders` sem `Idempotency-Key` $\rightarrow$ 400 Bad Request (`IDEMPOTENCY_KEY_REQUIRED`, `X-Request-Id: 8f900ede-12d7-49ff-944e-7675ab5ea0d4`)
+* **Contagem de pedidos após:** `GET /orders` $\rightarrow$ 6 pedidos (comprovada a invariante: 0 pedidos gerados no D1)
 
-### Execução de Validação Pós-Deploy (Commit 389a847 / Run 36292054889):
-* **Health check:** `GET /health` $\rightarrow$ 200 OK (`X-Request-Id: a2bcfba4-c185-4666-8069-9d57a9195a56`)
-* **Pedido criado:** ID `4f41c724-5bdf-4eca-8d6c-7420a33fbfcd` via `POST /orders` (`X-Request-Id: 63cdeab2-6744-4c4d-8265-25aa5e08a3fb`, tx `sim-qa-1790480566239`)
-* **Confirmação e Despacho:** `confirmado` (`X-Request-Id: c438af88-917a-497c-92a0-fafc5d785e79`) e `a-caminho` (`X-Request-Id: 142e2c10-9344-4b3f-a45c-48c4ef798495`)
+### Histórico de Execuções de Escrita Anteriores (Caminho Positivo):
+* **Execução Pré-Deploy (Commit 389a847):** Pedido `88d6a5ca-dc43-4acc-b69f-a9b787d2d23f` criado com pagamento simulado aprovado, confirmado e despachado pelo fornecedor (`confirmado` $\rightarrow$ `a-caminho`).
+* **Execução Pós-Deploy (Commit 389a847 / Run 36292054889):** Pedido `4f41c724-5bdf-4eca-8d6c-7420a33fbfcd` criado com pagamento simulado aprovado e transicionado com sucesso para `a-caminho`.
+* **Execução de Verificação Sequencial:** Pedido `234fe0e6-92af-44fa-9c6e-1674de36661b` validou a esteira completa.
+
+> [!WARNING]
+> O script possui trava fail-closed que bloqueia escritas por padrão. A flag `--allow-production-write` deve ser utilizada apenas de forma controlada, pois cada execução cria um pedido no D1 e consome estoque real do produto em produção.
 
 ---
 

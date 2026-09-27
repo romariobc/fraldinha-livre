@@ -214,13 +214,29 @@ Atender à tarefa autorizada selecionada pelo usuário (homologação do login a
   - MVP-00 a MVP-05: `done`.
   - MVP-06 e MVP-07: reclassificados para `in_progress` / parcialmente comprovados, aguardando validação visual em navegador e automação completa do cenário negativo em UI.
 
+## Correção de Bloqueadores e Homologação E2E no Chrome — 2026-09-27
+
+- **Resolução de Bloqueadores Frontend**:
+  1. *Colisão de slug multi-fornecedor:* Cards de catálogo agora usam links explícitos com `?p=${product.id}`; `front/src/app/(main)/produto/[slug]/page.tsx` resolve deterministicamente por `candidateId` (`useSearchParams` / slug composto) e lista a seção *"Outras ofertas deste produto"*.
+  2. *Erro 403 no painel do fornecedor:* `OrdersProvider` inspeciona claims de fornecedor e a rota `/painel-fornecedor`, cancelando chamadas indevidas de comprador (`GET /orders`) sem poluir o console.
+- **Validação E2E no Chrome (23 etapas)**:
+  - Fluxo percorrido na íntegra visualmente: Fornecedor X vincula produto mestre (`Basic Hiper idades Amorável XG`, R$ 38,75, estoque 45) $\rightarrow$ Comprador Y localiza a oferta específica no catálogo $\rightarrow$ Página de detalhe exibe fornecedor parceiro e preço corretos $\rightarrow$ Adiciona à sacola $\rightarrow$ Checkout com endereço e pagamento simulado aprovado $\rightarrow$ Pedido `#07f55a95-43ed-4c6e-b778-496ad38951db` criado em `aguardando` $\rightarrow$ Fornecedor X confirma o pedido $\rightarrow$ Comprador Y confere `confirmado` $\rightarrow$ Fornecedor despacha para `a-caminho` $\rightarrow$ Comprador confere `a-caminho` $\rightarrow$ Fornecedor marca `entregue` $\rightarrow$ Pedido migra automaticamente da aba *Pedidos* para *Histórico*.
+  - Viewports testados e fotografados: 1280×900, 390×844 e 360×800.
+  - Confirmação explícita de recebimento pelo comprador mantida estritamente como decisão futura.
+- **Testes e Tipagem**:
+  - 44 testes automatizados verdes nas suítes afetadas (`orders-context.backend.test.tsx`, `page.test.tsx`, `ProductCard.test.tsx`, `PedidosTab.test.tsx`).
+  - 117 testes verdes no domínio do fornecedor; `npx tsc --noEmit` exit code 0.
+- **Sincronização e Deploy**:
+  - Commits `4fd4d4f` (backlog) e `4c5ae00` (correções e testes de frontend) integrados e sincronizados em `origin/main`.
+  - GitHub Actions [run 36347238595](https://github.com/romariobc/fraldinha-livre/actions/runs/36347238595): `success`, deploy em produção em 2m47s.
+
 ## Próximas sessões / Prioridades do Backlog
 
-1. **Homologação visual e negativa em navegador**: Capturar evidências reais em 360px/390px e fluxo de recusa no checkout.
-2. **Feature 018**: Assistente PWA / Chat-Agent M7 (migração GPT-6 vs Workers AI).
-3. **Feature 010**: Notificações por e-mail (ativação de `RESEND_API_KEY`).
-4. **Feature 011**: Gateway de pagamento real (PIX dinâmico / Cartão de Crédito).
-5. **Melhorias do Painel Admin (`/admin`)**: navegação superior por abas e filtros na tabela de usuários.
+1. **Feature 018**: Assistente PWA / Chat-Agent M7 (migração GPT-6 vs Workers AI).
+2. **Feature 010**: Notificações por e-mail (ativação de `RESEND_API_KEY`).
+3. **Feature 011**: Gateway de pagamento real (PIX dinâmico / Cartão de Crédito).
+4. **Melhorias do Painel Admin (`/admin`)**: observabilidade do fluxo de pedidos, filtros e navegação horizontal.
+5. **Confirmação de recebimento pelo comprador**: especificação e ciclo de vida pós-entrega (decisão futura).
 
 
 

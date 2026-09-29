@@ -51,9 +51,44 @@ describe('AdminProductsTab', () => {
     expect(apiFetch).toHaveBeenCalledWith('/products?scope=admin')
   })
 
+  it('filtra produtos por busca de texto (nome ou marca)', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(
+      jsonResponse([
+        { id: 'prod-1', name: 'Fralda Pampers Confort', brand: 'Pampers', supplierId: 'sup-1', priceCents: 5000, active: true },
+        { id: 'prod-2', name: 'Fralda Huggies Supreme', brand: 'Huggies', supplierId: 'sup-2', priceCents: 4500, active: true },
+      ]),
+    )
+    render(<AdminProductsTab />)
+    await waitFor(() => expect(screen.getByText('Fralda Pampers Confort')).toBeInTheDocument())
+
+    const searchInput = screen.getByPlaceholderText(/buscar por nome/i)
+    fireEvent.change(searchInput, { target: { value: 'Huggies' } })
+
+    expect(screen.getByText('Fralda Huggies Supreme')).toBeInTheDocument()
+    expect(screen.queryByText('Fralda Pampers Confort')).not.toBeInTheDocument()
+  })
+
+  it('filtra produtos por status (ativos ou inativos)', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(
+      jsonResponse([
+        { id: 'prod-1', name: 'Produto Ativo', brand: 'Marca 1', supplierId: 'sup-1', priceCents: 5000, active: true },
+        { id: 'prod-2', name: 'Produto Inativo', brand: 'Marca 2', supplierId: 'sup-2', priceCents: 4500, active: false },
+      ]),
+    )
+    render(<AdminProductsTab />)
+    await waitFor(() => expect(screen.getByText('Produto Ativo')).toBeInTheDocument())
+
+    const filterSelect = screen.getByRole('combobox', { name: /filtrar por status/i })
+    fireEvent.change(filterSelect, { target: { value: 'inativos' } })
+
+    expect(screen.getByText('Produto Inativo')).toBeInTheDocument()
+    expect(screen.queryByText('Produto Ativo')).not.toBeInTheDocument()
+  })
+
   it('mostra erro se a resposta nao for ok (ex.: 403)', async () => {
     vi.mocked(apiFetch).mockResolvedValue(jsonResponse({ error: 'forbidden' }, 403))
     render(<AdminProductsTab />)
     await waitFor(() => expect(screen.getByText(/erro ao carregar produtos/i)).toBeInTheDocument())
   })
 })
+

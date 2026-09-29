@@ -230,13 +230,46 @@ Atender à tarefa autorizada selecionada pelo usuário (homologação do login a
   - Commits `4fd4d4f` (backlog) e `4c5ae00` (correções e testes de frontend) integrados e sincronizados em `origin/main`.
   - GitHub Actions [run 36347238595](https://github.com/romariobc/fraldinha-livre/actions/runs/36347238595): `success`, deploy em produção em 2m47s.
 
+## Melhorias de Usabilidade, Observabilidade e Filtros no Painel Admin (`/admin`) — 2026-09-29
+
+- **Layout e Navegação Global (`front/src/app/admin/page.tsx`)**:
+  - Cabeçalho com badge destacada "Área Restrita do Administrador" e subtítulo descritivo;
+  - Barra superior horizontal responsiva de abas com ícones dedicados (`Users`, `ShoppingBag`, `Package`, `ShieldCheck`);
+  - Container com design tokens (`rounded-card`, `shadow-card`, Nunito/Inter) e abas compatíveis com padrão `ui-system`.
+- **Aba Usuários (`front/src/components/admin/AdminUsersTab.tsx`)**:
+  - Busca em tempo real por nome, e-mail ou UID;
+  - Filtro por papel com contagem (`Todos`, `Compradores`, `Fornecedores`, `Administradores`);
+  - Badges coloridos semânticos por papel (`comprador` azul, `fornecedor` verde, `admin` roxo);
+  - Paginação cliente (10 itens por página), botão de cópia rápida de UID com feedback visual e botão de recarregar dados do Firestore;
+  - Estado vazio amigável com opção para limpar filtros.
+- **Aba Pedidos (`front/src/components/admin/AdminOrdersTab.tsx`)**:
+  - Busca multifatorial por ID do pedido, UID do comprador, produto, fornecedor ou transaction ID;
+  - Filtro por status do pedido (`aguardando`, `confirmado`, `a-caminho`, `entregue`, `cancelado`) com badges coloridos;
+  - Modal detalhado de observabilidade do pedido:
+    - Metadados completos (data formatada pt-BR, comprador UID, fornecedor nome/UID);
+    - Detalhamento de itens com produto, quantidade, preço unitário e subtotal;
+    - Endereço de entrega completo formatado;
+    - Dados de pagamento (método, status e transaction ID com botão copiar);
+  - Paginação, botão de recarregar lista da API e cópia de ID.
+- **Aba Produtos (`front/src/components/admin/AdminProductsTab.tsx`)**:
+  - Busca por nome, marca ou ID do fornecedor;
+  - Filtro por status (Todos, Ativos, Inativos);
+  - Paginação e botão de recarregar;
+  - Preservação estrita do fluxo de moderação com justificativa (mínimo 5 caracteres) gravando na trilha `audit_logs`.
+- **Aba Auditoria (`front/src/components/admin/AdminAuditTab.tsx`)**:
+  - Harmonização de estilos, botão de recarregar e conformidade estrita com regras do ESLint.
+- **Validação Automatizada e Qualidade de Código**:
+  - 26 testes automatizados verdes nas suítes de admin (`page.test.tsx`, `AdminUsersTab.test.tsx`, `AdminOrdersTab.test.tsx`, `AdminProductsTab.test.tsx`, `AdminAuditTab.test.tsx`);
+  - `npx tsc --noEmit`: 0 erros de tipo em todo o workspace `front/`;
+  - `npx eslint src/app/admin src/components/admin`: 0 erros e 0 warnings.
+
 ## Próximas sessões / Prioridades do Backlog
 
 1. **Feature 018**: Assistente PWA / Chat-Agent M7 (migração GPT-6 vs Workers AI).
 2. **Feature 010**: Notificações por e-mail (ativação de `RESEND_API_KEY`).
 3. **Feature 011**: Gateway de pagamento real (PIX dinâmico / Cartão de Crédito).
-4. **Melhorias do Painel Admin (`/admin`)**: observabilidade do fluxo de pedidos, filtros e navegação horizontal.
-5. **Confirmação de recebimento pelo comprador**: especificação e ciclo de vida pós-entrega (decisão futura).
+4. **Confirmação de recebimento pelo comprador**: especificação e ciclo de vida pós-entrega (decisão futura).
+
 
 
 

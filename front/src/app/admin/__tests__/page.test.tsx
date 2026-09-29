@@ -8,6 +8,10 @@ vi.mock('@/lib/firebase', () => ({ auth: {}, db: {}, googleProvider: {} }))
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn(), getDocs: vi.fn().mockResolvedValue({ docs: [] }),
 }))
+vi.mock('@/components/admin/AdminUsersTab', () => ({ default: () => <div>AdminUsersTab</div> }))
+vi.mock('@/components/admin/AdminOrdersTab', () => ({ default: () => <div>AdminOrdersTab</div> }))
+vi.mock('@/components/admin/AdminProductsTab', () => ({ default: () => <div>AdminProductsTab</div> }))
+vi.mock('@/components/admin/AdminAuditTab', () => ({ default: () => <div>AdminAuditTab</div> }))
 
 let mockPush = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))

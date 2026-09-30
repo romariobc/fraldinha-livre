@@ -232,10 +232,14 @@ Atender à tarefa autorizada selecionada pelo usuário (homologação do login a
 
 ## Revisão e Estabilização do Painel Admin (`/admin`) — 2026-09-29
 
-- **Status da Validação e Escopo**:
+- **Status da Validação, Publicação e Evidências**:
   - *Inspeção estática:* `npx tsc --noEmit` (0 erros de tipo em `front/`) e `npx eslint src/app/admin src/components/admin` (0 erros, 0 warnings).
   - *Testes locais (Vitest):* 5 suítes / 33 testes passando (exit code 0) cobrindo `page.test.tsx`, `AdminUsersTab.test.tsx`, `AdminOrdersTab.test.tsx`, `AdminProductsTab.test.tsx` e `AdminAuditTab.test.tsx`.
-  - *Integração real, deploy e smoke remoto:* Não executados nesta etapa. As alterações residem no working tree local prontas para revisão/pull request.
+  - *Deploy e Publicação no Cloudflare:* Commit `7716c3e` enviado para `main`. GitHub Actions [run 36728715758](https://github.com/romariobc/fraldinha-livre/actions/runs/36728715758) concluído com status `success` em 2m41s.
+  - *Identificadores de versão remota:*
+    - Backend: `https://fraldinha-livre-backend.romariobc.workers.dev` (Version ID `4a23ca9b-8b5b-43c3-913a-9286ed00e73c`).
+    - Frontend: `https://fraldinha-livre-frontend.romariobc.workers.dev` (Version ID `e066ee4b-a047-41f8-8608-76117821f769`, Image Digest `sha256:65e6a329a841dde58ac83e797e21579d4a292deb33626e6a26786859236e4153`).
+  - *Smoke HTTP em produção:* `/health` (HTTP 200), `/` (HTTP 200) e `/admin` (HTTP 200).
 - **Aba Usuários (`front/src/components/admin/AdminUsersTab.tsx`)**:
   - Busca em tempo real por nome, e-mail ou UID;
   - Filtro por papel com contagem matematicamente consistente: `Todos`, `Compradores`, `Fornecedores`, `Administradores` e `Outros` (para usuários com papel ausente ou desconhecido), garantindo que a soma das categorias coincida rigorosamente com o total;

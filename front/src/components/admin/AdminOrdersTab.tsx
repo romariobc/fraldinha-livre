@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { apiFetch } from '@/lib/api-client'
 import type { Order, OrderStatus } from '@contracts'
 import { Search, RefreshCw, Filter, Eye, Copy, Check, Calendar, MapPin, CreditCard, Package } from 'lucide-react'
@@ -17,6 +17,11 @@ import {
 
 const PAGE_SIZE = 10
 
+type CopiedTarget = {
+  type: 'order' | 'tx'
+  id: string
+} | null
+
 export default function AdminOrdersTab() {
   const [orders, setOrders] = useState<Order[] | null>(null)
   const [loading, setLoading] = useState(true)
@@ -27,7 +32,16 @@ export default function AdminOrdersTab() {
   const [statusFilter, setStatusFilter] = useState<string>('todos')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [copiedTarget, setCopiedTarget] = useState<CopiedTarget>(null)
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -71,16 +85,31 @@ export default function AdminOrdersTab() {
   }, [orders, search, statusFilter])
 
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE))
-  const paginatedOrders = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE
-    return filteredOrders.slice(start, start + PAGE_SIZE)
-  }, [filteredOrders, currentPage])
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages)
 
-  const handleCopy = (text: string) => {
-    navigator.clipboard?.writeText(text)
-    setCopiedId(text)
-    setTimeout(() => setCopiedId(null), 2000)
-  }
+  const paginatedOrders = useMemo(() => {
+    const start = (safeCurrentPage - 1) * PAGE_SIZE
+    return filteredOrders.slice(start, start + PAGE_SIZE)
+  }, [filteredOrders, safeCurrentPage])
+
+  const handleCopy = useCallback(async (type: 'order' | 'tx', text?: string) => {
+    if (!text) return
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(text)
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current)
+      }
+      setCopiedTarget({ type, id: text })
+      copyTimeoutRef.current = setTimeout(() => {
+        setCopiedTarget(null)
+      }, 2000)
+    } catch {
+      // Falha ou permissão negada: não alterar o estado visual de cópia
+    }
+  }, [])
 
   const getStatusBadge = (status: OrderStatus) => {
     switch (status) {
@@ -145,7 +174,7 @@ export default function AdminOrdersTab() {
   if (loading && !orders) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center text-brand-muted">
-        <RefreshCw size={24} className="animate-spin mb-3 text-primary" />
+        <RefreshCw size={24} className="animate-spin mb-3 text-primary" aria-hidden="true" />
         <p>Carregando pedidos...</p>
       </div>
     )
@@ -157,7 +186,7 @@ export default function AdminOrdersTab() {
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="flex flex-1 items-center gap-2 max-w-md">
           <div className="relative flex-1">
-            <Search size={16} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-brand-muted" />
+            <Search size={16} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-brand-muted" aria-hidden="true" />
             <Input
               type="text"
               placeholder="Buscar por ID, comprador, produto ou fornecedor..."
@@ -167,13 +196,14 @@ export default function AdminOrdersTab() {
                 setCurrentPage(1)
               }}
               className="pl-8 text-sm"
+              aria-label="Buscar pedidos"
             />
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 text-xs text-brand-muted">
-            <Filter size={14} />
+            <Filter size={14} aria-hidden="true" />
             <span>Status:</span>
           </div>
           <select
@@ -204,7 +234,7 @@ export default function AdminOrdersTab() {
             className="h-8 px-2.5 text-xs flex items-center gap-1"
             title="Recarregar pedidos"
           >
-            <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} />
+            <RefreshCw size={13} className={refreshing ? 'animate-spin' : ''} aria-hidden="true" />
             <span className="hidden sm:inline">Atualizar</span>
           </Button>
         </div>
@@ -238,14 +268,15 @@ export default function AdminOrdersTab() {
                     <span title={o.id}>{o.id}</span>
                     <button
                       type="button"
-                      onClick={() => handleCopy(o.id)}
-                      className="text-slate-400 hover:text-brand-text p-0.5 rounded transition-colors"
+                      onClick={() => handleCopy('order', o.id)}
+                      className="text-slate-400 hover:text-brand-text p-0.5 rounded transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
                       title="Copiar ID do pedido"
+                      aria-label={`Copiar ID do pedido ${o.id}`}
                     >
-                      {copiedId === o.id ? (
-                        <Check size={12} className="text-emerald-600" />
+                      {copiedTarget?.type === 'order' && copiedTarget.id === o.id ? (
+                        <Check size={12} className="text-emerald-600" aria-hidden="true" />
                       ) : (
-                        <Copy size={12} />
+                        <Copy size={12} aria-hidden="true" />
                       )}
                     </button>
                   </div>
@@ -271,8 +302,9 @@ export default function AdminOrdersTab() {
                     size="sm"
                     onClick={() => setSelectedOrder(o)}
                     className="h-7 px-2 text-xs text-primary-dark hover:bg-primary-light flex items-center gap-1 ml-auto"
+                    aria-label={`Ver detalhes do pedido ${o.id}`}
                   >
-                    <Eye size={13} />
+                    <Eye size={13} aria-hidden="true" />
                     <span>Detalhes</span>
                   </Button>
                 </td>
@@ -306,22 +338,24 @@ export default function AdminOrdersTab() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-2">
           <Button
+            type="button"
             variant="outline"
             size="sm"
-            disabled={currentPage <= 1}
-            onClick={() => setCurrentPage((p) => p - 1)}
+            disabled={safeCurrentPage <= 1}
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             className="text-xs h-8"
           >
             Anterior
           </Button>
           <span className="text-xs text-brand-muted">
-            Página {currentPage} de {totalPages}
+            Página {safeCurrentPage} de {totalPages}
           </span>
           <Button
+            type="button"
             variant="outline"
             size="sm"
-            disabled={currentPage >= totalPages}
-            onClick={() => setCurrentPage((p) => p + 1)}
+            disabled={safeCurrentPage >= totalPages}
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             className="text-xs h-8"
           >
             Próxima
@@ -330,7 +364,17 @@ export default function AdminOrdersTab() {
       )}
 
       {/* Order Details Dialog */}
-      <Dialog open={selectedOrder !== null} onOpenChange={(open) => { if (!open) setSelectedOrder(null) }}>
+      <Dialog
+        open={selectedOrder !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedOrder(null)
+            if (copiedTarget?.type === 'tx') {
+              setCopiedTarget(null)
+            }
+          }
+        }}
+      >
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           {selectedOrder && (
             <>
@@ -345,11 +389,16 @@ export default function AdminOrdersTab() {
                   <span>ID completo: {selectedOrder.id}</span>
                   <button
                     type="button"
-                    onClick={() => handleCopy(selectedOrder.id)}
-                    className="p-0.5 hover:text-brand-text"
-                    title="Copiar ID"
+                    onClick={() => handleCopy('order', selectedOrder.id)}
+                    className="p-0.5 hover:text-brand-text rounded transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                    title="Copiar ID completo do pedido"
+                    aria-label={`Copiar ID completo do pedido ${selectedOrder.id}`}
                   >
-                    {copiedId === selectedOrder.id ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                    {copiedTarget?.type === 'order' && copiedTarget.id === selectedOrder.id ? (
+                      <Check size={12} className="text-emerald-600" aria-hidden="true" />
+                    ) : (
+                      <Copy size={12} aria-hidden="true" />
+                    )}
                   </button>
                 </DialogDescription>
               </DialogHeader>
@@ -359,7 +408,7 @@ export default function AdminOrdersTab() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <div>
                     <div className="text-xs text-brand-muted flex items-center gap-1">
-                      <Calendar size={13} />
+                      <Calendar size={13} aria-hidden="true" />
                       <span>Data de Criação</span>
                     </div>
                     <div className="font-medium text-brand-text mt-0.5">
@@ -387,19 +436,39 @@ export default function AdminOrdersTab() {
                   </div>
                   <div>
                     <div className="text-xs text-brand-muted flex items-center gap-1">
-                      <CreditCard size={13} />
+                      <CreditCard size={13} aria-hidden="true" />
                       <span>Pagamento</span>
                     </div>
                     <div className="text-xs text-brand-text mt-0.5">
-                      <span className="font-semibold uppercase">{selectedOrder.paymentMethod || 'simulado'}</span>
-                      {selectedOrder.paymentStatus && (
-                        <span className="ml-1.5 px-1.5 py-0.2 rounded bg-slate-200 text-slate-700 font-medium">
-                          {selectedOrder.paymentStatus}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold uppercase">{selectedOrder.paymentMethod || 'simulado'}</span>
+                        {selectedOrder.paymentStatus && (
+                          <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 font-medium text-[11px]">
+                            {selectedOrder.paymentStatus}
+                          </span>
+                        )}
+                      </div>
                       {selectedOrder.paymentTransactionId && (
-                        <div className="font-mono text-[11px] text-brand-muted truncate mt-0.5" title={selectedOrder.paymentTransactionId}>
-                          Tx: {selectedOrder.paymentTransactionId}
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <span
+                            className="font-mono text-xs text-brand-muted truncate max-w-[200px] sm:max-w-xs"
+                            title={selectedOrder.paymentTransactionId}
+                          >
+                            Tx: {selectedOrder.paymentTransactionId}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy('tx', selectedOrder.paymentTransactionId)}
+                            className="p-1 text-slate-400 hover:text-brand-text rounded transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none"
+                            title="Copiar ID da transação"
+                            aria-label="Copiar ID da transação"
+                          >
+                            {copiedTarget?.type === 'tx' && copiedTarget.id === selectedOrder.paymentTransactionId ? (
+                              <Check size={12} className="text-emerald-600" aria-hidden="true" />
+                            ) : (
+                              <Copy size={12} aria-hidden="true" />
+                            )}
+                          </button>
                         </div>
                       )}
                     </div>
@@ -409,7 +478,7 @@ export default function AdminOrdersTab() {
                 {/* Itens do Pedido */}
                 <div>
                   <h4 className="font-display font-bold text-xs uppercase tracking-wider text-brand-muted mb-2 flex items-center gap-1.5">
-                    <Package size={14} />
+                    <Package size={14} aria-hidden="true" />
                     <span>Itens do Pedido ({selectedOrder.items?.length || 1})</span>
                   </h4>
                   <div className="rounded-lg border border-slate-200 overflow-hidden">
@@ -461,7 +530,7 @@ export default function AdminOrdersTab() {
                 {selectedOrder.deliveryAddress && (
                   <div>
                     <h4 className="font-display font-bold text-xs uppercase tracking-wider text-brand-muted mb-1.5 flex items-center gap-1.5">
-                      <MapPin size={14} />
+                      <MapPin size={14} aria-hidden="true" />
                       <span>Endereço de Entrega</span>
                     </h4>
                     <div className="bg-slate-50 border border-slate-100 rounded-lg p-3 text-xs text-brand-text">

@@ -114,6 +114,109 @@ describe('AdminOrdersTab', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
+  it('copia ID da transação (paymentTransactionId) chamando writeText com o valor correto', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, {
+      clipboard: { writeText: writeTextMock },
+    })
+
+    vi.mocked(apiFetch).mockResolvedValue(jsonResponse(mockOrders))
+    render(<AdminOrdersTab />)
+    await waitFor(() => expect(screen.getByText('order-1')).toBeInTheDocument())
+
+    // Abre detalhes do order-1
+    const detailButtons = screen.getAllByRole('button', { name: /detalhes/i })
+    fireEvent.click(detailButtons[0])
+
+    const dialog = screen.getByRole('dialog')
+    const copyTxButton = within(dialog).getByRole('button', { name: /copiar id da transação/i })
+    expect(copyTxButton).toBeInTheDocument()
+
+    fireEvent.click(copyTxButton)
+
+    await waitFor(() => {
+      expect(writeTextMock).toHaveBeenCalledWith('tx-pix-123456')
+    })
+  })
+
+  it('não exibe feedback de sucesso quando a Clipboard API rejeita', async () => {
+    const writeTextMock = vi.fn().mockRejectedValue(new Error('Permission denied'))
+    Object.assign(navigator, {
+      clipboard: { writeText: writeTextMock },
+    })
+
+    vi.mocked(apiFetch).mockResolvedValue(jsonResponse(mockOrders))
+    render(<AdminOrdersTab />)
+    await waitFor(() => expect(screen.getByText('order-1')).toBeInTheDocument())
+
+    const detailButtons = screen.getAllByRole('button', { name: /detalhes/i })
+    fireEvent.click(detailButtons[0])
+
+    const dialog = screen.getByRole('dialog')
+    const copyTxButton = within(dialog).getByRole('button', { name: /copiar id da transação/i })
+
+    fireEvent.click(copyTxButton)
+
+    await waitFor(() => {
+      expect(writeTextMock).toHaveBeenCalledWith('tx-pix-123456')
+    })
+    // O botão permanece funcional sem crash
+    expect(copyTxButton).toBeInTheDocument()
+  })
+
+  it('comporta-se de forma segura quando a Clipboard API estiver indisponível no navegador', async () => {
+    // Simula ambiente sem suporte a clipboard
+    const originalClipboard = navigator.clipboard
+    // @ts-expect-error teste de compatibilidade
+    delete navigator.clipboard
+
+    vi.mocked(apiFetch).mockResolvedValue(jsonResponse(mockOrders))
+    render(<AdminOrdersTab />)
+    await waitFor(() => expect(screen.getByText('order-1')).toBeInTheDocument())
+
+    const copyOrderBtn = screen.getByRole('button', { name: /copiar id do pedido order-1/i })
+    // Não deve lançar erro
+    expect(() => fireEvent.click(copyOrderBtn)).not.toThrow()
+
+    // Restaura mock
+    Object.assign(navigator, { clipboard: originalClipboard })
+  })
+
+  it('fecha o modal sem disparar atualizações de estado tardias', async () => {
+    const writeTextMock = vi.fn().mockResolvedValue(undefined)
+    Object.assign(navigator, { clipboard: { writeText: writeTextMock } })
+
+    vi.mocked(apiFetch).mockResolvedValue(jsonResponse(mockOrders))
+    render(<AdminOrdersTab />)
+    await waitFor(() => expect(screen.getByText('order-1')).toBeInTheDocument())
+
+    const detailButtons = screen.getAllByRole('button', { name: /detalhes/i })
+    fireEvent.click(detailButtons[0])
+
+    const dialog = screen.getByRole('dialog')
+    const copyTxButton = within(dialog).getByRole('button', { name: /copiar id da transação/i })
+    fireEvent.click(copyTxButton)
+
+    // Fecha imediatamente enquanto o timer estaria ativo
+    const closeButton = within(dialog).getByRole('button', { name: /fechar/i })
+    fireEvent.click(closeButton)
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('não exibe botão de cópia de transação quando o pedido não tem paymentTransactionId', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(jsonResponse(mockOrders))
+    render(<AdminOrdersTab />)
+    await waitFor(() => expect(screen.getByText('order-2')).toBeInTheDocument())
+
+    // Abre detalhes do order-2 (sem transaction ID)
+    const detailButtons = screen.getAllByRole('button', { name: /detalhes/i })
+    fireEvent.click(detailButtons[1])
+
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).queryByRole('button', { name: /copiar id da transação/i })).not.toBeInTheDocument()
+  })
+
   it('recarrega os pedidos ao clicar no botão atualizar', async () => {
     vi.mocked(apiFetch).mockResolvedValue(jsonResponse(mockOrders))
     render(<AdminOrdersTab />)

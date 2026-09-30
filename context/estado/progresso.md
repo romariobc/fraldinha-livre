@@ -230,38 +230,34 @@ Atender à tarefa autorizada selecionada pelo usuário (homologação do login a
   - Commits `4fd4d4f` (backlog) e `4c5ae00` (correções e testes de frontend) integrados e sincronizados em `origin/main`.
   - GitHub Actions [run 36347238595](https://github.com/romariobc/fraldinha-livre/actions/runs/36347238595): `success`, deploy em produção em 2m47s.
 
-## Melhorias de Usabilidade, Observabilidade e Filtros no Painel Admin (`/admin`) — 2026-09-29
+## Revisão e Estabilização do Painel Admin (`/admin`) — 2026-09-29
 
-- **Layout e Navegação Global (`front/src/app/admin/page.tsx`)**:
-  - Cabeçalho com badge destacada "Área Restrita do Administrador" e subtítulo descritivo;
-  - Barra superior horizontal responsiva de abas com ícones dedicados (`Users`, `ShoppingBag`, `Package`, `ShieldCheck`);
-  - Container com design tokens (`rounded-card`, `shadow-card`, Nunito/Inter) e abas compatíveis com padrão `ui-system`.
+- **Status da Validação e Escopo**:
+  - *Inspeção estática:* `npx tsc --noEmit` (0 erros de tipo em `front/`) e `npx eslint src/app/admin src/components/admin` (0 erros, 0 warnings).
+  - *Testes locais (Vitest):* 5 suítes / 33 testes passando (exit code 0) cobrindo `page.test.tsx`, `AdminUsersTab.test.tsx`, `AdminOrdersTab.test.tsx`, `AdminProductsTab.test.tsx` e `AdminAuditTab.test.tsx`.
+  - *Integração real, deploy e smoke remoto:* Não executados nesta etapa. As alterações residem no working tree local prontas para revisão/pull request.
 - **Aba Usuários (`front/src/components/admin/AdminUsersTab.tsx`)**:
   - Busca em tempo real por nome, e-mail ou UID;
-  - Filtro por papel com contagem (`Todos`, `Compradores`, `Fornecedores`, `Administradores`);
-  - Badges coloridos semânticos por papel (`comprador` azul, `fornecedor` verde, `admin` roxo);
-  - Paginação cliente (10 itens por página), botão de cópia rápida de UID com feedback visual e botão de recarregar dados do Firestore;
-  - Estado vazio amigável com opção para limpar filtros.
+  - Filtro por papel com contagem matematicamente consistente: `Todos`, `Compradores`, `Fornecedores`, `Administradores` e `Outros` (para usuários com papel ausente ou desconhecido), garantindo que a soma das categorias coincida rigorosamente com o total;
+  - Recálculo dinâmico das contagens ao recarregar a lista do Firestore;
+  - Paginação resiliente com clamping derivado (`safeCurrentPage`), evitando páginas inválidas sem disparar `setState` em efeitos;
+  - Cópia segura de UID com tratamento de erro em `navigator.clipboard.writeText`, sem feedback falso de sucesso caso a API rejeite ou esteja ausente, e com limpeza de timers no unmount;
+  - Acessibilidade mantida com botões nativos (`type="button"`), nomes acessíveis explícitos e atalhos de teclado.
 - **Aba Pedidos (`front/src/components/admin/AdminOrdersTab.tsx`)**:
   - Busca multifatorial por ID do pedido, UID do comprador, produto, fornecedor ou transaction ID;
-  - Filtro por status do pedido (`aguardando`, `confirmado`, `a-caminho`, `entregue`, `cancelado`) com badges coloridos;
-  - Modal detalhado de observabilidade do pedido:
-    - Metadados completos (data formatada pt-BR, comprador UID, fornecedor nome/UID);
-    - Detalhamento de itens com produto, quantidade, preço unitário e subtotal;
-    - Endereço de entrega completo formatado;
-    - Dados de pagamento (método, status e transaction ID com botão copiar);
-  - Paginação, botão de recarregar lista da API e cópia de ID.
-- **Aba Produtos (`front/src/components/admin/AdminProductsTab.tsx`)**:
-  - Busca por nome, marca ou ID do fornecedor;
-  - Filtro por status (Todos, Ativos, Inativos);
-  - Paginação e botão de recarregar;
-  - Preservação estrita do fluxo de moderação com justificativa (mínimo 5 caracteres) gravando na trilha `audit_logs`.
-- **Aba Auditoria (`front/src/components/admin/AdminAuditTab.tsx`)**:
-  - Harmonização de estilos, botão de recarregar e conformidade estrita com regras do ESLint.
-- **Validação Automatizada e Qualidade de Código**:
-  - 26 testes automatizados verdes nas suítes de admin (`page.test.tsx`, `AdminUsersTab.test.tsx`, `AdminOrdersTab.test.tsx`, `AdminProductsTab.test.tsx`, `AdminAuditTab.test.tsx`);
-  - `npx tsc --noEmit`: 0 erros de tipo em todo o workspace `front/`;
-  - `npx eslint src/app/admin src/components/admin`: 0 erros e 0 warnings.
+  - Filtro por status do pedido (`aguardando`, `confirmado`, `a-caminho`, `entregue`, `cancelado`) com badges semânticos;
+  - Modal detalhado de observabilidade com endereço completo, itens e metadados de pagamento;
+  - Cópia segura de `paymentTransactionId` e `id` do pedido:
+    - Estado de cópia explicitamente tipado (`{ type: 'order' | 'tx'; id: string } | null`), eliminando ambiguidade de feedback entre pedido e transação;
+    - Remoção de non-null assertions (`!`);
+    - Tratamento assíncrono com `try/catch` para `navigator.clipboard.writeText`, sem ícone de sucesso quando a operação falha ou a API não existe;
+    - Nome acessível com `aria-label="Copiar ID da transação"` e layout responsivo com truncamento visual (`truncate`, `font-mono`);
+    - Limpeza de timers no desmonte do componente e no fechamento do modal.
+- **Aba Produtos (`AdminProductsTab.tsx`)**:
+  - Clamping derivado de página (`safeCurrentPage`) na paginação e remoção de import não utilizado (`Package`).
+- **Cobertura de Testes Automatizados Comportamentais**:
+  - Testes em `AdminUsersTab.test.tsx` verificando contagens consistentes (incluindo usuários sem papel), atualização de contagens pós-refresh, busca e filtragem real por papel, sucesso de cópia com chamada a `writeText`, e resiliência a falhas de clipboard;
+  - Testes em `AdminOrdersTab.test.tsx` verificando renderização, busca, filtro, modal com transaction ID, chamada de cópia com valor correto, resiliência quando `writeText` rejeita ou `clipboard` não existe, limpeza de modal e pedidos sem transaction ID.
 
 ## Próximas sessões / Prioridades do Backlog
 

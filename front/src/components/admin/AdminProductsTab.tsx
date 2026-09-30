@@ -69,10 +69,12 @@ export default function AdminProductsTab() {
   }, [products, search, statusFilter])
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE))
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages)
+
   const paginatedProducts = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE
+    const start = (safeCurrentPage - 1) * PAGE_SIZE
     return filteredProducts.slice(start, start + PAGE_SIZE)
-  }, [filteredProducts, currentPage])
+  }, [filteredProducts, safeCurrentPage])
 
   const moderateProduct = async () => {
     if (!selectedProduct || reason.trim().length < 5 || submitting) return
@@ -266,22 +268,24 @@ export default function AdminProductsTab() {
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-2">
           <Button
+            type="button"
             variant="outline"
             size="sm"
-            disabled={currentPage <= 1}
-            onClick={() => setCurrentPage((p) => p - 1)}
+            disabled={safeCurrentPage <= 1}
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             className="text-xs h-8"
           >
             Anterior
           </Button>
           <span className="text-xs text-brand-muted">
-            Página {currentPage} de {totalPages}
+            Página {safeCurrentPage} de {totalPages}
           </span>
           <Button
+            type="button"
             variant="outline"
             size="sm"
-            disabled={currentPage >= totalPages}
-            onClick={() => setCurrentPage((p) => p + 1)}
+            disabled={safeCurrentPage >= totalPages}
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             className="text-xs h-8"
           >
             Próxima

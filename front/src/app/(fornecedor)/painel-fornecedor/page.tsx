@@ -105,7 +105,7 @@ export default function SupplierDashboardOverviewPage() {
           <span className="text-xs text-muted-foreground">Últimos 30 dias</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
           {/* Card 1: Receita Total */}
           <MetricCard
             data-testid="metric-card-receita"
@@ -177,9 +177,9 @@ export default function SupplierDashboardOverviewPage() {
       </section>
 
       {/* ── Main Content Grid (Recent Activity + Quick Shortcuts) ─────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Left 2 Cols: Pedidos Recentes / Atividade Recente */}
-        <section className="lg:col-span-2 space-y-4">
+        <section className="xl:col-span-2 space-y-4">
           <Card className="border-border shadow-2xs bg-card">
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <div>
@@ -215,8 +215,8 @@ export default function SupplierDashboardOverviewPage() {
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left">
+                <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
+                  <table className="w-full text-xs text-left min-w-[540px]">
                     <thead className="text-[11px] font-bold text-muted-foreground uppercase bg-muted/40 border-y border-border">
                       <tr>
                         <th className="px-3 py-2.5">ID</th>
@@ -232,8 +232,8 @@ export default function SupplierDashboardOverviewPage() {
                           key={order.id}
                           className="hover:bg-muted/30 transition-colors"
                         >
-                          <td className="px-3 py-3 font-mono font-bold text-primary-dark whitespace-nowrap">
-                            #{order.id}
+                          <td className="px-3 py-3 font-mono font-bold text-primary-dark whitespace-nowrap" title={`#${order.id}`}>
+                            #{order.id.length > 12 ? `${order.id.slice(0, 8)}...` : order.id}
                           </td>
                           <td className="px-3 py-3 font-medium text-foreground">
                             <div className="font-semibold line-clamp-1">{order.product}</div>

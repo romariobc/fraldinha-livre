@@ -1,6 +1,23 @@
-# Estado atual — 2026-09-23
+# Estado atual — 2026-09-30
 
-## Plano de migração GPT-6 — 2026-09-26
+## Testes de Carga, Resiliência na Borda e Responsividade do Fornecedor — 2026-09-30
+
+- **Teste de Carga Escalonada (5 -> 10 -> 20 agentes simultâneos)**:
+  - Suíte externa executada em `e:\Labdev\Projetos\fraldinha-load-test\` sem poluição do repositório principal.
+  - 35 pedidos concorrentes de compra direta criados com sucesso (HTTP 201) em produção (Cloudflare Workers + D1).
+  - Taxa de sucesso de 100%, latência média constante em ~1.177ms e throughput escalando até 4,40 pedidos/s.
+  - Auditoria matemática no D1 comprovou integridade ACID: estoque do produto alvo decrementado atomicamente de 50 para exatamente 10 unidades, sem condições de corrida (*race conditions* ou *lost updates*).
+  - 100% dos pedidos validados na fila do fornecedor (`GET /orders?scope=fornecedor`) com status `aguardando` e acompanhados em tempo real no Painel Administrativo.
+  - [Relatório executivo gerado](e:\Labdev\Projetos\fraldinha-load-test\RELATORIO-TESTE-CARGA.md).
+
+- **Correção de Responsividade no Painel do Fornecedor (`/painel-fornecedor`)**:
+  - Ajustado breakpoint da grade de KPIs de `lg:grid-cols-4` para `xl:grid-cols-4` para evitar esmagamento dos cartões em janelas divididas e tablets (~960px).
+  - Ajustada grade principal de `lg:grid-cols-3` para `xl:grid-cols-3` para visualização expandida de Pedidos Recentes.
+  - Adicionado `min-w-[540px]` com scroll suave e truncamento de ID longo na tabela de pedidos recentes.
+  - Adicionado `min-w-0 flex-1` e `truncate` no `MetricCard` para prevenir quebra flexbox de títulos e valores monetários.
+  - Testes unitários e de estresse adversariais 100% verdes (`milestone2-adversarial.test.tsx` e `MetricCard.test.tsx`); `tsc` limpo com 0 erros.
+
+
 
 - Plano solicitado: [migração do assistente](../../docs/features/plans/migracao-gpt-6.md). Candidato principal GPT-6 Luna via Responses; comparar com Sol antes da escolha definitiva. Inspeção confirmou Llama 4 Scout, três ferramentas e necessidade de adaptar a continuação estruturada do loop.
 - Apenas planejamento e documentação. Sem inferência real, testes de aplicação ou deploy; feature 018 permanece pendente de homologação. Preservadas alterações locais preexistentes. Acesso à conta OpenAI, orçamento e métricas dependem da implementação/piloto.

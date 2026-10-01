@@ -249,15 +249,15 @@ export function MetricCard({
       )}
     >
       <CardHeader className="flex flex-row items-start justify-between space-y-0 p-5 pb-2">
-        <div className="space-y-1">
-          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        <div className="space-y-1 min-w-0 flex-1">
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate block" title={title}>
             {title}
           </span>
           <div className="flex items-baseline gap-2">
             {loading ? (
               <div className="h-8 w-28 animate-pulse rounded-md bg-muted" />
             ) : (
-              <div className="font-display text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+              <div className="font-display text-xl sm:text-2xl xl:text-3xl font-black text-foreground tracking-tight truncate">
                 {value}
               </div>
             )}

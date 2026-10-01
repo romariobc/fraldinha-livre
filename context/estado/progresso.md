@@ -15,7 +15,8 @@
   - Backend Vitest: 5 arquivos / 45 testes 100% aprovados (`back/test/orders.*`).
   - Contratos: 7 arquivos / 56 testes 100% aprovados.
   - `tsc --noEmit` e ESLint limpos em ambos os workspaces.
-- **Limitações**: Nenhuma escrita executada contra produção; sem deploy remoto; testes visuais em navegador não executados.
+- **Homologação Visual em Navegador Real**: Executada com sucesso via Chrome DevTools em `http://localhost:3000/painel-fornecedor/pedidos` (autenticação de fornecedor `fornecedor.teste1@fraldinhalivre.com.br`, comprovação do estado de erro amigável na tabela, supressão de falso estado de lista vazia, acionamento dos botões "Atualizar pedidos" e "Tentar novamente" com chamadas a `refetchDirectOrders`, screenshots arquivadas em `docs/qa/screenshots/`).
+- **Limitações Declaradas**: Nenhuma escrita executada contra produção (trava fail-closed mantida para evitar pedidos permanentes sem cleanup); sem deploy remoto antes da aprovação da PR #18.
 
 ## Expansão Multi-Fornecedor e Testes de Carga Concorrentes — 2026-10-01
 

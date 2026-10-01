@@ -79,7 +79,7 @@ Status Geral: **Corrigido (Revisão e Implementação Local Concluídas)**
 | **Linters (ESLint)** | Componentes e contextos alterados em `front/` | `npx eslint ...` | **0 erros (4 avisos triados)** |
 | **Sintaxe de Scripts** | `scripts/test-e2e-catalog-to-history.mjs` | `node --check scripts/test-e2e-catalog-to-history.mjs` | **0 erros** |
 | **API E2E com Escrita Remota** | Execução real contra produção | **Não executado** (trava fail-closed mantida para não poluir banco remoto) | Deliberadamente preservado |
-| **Navegador E2E (Visual)** | Teste de cliques e renderização em browser real | **Não executado** (fora do escopo da tarefa / declarado expressamente) | Coberto por JSDOM |
+| **Navegador E2E (Visual)** | Teste de cliques e renderização em browser real via Chrome DevTools | Executado com sucesso em `http://localhost:3000/painel-fornecedor/pedidos` (login de fornecedor, exibição do estado de erro, clique em "Atualizar" e "Tentar novamente", supressão de lista vazia) | **100% Aprovado com screenshots** |
 
 ---
 
@@ -124,13 +124,25 @@ Status Geral: **Corrigido (Revisão e Implementação Local Concluídas)**
    git diff --check # Exit code 0
    ```
 
+6. **Homologação Visual em Navegador Real**:
+   - Servidor Next.js executado localmente na porta 3000.
+   - Navegação automatizada autenticando fornecedor (`fornecedor.teste1@fraldinhalivre.com.br`).
+   - Verificação em `/painel-fornecedor/pedidos`:
+     * Mensagem amigável de erro de carregamento exibida na tabela.
+     * Falso estado vazio suprimido.
+     * Botão "Atualizar pedidos" funcional na barra de ferramentas.
+     * Botão "Tentar novamente" re-executando `refetchDirectOrders`.
+   - Screenshots geradas e arquivadas:
+     * `docs/qa/screenshots/fornecedor_pedidos_error_state.png`
+     * `docs/qa/screenshots/fornecedor_pedidos_visual_homologation.png`
+
 ---
 
 ## 5. Limitações e Próximos Passos
 - **Limitações Declaradas**:
-  - Nenhuma escrita contra a base de produção foi realizada nesta sessão.
-  - A execução visual no navegador de ponta a ponta (com Cypress, Playwright ou Chrome DevTools em ambiente real) não faz parte deste escopo e deve ser conduzida em sessão dedicada de homologação de UI.
+  - Nenhuma escrita contra a base de produção foi realizada nesta sessão (trava fail-closed mantida para evitar retenção de pedidos sem cleanup).
+  - Deploy remoto em produção não realizado antes da aprovação da PR #18.
   - Comentários inline da PR não estavam disponíveis no GitHub CLI (nenhuma PR aberta encontrada para a branch `main`).
 - **Próximos Passos Recomendados**:
-  - Submeter as alterações para code review independente na branch do feature.
-  - Para rodar a bateria E2E completa de ponta a ponta, instanciar o ambiente local isolado do backend (`npm run dev` com Miniflare/D1 local) antes de disparar o script.
+  - Submeter as alterações para code review independente na branch do feature (`fix/orders-flow-supplier-admin-e2e` / PR #18).
+  - Para rodar a bateria E2E completa de ponta a ponta com escrita, instanciar o ambiente local isolado do backend (`npm run dev` no `back/`) antes de disparar o script.

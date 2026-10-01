@@ -1,4 +1,30 @@
-# Estado atual — 2026-09-30
+# Estado atual — 2026-10-01
+
+## Expansão Multi-Fornecedor e Testes de Carga Concorrentes — 2026-10-01
+
+- **Provisionamento e Ativação de 3 Fornecedores Simultâneos**:
+  - Fornecedor 1: `fornecedor.teste1@fraldinhalivre.com.br` (UID: `cSK4LXIakuajmCSiJFaHOccck2s1`, "Distribuidora Sul Teste")
+  - Fornecedor 2: `fornecedor.teste2@fraldinhalivre.com.br` (UID: `RLZxfzeih2hvC5VukqzaHcI8qHn2`, "Baby Stock SP Teste")
+  - Fornecedor 3: `fornecedor.teste3@fraldinhalivre.com.br` (UID: `8GyypkqWVdbAesG036qXIRVVOji1`, "Nacional Higiene Teste")
+  - Implementado suporte robusto a `SUPPLIER_UIDS` no backend (`back/src/middleware/auth.ts`, `back/src/env.d.ts`, `back/wrangler.jsonc`), espelhando o padrão já consagrado de `ADMIN_UID` e garantindo autorização fail-closed (detecção de conflito se a conta possuir role divergente).
+  - Testes unitários novos adicionados em `back/test/orders.scope-fornecedor.test.ts` (9/9 testes aprovados).
+  - Deploy em produção do backend Cloudflare Worker `fraldinha-livre-backend` realizado com sucesso (Version ID `9d069168-7ace-4e6c-ab59-b84c3237816d`).
+
+- **Distribuição de Catálogo no Cloudflare D1**:
+  - Cada um dos 3 fornecedores recebeu 5 produtos dedicados e ativos no D1 com estoque abastecido (100 unidades cada).
+  - Catálogo público (`GET /products`) passou a ofertar produtos de todos os 3 fornecedores simultaneamente.
+
+- **Execução e Comprovação de Carga Multi-Fornecedor**:
+  - Suíte de carga externa (`fraldinha-load-test/load-test-runner.mjs`) atualizada para balancear pedidos concorrentes entre os 3 fornecedores (round-robin).
+  - Disparos concorrentes de 6 e 12 agentes simultâneos executados contra a borda de produção Cloudflare Workers + D1:
+    - **100% de taxa de sucesso** (todas as requisições HTTP 201 Created).
+    - **Latência média estável na borda**: ~1.023ms com vazão de até 4,35 pedidos/s.
+    - **Comprovação em tempo real (100%)**: 100% dos pedidos foram comprovados e auditados nas filas exclusivas de cada fornecedor (`GET /orders?scope=fornecedor`).
+    - **Distribuição auditada na carteira**:
+      * Fornecedor 1: 57 pedidos (38 aguardando, 9 confirmados, 2 entregues)
+      * Fornecedor 2: 6 pedidos (5 aguardando, 1 confirmado)
+      * Fornecedor 3: 6 pedidos (5 aguardando, 1 confirmado)
+    - **Validação de Ciclo de Vida**: Cada um dos 3 fornecedores executou com sucesso a transição de status (`PATCH /orders/:id/status` -> `confirmado`) com persistência imediata no D1.
 
 ## Testes de Carga, Resiliência na Borda e Responsividade do Fornecedor — 2026-09-30
 
@@ -53,6 +79,12 @@ Harness comum em AGENTS.md e .agents/, documentação em docs/ e estado em conte
 ## Próxima sessão
 
 Atender à tarefa autorizada selecionada pelo usuário (homologação do login admin em navegador / automação D1 no workflow CI/CD / Feature 018 M7 / Feature 011). Não há agendamento ativo.
+
+## Conferência do backlog — 2026-10-01
+
+- Backlog conferido e atualizado em `context/estado/feature_list.json`: total de 29 itens (+1 item `QA-LOAD-001`), sendo 24 `done`, 2 `in_progress` (010 e 018), 2 `todo` (009 e 011) e 1 `blocked` (008).
+- `QA-LOAD-001` registrada formalmente como `done`: suíte externa em `fraldinha-load-test/`, testes de carga escalonados (5->10->20) e multi-fornecedor (6 e 12 concorrentes), 3 fornecedores simultâneos ativos no D1, suporte a `SUPPLIER_UIDS` fail-closed deployado na Cloudflare (`9d069168`), integridade ACID e decremento atômico de estoque sem race conditions, relatórios executivos gerados.
+- `011` atualizada: núcleo transacional de pedidos, concorrência, idempotência e divisão por fornecedor homologados via simulador de pagamento (MVP-06 e QA-LOAD-001); pendência delimitada à substituição do simulador pelo gateway de pagamento real em produção (PIX dinâmico, webhook assíncrono e cron de expiração com devolução de estoque).
 
 ## Conferência do backlog — 2026-09-25
 

@@ -165,6 +165,22 @@ export function getUserRole(c: Context<{ Bindings: Env; Variables: AppContext['V
     return 'admin'
   }
 
+  const isSupplierFallback = Boolean(
+    c.env?.SUPPLIER_UIDS &&
+      uid &&
+      c.env.SUPPLIER_UIDS.split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .includes(uid),
+  )
+
+  if (resolved === 'fornecedor' || role === 'fornecedor' || isSupplierFallback) {
+    if (resolved && resolved !== 'fornecedor') {
+      return 'conflict'
+    }
+    return 'fornecedor'
+  }
+
   return resolved || role
 }
 

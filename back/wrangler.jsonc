@@ -30,5 +30,6 @@
   "vars": {
     "FIREBASE_PROJECT_ID": "fraldinha-livre",
     "NOTIFICATIONS_ENABLED": "false",
+    "SUPPLIER_UIDS": "cSK4LXIakuajmCSiJFaHOccck2s1,RLZxfzeih2hvC5VukqzaHcI8qHn2,8GyypkqWVdbAesG036qXIRVVOji1"
   }
 }

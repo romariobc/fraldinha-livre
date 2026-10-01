@@ -21,6 +21,8 @@ declare global {
       FIREBASE_CLIENT_EMAIL?: string
       /** Service Account Private Key PEM para provisionamento de Custom Claims (Google Identity Toolkit). */
       FIREBASE_PRIVATE_KEY?: string
+      /** UIDs permitidos como fornecedores (fallback operacional ou lista explícita separada por vírgula). */
+      SUPPLIER_UIDS?: string
     }
   }
 }

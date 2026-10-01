@@ -99,11 +99,11 @@
     },
     {
       "id": "011",
-      "titulo": "Integracao com gateway de pagamento",
+      "titulo": "Integracao com gateway de pagamento real",
       "fase": 1,
       "status": "todo",
-      "criterio_aceite": "Fluxo de pagamento completo para compra direta; boleto ou PIX",
-      "notas": "Depende de 006 e 014 — a loja (fase 1) precisa de pagamento para a compra direta"
+      "criterio_aceite": "Fluxo de pagamento completo para compra direta via gateway real (PIX dinâmico / QR Code / Copia e Cola); webhook assíncrono para confirmação de pagamento; expiração de pedidos pendentes com devolução automática de estoque ao D1; suporte a estornos.",
+      "notas": "Núcleo transacional de pedidos, concorrência, idempotência, estoque atômico e roteamento multi-fornecedor homologados com 100% de sucesso via simulador de pagamento (MVP-06 e QA-LOAD-001). Falta a substituição do simulador formal pelo gateway de pagamento em produção e o worker/cron de expiração."
     },
     {
       "id": "012",
@@ -225,6 +225,14 @@
       "status": "done",
       "criterio_aceite": "Alinhar .nvmrc, engines e ambientes de execução; lint global sem erros, avisos triados; testes e tipos pertinentes passam sob Node suportado, sem desabilitar regras para ocultar falhas.",
       "notas": "Concluída em 2026-09-22 sob Node 22.23.2 já ativo. Manifestos e lockfile sincronizados. 909 testes passaram com concorrência limitada (front 2 workers, back 1), tipos dos três workspaces passaram, lint 0 erros/19 avisos triados. Corrigida asserção condicional que podia ignorar label do toast. Tentativa concorrente inicial interrompida após problemas de inicialização; detalhes e limites em docs/qa/TOOLING-001-validacao-2026-09-22.md. Sem build ou homologação remota."
+    },
+    {
+      "id": "QA-LOAD-001",
+      "titulo": "Testes de Carga, Resiliência na Borda e Concorrência Multi-Fornecedor",
+      "fase": 1,
+      "status": "done",
+      "criterio_aceite": "Suíte de testes de carga desacoplada em pasta externa (fraldinha-load-test/); provisionamento e ativação de 3 fornecedores simultâneos no D1; suporte a SUPPLIER_UIDS no backend Worker; rajadas concorrentes de até 20 agentes simultâneos com 100% de sucesso (HTTP 201); comprovação de entrega nas carteiras individuais sem vazamento de pedidos; integridade ACID e decremento atômico de estoque comprovados sem race conditions.",
+      "notas": "Executada e comprovada em produção (Cloudflare Workers + D1 + Firebase Auth) em 2026-09-30 e 2026-10-01. Suíte externa mantida em fraldinha-load-test/. 35 pedidos criados no teste escalonado (5->10->20) e 18 pedidos no teste multi-fornecedor (6 e 12 agentes simultâneos distribuídos entre Fornecedores 1, 2 e 3). 81 pedidos consolidados no D1. Deploy do backend Worker (9d069168) ativo com SUPPLIER_UIDS fail-closed. 9 testes unitários em back/test/orders.scope-fornecedor.test.ts e 99 testes no front 100% verdes. Relatórios executivos gerados."
     }
   ]
 }

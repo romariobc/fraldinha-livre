@@ -23,6 +23,8 @@ describe('GET /orders?scope=fornecedor', () => {
       if (token === 'token-fornecedor-b') return { uid: 'uid-fornecedor-b', role: 'fornecedor' }
       if (token === 'token-comprador-a') return { uid: 'uid-comprador-a', role: 'comprador' }
       if (token === 'token-sem-role') return { uid: 'uid-sem-role' }
+      if (token === 'token-supplier-fallback') return { uid: 'uid-supplier-fallback' }
+      if (token === 'token-conflict-buyer') return { uid: 'uid-conflict-buyer', role: 'comprador', claims: { comprador: true } }
       if (token === 'token-admin') return { uid: 'uid-admin', role: 'admin', claims: { admin: true } }
       return null
     }
@@ -205,4 +207,37 @@ describe('GET /orders?scope=fornecedor', () => {
     const orderIds = body.map((o) => o.id).sort()
     expect(orderIds).toEqual(['order-comprador-a-1', 'order-comprador-a-2'])
   })
+
+  it('GET /orders?scope=fornecedor com conta sem claim porém em SUPPLIER_UIDS → 200', async () => {
+    const app = createTestApp()
+    const customEnv = {
+      ...env,
+      SUPPLIER_UIDS: 'other-uid,uid-supplier-fallback,another-uid',
+    }
+
+    const request = new Request('http://localhost/orders?scope=fornecedor', {
+      headers: { Authorization: 'Bearer token-supplier-fallback' },
+    })
+    const response = await app.fetch(request, customEnv)
+
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(Array.isArray(body)).toBe(true)
+  })
+
+  it('GET /orders?scope=fornecedor com conta com role comprador mesmo listada em SUPPLIER_UIDS → 403 (conflict)', async () => {
+    const app = createTestApp()
+    const customEnv = {
+      ...env,
+      SUPPLIER_UIDS: 'uid-conflict-buyer',
+    }
+
+    const request = new Request('http://localhost/orders?scope=fornecedor', {
+      headers: { Authorization: 'Bearer token-conflict-buyer' },
+    })
+    const response = await app.fetch(request, customEnv)
+
+    expect(response.status).toBe(403)
+  })
 })
+

@@ -333,4 +333,108 @@ describe('OrdersDataTable Component', () => {
 
     expect(handleUpdateStatus).toHaveBeenCalledWith('DIR-0025', 'a-caminho')
   })
+
+  it('exibe estado de erro e botão tentar novamente quando error está presente sem pedidos', () => {
+    render(<OrdersDataTable orders={[]} isLoading={false} error="Falha ao carregar pedidos da API" />)
+
+    expect(screen.getByTestId('orders-error-state')).toBeInTheDocument()
+    expect(screen.getByText('Não foi possível carregar os pedidos')).toBeInTheDocument()
+    expect(screen.getByText('Falha ao carregar pedidos da API')).toBeInTheDocument()
+    expect(screen.getByTestId('orders-retry-button')).toBeInTheDocument()
+
+    // Não deve mascarar o erro exibindo "Nenhum pedido encontrado"
+    expect(screen.queryByText('Nenhum pedido encontrado')).not.toBeInTheDocument()
+    expect(screen.queryByText('Você ainda não recebeu nenhum pedido direto.')).not.toBeInTheDocument()
+  })
+
+  it('exibe código de suporte e permite cópia quando requestId está presente no erro', async () => {
+    const user = userEvent.setup()
+    render(
+      <OrdersDataTable
+        orders={[]}
+        isLoading={false}
+        error="Falha interna de servidor"
+        requestId="trace-req-fornecedor-999"
+      />
+    )
+
+    expect(screen.getByText('trace-req-fornecedor-999')).toBeInTheDocument()
+    const copyButton = screen.getByRole('button', { name: /copiar/i })
+    expect(copyButton).toBeInTheDocument()
+
+    await user.click(copyButton)
+    expect(toast.success).toHaveBeenCalledWith('Código de suporte copiado!')
+  })
+
+  it('clique em tentar novamente dispara onRefresh/refetch', async () => {
+    const user = userEvent.setup()
+    const handleRefresh = vi.fn().mockResolvedValue(undefined)
+
+    render(
+      <OrdersDataTable
+        orders={[]}
+        isLoading={false}
+        error="Falha de conexão"
+        onRefresh={handleRefresh}
+      />
+    )
+
+    const retryButton = screen.getByTestId('orders-retry-button')
+    await user.click(retryButton)
+
+    expect(handleRefresh).toHaveBeenCalledOnce()
+  })
+
+  it('botão atualizar na barra superior aciona onRefresh/refetch', async () => {
+    const user = userEvent.setup()
+    const handleRefresh = vi.fn().mockResolvedValue(undefined)
+
+    render(<OrdersDataTable orders={MOCK_ROWS} onRefresh={handleRefresh} />)
+
+    const refreshButton = screen.getByTestId('orders-refresh-button')
+    expect(refreshButton).toBeInTheDocument()
+
+    await user.click(refreshButton)
+    expect(handleRefresh).toHaveBeenCalledOnce()
+  })
+
+  it('durante falha de refresh com pedidos prévios, preserva a tabela e exibe banner de erro', () => {
+    render(
+      <OrdersDataTable
+        orders={MOCK_ROWS}
+        isLoading={false}
+        error="Erro de sincronização da rede"
+        requestId="req-banner-123"
+      />
+    )
+
+    // Banner de erro deve aparecer
+    expect(screen.getByTestId('orders-refresh-error-banner')).toBeInTheDocument()
+    expect(screen.getByText(/não foi possível atualizar os pedidos: erro de sincronização da rede/i)).toBeInTheDocument()
+    expect(screen.getByText(/código: req-banner-123/i)).toBeInTheDocument()
+
+    // Dados anteriores DEVEM ser preservados na tabela
+    expect(screen.getByText('Pampers Supersec G')).toBeInTheDocument()
+    expect(screen.getByText('Babysec Premium G')).toBeInTheDocument()
+    expect(screen.queryByTestId('orders-error-state')).not.toBeInTheDocument()
+  })
+
+  it('garante emissão de exatamente um único toast por ação do fornecedor (sem duplicação)', async () => {
+    const user = userEvent.setup()
+    const handleConfirm = vi.fn().mockResolvedValue(undefined)
+
+    render(<OrdersDataTable orders={MOCK_ROWS} onConfirm={handleConfirm} />)
+
+    // Aciona menu de ações do pedido DIR-0031 (aguardando)
+    const actionTrigger = screen.getByTestId('actions-btn-DIR-0031')
+    await user.click(actionTrigger)
+
+    const confirmItem = await screen.findByRole('menuitem', { name: /confirmar pedido/i })
+    await user.click(confirmItem)
+
+    expect(handleConfirm).toHaveBeenCalledWith('DIR-0031')
+    // Verifica que o toast foi chamado exatamente UMA vez
+    expect(toast.success).toHaveBeenCalledTimes(1)
+    expect(toast.success).toHaveBeenCalledWith('Pedido #DIR-0031 confirmado com sucesso!')
+  })
 })

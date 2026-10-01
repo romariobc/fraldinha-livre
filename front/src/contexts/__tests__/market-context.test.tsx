@@ -308,5 +308,80 @@ describe('MarketContext - directOrders loading (backend mode)', () => {
     expect(updateStatusMock).toHaveBeenCalledWith('ord-fake-1', 'a-caminho')
     expect(result.current.directOrders[0].status).toBe('a-caminho')
   })
+
+  it('modo backend: refetchDirectOrders dispara nova consulta e recupera de erro', async () => {
+    const listForSupplierMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Falha temporária de rede'))
+      .mockResolvedValueOnce([fakeContractOrder])
+
+    mockedHttpOrderRepository.mockImplementation(
+      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository }
+    )
+
+    const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
+
+    await waitFor(() => expect(result.current.directOrdersLoading).toBe(false))
+    expect(result.current.directOrdersError).toBe('Não foi possível carregar os pedidos diretos. Tente novamente.')
+    expect(result.current.directOrders).toEqual([])
+
+    // Dispara refetch manual
+    await act(async () => {
+      await result.current.refetchDirectOrders()
+    })
+
+    expect(listForSupplierMock).toHaveBeenCalledTimes(2)
+    expect(result.current.directOrdersError).toBeNull()
+    expect(result.current.directOrders).toHaveLength(1)
+    expect(result.current.directOrders[0].id).toBe('ord-fake-1')
+  })
+
+  it('modo backend: não emite toast no contexto (delega feedback para UI)', async () => {
+    const { toast } = await import('sonner')
+    const updateStatusMock = vi.fn().mockResolvedValue(fakeContractOrder)
+    const listForSupplierMock = vi.fn().mockResolvedValue([fakeContractOrder])
+    mockedHttpOrderRepository.mockImplementation(
+      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock, updateStatus: updateStatusMock }) as unknown as HttpOrderRepository }
+    )
+
+    const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
+    await waitFor(() => expect(result.current.directOrdersLoading).toBe(false))
+
+    await act(async () => {
+      await result.current.handleConfirmarDireto('ord-fake-1')
+    })
+
+    // Contexto não deve chamar toast.success nem toast.info
+    expect(toast.success).not.toHaveBeenCalled()
+    expect(toast.info).not.toHaveBeenCalled()
+  })
+
+  it('modo backend: logout ou troca de usuário descarta resposta pendente', async () => {
+    let resolveLateFetch: (value: ContractOrder[]) => void
+    const latePromise = new Promise<ContractOrder[]>((resolve) => {
+      resolveLateFetch = resolve
+    })
+
+    const listForSupplierMock = vi.fn().mockReturnValue(latePromise)
+    mockedHttpOrderRepository.mockImplementation(
+      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository }
+    )
+
+    const { result, rerender, unmount } = renderHook(() => useMarket(), { wrapper: AllProviders })
+
+    // Simula logout antes da resposta chegar
+    mockUseAuth.mockReturnValue({ ...FORNECEDOR_LOGADO, user: null, role: null })
+    rerender()
+
+    // Resolve a promise pendente tardiamente
+    await act(async () => {
+      resolveLateFetch!([fakeContractOrder])
+    })
+
+    // directOrders deve estar limpo e sem o pedido tardio
+    expect(result.current.directOrders).toEqual([])
+
+    unmount()
+  })
 })
 

@@ -125,6 +125,7 @@ describe('OrderCard', () => {
       handleAtualizarDespacho: vi.fn(),
       addDirectOrder: vi.fn(),
       cancelDirectOrder: vi.fn() as unknown as (orderId: string) => void,
+      refetchDirectOrders: vi.fn(),
     })
   })
 
@@ -287,6 +288,7 @@ describe('OrderCard', () => {
         handleAtualizarDespacho: vi.fn(),
         addDirectOrder: vi.fn(),
         cancelDirectOrder: mockCancelDirectOrder,
+        refetchDirectOrders: vi.fn(),
       })
 
       const user = userEvent.setup()
@@ -331,6 +333,7 @@ describe('OrderCard', () => {
         handleAtualizarDespacho: vi.fn(),
         addDirectOrder: vi.fn(),
         cancelDirectOrder: mockCancelDirectOrder,
+        refetchDirectOrders: vi.fn(),
       })
 
       const user = userEvent.setup()

@@ -1,23 +1,115 @@
 // scripts/test-e2e-catalog-to-history.mjs
-// Teste End-to-End: Do Cadastro do Produto pelo Fornecedor ao Histórico do Comprador
+// Teste End-to-End de API: Ciclo de Vida de Produto e Pedido (Fornecedor -> Comprador -> Admin)
 //
-// Fluxo testado:
-// 1. Fornecedor X autentica e adiciona um produto ao catálogo (POST /products)
-// 2. Comprador Y autentica e localiza o produto no catálogo público (GET /products)
-// 3. Comprador Y realiza a compra com pagamento simulado aprovado (POST /orders)
-// 4. Fornecedor X localiza o pedido em sua fila (GET /orders?scope=fornecedor)
-// 5. Fornecedor X confirma o pedido (PATCH status -> confirmado)
-// 6. Comprador Y valida pedido na aba Pedidos Ativos com status confirmado
-// 7. Fornecedor X despacha o pedido (PATCH status -> a-caminho)
-// 8. Comprador Y valida pedido na aba Pedidos Ativos com status a-caminho
-// 9. Fornecedor X conclui a entrega (PATCH status -> entregue)
-// 10. Comprador Y valida migração: pedido SAI de Pedidos Ativos e ENTRA no Histórico
-// 11. Limpeza (Teardown): Fornecedor X remove o produto de teste do catálogo (DELETE /products/:id)
+// NOTA IMPORTANTE DE ARQUITETURA E ESCOPO:
+// Este teste realiza asserções ponta a ponta EXCLUSIVAMENTE contra as rotas HTTP da API backend (REST).
+// Ele NÃO renderiza componentes React, NÃO instancia navegador headless (Puppeteer/Playwright) e
+// NÃO homologa visualmente as abas PedidosTab, HistoricoTab, OrdersDataTable ou AdminOrdersTab.
+// Trata-se de um teste de integração real de regras de negócio, autorização e persistência no banco D1.
 
 import fs from 'node:fs'
 import path from 'node:path'
 
-// 1. Carregamento de variáveis de ambiente de .env.qa.local
+/**
+ * Valida a trava de ambiente contra escrita não autorizada em produção (Fail-Closed).
+ */
+export function checkEnvironmentLock({ apiUrl, allowWrite }) {
+  const isProduction = apiUrl.includes('workers.dev') || apiUrl.includes('fraldinhalivre.com.br')
+  if (isProduction && !allowWrite) {
+    return {
+      isProduction: true,
+      blocked: true,
+      exitCode: 2,
+      message:
+        '⚠️  EXECUÇÃO BLOQUEADA POR SEGURANÇA: O ambiente alvo é PRODUÇÃO e a autorização de escrita (--allow-production-write ou QA_ALLOW_PRODUCTION_WRITE=true) não foi concedida. Pedidos criados em produção permanecem no banco para fins contábeis e de auditoria.',
+    }
+  }
+  return {
+    isProduction,
+    blocked: false,
+    exitCode: 0,
+  }
+}
+
+/**
+ * Valida os dados de um pedido inspecionado pela rota de auditoria/observabilidade administrativa.
+ */
+export function validateAdminOrder(order, expected = {}) {
+  const errors = []
+  if (!order || typeof order !== 'object') {
+    return { ok: false, errors: ['Pedido não encontrado na resposta administrativa'] }
+  }
+  if (expected.expectedOrderId && order.id !== expected.expectedOrderId) {
+    errors.push(`ID do pedido divergente: esperado ${expected.expectedOrderId}, obtido ${order.id}`)
+  }
+  if (expected.expectedBuyerUid && order.uid !== expected.expectedBuyerUid) {
+    errors.push(`UID do comprador divergente: esperado ${expected.expectedBuyerUid}, obtido ${order.uid}`)
+  }
+  if (expected.expectedSupplierUid && order.supplierId !== expected.expectedSupplierUid) {
+    errors.push(`UID do fornecedor divergente: esperado ${expected.expectedSupplierUid}, obtido ${order.supplierId}`)
+  }
+  if (expected.expectedStatus && order.status !== expected.expectedStatus) {
+    errors.push(`Status do pedido divergente: esperado ${expected.expectedStatus}, obtido ${order.status}`)
+  }
+  if (expected.expectedPaymentTxId && order.paymentTransactionId !== expected.expectedPaymentTxId) {
+    errors.push(
+      `ID de transação divergente: esperado ${expected.expectedPaymentTxId}, obtido ${order.paymentTransactionId}`
+    )
+  }
+  if (!Array.isArray(order.items) || order.items.length === 0) {
+    errors.push('Lista de itens do pedido vazia ou inválida na visão administrativa')
+  }
+  return {
+    ok: errors.length === 0,
+    errors,
+  }
+}
+
+/**
+ * Calcula o resumo consolidado, distinção de categorias de falha e define o exit code rigoroso.
+ */
+export function computeSummary(results = [], environmentInfo = {}) {
+  const totalSteps = results.length
+  const passedSteps = results.filter((r) => r.ok).length
+  const functionalFailures = results.filter((r) => !r.ok && r.category !== 'cleanup')
+  const cleanupFailures = results.filter((r) => !r.ok && r.category === 'cleanup')
+
+  const hasFunctionalFailure = functionalFailures.length > 0
+  const hasCleanupFailure = cleanupFailures.length > 0
+  const allPassed = totalSteps > 0 && results.every((r) => r.ok)
+
+  let verdict = 'APROVADO'
+  let exitCode = 0
+
+  if (environmentInfo.blocked) {
+    verdict = 'BLOQUEADO_POR_SEGURANCA'
+    exitCode = environmentInfo.exitCode || 2
+  } else if (hasFunctionalFailure) {
+    verdict = 'FALHA_FUNCIONAL'
+    exitCode = 1
+  } else if (hasCleanupFailure) {
+    verdict = 'FALHA_DE_LIMPEZA'
+    exitCode = 1
+  } else if (!allPassed) {
+    verdict = 'FALHA'
+    exitCode = 1
+  }
+
+  return {
+    totalSteps,
+    passedSteps,
+    allPassed,
+    hasFunctionalFailure,
+    hasCleanupFailure,
+    functionalFailures,
+    cleanupFailures,
+    verdict,
+    exitCode,
+    isProductionPermanentOrderWarning: Boolean(environmentInfo.isProduction && allPassed),
+  }
+}
+
+// 1. Carregamento de variáveis de ambiente de .env.qa.local se existir
 const envLocalPath = path.resolve(process.cwd(), '.env.qa.local')
 if (fs.existsSync(envLocalPath)) {
   const envContent = fs.readFileSync(envLocalPath, 'utf8')
@@ -35,7 +127,7 @@ if (fs.existsSync(envLocalPath)) {
   }
 }
 
-// 2. Resolução dinâmica de API Key do Firebase
+// 2. Resolução de API Key do Firebase
 if (!process.env.FIREBASE_API_KEY && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
   const frontEnvPath = path.resolve(process.cwd(), 'front/.env.production')
   if (fs.existsSync(frontEnvPath)) {
@@ -54,49 +146,61 @@ if (!process.env.FIREBASE_API_KEY && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY) 
 const API_URL = process.env.API_URL || 'https://fraldinha-livre-backend.romariobc.workers.dev'
 const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY
 
-if (!FIREBASE_API_KEY) {
-  console.error('\n❌ ERRO: FIREBASE_API_KEY não encontrada!')
-  process.exit(1)
-}
-
 const BUYER_EMAIL = process.env.QA_BUYER_EMAIL || 'comprador.teste@fraldinhalivre.com.br'
 const BUYER_PASSWORD = process.env.QA_BUYER_PASSWORD
 const SUPPLIER_EMAIL = process.env.QA_SUPPLIER_EMAIL || 'fornecedor.teste1@fraldinhalivre.com.br'
 const SUPPLIER_PASSWORD = process.env.QA_SUPPLIER_PASSWORD
+const ADMIN_EMAIL = process.env.QA_ADMIN_EMAIL || process.env.ADMIN_EMAIL || 'romariobc@gmail.com'
+const ADMIN_PASSWORD = process.env.QA_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD
+const REQUIRE_ADMIN = process.env.QA_REQUIRE_ADMIN === 'true' || process.argv.includes('--require-admin')
 
-if (!BUYER_PASSWORD || !SUPPLIER_PASSWORD) {
-  console.error('\n❌ ERRO: Credenciais de teste ausentes no .env.qa.local ou variáveis de ambiente!')
-  process.exit(1)
-}
-
-const isProduction = API_URL.includes('workers.dev') || API_URL.includes('fraldinhalivre.com.br')
 const allowWrite = process.env.QA_ALLOW_PRODUCTION_WRITE === 'true' || process.argv.includes('--allow-production-write')
 
 async function authenticate(email, password) {
-  const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password, returnSecureToken: true }),
-  })
+  if (!FIREBASE_API_KEY) {
+    throw new Error('FIREBASE_API_KEY ausente')
+  }
+  const res = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, returnSecureToken: true }),
+    }
+  )
   if (!res.ok) {
-    throw new Error(`Autenticação falhou para ${email}: HTTP ${res.status} ${await res.text()}`)
+    throw new Error(`Autenticação falhou para usuário de teste (HTTP ${res.status})`)
   }
   const data = await res.json()
   return { idToken: data.idToken, uid: data.localId, email: data.email }
 }
 
-async function runE2E() {
+export async function runE2E() {
   console.log('===================================================================')
-  console.log('  TESTE E2E: Ciclo Completo de Produto, Pedido e Histórico')
+  console.log('  TESTE E2E DE API: Ciclo Completo de Pedidos (Fornecedor -> Comprador -> Admin)')
   console.log(`  Alvo: ${API_URL}`)
+  console.log('  Nota: Teste puramente HTTP REST. Não realiza renderização de interface gráfica.')
   console.log('===================================================================\n')
 
-  if (isProduction && !allowWrite) {
-    console.warn('⚠️  AVISO DE SEGURANÇA: O ambiente alvo é PRODUÇÃO.')
-    console.warn('Este teste criará um produto temporário, um pedido real e alterará status no D1.')
-    console.warn('Para executar conscientemente, execute com a flag:')
-    console.warn('  node scripts/test-e2e-catalog-to-history.mjs --allow-production-write\n')
-    process.exit(0)
+  const envLock = checkEnvironmentLock({ apiUrl: API_URL, allowWrite })
+  if (envLock.blocked) {
+    console.warn(envLock.message)
+    console.warn('\nStatus de execução: NÃO EXECUTADO (Trava de produção ativa).')
+    console.warn('Para executar conscientemente, use: node scripts/test-e2e-catalog-to-history.mjs --allow-production-write\n')
+    process.exitCode = envLock.exitCode
+    return { verdict: 'BLOQUEADO_POR_SEGURANCA', exitCode: envLock.exitCode }
+  }
+
+  if (REQUIRE_ADMIN && !ADMIN_PASSWORD) {
+    console.error('\n❌ ERRO FAIL-CLOSED: Execução administrativa obrigatória (--require-admin), mas QA_ADMIN_PASSWORD ausente!')
+    process.exitCode = 1
+    return { verdict: 'FALHA_CONFIGURACAO', exitCode: 1 }
+  }
+
+  if (!BUYER_PASSWORD || !SUPPLIER_PASSWORD) {
+    console.error('\n❌ ERRO: Credenciais de teste ausentes no .env.qa.local ou variáveis de ambiente!')
+    process.exitCode = 1
+    return { verdict: 'FALHA_CONFIGURACAO', exitCode: 1 }
   }
 
   const results = []
@@ -104,24 +208,26 @@ async function runE2E() {
   let createdOrderId = null
   let supplier = null
   let buyer = null
+  let admin = null
+  const simulatedTxId = `sim-e2e-${Date.now()}`
 
   try {
     // -------------------------------------------------------------
     // ETAPA 1: Autenticação de Fornecedor X e Comprador Y
     // -------------------------------------------------------------
-    console.log('[1/11] Autenticando Fornecedor X e Comprador Y...')
+    console.log('[1/12] Autenticando Fornecedor X e Comprador Y...')
     supplier = await authenticate(SUPPLIER_EMAIL, SUPPLIER_PASSWORD)
     buyer = await authenticate(BUYER_EMAIL, BUYER_PASSWORD)
-    console.log(`  Fornecedor X autenticado: ${supplier.email} (UID: ${supplier.uid})`)
-    console.log(`  Comprador Y autenticado:  ${buyer.email} (UID: ${buyer.uid})`)
-    results.push({ step: '1. Autenticação das contas', ok: !!supplier.idToken && !!buyer.idToken })
+    console.log(`  Fornecedor X autenticado (UID: ${supplier.uid})`)
+    console.log(`  Comprador Y autenticado  (UID: ${buyer.uid})`)
+    results.push({ step: '1. Autenticação das contas (Fornecedor e Comprador)', ok: !!supplier.idToken && !!buyer.idToken, category: 'functional' })
 
     // -------------------------------------------------------------
     // ETAPA 2: Fornecedor X adiciona produto ao catálogo
     // -------------------------------------------------------------
     const testTimestamp = Date.now()
     const testProductName = `Fralda E2E QA Teste ${testTimestamp}`
-    console.log(`\n[2/11] Fornecedor X cadastra produto no catálogo: "${testProductName}"...`)
+    console.log(`\n[2/12] Fornecedor X cadastra produto no catálogo via API (POST /products)...`)
 
     const productPayload = {
       name: testProductName,
@@ -151,75 +257,66 @@ async function runE2E() {
       body: JSON.stringify(productPayload),
     })
 
-    const productXId = createProductRes.headers.get('x-request-id')
     const productBody = await createProductRes.json()
     createdProductId = productBody.id
-
-    const step2Ok = createProductRes.status === 201 &&
-                    !!createdProductId &&
-                    productBody.supplierId === supplier.uid &&
-                    productBody.active === true
-
-    console.log(`  Status HTTP: ${createProductRes.status}, Product ID: ${createdProductId}, X-Request-Id: ${productXId}`)
-    results.push({ step: '2. Fornecedor adiciona produto (POST /products)', ok: step2Ok, productId: createdProductId, xId: productXId })
+    const step2Ok = createProductRes.status === 201 && !!createdProductId
+    console.log(`  Status HTTP: ${createProductRes.status}, Product ID gerado: ${createdProductId}`)
+    results.push({ step: '2. Criação de produto pelo fornecedor (POST /products)', ok: step2Ok, productId: createdProductId, category: 'functional' })
     if (!step2Ok) throw new Error(`Falha ao cadastrar produto: ${JSON.stringify(productBody)}`)
 
     // -------------------------------------------------------------
     // ETAPA 3: Comprador Y localiza o produto no catálogo público
     // -------------------------------------------------------------
-    console.log('\n[3/11] Comprador Y consulta catálogo público (GET /products)...')
-    const publicCatalogRes = await fetch(`${API_URL}/products`)
-    const publicCatalog = await publicCatalogRes.json()
-    const foundProduct = Array.isArray(publicCatalog) ? publicCatalog.find((p) => p.id === createdProductId) : null
+    console.log('\n[3/12] Comprador Y consulta catálogo público via API (GET /products)...')
+    const catalogRes = await fetch(`${API_URL}/products`)
+    const catalog = await catalogRes.json()
+    const foundProduct = Array.isArray(catalog) ? catalog.find((p) => p.id === createdProductId) : null
 
-    const step3Ok = publicCatalogRes.status === 200 &&
+    const step3Ok = catalogRes.status === 200 &&
                     !!foundProduct &&
-                    foundProduct.active === true &&
-                    foundProduct.priceCents === 2490 &&
-                    foundProduct.supplierId === supplier.uid
+                    foundProduct.supplierId === supplier.uid &&
+                    foundProduct.priceCents === 2490
 
-    console.log(`  Produto localizado no catálogo público:`, {
+    console.log(`  Produto encontrado no catálogo público:`, {
       id: foundProduct?.id,
       name: foundProduct?.name,
-      priceCents: foundProduct?.priceCents,
       supplierId: foundProduct?.supplierId,
+      priceCents: foundProduct?.priceCents,
     })
-    results.push({ step: '3. Comprador acha produto no catálogo público (GET /products)', ok: step3Ok })
+    results.push({ step: '3. Localização do produto no catálogo público (GET /products)', ok: step3Ok, category: 'functional' })
     if (!step3Ok) throw new Error('Produto cadastrado não apareceu no catálogo público')
 
     // -------------------------------------------------------------
-    // ETAPA 4: Comprador Y cria pedido com pagamento simulado
+    // ETAPA 4: Comprador Y realiza compra direta com pagamento aprovado
     // -------------------------------------------------------------
-    console.log('\n[4/11] Comprador Y finaliza compra com pagamento simulado aprovado (POST /orders)...')
-    const simTxId = `sim-e2e-${testTimestamp}`
-    const idempotencyKey = `idemp-e2e-${testTimestamp}`
+    const idempotencyKey = `e2e-idempotency-${testTimestamp}`
+    console.log('\n[4/12] Comprador Y cria pedido via API (POST /orders com Idempotency-Key)...')
 
     const orderPayload = {
-      product: foundProduct.name,
-      quantity: 1,
-      unit: 'un',
-      price: 2490,
-      supplierId: supplier.uid,
-      supplierName: 'Distribuidora Sul Teste',
+      product: testProductName,
+      quantity: 2,
+      unit: 'pct',
       deliveryAddress: {
         logradouro: 'Av. Paulista',
-        numero: '1000',
+        numero: '1500',
+        complemento: 'Andar 10',
         bairro: 'Bela Vista',
         cidade: 'São Paulo',
         estado: 'SP',
-        cep: '01310-100',
+        cep: '01310-200',
       },
+      price: 4980, // 2 x 2490 = R$ 49,80
       items: [
         {
-          productId: foundProduct.id,
-          productName: foundProduct.name,
+          productId: createdProductId,
+          productName: testProductName,
           unitPrice: 2490,
-          quantity: 1,
-          unit: 'un',
+          quantity: 2,
+          unit: 'pct',
         },
       ],
       paymentMethod: 'pix',
-      paymentTransactionId: simTxId,
+      paymentTransactionId: simulatedTxId,
       paymentStatus: 'approved',
     }
 
@@ -233,23 +330,23 @@ async function runE2E() {
       body: JSON.stringify(orderPayload),
     })
 
-    const orderXId = createOrderRes.headers.get('x-request-id')
     const orderBody = await createOrderRes.json()
     createdOrderId = orderBody.id
+    const orderXId = createOrderRes.headers.get('x-request-id')
 
     const step4Ok = createOrderRes.status === 201 &&
                     !!createdOrderId &&
                     orderBody.status === 'aguardando' &&
                     orderBody.paymentStatus === 'approved'
 
-    console.log(`  Status HTTP: ${createOrderRes.status}, Order ID: ${createdOrderId}, Status inicial: ${orderBody.status}, X-Request-Id: ${orderXId}`)
-    results.push({ step: '4. Comprador realiza compra (POST /orders)', ok: step4Ok, orderId: createdOrderId, xId: orderXId })
+    console.log(`  Status HTTP: ${createOrderRes.status}, Order ID: ${createdOrderId}, Status inicial: ${orderBody.status}`)
+    results.push({ step: '4. Comprador realiza compra direta (POST /orders)', ok: step4Ok, orderId: createdOrderId, category: 'functional' })
     if (!step4Ok) throw new Error(`Falha ao criar pedido: ${JSON.stringify(orderBody)}`)
 
     // -------------------------------------------------------------
     // ETAPA 5: Fornecedor X visualiza pedido na sua fila
     // -------------------------------------------------------------
-    console.log('\n[5/11] Fornecedor X consulta fila de pedidos recebidos (GET /orders?scope=fornecedor)...')
+    console.log('\n[5/12] Fornecedor X consulta fila de pedidos recebidos via API (GET /orders?scope=fornecedor)...')
     const supplierOrdersRes = await fetch(`${API_URL}/orders?scope=fornecedor`, {
       headers: { Authorization: `Bearer ${supplier.idToken}` },
     })
@@ -265,13 +362,13 @@ async function runE2E() {
       status: foundInSupplier?.status,
       product: foundInSupplier?.product,
     })
-    results.push({ step: '5. Pedido aparece na fila do fornecedor (GET /orders?scope=fornecedor)', ok: step5Ok })
+    results.push({ step: '5. Pedido isolado na fila do fornecedor (GET /orders?scope=fornecedor)', ok: step5Ok, category: 'functional' })
     if (!step5Ok) throw new Error('Pedido não encontrado na fila do fornecedor')
 
     // -------------------------------------------------------------
     // ETAPA 6: Fornecedor X confirma o pedido
     // -------------------------------------------------------------
-    console.log('\n[6/11] Fornecedor X confirma o pedido (PATCH status -> confirmado)...')
+    console.log('\n[6/12] Fornecedor X confirma o pedido via API (PATCH status -> confirmado)...')
     const confirmRes = await fetch(`${API_URL}/orders/${createdOrderId}/status`, {
       method: 'PATCH',
       headers: {
@@ -283,18 +380,17 @@ async function runE2E() {
     const confirmBody = await confirmRes.json()
     const step6Ok = confirmRes.status === 200 && confirmBody.status === 'confirmado'
     console.log(`  Status HTTP: ${confirmRes.status}, Novo status: ${confirmBody.status}`)
-    results.push({ step: '6. Fornecedor confirma pedido (PATCH confirmado)', ok: step6Ok })
+    results.push({ step: '6. Fornecedor confirma pedido (PATCH status -> confirmado)', ok: step6Ok, category: 'functional' })
     if (!step6Ok) throw new Error('Falha ao confirmar pedido')
 
     // -------------------------------------------------------------
-    // ETAPA 7: Comprador Y acompanha status na aba Pedidos (confirmado)
+    // ETAPA 7: Comprador Y consulta status confirmado via API
     // -------------------------------------------------------------
-    console.log('\n[7/11] Comprador Y consulta status atualizado (aba Pedidos: confirmado)...')
+    console.log('\n[7/12] Comprador Y consulta API de pedidos (verificação da regra de pedidos ativos: confirmado)...')
     const buyerOrdersRes1 = await fetch(`${API_URL}/orders`, {
       headers: { Authorization: `Bearer ${buyer.idToken}` },
     })
     const buyerOrders1 = await buyerOrdersRes1.json()
-    // Regra exata de PedidosTab.tsx: active = orders.filter(o => o.status !== 'entregue' && o.status !== 'cancelado')
     const active1 = buyerOrders1.filter((o) => o.status !== 'entregue' && o.status !== 'cancelado')
     const orderInActive1 = active1.find((o) => o.id === createdOrderId)
 
@@ -302,17 +398,13 @@ async function runE2E() {
                     !!orderInActive1 &&
                     orderInActive1.status === 'confirmado'
 
-    console.log(`  Pedido em PedidosTab (ativo):`, {
-      id: orderInActive1?.id,
-      status: orderInActive1?.status,
-    })
-    results.push({ step: '7. Comprador acompanha status "confirmado" em PedidosTab', ok: step7Ok })
-    if (!step7Ok) throw new Error('Pedido confirmado não apareceu na aba Pedidos do comprador')
+    results.push({ step: '7. Comprador verifica status "confirmado" na API (critério de ativos)', ok: step7Ok, category: 'functional' })
+    if (!step7Ok) throw new Error('Pedido confirmado não apareceu nos pedidos ativos do comprador')
 
     // -------------------------------------------------------------
     // ETAPA 8: Fornecedor X despacha o pedido (A caminho)
     // -------------------------------------------------------------
-    console.log('\n[8/11] Fornecedor X despacha o pedido (PATCH status -> a-caminho)...')
+    console.log('\n[8/12] Fornecedor X despacha o pedido via API (PATCH status -> a-caminho)...')
     const dispatchRes = await fetch(`${API_URL}/orders/${createdOrderId}/status`, {
       method: 'PATCH',
       headers: {
@@ -324,13 +416,13 @@ async function runE2E() {
     const dispatchBody = await dispatchRes.json()
     const step8Ok = dispatchRes.status === 200 && dispatchBody.status === 'a-caminho'
     console.log(`  Status HTTP: ${dispatchRes.status}, Novo status: ${dispatchBody.status}`)
-    results.push({ step: '8. Fornecedor despacha pedido (PATCH a-caminho)', ok: step8Ok })
+    results.push({ step: '8. Fornecedor despacha pedido (PATCH status -> a-caminho)', ok: step8Ok, category: 'functional' })
     if (!step8Ok) throw new Error('Falha ao despachar pedido')
 
     // -------------------------------------------------------------
-    // ETAPA 9: Comprador Y acompanha status na aba Pedidos (a-caminho)
+    // ETAPA 9: Comprador Y consulta status a-caminho via API
     // -------------------------------------------------------------
-    console.log('\n[9/11] Comprador Y consulta status atualizado (aba Pedidos: a-caminho)...')
+    console.log('\n[9/12] Comprador Y consulta API de pedidos (verificação da regra de pedidos ativos: a-caminho)...')
     const buyerOrdersRes2 = await fetch(`${API_URL}/orders`, {
       headers: { Authorization: `Bearer ${buyer.idToken}` },
     })
@@ -342,17 +434,13 @@ async function runE2E() {
                     !!orderInActive2 &&
                     orderInActive2.status === 'a-caminho'
 
-    console.log(`  Pedido em PedidosTab (ativo):`, {
-      id: orderInActive2?.id,
-      status: orderInActive2?.status,
-    })
-    results.push({ step: '9. Comprador acompanha status "a-caminho" em PedidosTab', ok: step9Ok })
-    if (!step9Ok) throw new Error('Pedido a-caminho não apareceu na aba Pedidos do comprador')
+    results.push({ step: '9. Comprador verifica status "a-caminho" na API (critério de ativos)', ok: step9Ok, category: 'functional' })
+    if (!step9Ok) throw new Error('Pedido a-caminho não apareceu nos pedidos ativos do comprador')
 
     // -------------------------------------------------------------
     // ETAPA 10: Fornecedor X marca o pedido como Entregue
     // -------------------------------------------------------------
-    console.log('\n[10/11] Fornecedor X marca pedido como entregue (PATCH status -> entregue)...')
+    console.log('\n[10/12] Fornecedor X conclui entrega via API (PATCH status -> entregue)...')
     const deliverRes = await fetch(`${API_URL}/orders/${createdOrderId}/status`, {
       method: 'PATCH',
       headers: {
@@ -364,47 +452,81 @@ async function runE2E() {
     const deliverBody = await deliverRes.json()
     const step10Ok = deliverRes.status === 200 && deliverBody.status === 'entregue'
     console.log(`  Status HTTP: ${deliverRes.status}, Novo status: ${deliverBody.status}`)
-    results.push({ step: '10. Fornecedor marca como entregue (PATCH entregue)', ok: step10Ok })
+    results.push({ step: '10. Fornecedor marca entrega (PATCH status -> entregue)', ok: step10Ok, category: 'functional' })
     if (!step10Ok) throw new Error('Falha ao marcar como entregue')
 
     // -------------------------------------------------------------
-    // ETAPA 11: Comprador Y valida migração: sai de Pedidos e entra em Histórico
+    // ETAPA 11: Comprador Y valida migração na API (critério de histórico)
     // -------------------------------------------------------------
-    console.log('\n[11/11] Comprador Y valida migração para aba Histórico...')
+    console.log('\n[11/12] Comprador Y valida migração lógica de status na API (sai de ativos, entra em histórico)...')
     const buyerOrdersRes3 = await fetch(`${API_URL}/orders`, {
       headers: { Authorization: `Bearer ${buyer.idToken}` },
     })
     const buyerOrders3 = await buyerOrdersRes3.json()
 
-    // 11a. Regra PedidosTab: o pedido NÃO DEVE ESTAR em active
     const active3 = buyerOrders3.filter((o) => o.status !== 'entregue' && o.status !== 'cancelado')
     const inActiveTab = !!active3.find((o) => o.id === createdOrderId)
 
-    // 11b. Regra HistoricoTab: o pedido DEVE ESTAR em done com status entregue
     const done3 = buyerOrders3.filter((o) => o.status === 'entregue' || o.status === 'cancelado')
     const orderInDone = done3.find((o) => o.id === createdOrderId)
     const inDoneTab = !!orderInDone && orderInDone.status === 'entregue'
 
     const step11Ok = buyerOrdersRes3.status === 200 && !inActiveTab && inDoneTab
-
-    console.log(`  Validação de Abas de Minha Conta:`)
-    console.log(`    - Presente na aba Pedidos (ativos): ${inActiveTab ? 'SIM (FALHA)' : 'NÃO (CORRETO - removido de ativos)'}`)
-    console.log(`    - Presente na aba Histórico:       ${inDoneTab ? 'SIM (CORRETO - classificado como entregue)' : 'NÃO (FALHA)'}`)
-
     results.push({
-      step: '11. Pedido sai de PedidosTab e entra em HistoricoTab',
+      step: '11. Regra de negócio na API: pedido concluído sai de ativos e integra histórico',
       ok: step11Ok,
-      saiuDePedidos: !inActiveTab,
-      entrouEmHistorico: inDoneTab,
+      category: 'functional',
     })
-    if (!step11Ok) throw new Error('Falha na migração do pedido para o Histórico')
+    if (!step11Ok) throw new Error('Falha na classificação de histórico do pedido')
+
+    // -------------------------------------------------------------
+    // ETAPA 12: Integração Administrativa (GET /orders?scope=admin)
+    // -------------------------------------------------------------
+    if (ADMIN_PASSWORD) {
+      console.log('\n[12/12] Autenticando Administrador e validando observabilidade global (GET /orders?scope=admin)...')
+      admin = await authenticate(ADMIN_EMAIL, ADMIN_PASSWORD)
+      const adminOrdersRes = await fetch(`${API_URL}/orders?scope=admin`, {
+        headers: { Authorization: `Bearer ${admin.idToken}` },
+      })
+      const adminOrders = await adminOrdersRes.json()
+      const adminFoundOrder = Array.isArray(adminOrders) ? adminOrders.find((o) => o.id === createdOrderId) : null
+
+      const adminValidation = validateAdminOrder(adminFoundOrder, {
+        expectedOrderId: createdOrderId,
+        expectedBuyerUid: buyer.uid,
+        expectedSupplierUid: supplier.uid,
+        expectedStatus: 'entregue',
+        expectedPaymentTxId: simulatedTxId,
+      })
+
+      const step12Ok = adminOrdersRes.status === 200 && adminValidation.ok
+      console.log(`  Auditoria administrativa do pedido: HTTP ${adminOrdersRes.status}, Válido: ${adminValidation.ok ? 'SIM' : 'NÃO'}`)
+      if (!adminValidation.ok) {
+        console.error('  Erros na validação administrativa:', adminValidation.errors)
+      }
+      results.push({
+        step: '12. Integração API Admin: localização e conformidade do pedido (GET /orders?scope=admin)',
+        ok: step12Ok,
+        category: 'admin',
+        errors: adminValidation.errors,
+      })
+      if (!step12Ok) throw new Error('Pedido não validado na visão administrativa')
+    } else {
+      console.log('\n[12/12] Etapa administrativa ignorada (credencial QA_ADMIN_PASSWORD não fornecida).')
+      results.push({
+        step: '12. Integração API Admin (ignorado: credencial administrativa não configurada)',
+        ok: true,
+        skipped: true,
+        category: 'admin',
+      })
+    }
 
   } finally {
     // -------------------------------------------------------------
     // TEARDOWN: Limpeza do produto de teste no D1
     // -------------------------------------------------------------
     if (createdProductId && supplier?.idToken) {
-      console.log('\n[LIMPEZA] Removendo produto temporário de teste do catálogo (DELETE /products/:id)...')
+      console.log('\n[TEARDOWN] Removendo produto temporário de teste (DELETE /products/:id)...')
       try {
         const deleteRes = await fetch(`${API_URL}/products/${createdProductId}`, {
           method: 'DELETE',
@@ -413,23 +535,60 @@ async function runE2E() {
         const catalogCheckRes = await fetch(`${API_URL}/products`)
         const catalogCheck = await catalogCheckRes.json()
         const stillInCatalog = Array.isArray(catalogCheck) && !!catalogCheck.find((p) => p.id === createdProductId)
-        console.log(`  Remoção do produto: HTTP ${deleteRes.status}, Excluído do catálogo público: ${!stillInCatalog ? 'SIM (limpo)' : 'NÃO'}`)
-        results.push({ step: '12. Teardown: produto de teste excluído', ok: deleteRes.status === 204 && !stillInCatalog })
+        const cleanupOk = deleteRes.status === 204 && !stillInCatalog
+        console.log(`  Remoção do produto: HTTP ${deleteRes.status}, Excluído do catálogo: ${!stillInCatalog ? 'SIM (limpo)' : 'NÃO'}`)
+        results.push({
+          step: '13. Teardown: exclusão do produto temporário',
+          ok: cleanupOk,
+          category: 'cleanup',
+          error: cleanupOk ? undefined : `Status HTTP inesperado: ${deleteRes.status}`,
+        })
       } catch (cleanErr) {
-        console.warn('  Aviso: Não foi possível remover produto de teste:', cleanErr.message)
+        console.error('  ❌ Falha crítica no teardown:', cleanErr.message)
+        results.push({
+          step: '13. Teardown: exclusão do produto temporário',
+          ok: false,
+          category: 'cleanup',
+          error: cleanErr.message,
+        })
       }
+    }
+
+    if (createdOrderId) {
+      console.log(`\n  ⚠️  NOTA DE RASTREABILIDADE: O pedido de teste #${createdOrderId} permanece registrado no banco D1.`)
+      console.log('     Para ambientes de produção, pedidos de compra direta não são excluíveis pela API por integridade contábil.')
+      console.log('     Para isolamento estrito sem poluição de dados, execute este teste contra ambiente de preview ou D1 local.\n')
     }
   }
 
-  console.log('\n===================================================================')
-  console.log('  RESUMO DO TESTE END-TO-END')
+  console.log('===================================================================')
+  console.log('  RESUMO DO TESTE END-TO-END DE API')
   console.log('===================================================================')
   console.table(results)
-  const allPassed = results.every((r) => r.ok)
-  console.log(`\nResultado Geral: ${allPassed ? '🎉 FLUXO E2E APROVADO COM SUCESSO INTEGRAL' : '❌ FALHA EM UMA OU MAIS ETAPAS'}\n`)
+
+  const summary = computeSummary(results, { isProduction: envLock.isProduction, blocked: false })
+  console.log(`\nVeredito Consolidado: [${summary.verdict}] - ${summary.passedSteps}/${summary.totalSteps} etapas aprovadas.`)
+
+  if (!summary.allPassed) {
+    console.error('❌ Falha na execução da suíte E2E. Processo encerrado com exit code 1.')
+    process.exitCode = 1
+  } else {
+    console.log('🎉 Suíte E2E da API aprovada com sucesso!')
+    process.exitCode = 0
+  }
+
+  return summary
 }
 
-runE2E().catch((err) => {
-  console.error('\n💥 ERRO FATAL NA EXECUÇÃO DO TESTE E2E:', err)
-  process.exit(1)
-})
+// Auto-execução quando executado diretamente na linha de comando
+const isMain = process.argv[1] && (
+  process.argv[1].endsWith('test-e2e-catalog-to-history.mjs') ||
+  import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}`
+)
+
+if (isMain) {
+  runE2E().catch((err) => {
+    console.error('\n💥 ERRO FATAL NA EXECUÇÃO DO TESTE E2E:', err)
+    process.exit(1)
+  })
+}

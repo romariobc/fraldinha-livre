@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import type { MarketOrder, DirectOrder, DirectOrderStatus, SupplierOffer, DeliveryType, DispatchStatus } from '@/lib/supplier-mock'
 import { MOCK_MARKET_ORDERS, MOCK_DIRECT_ORDERS, MOCK_OFFERS } from '@/lib/supplier-mock'
@@ -10,12 +10,15 @@ import { HttpOrderRepository } from '@/lib/adapters/http-order-repository'
 import { contractOrderToDirectOrder } from '@/lib/order-adapters'
 import { useAuth } from '@/contexts/auth-context'
 import type { OrderStatus } from '@contracts'
+import { diagnoseError, logFrontendDiagnostic, type DiagnosticResult } from '@/lib/frontend-diagnostics'
 
 interface MarketContextValue {
   marketOrders: MarketOrder[]
   directOrders: DirectOrder[]
   directOrdersLoading: boolean
   directOrdersError: string | null
+  directOrdersDiagnostic?: DiagnosticResult | null
+  refetchDirectOrders(): Promise<void>
   offers: SupplierOffer[]
   declinedIds: Set<string>
   handleEnviarOferta(orderId: string, price: number, deliveryType: DeliveryType, note?: string): Promise<void>
@@ -45,45 +48,76 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
   )
   const [directOrdersLoading, setDirectOrdersLoading] = useState(useBackend)
   const [directOrdersError, setDirectOrdersError] = useState<string | null>(null)
+  const [directOrdersDiagnostic, setDirectOrdersDiagnostic] = useState<DiagnosticResult | null>(null)
   const [offers, setOffers] = useState<SupplierOffer[]>(MOCK_OFFERS)
   const [declinedIds, setDeclinedIds] = useState<Set<string>>(new Set())
 
-  useEffect(() => {
-    if (!useBackend) return // modo mock: mantem MOCK_DIRECT_ORDERS estatico, sem fetch (decisao item 3)
-    if (authLoading) return // aguarda o Firebase resolver a sessao antes de decidir
+  // Ref sequencial para controle estrito de concorrência e descarte de respostas tardias
+  const activeFetchIdRef = useRef(0)
 
-    // MarketProvider envolve todo o route group (main), inclusive paginas publicas
-    // (landing, catalogo). listForSupplier() e autenticado e so faz sentido pro
-    // fornecedor logado no proprio painel — sem esse gate, todo visitante anonimo
-    // dispara um GET /orders?scope=fornecedor que sempre volta 401 (e, pior, o
-    // mesmo acontecia ate pro fornecedor de verdade: o efeito rodava antes do
-    // Firebase restaurar a sessao, api-client saia sem token e a chamada tambem
-    // caia em 401 — mesma classe de bug ja corrigida antes em OrdersProvider/B9).
-    if (!user || role !== 'fornecedor') return // directOrdersLoadingExposed cobre o estado exibido
+  const refetchDirectOrders = useCallback(async () => {
+    if (!useBackend) return
+    if (authLoading) return
+    if (!user || role !== 'fornecedor') return
 
-    let cancelled = false
+    const fetchId = ++activeFetchIdRef.current
+    setDirectOrdersLoading(true)
+    setDirectOrdersError(null)
+    setDirectOrdersDiagnostic(null)
+
     const repo: OrderRepository = new HttpOrderRepository()
-
-    const load = async () => {
-      if (cancelled) return
-      setDirectOrdersLoading(true)
-      setDirectOrdersError(null)
-      try {
-        const result = await repo.listForSupplier()
-        if (cancelled) return
-        setDirectOrders(result.map(contractOrderToDirectOrder))
-      } catch (err) {
-        if (cancelled) return
-        console.error('Erro ao carregar pedidos diretos:', err)
-        setDirectOrdersError('Não foi possível carregar os pedidos diretos. Tente novamente.')
-      } finally {
-        if (cancelled) return
+    try {
+      const result = await repo.listForSupplier()
+      if (fetchId !== activeFetchIdRef.current) return
+      setDirectOrders(result.map(contractOrderToDirectOrder))
+    } catch (err) {
+      if (fetchId !== activeFetchIdRef.current) return
+      console.error('Erro ao carregar pedidos diretos:', err)
+      const diag = diagnoseError(err)
+      logFrontendDiagnostic(diag, { operation: 'listForSupplier' })
+      setDirectOrdersError('Não foi possível carregar os pedidos diretos. Tente novamente.')
+      setDirectOrdersDiagnostic(diag)
+    } finally {
+      if (fetchId === activeFetchIdRef.current) {
         setDirectOrdersLoading(false)
       }
     }
+  }, [useBackend, authLoading, user, role])
 
-    load()
-    return () => { cancelled = true }
+  useEffect(() => {
+    if (!useBackend) return
+    if (authLoading) return
+    if (!user || role !== 'fornecedor') return
+
+    const fetchId = ++activeFetchIdRef.current
+    const repo: OrderRepository = new HttpOrderRepository()
+
+    repo
+      .listForSupplier()
+      .then((result) => {
+        if (fetchId !== activeFetchIdRef.current) return
+        setDirectOrders(result.map(contractOrderToDirectOrder))
+        setDirectOrdersError(null)
+        setDirectOrdersDiagnostic(null)
+      })
+      .catch((err) => {
+        if (fetchId !== activeFetchIdRef.current) return
+        console.error('Erro ao carregar pedidos diretos:', err)
+        const diag = diagnoseError(err)
+        logFrontendDiagnostic(diag, { operation: 'listForSupplier' })
+        setDirectOrdersError('Não foi possível carregar os pedidos diretos. Tente novamente.')
+        setDirectOrdersDiagnostic(diag)
+      })
+      .finally(() => {
+        if (fetchId === activeFetchIdRef.current) {
+          setDirectOrdersLoading(false)
+        }
+      })
+
+    const fetchIdRef = activeFetchIdRef
+    return () => {
+      fetchIdRef.current++
+    }
   }, [useBackend, authLoading, user, role])
 
   async function handleEnviarOferta(orderId: string, price: number, deliveryType: DeliveryType, note?: string) {
@@ -113,7 +147,6 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
     setDirectOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: 'confirmado' as const } : o))
     )
-    toast.success('Pedido confirmado! O comprador será notificado.')
   }
 
   async function handleRecusarDireto(orderId: string) {
@@ -124,7 +157,6 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
     setDirectOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: 'cancelado' as const } : o))
     )
-    toast.info('Pedido recusado.')
   }
 
   async function handleAtualizarStatusDireto(orderId: string, status: OrderStatus) {
@@ -135,7 +167,6 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
     setDirectOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: status as DirectOrderStatus } : o))
     )
-    toast.success('Status do pedido atualizado com sucesso!')
   }
 
   async function handleAtualizarDespacho(orderId: string, orderType: 'market' | 'direct', status: DispatchStatus) {
@@ -159,18 +190,24 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
     setDirectOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'cancelado' as const } : o))
   }
 
-  // Deriva o loading exposto em vez de setState no corpo do effect (react-hooks/set-state-in-effect):
-  // enquanto o Firebase resolve a sessao, mostra loading; se nao e fornecedor logado, nunca carrega.
+  // Deriva loading, dados e erros expostos em vez de setState no corpo do effect (react-hooks/set-state-in-effect):
+  // enquanto o Firebase resolve a sessao ou se nao for fornecedor logado, protege o estado sem cascata de renders.
+  const isEligibleSupplier = Boolean(user && role === 'fornecedor')
+  const directOrdersExposed = useBackend && !isEligibleSupplier ? [] : directOrders
+  const directOrdersErrorExposed = useBackend && !isEligibleSupplier ? null : directOrdersError
+  const directOrdersDiagnosticExposed = useBackend && !isEligibleSupplier ? null : directOrdersDiagnostic
   const directOrdersLoadingExposed =
-    useBackend && (authLoading || (!!user && role === 'fornecedor' && directOrdersLoading))
+    useBackend && (authLoading || (isEligibleSupplier && directOrdersLoading))
 
   return (
     <MarketContext.Provider
       value={{
         marketOrders,
-        directOrders,
+        directOrders: directOrdersExposed,
         directOrdersLoading: directOrdersLoadingExposed,
-        directOrdersError,
+        directOrdersError: directOrdersErrorExposed,
+        directOrdersDiagnostic: directOrdersDiagnosticExposed,
+        refetchDirectOrders,
         offers,
         declinedIds,
         handleEnviarOferta,

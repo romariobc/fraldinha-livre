@@ -34,6 +34,8 @@ import {
   ShoppingBag,
   MessageSquareWarning,
   Truck,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -64,9 +66,10 @@ import {
   DropdownMenuTrigger,
   DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, cn } from '@/lib/utils'
 import { useMarket } from '@/contexts/market-context'
 import { OrderReportDialog } from './OrderReportDialog'
+import { copySupportCode } from '@/lib/frontend-diagnostics'
 import type { DirectOrder } from '@/lib/supplier-mock'
 import type { Order as ContractOrder } from '@contracts'
 
@@ -221,21 +224,67 @@ function getStatusBadge(status: string) {
 interface OrdersDataTableProps {
   orders?: (DirectOrder | ContractOrder | SupplierOrderRow)[]
   isLoading?: boolean
+  error?: string | null
+  requestId?: string
   onConfirm?: (orderId: string) => Promise<void> | void
   onRefuse?: (orderId: string) => Promise<void> | void
   onUpdateStatus?: (orderId: string, status: 'confirmado' | 'a-caminho' | 'entregue' | 'cancelado') => Promise<void> | void
+  onRefresh?: () => Promise<void> | void
 }
 
 export function OrdersDataTable({
   orders: customOrders,
   isLoading: customLoading,
+  error: customError,
+  requestId: customRequestId,
   onConfirm,
   onRefuse,
   onUpdateStatus,
+  onRefresh,
 }: OrdersDataTableProps) {
   const market = useMarket()
 
   const loading = customLoading ?? market.directOrdersLoading
+  const error = customError ?? market.directOrdersError
+  const requestId = customRequestId ?? market.directOrdersDiagnostic?.requestId
+
+  const [isRefreshing, setIsRefreshing] = React.useState(false)
+  const [copiedRequestId, setCopiedRequestId] = React.useState(false)
+  const copyTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  React.useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
+    }
+  }, [])
+
+  const handleCopyRequestId = async (id: string) => {
+    const success = await copySupportCode(id)
+    if (success) {
+      setCopiedRequestId(true)
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current)
+      copyTimeoutRef.current = setTimeout(() => setCopiedRequestId(false), 2000)
+      toast.success('Código de suporte copiado!')
+    } else {
+      toast.error('Não foi possível copiar o código.')
+    }
+  }
+
+  const handleRefresh = async () => {
+    if (isRefreshing || loading) return
+    setIsRefreshing(true)
+    try {
+      if (onRefresh) {
+        await onRefresh()
+      } else if (market.refetchDirectOrders) {
+        await market.refetchDirectOrders()
+      }
+    } catch {
+      toast.error('Erro ao atualizar pedidos.')
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
 
   const data = React.useMemo(() => {
     const list = customOrders ?? market.directOrders ?? []
@@ -741,18 +790,62 @@ export function OrdersDataTable({
           </button>
         </div>
 
-        {/* Global Search Input */}
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground opacity-60 pointer-events-none" />
-          <Input
-            placeholder="Buscar pedido, cliente ou item..."
-            value={globalFilter}
-            onChange={handleSearchChange}
-            className="pl-9 h-9 text-xs bg-card"
-            data-testid="orders-search-input"
-          />
+        {/* Global Search Input & Refresh Button */}
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground opacity-60 pointer-events-none" />
+            <Input
+              placeholder="Buscar pedido, cliente ou item..."
+              value={globalFilter}
+              onChange={handleSearchChange}
+              className="pl-9 h-9 text-xs bg-card"
+              data-testid="orders-search-input"
+            />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing || loading}
+            aria-label="Atualizar pedidos"
+            title="Atualizar pedidos"
+            data-testid="orders-refresh-button"
+            className="h-9 px-3 text-xs gap-1.5 shrink-0 cursor-pointer"
+          >
+            <RefreshCw className={cn("size-3.5", (isRefreshing || loading) && "animate-spin")} />
+            <span className="hidden sm:inline">Atualizar</span>
+          </Button>
         </div>
       </div>
+
+      {/* Error alert banner when refresh fails but previous data exists */}
+      {error && data.length > 0 && (
+        <div
+          className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs"
+          data-testid="orders-refresh-error-banner"
+        >
+          <div className="flex items-center gap-2">
+            <AlertCircle className="size-4 shrink-0 text-red-600" />
+            <span>Não foi possível atualizar os pedidos: {error}</span>
+            {requestId && (
+              <span className="font-mono text-[11px] text-muted-foreground ml-1">
+                (Código: {requestId})
+              </span>
+            )}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing || loading}
+            className="h-7 px-2.5 text-xs border-red-200 text-red-800 hover:bg-red-100 shrink-0 cursor-pointer"
+          >
+            Tentar novamente
+          </Button>
+        </div>
+      )}
 
       {/* Main Table */}
       <div className="rounded-xl border border-border bg-card overflow-hidden shadow-xs">
@@ -771,12 +864,54 @@ export function OrdersDataTable({
             ))}
           </TableHeader>
           <TableBody>
-            {loading ? (
+            {loading && data.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-32 text-center">
                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                     <Clock className="size-6 animate-spin opacity-50 text-primary" />
                     <span className="text-xs">Carregando pedidos...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : error && data.length === 0 ? (
+              <TableRow data-testid="orders-error-row">
+                <TableCell colSpan={columns.length} className="h-48 text-center" data-testid="orders-error-state">
+                  <div className="flex flex-col items-center justify-center gap-3 max-w-md mx-auto p-4 text-center">
+                    <div className="size-10 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
+                      <AlertCircle className="size-5" />
+                    </div>
+                    <span className="text-sm font-semibold text-foreground">
+                      Não foi possível carregar os pedidos
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {error}
+                    </span>
+                    {requestId && (
+                      <div className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-muted-foreground flex items-center justify-between gap-2">
+                        <span className="font-mono truncate">
+                          Código: <strong className="text-foreground">{requestId}</strong>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyRequestId(requestId)}
+                          className="text-xs font-semibold text-primary-dark hover:underline flex-none cursor-pointer"
+                        >
+                          {copiedRequestId ? 'Copiado!' : 'Copiar'}
+                        </button>
+                      </div>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRefresh}
+                      disabled={isRefreshing || loading}
+                      className="mt-1 text-xs gap-1.5 cursor-pointer"
+                      data-testid="orders-retry-button"
+                    >
+                      <RefreshCw className={cn("size-3.5", (isRefreshing || loading) && "animate-spin")} />
+                      Tentar novamente
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -796,7 +931,7 @@ export function OrdersDataTable({
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-32 text-center">
+                <TableCell colSpan={columns.length} className="h-32 text-center" data-testid="orders-empty-state">
                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                     <Package className="size-8 opacity-40 text-muted-foreground" />
                     <span className="text-sm font-medium text-foreground">

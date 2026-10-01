@@ -383,5 +383,90 @@ describe('MarketContext - directOrders loading (backend mode)', () => {
 
     unmount()
   })
+
+  it('modo backend: logout limpa pedidos do fornecedor anterior imediatamente', async () => {
+    const listForSupplierMock = vi.fn().mockResolvedValue([fakeContractOrder])
+    mockedHttpOrderRepository.mockImplementation(
+      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository }
+    )
+
+    const { result, rerender } = renderHook(() => useMarket(), { wrapper: AllProviders })
+    await waitFor(() => expect(result.current.directOrdersLoading).toBe(false))
+    expect(result.current.directOrders).toHaveLength(1)
+
+    // Usuário desloga
+    act(() => {
+      mockUseAuth.mockReturnValue({ ...FORNECEDOR_LOGADO, user: null, role: null })
+      rerender()
+    })
+
+    expect(result.current.directOrders).toEqual([])
+    expect(result.current.directOrdersLoading).toBe(false)
+    expect(result.current.directOrdersError).toBeNull()
+  })
+
+  it('modo backend: resposta antiga mais lenta não sobrescreve um retry mais recente', async () => {
+    let resolveOldFetch: (value: ContractOrder[]) => void
+    const oldPromise = new Promise<ContractOrder[]>((resolve) => {
+      resolveOldFetch = resolve
+    })
+
+    const newOrder: ContractOrder = { ...fakeContractOrder, id: 'ord-recente-2' }
+
+    const listForSupplierMock = vi
+      .fn()
+      .mockReturnValueOnce(oldPromise) // Primeira busca demorada
+      .mockResolvedValueOnce([newOrder]) // Retry imediato
+
+    mockedHttpOrderRepository.mockImplementation(
+      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository }
+    )
+
+    const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
+
+    // Dispara retry manual enquanto a primeira requisição ainda está pendente
+    await act(async () => {
+      await result.current.refetchDirectOrders()
+    })
+
+    // O estado deve refletir o resultado da requisição mais recente (retry)
+    expect(result.current.directOrders).toHaveLength(1)
+    expect(result.current.directOrders[0].id).toBe('ord-recente-2')
+
+    // Agora a requisição antiga resolve tardiamente
+    await act(async () => {
+      resolveOldFetch!([fakeContractOrder])
+    })
+
+    // O estado NÃO deve ser sobrescrito pela resposta antiga
+    expect(result.current.directOrders).toHaveLength(1)
+    expect(result.current.directOrders[0].id).toBe('ord-recente-2')
+  })
+
+  it('modo backend: falha transitória de refresh preserva os pedidos anteriores', async () => {
+    const listForSupplierMock = vi
+      .fn()
+      .mockResolvedValueOnce([fakeContractOrder]) // Carga inicial com sucesso
+      .mockRejectedValueOnce(new Error('Erro transitório no refresh')) // Refresh falha
+
+    mockedHttpOrderRepository.mockImplementation(
+      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository }
+    )
+
+    const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
+    await waitFor(() => expect(result.current.directOrdersLoading).toBe(false))
+    expect(result.current.directOrders).toHaveLength(1)
+
+    // Aciona refresh manual que falha
+    await act(async () => {
+      await result.current.refetchDirectOrders()
+    })
+
+    // Os dados anteriores permanecem preservados em tela e o erro é registrado
+    expect(result.current.directOrders).toHaveLength(1)
+    expect(result.current.directOrders[0].id).toBe('ord-fake-1')
+    expect(result.current.directOrdersError).toBe('Não foi possível carregar os pedidos diretos. Tente novamente.')
+    expect(result.current.directOrdersLoading).toBe(false)
+  })
 })
 

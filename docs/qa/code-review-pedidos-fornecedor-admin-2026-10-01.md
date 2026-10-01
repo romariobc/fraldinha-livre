@@ -1,148 +1,186 @@
 # Relatório de Code Review e Correções — Fluxo de Pedidos, Fornecedor, Admin e Teste E2E
 
-Data: 2026-10-01  
-Escopo: Correção dos achados de code review do fluxo Comprador -> Fornecedor -> Admin e confiabilidade do teste E2E.  
-Status Geral: **Corrigido (Revisão e Implementação Local Concluídas)**
+Data: 2026-10-01
+Escopo: Correção e reconciliação dos achados de code review do fluxo Comprador -> Fornecedor -> Admin e confiabilidade do teste E2E.
+Status Geral: **Revisão e Implementação Concluídas com Evidências Auditadas (Sem Escrita em Produção)**
 
 ---
 
-## 1. Resumo Executivo e Status dos Achados
+## 1. Matriz Consolidada de Status por Achado
 
-| Severidade | Achado | Status | Resolução Técnica |
-|---|---|---|---|
-| **Alta** | Falhas na carga de pedidos ficam invisíveis ao fornecedor | **corrigido** | `MarketContext` expõe `directOrdersError`, `directOrdersDiagnostic` e `refetchDirectOrders`. `OrdersDataTable` renderiza estado amigável de erro, botão "Tentar novamente", cópia de `requestId` e suprime estado vazio falso quando a API falha. |
-| **Alta** | A bateria E2E não comprova visualização pelo admin | **corrigido** | `scripts/test-e2e-catalog-to-history.mjs` atualizado com o Passo 12: autentica admin via variáveis de ambiente seguras (`ADMIN_EMAIL`/`ADMIN_PASSWORD` ou token), consulta `GET /orders?scope=admin`, localiza exatamente o `createdOrderId` e valida status, comprador, fornecedor e itens. |
-| **Alta** | Falso "E2E de UI" mascara falta de cobertura real de frontend | **corrigido** | Descrições, logs e documentação do script ajustados para identificar com rigor que se trata de uma suíte **API E2E (REST)** e não homologação visual de componentes/navegador. |
-| **Média** | Teardown com falha pode mascarar resultado no exit code do script | **corrigido** | `computeSummary` do script agora exige que todas as etapas obrigatórias e de teardown passem (`ok: true`). Se o teardown falhar, `allPassed = false` e `process.exitCode = 1`. |
-| **Média** | Script E2E gera poluição permanente de pedidos de teste | **corrigido** | Mantida trava fail-closed (`ALLOW_PROD_WRITE=true` exigido para produção; bloqueia com saída `NÃO EXECUTADO` e `exitCode = 2`). Nenhuma rota destrutiva foi criada na API. Documentado uso de ambiente isolado (D1 local / preview). |
-| **Média** | Fornecedor e admin sem mecanismo de refresh em painel aberto | **corrigido** | Adicionado botão manual "Atualizar pedidos" com feedback visual de carregamento em `OrdersDataTable`, conectado a `refetchDirectOrders`. Em caso de falha de refresh, os dados existentes são preservados e um banner de erro é exibido. No Admin, teste comportamental comprovou chegada de novos pedidos via botão de atualização. |
-| **Baixa** | Toasts duplicados para ações do fornecedor | **corrigido** | Removidas chamadas de `toast.success` do `MarketProvider`. A responsabilidade de feedback visual foi centralizada unicamente nos handlers de UI de `OrdersDataTable`. |
-
----
-
-## 2. Detalhamento dos Achados e Implementações
-
-### 2.1. Erro de pedidos visível ao fornecedor e Retry Resiliente (Alta)
-- **Problema**: Quando `listForSupplier()` falhava, `MarketProvider` gravava `directOrdersError`, mas `OrdersDataTable` lia apenas `orders` e `isLoading`. Falhas de autenticação ou rede exibiam a mensagem de lista vazia.
-- **Implementação**:
-  - `front/src/contexts/market-context.tsx`: adicionado `refetchDirectOrders(): Promise<void>` e `directOrdersDiagnostic?: DiagnosticEntry`. Implementado com `useCallback` estável, controle de corrida com contador sequencial (`activeFetchIdRef`) para descarte de respostas tardias em desmontagem ou troca de usuário, e carregamento assíncrono seguro.
-  - `front/src/components/fornecedor/OrdersDataTable.tsx`: consome o erro e requestId estruturado do contexto (ou via props). Quando a lista inicial falha em carregar, renderiza mensagem de erro com ícone de alerta, botão de cópia rápida do código de suporte (`requestId`) e botão de ação "Tentar novamente".
-  - **Evidência Comportamental**: 6 novos testes unitários adicionados em `OrdersDataTable.test.tsx` e 3 testes em `market-context.test.tsx` validando que a falha da API aparece na interface, a lista vazia é suprimida, e o retry reexecuta a busca e recupera a exibição.
-
-### 2.2. Atualização Manual dos Pedidos no Fornecedor e Admin (Média)
-- **Problema**: Pedidos recém-criados pelo comprador não apareciam para o fornecedor ou admin com o painel aberto sem recarregar toda a aplicação.
-- **Implementação**:
-  - No Fornecedor: adicionado botão "Atualizar" no topo de `OrdersDataTable` com spinner animado durante carregamento (`isRefreshing`). Quando acionado, executa `refetchDirectOrders`. Se o refresh falhar após a tabela já ter dados, os dados anteriores são preservados e um banner de aviso com código de suporte é renderizado acima da tabela.
-  - No Admin: o botão de refresh existente em `AdminOrdersTab` foi submetido a teste comportamental comprovando que, ao receber um novo pedido no segundo ciclo de chamada, o pedido passa a ser renderizado na tabela mantendo filtros íntegros.
-  - **Evidência Comportamental**: Teste `AdminOrdersTab.test.tsx` ("permite atualizar a lista e passa a exibir novo pedido recebido após refresh") e testes em `OrdersDataTable.test.tsx` aprovados com 100% de sucesso.
-
-### 2.3. Eliminação do Falso "E2E de UI" e Inclusão da API Admin (Alta)
-- **Problema**: O script `scripts/test-e2e-catalog-to-history.mjs` anunciava validações de tela sem abrir navegador e não consultava a visão administrativa do ciclo de pedidos.
-- **Implementação**:
-  - O cabeçalho, logs de progresso e resumos do script foram renomeados para declarar expressamente: `[API E2E] Ciclo de Pedidos (REST Integration - Não é teste visual de navegador)`.
-  - Adicionado Passo 12 (`validateAdminOrder`): autentica administrador via variáveis de ambiente seguras (`ADMIN_EMAIL` / `ADMIN_PASSWORD` ou token), realiza chamada real `GET /orders?scope=admin`, localiza o pedido criado e verifica correspondência estrita de status, comprador, fornecedor, itens e total.
-  - Funções puras desacopladas e exportadas para testes unitários: `checkEnvironmentLock`, `validateAdminOrder`, `computeSummary`.
-
-### 2.4. Semântica Estrita de Exit Code e Resumo de Execução (Média)
-- **Problema**: Exceções no bloco de teardown eram capturadas apenas com `console.warn`, fazendo o script encerrar com exit code 0.
-- **Implementação**:
-  - A função `computeSummary` avalia o array completo de resultados. Qualquer falha em etapa obrigatória ou etapa de limpeza (`teardown`) define `allPassed = false` e atribui explicitamente `process.exitCode = 1`.
-  - Saída estruturada categoriza o resultado em: `APROVADO`, `FALHA FUNCIONAL`, `FALHA DE TEARDOWN` ou `BLOQUEADO_POR_SEGURANCA` (com exit code 2).
-  - Criado arquivo de testes unitários `scripts/test-e2e-logic.test.mjs` com 12 asserções cobrindo cenários de sucesso, falha funcional, reprodução da falha de teardown e bloqueio por segurança.
-
-### 2.5. Prevenção de Poluição de Pedidos e Trava Fail-Closed (Média)
-- **Problema**: Pedidos criados em produção poluem o banco permanentemente na ausência de limpeza por rota de teste.
-- **Implementação e Decisão Arquitetural**:
-  - Nenhuma rota perigosa (`DELETE /orders/:id`) foi criada em produção ou exposta publicamente.
-  - A trava de segurança contra produção (`checkEnvironmentLock`) foi reforçada: exige explicitamente `ALLOW_PROD_WRITE=true` para disparar chamadas contra domínios `.workers.dev` ou `.fraldinhalivre.com.br`. Se bloqueada, encerra com código 2 e aviso de "NÃO EXECUTADO".
-  - Se autorizada em produção, o resumo final emite alerta explícito indicando que o pedido permanece persistido no banco para integridade contábil e de estoque.
-  - Para testes automatizados contínuos com cleanup, deve-se utilizar ambiente local (Cloudflare Worker + Miniflare/D1 local) ou preview isolado.
-
-### 2.6. Centralização de Feedback Visual (Baixa)
-- **Problema**: Disparos simultâneos de `toast.success` originados tanto em `market-context.tsx` quanto nos callbacks de clique de `OrdersDataTable.tsx`.
-- **Implementação**:
-  - `market-context.tsx` teve todas as invocações de `toast.success` removidas de `handleConfirmarDireto`, `handleRecusarDireto` e `handleAtualizarStatusDireto`, mantendo apenas o tratamento de persistência e relançamento de erro.
-  - `OrdersDataTable.tsx` assume a responsabilidade exclusiva pelo feedback visual de notificação.
-  - **Evidência Comportamental**: Teste dedicado em `OrdersDataTable.test.tsx` monitorando os spies de `toast.success` e comprovando exatamente 1 notificação por clique.
+| Achado | Status | Detalhes da Resolução e Limites |
+|---|---|---|
+| **Erro invisível ao fornecedor** | **Corrigido** | `MarketContext` expõe `directOrdersError`, `directOrdersDiagnostic` e `refetchDirectOrders`. `OrdersDataTable` renderiza estado amigável de erro, botão "Tentar novamente", cópia segura de `requestId` e suprime estado vazio falso em falha de API. |
+| **Retry dispara nova consulta** | **Corrigido** | Comprovado por testes unitários e comportamentais em `OrdersDataTable.test.tsx` e `market-context.test.tsx`. |
+| **Retry visual recupera após sucesso** | **Pendente** | Não homologado visualmente com resposta HTTP 200 real no navegador (requer backend local ativo com pedidos mockados). |
+| **Refresh manual do fornecedor** | **Corrigido** | Adicionado botão manual "Atualizar pedidos" na toolbar de `OrdersDataTable`, desabilitado durante refresh e preservando dados prévios com banner em falha. |
+| **Refresh manual do admin** | **Corrigido por teste automatizado** | Teste comportamental em `AdminOrdersTab.test.tsx` comprovou chegada de novo pedido na tabela após acionar refresh manual. |
+| **API admin encontra mesmo pedido** | **Corrigido** | Passo 12 do script `test-e2e-catalog-to-history.mjs` e função `validateAdminOrder` validam rigorosamente o mesmo `createdOrderId`, comprador, fornecedor, itens e pagamento. |
+| **Admin visual autenticado** | **Pendente** | Não executada homologação visual da rota `/admin` com usuário administrativo real nesta sessão. |
+| **E2E erroneamente chamado de UI** | **Corrigido** | Script e documentação reclassificados como API E2E (REST), sem falsas alegações de homologação de componentes visuais. |
+| **Exit code em falha** | **Corrigido** | Função pura `computeSummary` garante `exitCode = 1` se qualquer etapa (inclusive teardown/cleanup) falhar. |
+| **Cleanup integral** | **Pendente (restrito a ambiente isolado)** | Pedidos de compra direta persistem no D1; limpeza integral somente é possível em ambiente isolado descartável (D1 local / preview). |
+| **Poluição em produção** | **Parcialmente corrigido** | Trava fail-closed mantida (`QA_ALLOW_PRODUCTION_WRITE=true` exigido; bloqueia com `exitCode = 2` e status "NÃO EXECUTADO"). Se habilitada excepcionalmente, o pedido permanece no D1 para auditoria. |
+| **Toast duplicado** | **Corrigido** | Removidos toasts do `market-context.tsx`; feedback visual centralizado unicamente nos handlers de UI em `OrdersDataTable.tsx`. |
+| **Mobile** | **Pendente** | Viewports mobile (ex: 390×844) não foram submetidos a homologação visual dirigida nesta rodada. |
 
 ---
 
-## 3. Matriz de Evidências por Categoria de Teste
+## 2. Detalhamento Técnico das Implementações
+
+### 2.1. Erro de pedidos visível ao fornecedor e Concorrência Resiliente
+- **Implementação**:
+  - `front/src/contexts/market-context.tsx`: expõe `refetchDirectOrders(): Promise<void>`, `directOrdersDiagnostic?: DiagnosticResult` e `directOrdersError`.
+  - Controle de concorrência com ref sequencial (`activeFetchIdRef`) para descarte estrito de respostas tardias em desmontagem, logout ou retries rápidos.
+  - Isolamento de estado entre fornecedores: estado exposto é derivado para `[]` se `!user || role !== 'fornecedor'`, impedindo vazamento de pedidos anteriores ao deslogar ou trocar de conta.
+  - `front/src/components/fornecedor/OrdersDataTable.tsx`: consome o erro e `requestId` estruturado; exibe mensagem amigável com botão "Tentar novamente" e suprime o falso aviso de lista vazia.
+- **Evidência Comportamental**: 20 testes em `market-context.test.tsx` e 18 testes em `OrdersDataTable.test.tsx` aprovados com 100% de sucesso.
+
+### 2.2. Atualização Manual dos Pedidos no Fornecedor e Admin
+- **Implementação**:
+  - No Fornecedor: botão manual "Atualizar pedidos" na barra superior de `OrdersDataTable`, conectado a `refetchDirectOrders` com spinner de carregamento (`isRefreshing`). Se o refresh falhar após a tabela já ter dados, os dados existentes são mantidos e um banner de erro com código de suporte é renderizado.
+  - No Admin: validação comportamental em `AdminOrdersTab.test.tsx` confirmou que novos pedidos gerados dinamicamente passam a ser renderizados na tabela após o clique em atualizar, mantendo paginação e filtros.
+
+### 2.3. Correção da Semântica E2E e Observabilidade Administrativa da API
+- **Implementação**:
+  - Nomenclatura e saída do script `scripts/test-e2e-catalog-to-history.mjs` esclarecem que se trata de uma suíte **API E2E (REST)**.
+  - Passo 12 implementado via `validateAdminOrder`, consultando `GET /orders?scope=admin` e validando:
+    * `id` correspondente ao pedido criado;
+    * `uid` do comprador;
+    * `supplierId` e `supplierName`;
+    * `status`;
+    * `items` (presença e correspondência do produto);
+    * `paymentMethod`, `paymentStatus` e `paymentTransactionId`.
+  - Credenciais administrativas (`QA_ADMIN_EMAIL`, `QA_ADMIN_PASSWORD`) obtidas exclusivamente de variáveis de ambiente, sem fallbacks hardcoded. A função `checkPrerequisites` valida credenciais antes de qualquer escrita no banco.
+
+### 2.4. Semântica Estrita de Exit Code e Trava de Produção Unificada
+- **Implementação**:
+  - Convenção unificada de segurança operacional: `QA_ALLOW_PRODUCTION_WRITE=true` (ou flag `--allow-production-write`).
+  - Execução contra produção sem a flag é bloqueada com status "NÃO EXECUTADO", exit code 2 e veredito `BLOQUEADO_POR_SEGURANCA`.
+  - `computeSummary` avalia o array completo de resultados: falhas de teardown produzem `allPassed = false`, veredito `FALHA_DE_LIMPEZA` e `exitCode = 1`.
+  - Template documentado em `scripts/env.qa.example` com campos vazios seguros.
+
+---
+
+## 3. Registro da Homologação Visual
+
+> **Homologação visual parcial — estado de erro, retry e RBAC do painel do fornecedor.**
+>
+> Foi executada homologação visual dirigida em Chromium desktop do estado de erro do painel do fornecedor. Foram validados a diferenciação entre erro e vazio, a presença dos controles de retry/refresh e o bloqueio de acesso do fornecedor à rota administrativa. A recuperação visual após resposta bem-sucedida, o painel admin autenticado, o fluxo com pedidos reais e os viewports mobile permanecem pendentes.
+
+- **Ambiente de Teste Visual**:
+  - Servidor Next.js 16 local iniciado na porta 3000 com backend local (8787) inativo para forçar condição de falha controlada.
+  - Navegador Chromium desktop controlado via Chrome DevTools.
+- **Evidências Observadas**:
+  - Login executado com conta de fornecedor de teste (`fornecedor.teste1@fraldinhalivre.com.br`).
+  - Redirecionamento correto para `/painel-fornecedor`.
+  - Bloqueio de acesso a `/admin` por role protection (redirecionado para fora).
+  - Acesso a `/painel-fornecedor/pedidos`: mensagem amigável exibida (*"Não foi possível carregar os pedidos diretos. Tente novamente."*).
+  - Falso estado de lista vazia (*"Nenhum pedido encontrado"*) suprimido.
+  - Presença dos botões "Atualizar pedidos" e "Tentar novamente".
+  - Clique em retry/refresh acionou nova requisição `refetchDirectOrders`.
+- **Arquivamento Transitório**: Capturas salvas localmente em `docs/qa/screenshots/` (diretório transitório ignorado pelo Git).
+
+---
+
+## 4. Matriz de Evidências por Categoria de Teste
 
 | Categoria | Escopo | Execução Real | Resultado |
 |---|---|---|---|
-| **Testes Unitários (Frontend)** | `OrdersDataTable`, `MarketContext`, `AdminOrdersTab`, `OrderCard` | `npx vitest run ...` (6 arquivos, 86 testes) | **100% Aprovados (0 falhas)** |
-| **Testes Unitários (E2E Logic)** | `scripts/test-e2e-logic.test.mjs` (trava, admin validation, exit code) | `node --test scripts/test-e2e-logic.test.mjs` (12 testes) | **100% Aprovados (0 falhas)** |
-| **Integração Local (Backend)** | `orders.get`, `orders.mutations`, `orders.scope-admin`, `orders.scope-fornecedor`, `orders.status` | `npx vitest run ...` (5 arquivos, 45 testes) | **100% Aprovados (0 falhas)** |
-| **Contratos Compartilhados** | `@fraldinha-livre/contracts` | `npm test` em `packages/contracts` (7 arquivos, 56 testes) | **100% Aprovados (0 falhas)** |
-| **Tipagem Estática (TS)** | `front/` e `back/` | `npx tsc --noEmit` em ambos os workspaces | **0 erros** |
-| **Linters (ESLint)** | Componentes e contextos alterados em `front/` | `npx eslint ...` | **0 erros (4 avisos triados)** |
-| **Sintaxe de Scripts** | `scripts/test-e2e-catalog-to-history.mjs` | `node --check scripts/test-e2e-catalog-to-history.mjs` | **0 erros** |
+| **Testes Unitários (Frontend)** | `OrdersDataTable`, `MarketContext`, `AdminOrdersTab`, `OrderCard`, `PedidosPage`, `Adversarial` | `npx vitest run ...` (7 arquivos) | **91 testes aprovados (100%), exit code 0** |
+| **Testes Unitários (E2E Logic)** | `scripts/test-e2e-logic.test.mjs` (trava, prereq, admin validation, summary) | `node --test scripts/test-e2e-logic.test.mjs` (4 suítes) | **19 testes aprovados (100%), exit code 0** |
+| **Integração Local (Backend)** | `orders.get`, `orders.mutations`, `orders.scope-admin`, `orders.scope-fornecedor`, `orders.status` | `npx vitest run ...` (5 arquivos) | **45 testes aprovados (100%), exit code 0** |
+| **Contratos Compartilhados** | `@fraldinha-livre/contracts` | `npm test` em `packages/contracts` (7 arquivos) | **56 testes aprovados (100%), exit code 0** |
+| **Tipagem Estática (TS)** | `front/` e `back/` | `npx tsc --noEmit` em ambos os workspaces | **0 erros, exit code 0** |
+| **Linters (ESLint)** | Componentes e contextos alterados em `front/` | `npx eslint ...` | **0 erros, 4 avisos triados (0 introduzidos por esta PR)** |
+| **Sintaxe de Scripts** | `scripts/test-e2e-catalog-to-history.mjs` | `node --check scripts/test-e2e-catalog-to-history.mjs` | **0 erros, exit code 0** |
 | **API E2E com Escrita Remota** | Execução real contra produção | **Não executado** (trava fail-closed mantida para não poluir banco remoto) | Deliberadamente preservado |
-| **Navegador E2E (Visual)** | Teste de cliques e renderização em browser real via Chrome DevTools | Executado com sucesso em `http://localhost:3000/painel-fornecedor/pedidos` (login de fornecedor, exibição do estado de erro, clique em "Atualizar" e "Tentar novamente", supressão de lista vazia) | **100% Aprovado com screenshots** |
 
 ---
 
-## 4. Comandos e Evidências Brutas
+## 5. Comandos e Saídas Exatas da Última Execução
 
-1. **Frontend Vitest**:
-   ```bash
-   npx vitest run src/components/fornecedor/__tests__/OrdersDataTable.test.tsx \
-                  src/components/fornecedor/__tests__/milestone3-adversarial.test.tsx \
-                  src/contexts/__tests__/market-context.test.tsx \
-                  src/lib/adapters/__tests__/http-order-repository.test.ts \
-                  src/components/admin/__tests__/AdminOrdersTab.test.tsx \
-                  src/contexts/__tests__/orders-context.backend.test.tsx
-   # Resultado: 6 passed (6), 86 tests passed, duração 9.43s, exit code 0
-   ```
+### 5.1. Frontend Vitest
+```bash
+npx vitest run \
+  "src/app/(fornecedor)/painel-fornecedor/pedidos/__tests__/page.test.tsx" \
+  src/components/fornecedor/__tests__/OrdersDataTable.test.tsx \
+  src/components/fornecedor/__tests__/milestone3-adversarial.test.tsx \
+  src/contexts/__tests__/market-context.test.tsx \
+  src/lib/adapters/__tests__/http-order-repository.test.ts \
+  src/components/admin/__tests__/AdminOrdersTab.test.tsx \
+  src/contexts/__tests__/orders-context.backend.test.tsx
+```
+- **Test Files**: 7 passed (7)
+- **Tests**: 91 passed (91)
+- **Exit code**: 0
+- **Duração**: 7.82s
 
-2. **Frontend Typecheck & ESLint**:
-   ```bash
-   npx tsc --noEmit
-   # Resultado: exit code 0, sem erros
-   npx eslint "src/app/(fornecedor)/painel-fornecedor/pedidos" "src/components/fornecedor" "src/contexts/market-context.tsx" "src/components/admin/AdminOrdersTab.tsx"
-   # Resultado: 0 erros, 4 avisos conhecidos (useReactTable unmemoized / unused vars)
-   ```
+### 5.2. Frontend Typecheck & ESLint
+```bash
+npx tsc --noEmit
+# Exit code: 0
 
-3. **Backend Vitest & Typecheck**:
-   ```bash
-   npx vitest run test/orders.get.test.ts test/orders.mutations.test.ts test/orders.scope-admin.test.ts test/orders.scope-fornecedor.test.ts test/orders.status.test.ts
-   # Resultado: 5 passed (5), 45 tests passed, duração 14.26s, exit code 0
-   npx tsc --noEmit
-   # Resultado: exit code 0, sem erros
-   ```
+npx eslint \
+  "src/app/(fornecedor)/painel-fornecedor/pedidos" \
+  "src/components/fornecedor" \
+  "src/contexts/market-context.tsx" \
+  "src/components/admin/AdminOrdersTab.tsx"
+```
+- **Exit code**: 0
+- **Avisos triados (4 warnings, 0 erros)**:
+  1. `AddProductDialog.tsx:73:11`: warning `'user' is assigned a value but never used` (pré-existente).
+  2. `OrderReportDialog.tsx:15:10`: warning `'useAuth' is defined but never used` (pré-existente).
+  3. `OrderReportDialog.tsx:50:14`: warning `'error' is defined but never used` (pré-existente).
+  4. `OrdersDataTable.tsx:683:17`: warning `Compilation Skipped: Use of incompatible library (TanStack Table useReactTable)` (aviso do React Compiler).
 
-4. **Lógica de Teste E2E (Node Test Runner)**:
-   ```bash
-   node --test scripts/test-e2e-logic.test.mjs
-   # Resultado: 12 tests passed, 0 fail, exit code 0
-   ```
+### 5.3. Backend Vitest & Typecheck
+```bash
+npx vitest run \
+  test/orders.get.test.ts \
+  test/orders.mutations.test.ts \
+  test/orders.scope-admin.test.ts \
+  test/orders.scope-fornecedor.test.ts \
+  test/orders.status.test.ts
+```
+- **Test Files**: 5 passed (5)
+- **Tests**: 45 passed (45)
+- **Exit code**: 0
+- **Duração**: 15.52s
 
-5. **Verificação de Sintaxe e Git Diff**:
-   ```bash
-   node --check scripts/test-e2e-catalog-to-history.mjs # Exit code 0
-   git diff --check # Exit code 0
-   ```
+```bash
+npx tsc --noEmit
+# Exit code: 0
+```
 
-6. **Homologação Visual em Navegador Real**:
-   - Servidor Next.js executado localmente na porta 3000.
-   - Navegação automatizada autenticando fornecedor (`fornecedor.teste1@fraldinhalivre.com.br`).
-   - Verificação em `/painel-fornecedor/pedidos`:
-     * Mensagem amigável de erro de carregamento exibida na tabela.
-     * Falso estado vazio suprimido.
-     * Botão "Atualizar pedidos" funcional na barra de ferramentas.
-     * Botão "Tentar novamente" re-executando `refetchDirectOrders`.
-   - Screenshots geradas e arquivadas:
-     * `docs/qa/screenshots/fornecedor_pedidos_error_state.png`
-     * `docs/qa/screenshots/fornecedor_pedidos_visual_homologation.png`
+### 5.4. Contratos Compartilhados
+```bash
+npm test --workspace packages/contracts
+```
+- **Test Files**: 7 passed (7)
+- **Tests**: 56 passed (56)
+- **Exit code**: 0
+
+### 5.5. Testes da Lógica do Script E2E (Node Test Runner)
+```bash
+node --test scripts/test-e2e-logic.test.mjs
+```
+- **Suites**: 4 passed (4)
+- **Tests**: 19 passed (19)
+- **Exit code**: 0
 
 ---
 
-## 5. Limitações e Próximos Passos
-- **Limitações Declaradas**:
-  - Nenhuma escrita contra a base de produção foi realizada nesta sessão (trava fail-closed mantida para evitar retenção de pedidos sem cleanup).
-  - Deploy remoto em produção não realizado antes da aprovação da PR #18.
-  - Comentários inline da PR não estavam disponíveis no GitHub CLI (nenhuma PR aberta encontrada para a branch `main`).
-- **Próximos Passos Recomendados**:
-  - Submeter as alterações para code review independente na branch do feature (`fix/orders-flow-supplier-admin-e2e` / PR #18).
-  - Para rodar a bateria E2E completa de ponta a ponta com escrita, instanciar o ambiente local isolado do backend (`npm run dev` no `back/`) antes de disparar o script.
+## 6. Declaração Explícita de Limitações e Escopo
+
+1. **Ambiente D1 Utilizado**:
+   - Os testes foram executados exclusivamente contra o runtime D1 local em memória simulado via Vitest/Miniflare.
+   - Nenhuma requisição de escrita foi disparada contra o banco de dados remoto de produção `fraldinha-livre-db`.
+2. **Deploy Remoto**:
+   - Nenhum deploy foi realizado no Cloudflare Workers ou Cloudflare Containers.
+3. **Merge**:
+   - Nenhum merge foi executado para a branch `main`. As alterações estão restritas à branch `fix/orders-flow-supplier-admin-e2e` (PR #18).
+4. **Pendências Mantidas**:
+   - **Admin visual autenticado**: pendente de sessão com credencial e navegador dedicado.
+   - **Mobile**: homologação visual em viewports reduzidos permanece pendente.
+   - **Recuperação visual com pedidos reais**: pendente de execução com backend local alimentado por dados reais.

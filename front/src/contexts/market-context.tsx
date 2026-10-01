@@ -49,6 +49,7 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
   const [directOrdersLoading, setDirectOrdersLoading] = useState(useBackend)
   const [directOrdersError, setDirectOrdersError] = useState<string | null>(null)
   const [directOrdersDiagnostic, setDirectOrdersDiagnostic] = useState<DiagnosticResult | null>(null)
+  const [directOrdersOwnerUid, setDirectOrdersOwnerUid] = useState<string | null>(null)
   const [offers, setOffers] = useState<SupplierOffer[]>(MOCK_OFFERS)
   const [declinedIds, setDeclinedIds] = useState<Set<string>>(new Set())
 
@@ -70,6 +71,7 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
       const result = await repo.listForSupplier()
       if (fetchId !== activeFetchIdRef.current) return
       setDirectOrders(result.map(contractOrderToDirectOrder))
+      setDirectOrdersOwnerUid(user.uid)
     } catch (err) {
       if (fetchId !== activeFetchIdRef.current) return
       console.error('Erro ao carregar pedidos diretos:', err)
@@ -97,6 +99,7 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
       .then((result) => {
         if (fetchId !== activeFetchIdRef.current) return
         setDirectOrders(result.map(contractOrderToDirectOrder))
+        setDirectOrdersOwnerUid(user.uid)
         setDirectOrdersError(null)
         setDirectOrdersDiagnostic(null)
       })
@@ -193,7 +196,10 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
   // Deriva loading, dados e erros expostos em vez de setState no corpo do effect (react-hooks/set-state-in-effect):
   // enquanto o Firebase resolve a sessao ou se nao for fornecedor logado, protege o estado sem cascata de renders.
   const isEligibleSupplier = Boolean(user && role === 'fornecedor')
-  const directOrdersExposed = useBackend && !isEligibleSupplier ? [] : directOrders
+  const directOrdersExposed =
+    useBackend && (!isEligibleSupplier || (directOrdersOwnerUid !== null && directOrdersOwnerUid !== user?.uid))
+      ? []
+      : directOrders
   const directOrdersErrorExposed = useBackend && !isEligibleSupplier ? null : directOrdersError
   const directOrdersDiagnosticExposed = useBackend && !isEligibleSupplier ? null : directOrdersDiagnostic
   const directOrdersLoadingExposed =

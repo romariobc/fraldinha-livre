@@ -2,21 +2,23 @@
 
 ## Correção do Fluxo de Pedidos, Fornecedor, Admin e Confiabilidade E2E — 2026-10-01
 
-- **Resolução de Achados de Code Review (7/7 corrigidos)**:
-  - Detalhamento completo registrado em [Relatório de Code Review](../../docs/qa/code-review-pedidos-fornecedor-admin-2026-10-01.md).
-  - **Erro visível ao fornecedor e retry**: `MarketContext` passa a expor `directOrdersError`, `directOrdersDiagnostic` e `refetchDirectOrders`. `OrdersDataTable` renderiza mensagem de erro com suporte a cópia de `requestId` e botão "Tentar novamente", suprimindo falsos estados de lista vazia em falhas de API.
-  - **Atualização manual em painel aberto**: Botão "Atualizar" adicionado no topo da tabela do fornecedor com estado de carregamento e preservação de dados prévios (com banner de alerta) em falhas intermitentes. No painel do Admin, teste comportamental comprovou recepção de novos pedidos criados dinamicamente após acionar o refresh.
-  - **Correção da semântica E2E e validação administrativa**: `scripts/test-e2e-catalog-to-history.mjs` redefinido explicitamente como suíte API E2E (REST), sem falsa alegação de homologação visual de UI. Adicionado Passo 12 (`validateAdminOrder`) consultando `GET /orders?scope=admin` com o mesmo `createdOrderId` e checando correspondência total de status, comprador, fornecedor e itens.
-  - **Exit code estrito e trava de segurança**: `computeSummary` exige aprovação de todas as etapas (inclusive `teardown`); falhas de limpeza agora geram `allPassed = false` e `process.exitCode = 1`. Trava fail-closed mantida contra produção (`exitCode = 2` e status "NÃO EXECUTADO"), sem criação de rotas destrutivas em produção.
+- **Reconciliação e Resolução de Achados de Code Review**:
+  - Matriz completa de status registrada em [Relatório de Code Review](../../docs/qa/code-review-pedidos-fornecedor-admin-2026-10-01.md).
+  - **Erro visível ao fornecedor e retry**: `MarketContext` expõe `directOrdersError`, `directOrdersDiagnostic` e `refetchDirectOrders`. `OrdersDataTable` renderiza mensagem de erro com suporte a cópia de `requestId` e botão "Tentar novamente", suprimindo falsos estados de lista vazia em falhas de API.
+  - **Atualização manual em painel aberto**: Botão "Atualizar pedidos" adicionado no topo da tabela do fornecedor com estado de carregamento e preservação de dados prévios (com banner de alerta) em falhas intermitentes. No painel do Admin, teste comportamental comprovou recepção de novos pedidos criados dinamicamente após acionar o refresh.
+  - **Correção da semântica E2E e validação administrativa da API**: `scripts/test-e2e-catalog-to-history.mjs` redefinido explicitamente como suíte API E2E (REST). Adicionado Passo 12 (`validateAdminOrder`) consultando `GET /orders?scope=admin` com o mesmo `createdOrderId` e checando correspondência total de status, comprador, fornecedor, itens e pagamento.
+  - **Exit code estrito e trava de segurança unificada**: `computeSummary` exige aprovação de todas as etapas (inclusive `teardown`); falhas de limpeza geram `allPassed = false` e `process.exitCode = 1`. Trava fail-closed mantida contra produção (`QA_ALLOW_PRODUCTION_WRITE=true` exigido; bloqueia com `exitCode = 2` e status "NÃO EXECUTADO"), sem criação de rotas destrutivas em produção.
   - **Desduplicação de toasts**: Removidos toasts redundantes de `market-context.tsx`; feedback visual centralizado unicamente nos handlers de UI em `OrdersDataTable.tsx`.
-- **Validação de Testes e Tipagem**:
-  - Frontend Vitest: 6 arquivos / 86 testes 100% aprovados (`npx vitest run ...`).
-  - Lógica E2E (Node Test Runner): 12 testes unitários 100% aprovados (`scripts/test-e2e-logic.test.mjs`).
-  - Backend Vitest: 5 arquivos / 45 testes 100% aprovados (`back/test/orders.*`).
-  - Contratos: 7 arquivos / 56 testes 100% aprovados.
-  - `tsc --noEmit` e ESLint limpos em ambos os workspaces.
-- **Homologação Visual em Navegador Real**: Executada com sucesso via Chrome DevTools em `http://localhost:3000/painel-fornecedor/pedidos` (autenticação de fornecedor `fornecedor.teste1@fraldinhalivre.com.br`, comprovação do estado de erro amigável na tabela, supressão de falso estado de lista vazia, acionamento dos botões "Atualizar pedidos" e "Tentar novamente" com chamadas a `refetchDirectOrders`, screenshots arquivadas em `docs/qa/screenshots/`).
-- **Limitações Declaradas**: Nenhuma escrita executada contra produção (trava fail-closed mantida para evitar pedidos permanentes sem cleanup); sem deploy remoto antes da aprovação da PR #18.
+- **Validação de Testes e Tipagem (Resultados Auditados)**:
+  - Frontend Vitest: 7 arquivos / 91 testes 100% aprovados (`npx vitest run ...`, exit code 0).
+  - Lógica E2E (Node Test Runner): 4 suítes / 19 testes unitários 100% aprovados (`scripts/test-e2e-logic.test.mjs`, exit code 0).
+  - Backend Vitest: 5 arquivos / 45 testes 100% aprovados (`back/test/orders.*`, exit code 0).
+  - Contratos: 7 arquivos / 56 testes 100% aprovados (exit code 0).
+  - Tipagem: `tsc --noEmit` limpo com 0 erros em ambos os workspaces.
+  - Linters: ESLint com 0 erros e 4 avisos triados pré-existentes.
+- **Homologação Visual Parcial — Estado de Erro, Retry e RBAC do Painel do Fornecedor**:
+  - Foi executada homologação visual dirigida em Chromium desktop do estado de erro do painel do fornecedor. Foram validados a diferenciação entre erro e vazio, a presença dos controles de retry/refresh e o bloqueio de acesso do fornecedor à rota administrativa. A recuperação visual após resposta bem-sucedida, o painel admin autenticado, o fluxo com pedidos reais e os viewports mobile permanecem pendentes.
+- **Declarações Operacionais**: Nenhuma escrita executada contra o D1 de produção (trava fail-closed mantida para evitar pedidos permanentes sem cleanup); testes executados exclusivamente contra D1 local em memória; sem deploy remoto e sem merge para `main`.
 
 ## Expansão Multi-Fornecedor e Testes de Carga Concorrentes — 2026-10-01
 

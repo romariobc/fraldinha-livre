@@ -17,22 +17,80 @@ export function checkEnvironmentLock({ apiUrl, allowWrite }) {
   const isProduction = apiUrl.includes('workers.dev') || apiUrl.includes('fraldinhalivre.com.br')
   if (isProduction && !allowWrite) {
     return {
+      ok: false,
       isProduction: true,
       blocked: true,
       exitCode: 2,
+      verdict: 'BLOQUEADO_POR_SEGURANCA',
       message:
         '⚠️  EXECUÇÃO BLOQUEADA POR SEGURANÇA: O ambiente alvo é PRODUÇÃO e a autorização de escrita (--allow-production-write ou QA_ALLOW_PRODUCTION_WRITE=true) não foi concedida. Pedidos criados em produção permanecem no banco para fins contábeis e de auditoria.',
     }
   }
   return {
+    ok: true,
     isProduction,
     blocked: false,
     exitCode: 0,
+    verdict: 'APROVADO',
   }
 }
 
 /**
- * Valida os dados de um pedido inspecionado pela rota de auditoria/observabilidade administrativa.
+ * Valida pré-requisitos e credenciais antes de qualquer chamada mutável (Fail-Closed).
+ * Garante que credenciais ausentes abortem a execução ANTES da criação de produtos ou pedidos.
+ */
+export function checkPrerequisites({
+  apiUrl,
+  buyerEmail,
+  buyerPassword,
+  supplierEmail,
+  supplierPassword,
+  adminEmail,
+  adminPassword,
+  requireAdmin = false,
+  allowWrite = false,
+}) {
+  const envLock = checkEnvironmentLock({ apiUrl, allowWrite })
+  if (envLock.blocked) {
+    return envLock
+  }
+
+  if (requireAdmin && (!adminEmail || !adminPassword)) {
+    return {
+      ok: false,
+      isProduction: envLock.isProduction,
+      blocked: true,
+      exitCode: 1,
+      verdict: 'FALHA_CONFIGURACAO',
+      message:
+        '❌ ERRO FAIL-CLOSED: Execução administrativa obrigatória (QA_REQUIRE_ADMIN=true ou --require-admin), mas credenciais de administrador (QA_ADMIN_EMAIL / QA_ADMIN_PASSWORD) estão ausentes no ambiente.',
+    }
+  }
+
+  if (!buyerPassword || !supplierPassword) {
+    return {
+      ok: false,
+      isProduction: envLock.isProduction,
+      blocked: true,
+      exitCode: 1,
+      verdict: 'FALHA_CONFIGURACAO',
+      message:
+        '❌ ERRO FAIL-CLOSED: Credenciais de comprador (QA_BUYER_PASSWORD) ou fornecedor (QA_SUPPLIER_PASSWORD) ausentes no ambiente.',
+    }
+  }
+
+  return {
+    ok: true,
+    isProduction: envLock.isProduction,
+    blocked: false,
+    exitCode: 0,
+    verdict: 'APROVADO',
+  }
+}
+
+/**
+ * Valida os dados de um pedido inspecionado pela rota de observabilidade administrativa (GET /orders?scope=admin).
+ * Valida rigorosamente: id, uid, supplierId, supplierName (se presente), status, items, paymentMethod, paymentStatus e paymentTransactionId.
  */
 export function validateAdminOrder(order, expected = {}) {
   const errors = []
@@ -48,16 +106,28 @@ export function validateAdminOrder(order, expected = {}) {
   if (expected.expectedSupplierUid && order.supplierId !== expected.expectedSupplierUid) {
     errors.push(`UID do fornecedor divergente: esperado ${expected.expectedSupplierUid}, obtido ${order.supplierId}`)
   }
+  if (expected.expectedSupplierName && order.supplierName && order.supplierName !== expected.expectedSupplierName) {
+    errors.push(`Nome do fornecedor divergente: esperado ${expected.expectedSupplierName}, obtido ${order.supplierName}`)
+  }
   if (expected.expectedStatus && order.status !== expected.expectedStatus) {
     errors.push(`Status do pedido divergente: esperado ${expected.expectedStatus}, obtido ${order.status}`)
   }
-  if (expected.expectedPaymentTxId && order.paymentTransactionId !== expected.expectedPaymentTxId) {
-    errors.push(
-      `ID de transação divergente: esperado ${expected.expectedPaymentTxId}, obtido ${order.paymentTransactionId}`
-    )
-  }
   if (!Array.isArray(order.items) || order.items.length === 0) {
     errors.push('Lista de itens do pedido vazia ou inválida na visão administrativa')
+  } else if (expected.expectedProductId) {
+    const hasProduct = order.items.some((it) => it.productId === expected.expectedProductId)
+    if (!hasProduct) {
+      errors.push(`Item do pedido não contém o produto esperado ${expected.expectedProductId}`)
+    }
+  }
+  if (expected.expectedPaymentMethod && order.paymentMethod !== expected.expectedPaymentMethod) {
+    errors.push(`Método de pagamento divergente: esperado ${expected.expectedPaymentMethod}, obtido ${order.paymentMethod}`)
+  }
+  if (expected.expectedPaymentStatus && order.paymentStatus !== expected.expectedPaymentStatus) {
+    errors.push(`Status de pagamento divergente: esperado ${expected.expectedPaymentStatus}, obtido ${order.paymentStatus}`)
+  }
+  if (expected.expectedPaymentTxId && order.paymentTransactionId !== expected.expectedPaymentTxId) {
+    errors.push(`ID de transação divergente: esperado ${expected.expectedPaymentTxId}, obtido ${order.paymentTransactionId}`)
   }
   return {
     ok: errors.length === 0,
@@ -150,7 +220,7 @@ const BUYER_EMAIL = process.env.QA_BUYER_EMAIL || 'comprador.teste@fraldinhalivr
 const BUYER_PASSWORD = process.env.QA_BUYER_PASSWORD
 const SUPPLIER_EMAIL = process.env.QA_SUPPLIER_EMAIL || 'fornecedor.teste1@fraldinhalivre.com.br'
 const SUPPLIER_PASSWORD = process.env.QA_SUPPLIER_PASSWORD
-const ADMIN_EMAIL = process.env.QA_ADMIN_EMAIL || process.env.ADMIN_EMAIL || 'romariobc@gmail.com'
+const ADMIN_EMAIL = process.env.QA_ADMIN_EMAIL || process.env.ADMIN_EMAIL
 const ADMIN_PASSWORD = process.env.QA_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD
 const REQUIRE_ADMIN = process.env.QA_REQUIRE_ADMIN === 'true' || process.argv.includes('--require-admin')
 
@@ -182,25 +252,26 @@ export async function runE2E() {
   console.log('  Nota: Teste puramente HTTP REST. Não realiza renderização de interface gráfica.')
   console.log('===================================================================\n')
 
-  const envLock = checkEnvironmentLock({ apiUrl: API_URL, allowWrite })
-  if (envLock.blocked) {
-    console.warn(envLock.message)
-    console.warn('\nStatus de execução: NÃO EXECUTADO (Trava de produção ativa).')
-    console.warn('Para executar conscientemente, use: node scripts/test-e2e-catalog-to-history.mjs --allow-production-write\n')
-    process.exitCode = envLock.exitCode
-    return { verdict: 'BLOQUEADO_POR_SEGURANCA', exitCode: envLock.exitCode }
-  }
+  const prereq = checkPrerequisites({
+    apiUrl: API_URL,
+    buyerEmail: BUYER_EMAIL,
+    buyerPassword: BUYER_PASSWORD,
+    supplierEmail: SUPPLIER_EMAIL,
+    supplierPassword: SUPPLIER_PASSWORD,
+    adminEmail: ADMIN_EMAIL,
+    adminPassword: ADMIN_PASSWORD,
+    requireAdmin: REQUIRE_ADMIN,
+    allowWrite,
+  })
 
-  if (REQUIRE_ADMIN && !ADMIN_PASSWORD) {
-    console.error('\n❌ ERRO FAIL-CLOSED: Execução administrativa obrigatória (--require-admin), mas QA_ADMIN_PASSWORD ausente!')
-    process.exitCode = 1
-    return { verdict: 'FALHA_CONFIGURACAO', exitCode: 1 }
-  }
-
-  if (!BUYER_PASSWORD || !SUPPLIER_PASSWORD) {
-    console.error('\n❌ ERRO: Credenciais de teste ausentes no .env.qa.local ou variáveis de ambiente!')
-    process.exitCode = 1
-    return { verdict: 'FALHA_CONFIGURACAO', exitCode: 1 }
+  if (prereq.blocked) {
+    console.warn(prereq.message)
+    if (prereq.isProduction) {
+      console.warn('\nStatus de execução: NÃO EXECUTADO (Trava de produção ativa).')
+      console.warn('Para executar conscientemente, use: node scripts/test-e2e-catalog-to-history.mjs --allow-production-write\n')
+    }
+    process.exitCode = prereq.exitCode
+    return { verdict: prereq.verdict, exitCode: prereq.exitCode }
   }
 
   const results = []
@@ -495,7 +566,11 @@ export async function runE2E() {
         expectedOrderId: createdOrderId,
         expectedBuyerUid: buyer.uid,
         expectedSupplierUid: supplier.uid,
+        expectedSupplierName: 'Distribuidora Sul Teste',
         expectedStatus: 'entregue',
+        expectedProductId: createdProductId,
+        expectedPaymentMethod: 'simulado',
+        expectedPaymentStatus: 'pago',
         expectedPaymentTxId: simulatedTxId,
       })
 

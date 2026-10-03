@@ -132,6 +132,87 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     expect(body).toHaveProperty('error')
   })
 
+  it('POST /orders com unit inválida ("pct") → 400 (rejeitado pelo CreateOrderRequestSchema)', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-uid-a',
+      },
+      body: JSON.stringify({
+        product: 'Fralda',
+        quantity: 10,
+        unit: 'pct', // Inválido: schema aceita apenas 'un', 'cx', 'kg'
+        deliveryAddress: {
+          logradouro: 'Rua A',
+          numero: '123',
+          bairro: 'Centro',
+          cidade: 'São Paulo',
+          estado: 'SP',
+          cep: '01000-000',
+        },
+        items: [
+          {
+            productId: 'p1',
+            productName: 'Fralda P',
+            unitPrice: 1800,
+            quantity: 10,
+            unit: 'pct',
+          },
+        ],
+        supplierId: 'sup-001',
+        price: 18000,
+      }),
+    })
+    const response = await app.fetch(request, env)
+
+    expect(response.status).toBe(400)
+    const body = (await response.json()) as any
+    expect(body).toHaveProperty('error')
+  })
+
+  it('POST /orders sem supplierId → 400 INVALID_REQUEST (RN-P2c)', async () => {
+    const app = createTestApp()
+    const request = new Request('http://localhost/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer token-uid-a',
+      },
+      body: JSON.stringify({
+        product: 'Fralda',
+        quantity: 10,
+        unit: 'un',
+        deliveryAddress: {
+          logradouro: 'Rua A',
+          numero: '123',
+          bairro: 'Centro',
+          cidade: 'São Paulo',
+          estado: 'SP',
+          cep: '01000-000',
+        },
+        items: [
+          {
+            productId: 'p1',
+            productName: 'Fralda P',
+            unitPrice: 1800,
+            quantity: 10,
+            unit: 'un',
+          },
+        ],
+        // supplierId omitido propositalmente
+        price: 18000,
+      }),
+    })
+    const response = await app.fetch(request, env)
+
+    expect(response.status).toBe(400)
+    const body = (await response.json()) as any
+    expect(body.error.code).toBe('INVALID_REQUEST')
+    expect(body.error.message).toMatch(/supplierId/i)
+  })
+
   it('POST /orders com id/uid/status maliciosos no body → 201, uid é do TOKEN (RN-03)', { timeout: 15000 }, async () => {
     const app = createTestApp()
     const request = new Request('http://localhost/orders', {

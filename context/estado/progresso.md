@@ -1,5 +1,21 @@
 # Estado atual — 2026-10-03
 
+## Correção e Regressão da PR #18 (E2E API e Estado de Carregamento Multi-Conta) — 2026-10-03
+
+- **Confirmação e Correção dos 4 Achados de Code Review**:
+  - **Achado 1 [P2] (Payload POST /orders)**: Confirmada violação contratual (`unit: 'pct'` rejeitado por `CreateOrderRequestSchema` e falta de `supplierId` rejeitado por RN-P2c/400). Corrigido em `scripts/test-e2e-catalog-to-history.mjs` para `unit: 'un'`, `supplierId: supplier.uid` e `supplierName`. Testes de regressão adicionados no backend Miniflare (`back/test/orders.mutations.test.ts`), no schema de contratos (`packages/contracts/src/__tests__/order.test.ts`) e no runner E2E (`scripts/test-e2e-logic.test.mjs`).
+  - **Achado 2 [P2] (Divergência de Pagamento no Admin E2E)**: Confirmada divergência entre a criação (`pix` / `approved`) e a verificação administrativa (`simulado` / `pago`). Corrigida a chamada de `validateAdminOrder` no script E2E para esperar `pix` e `approved`. Testes de regressão adicionados reproduzindo a rejeição e aprovando a coerência.
+  - **Achado 3 [P2] (Escopo de envLock)**: Confirmado `ReferenceError: envLock is not defined` no encerramento de `runE2E()`. Corrigido para `prereq.isProduction` e adicionado bloco `catch` no fluxo para que falhas funcionais consolidem e reportem o sumário com `exitCode = 1`. Testes cobrindo `runE2E()` completo (aprovação com exitCode 0, falha funcional com exitCode 1, falha de teardown com exitCode 1, bloqueio de produção com exitCode 2 e validação de pré-requisitos de admin).
+  - **Achado 4 [P2] (Estado de carregamento e isolamento na troca de fornecedor)**: Confirmado em teste comportamental (`market-context.test.tsx`) que `directOrdersLoading` permanecia `false` e erros/diagnósticos de outra conta não eram isolados na troca de UID A -> B com promise pendente. Corrigido em `front/src/contexts/market-context.tsx` vinculando a exposição de loading, dados, erros e diagnósticos ao UID autenticado (`isSameAccount`), sem violar regras de hooks/ESLint (`react-hooks/set-state-in-effect`).
+- **Validação de Testes e Tipagem (Resultados Auditados)**:
+  - Frontend Vitest: 22/22 testes em `market-context.test.tsx` e 18/18 em `OrdersDataTable.test.tsx` (100% aprovados).
+  - Lógica E2E (Node Test Runner): 5 suítes / 28 testes unitários 100% aprovados (`scripts/test-e2e-logic.test.mjs`, exit code 0).
+  - Backend Vitest: 22/22 testes em `back/test/orders.mutations.test.ts` (100% aprovados).
+  - Contratos Vitest: 7 arquivos / 57 testes 100% aprovados (`packages/contracts`, exit code 0).
+  - Tipagem: `tsc --noEmit` limpo com 0 erros em `front/`, `back/` e `packages/contracts`.
+  - Linters: ESLint com 0 erros.
+- **Declarações Operacionais**: Nenhuma escrita em produção; trabalho desenvolvido na branch `fix/orders-flow-e2e-and-context-state`; sem merge para `main` e sem deploy remoto.
+
 ## Merge da PR #18 e Deploy em Produção Cloudflare (Fluxo de Pedidos e Fornecedor) — 2026-10-03
 
 - **Merge da PR #18 Concluído**:

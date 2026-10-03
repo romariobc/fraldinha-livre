@@ -213,25 +213,25 @@ if (!process.env.FIREBASE_API_KEY && !process.env.NEXT_PUBLIC_FIREBASE_API_KEY) 
   }
 }
 
-const API_URL = process.env.API_URL || 'https://fraldinha-livre-backend.romariobc.workers.dev'
-const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+const DEFAULT_API_URL = process.env.API_URL || 'https://fraldinha-livre-backend.romariobc.workers.dev'
+const DEFAULT_FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY
 
-const BUYER_EMAIL = process.env.QA_BUYER_EMAIL || 'comprador.teste@fraldinhalivre.com.br'
-const BUYER_PASSWORD = process.env.QA_BUYER_PASSWORD
-const SUPPLIER_EMAIL = process.env.QA_SUPPLIER_EMAIL || 'fornecedor.teste1@fraldinhalivre.com.br'
-const SUPPLIER_PASSWORD = process.env.QA_SUPPLIER_PASSWORD
-const ADMIN_EMAIL = process.env.QA_ADMIN_EMAIL || process.env.ADMIN_EMAIL
-const ADMIN_PASSWORD = process.env.QA_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD
-const REQUIRE_ADMIN = process.env.QA_REQUIRE_ADMIN === 'true' || process.argv.includes('--require-admin')
+const DEFAULT_BUYER_EMAIL = process.env.QA_BUYER_EMAIL || 'comprador.teste@fraldinhalivre.com.br'
+const DEFAULT_BUYER_PASSWORD = process.env.QA_BUYER_PASSWORD
+const DEFAULT_SUPPLIER_EMAIL = process.env.QA_SUPPLIER_EMAIL || 'fornecedor.teste1@fraldinhalivre.com.br'
+const DEFAULT_SUPPLIER_PASSWORD = process.env.QA_SUPPLIER_PASSWORD
+const DEFAULT_ADMIN_EMAIL = process.env.QA_ADMIN_EMAIL || process.env.ADMIN_EMAIL
+const DEFAULT_ADMIN_PASSWORD = process.env.QA_ADMIN_PASSWORD || process.env.ADMIN_PASSWORD
+const DEFAULT_REQUIRE_ADMIN = process.env.QA_REQUIRE_ADMIN === 'true' || process.argv.includes('--require-admin')
 
-const allowWrite = process.env.QA_ALLOW_PRODUCTION_WRITE === 'true' || process.argv.includes('--allow-production-write')
+const DEFAULT_ALLOW_WRITE = process.env.QA_ALLOW_PRODUCTION_WRITE === 'true' || process.argv.includes('--allow-production-write')
 
-async function authenticate(email, password) {
-  if (!FIREBASE_API_KEY) {
+export async function authenticate(email, password, apiKey = DEFAULT_FIREBASE_API_KEY, fetchFn = globalThis.fetch) {
+  if (!apiKey) {
     throw new Error('FIREBASE_API_KEY ausente')
   }
-  const res = await fetch(
-    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`,
+  const res = await fetchFn(
+    `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -245,33 +245,52 @@ async function authenticate(email, password) {
   return { idToken: data.idToken, uid: data.localId, email: data.email }
 }
 
-export async function runE2E() {
-  console.log('===================================================================')
-  console.log('  TESTE E2E DE API: Ciclo Completo de Pedidos (Fornecedor -> Comprador -> Admin)')
-  console.log(`  Alvo: ${API_URL}`)
-  console.log('  Nota: Teste puramente HTTP REST. Não realiza renderização de interface gráfica.')
-  console.log('===================================================================\n')
+
+export async function runE2E(options = {}) {
+  const apiUrl = options.apiUrl || DEFAULT_API_URL
+  const firebaseApiKey = options.firebaseApiKey || DEFAULT_FIREBASE_API_KEY
+  const buyerEmail = options.buyerEmail || DEFAULT_BUYER_EMAIL
+  const buyerPassword = options.buyerPassword !== undefined ? options.buyerPassword : DEFAULT_BUYER_PASSWORD
+  const supplierEmail = options.supplierEmail || DEFAULT_SUPPLIER_EMAIL
+  const supplierPassword = options.supplierPassword !== undefined ? options.supplierPassword : DEFAULT_SUPPLIER_PASSWORD
+  const adminEmail = options.adminEmail || DEFAULT_ADMIN_EMAIL
+  const adminPassword = options.adminPassword !== undefined ? options.adminPassword : DEFAULT_ADMIN_PASSWORD
+  const requireAdmin = options.requireAdmin !== undefined ? options.requireAdmin : DEFAULT_REQUIRE_ADMIN
+  const allowWrite = options.allowWrite !== undefined ? options.allowWrite : DEFAULT_ALLOW_WRITE
+
+  const fetchFn = options.fetchFn || globalThis.fetch
+  const authFn = options.authFn || ((email, pass) => authenticate(email, pass, firebaseApiKey, fetchFn))
+  const log = options.logFn || console.log
+  const warn = options.warnFn || console.warn
+  const error = options.errorFn || console.error
+  const table = options.tableFn || console.table
+
+  log('===================================================================')
+  log('  TESTE E2E DE API: Ciclo Completo de Pedidos (Fornecedor -> Comprador -> Admin)')
+  log(`  Alvo: ${apiUrl}`)
+  log('  Nota: Teste puramente HTTP REST. Não realiza renderização de interface gráfica.')
+  log('===================================================================\n')
 
   const prereq = checkPrerequisites({
-    apiUrl: API_URL,
-    buyerEmail: BUYER_EMAIL,
-    buyerPassword: BUYER_PASSWORD,
-    supplierEmail: SUPPLIER_EMAIL,
-    supplierPassword: SUPPLIER_PASSWORD,
-    adminEmail: ADMIN_EMAIL,
-    adminPassword: ADMIN_PASSWORD,
-    requireAdmin: REQUIRE_ADMIN,
+    apiUrl,
+    buyerEmail,
+    buyerPassword,
+    supplierEmail,
+    supplierPassword,
+    adminEmail,
+    adminPassword,
+    requireAdmin,
     allowWrite,
   })
 
   if (prereq.blocked) {
-    console.warn(prereq.message)
+    warn(prereq.message)
     if (prereq.isProduction) {
-      console.warn('\nStatus de execução: NÃO EXECUTADO (Trava de produção ativa).')
-      console.warn('Para executar conscientemente, use: node scripts/test-e2e-catalog-to-history.mjs --allow-production-write\n')
+      warn('\nStatus de execução: NÃO EXECUTADO (Trava de produção ativa).')
+      warn('Para executar conscientemente, use: node scripts/test-e2e-catalog-to-history.mjs --allow-production-write\n')
     }
     process.exitCode = prereq.exitCode
-    return { verdict: prereq.verdict, exitCode: prereq.exitCode }
+    return { verdict: prereq.verdict, exitCode: prereq.exitCode, allPassed: false, totalSteps: 0, passedSteps: 0 }
   }
 
   const results = []
@@ -286,11 +305,11 @@ export async function runE2E() {
     // -------------------------------------------------------------
     // ETAPA 1: Autenticação de Fornecedor X e Comprador Y
     // -------------------------------------------------------------
-    console.log('[1/12] Autenticando Fornecedor X e Comprador Y...')
-    supplier = await authenticate(SUPPLIER_EMAIL, SUPPLIER_PASSWORD)
-    buyer = await authenticate(BUYER_EMAIL, BUYER_PASSWORD)
-    console.log(`  Fornecedor X autenticado (UID: ${supplier.uid})`)
-    console.log(`  Comprador Y autenticado  (UID: ${buyer.uid})`)
+    log('[1/12] Autenticando Fornecedor X e Comprador Y...')
+    supplier = await authFn(supplierEmail, supplierPassword)
+    buyer = await authFn(buyerEmail, buyerPassword)
+    log(`  Fornecedor X autenticado (UID: ${supplier.uid})`)
+    log(`  Comprador Y autenticado  (UID: ${buyer.uid})`)
     results.push({ step: '1. Autenticação das contas (Fornecedor e Comprador)', ok: !!supplier.idToken && !!buyer.idToken, category: 'functional' })
 
     // -------------------------------------------------------------
@@ -298,7 +317,7 @@ export async function runE2E() {
     // -------------------------------------------------------------
     const testTimestamp = Date.now()
     const testProductName = `Fralda E2E QA Teste ${testTimestamp}`
-    console.log(`\n[2/12] Fornecedor X cadastra produto no catálogo via API (POST /products)...`)
+    log(`\n[2/12] Fornecedor X cadastra produto no catálogo via API (POST /products)...`)
 
     const productPayload = {
       name: testProductName,
@@ -319,7 +338,7 @@ export async function runE2E() {
       badge: 'Teste QA',
     }
 
-    const createProductRes = await fetch(`${API_URL}/products`, {
+    const createProductRes = await fetchFn(`${apiUrl}/products`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -331,15 +350,15 @@ export async function runE2E() {
     const productBody = await createProductRes.json()
     createdProductId = productBody.id
     const step2Ok = createProductRes.status === 201 && !!createdProductId
-    console.log(`  Status HTTP: ${createProductRes.status}, Product ID gerado: ${createdProductId}`)
+    log(`  Status HTTP: ${createProductRes.status}, Product ID gerado: ${createdProductId}`)
     results.push({ step: '2. Criação de produto pelo fornecedor (POST /products)', ok: step2Ok, productId: createdProductId, category: 'functional' })
     if (!step2Ok) throw new Error(`Falha ao cadastrar produto: ${JSON.stringify(productBody)}`)
 
     // -------------------------------------------------------------
     // ETAPA 3: Comprador Y localiza o produto no catálogo público
     // -------------------------------------------------------------
-    console.log('\n[3/12] Comprador Y consulta catálogo público via API (GET /products)...')
-    const catalogRes = await fetch(`${API_URL}/products`)
+    log('\n[3/12] Comprador Y consulta catálogo público via API (GET /products)...')
+    const catalogRes = await fetchFn(`${apiUrl}/products`)
     const catalog = await catalogRes.json()
     const foundProduct = Array.isArray(catalog) ? catalog.find((p) => p.id === createdProductId) : null
 
@@ -348,7 +367,7 @@ export async function runE2E() {
                     foundProduct.supplierId === supplier.uid &&
                     foundProduct.priceCents === 2490
 
-    console.log(`  Produto encontrado no catálogo público:`, {
+    log(`  Produto encontrado no catálogo público:`, {
       id: foundProduct?.id,
       name: foundProduct?.name,
       supplierId: foundProduct?.supplierId,
@@ -361,12 +380,14 @@ export async function runE2E() {
     // ETAPA 4: Comprador Y realiza compra direta com pagamento aprovado
     // -------------------------------------------------------------
     const idempotencyKey = `e2e-idempotency-${testTimestamp}`
-    console.log('\n[4/12] Comprador Y cria pedido via API (POST /orders com Idempotency-Key)...')
+    log('\n[4/12] Comprador Y cria pedido via API (POST /orders com Idempotency-Key)...')
 
     const orderPayload = {
       product: testProductName,
       quantity: 2,
-      unit: 'pct',
+      unit: 'un',
+      supplierId: supplier.uid,
+      supplierName: 'Distribuidora Sul Teste',
       deliveryAddress: {
         logradouro: 'Av. Paulista',
         numero: '1500',
@@ -383,7 +404,7 @@ export async function runE2E() {
           productName: testProductName,
           unitPrice: 2490,
           quantity: 2,
-          unit: 'pct',
+          unit: 'un',
         },
       ],
       paymentMethod: 'pix',
@@ -391,7 +412,7 @@ export async function runE2E() {
       paymentStatus: 'approved',
     }
 
-    const createOrderRes = await fetch(`${API_URL}/orders`, {
+    const createOrderRes = await fetchFn(`${apiUrl}/orders`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -403,22 +424,21 @@ export async function runE2E() {
 
     const orderBody = await createOrderRes.json()
     createdOrderId = orderBody.id
-    const orderXId = createOrderRes.headers.get('x-request-id')
 
     const step4Ok = createOrderRes.status === 201 &&
                     !!createdOrderId &&
                     orderBody.status === 'aguardando' &&
                     orderBody.paymentStatus === 'approved'
 
-    console.log(`  Status HTTP: ${createOrderRes.status}, Order ID: ${createdOrderId}, Status inicial: ${orderBody.status}`)
+    log(`  Status HTTP: ${createOrderRes.status}, Order ID: ${createdOrderId}, Status inicial: ${orderBody.status}`)
     results.push({ step: '4. Comprador realiza compra direta (POST /orders)', ok: step4Ok, orderId: createdOrderId, category: 'functional' })
     if (!step4Ok) throw new Error(`Falha ao criar pedido: ${JSON.stringify(orderBody)}`)
 
     // -------------------------------------------------------------
     // ETAPA 5: Fornecedor X visualiza pedido na sua fila
     // -------------------------------------------------------------
-    console.log('\n[5/12] Fornecedor X consulta fila de pedidos recebidos via API (GET /orders?scope=fornecedor)...')
-    const supplierOrdersRes = await fetch(`${API_URL}/orders?scope=fornecedor`, {
+    log('\n[5/12] Fornecedor X consulta fila de pedidos recebidos via API (GET /orders?scope=fornecedor)...')
+    const supplierOrdersRes = await fetchFn(`${apiUrl}/orders?scope=fornecedor`, {
       headers: { Authorization: `Bearer ${supplier.idToken}` },
     })
     const supplierOrders = await supplierOrdersRes.json()
@@ -428,7 +448,7 @@ export async function runE2E() {
                     !!foundInSupplier &&
                     foundInSupplier.status === 'aguardando'
 
-    console.log(`  Pedido localizado na fila do fornecedor:`, {
+    log(`  Pedido localizado na fila do fornecedor:`, {
       id: foundInSupplier?.id,
       status: foundInSupplier?.status,
       product: foundInSupplier?.product,
@@ -439,8 +459,8 @@ export async function runE2E() {
     // -------------------------------------------------------------
     // ETAPA 6: Fornecedor X confirma o pedido
     // -------------------------------------------------------------
-    console.log('\n[6/12] Fornecedor X confirma o pedido via API (PATCH status -> confirmado)...')
-    const confirmRes = await fetch(`${API_URL}/orders/${createdOrderId}/status`, {
+    log('\n[6/12] Fornecedor X confirma o pedido via API (PATCH status -> confirmado)...')
+    const confirmRes = await fetchFn(`${apiUrl}/orders/${createdOrderId}/status`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -450,15 +470,15 @@ export async function runE2E() {
     })
     const confirmBody = await confirmRes.json()
     const step6Ok = confirmRes.status === 200 && confirmBody.status === 'confirmado'
-    console.log(`  Status HTTP: ${confirmRes.status}, Novo status: ${confirmBody.status}`)
+    log(`  Status HTTP: ${confirmRes.status}, Novo status: ${confirmBody.status}`)
     results.push({ step: '6. Fornecedor confirma pedido (PATCH status -> confirmado)', ok: step6Ok, category: 'functional' })
     if (!step6Ok) throw new Error('Falha ao confirmar pedido')
 
     // -------------------------------------------------------------
     // ETAPA 7: Comprador Y consulta status confirmado via API
     // -------------------------------------------------------------
-    console.log('\n[7/12] Comprador Y consulta API de pedidos (verificação da regra de pedidos ativos: confirmado)...')
-    const buyerOrdersRes1 = await fetch(`${API_URL}/orders`, {
+    log('\n[7/12] Comprador Y consulta API de pedidos (verificação da regra de pedidos ativos: confirmado)...')
+    const buyerOrdersRes1 = await fetchFn(`${apiUrl}/orders`, {
       headers: { Authorization: `Bearer ${buyer.idToken}` },
     })
     const buyerOrders1 = await buyerOrdersRes1.json()
@@ -475,8 +495,8 @@ export async function runE2E() {
     // -------------------------------------------------------------
     // ETAPA 8: Fornecedor X despacha o pedido (A caminho)
     // -------------------------------------------------------------
-    console.log('\n[8/12] Fornecedor X despacha o pedido via API (PATCH status -> a-caminho)...')
-    const dispatchRes = await fetch(`${API_URL}/orders/${createdOrderId}/status`, {
+    log('\n[8/12] Fornecedor X despacha o pedido via API (PATCH status -> a-caminho)...')
+    const dispatchRes = await fetchFn(`${apiUrl}/orders/${createdOrderId}/status`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -486,15 +506,15 @@ export async function runE2E() {
     })
     const dispatchBody = await dispatchRes.json()
     const step8Ok = dispatchRes.status === 200 && dispatchBody.status === 'a-caminho'
-    console.log(`  Status HTTP: ${dispatchRes.status}, Novo status: ${dispatchBody.status}`)
+    log(`  Status HTTP: ${dispatchRes.status}, Novo status: ${dispatchBody.status}`)
     results.push({ step: '8. Fornecedor despacha pedido (PATCH status -> a-caminho)', ok: step8Ok, category: 'functional' })
     if (!step8Ok) throw new Error('Falha ao despachar pedido')
 
     // -------------------------------------------------------------
     // ETAPA 9: Comprador Y consulta status a-caminho via API
     // -------------------------------------------------------------
-    console.log('\n[9/12] Comprador Y consulta API de pedidos (verificação da regra de pedidos ativos: a-caminho)...')
-    const buyerOrdersRes2 = await fetch(`${API_URL}/orders`, {
+    log('\n[9/12] Comprador Y consulta API de pedidos (verificação da regra de pedidos ativos: a-caminho)...')
+    const buyerOrdersRes2 = await fetchFn(`${apiUrl}/orders`, {
       headers: { Authorization: `Bearer ${buyer.idToken}` },
     })
     const buyerOrders2 = await buyerOrdersRes2.json()
@@ -511,8 +531,8 @@ export async function runE2E() {
     // -------------------------------------------------------------
     // ETAPA 10: Fornecedor X marca o pedido como Entregue
     // -------------------------------------------------------------
-    console.log('\n[10/12] Fornecedor X conclui entrega via API (PATCH status -> entregue)...')
-    const deliverRes = await fetch(`${API_URL}/orders/${createdOrderId}/status`, {
+    log('\n[10/12] Fornecedor X conclui entrega via API (PATCH status -> entregue)...')
+    const deliverRes = await fetchFn(`${apiUrl}/orders/${createdOrderId}/status`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -522,15 +542,15 @@ export async function runE2E() {
     })
     const deliverBody = await deliverRes.json()
     const step10Ok = deliverRes.status === 200 && deliverBody.status === 'entregue'
-    console.log(`  Status HTTP: ${deliverRes.status}, Novo status: ${deliverBody.status}`)
+    log(`  Status HTTP: ${deliverRes.status}, Novo status: ${deliverBody.status}`)
     results.push({ step: '10. Fornecedor marca entrega (PATCH status -> entregue)', ok: step10Ok, category: 'functional' })
     if (!step10Ok) throw new Error('Falha ao marcar como entregue')
 
     // -------------------------------------------------------------
     // ETAPA 11: Comprador Y valida migração na API (critério de histórico)
     // -------------------------------------------------------------
-    console.log('\n[11/12] Comprador Y valida migração lógica de status na API (sai de ativos, entra em histórico)...')
-    const buyerOrdersRes3 = await fetch(`${API_URL}/orders`, {
+    log('\n[11/12] Comprador Y valida migração lógica de status na API (sai de ativos, entra em histórico)...')
+    const buyerOrdersRes3 = await fetchFn(`${apiUrl}/orders`, {
       headers: { Authorization: `Bearer ${buyer.idToken}` },
     })
     const buyerOrders3 = await buyerOrdersRes3.json()
@@ -553,10 +573,10 @@ export async function runE2E() {
     // -------------------------------------------------------------
     // ETAPA 12: Integração Administrativa (GET /orders?scope=admin)
     // -------------------------------------------------------------
-    if (ADMIN_PASSWORD) {
-      console.log('\n[12/12] Autenticando Administrador e validando observabilidade global (GET /orders?scope=admin)...')
-      admin = await authenticate(ADMIN_EMAIL, ADMIN_PASSWORD)
-      const adminOrdersRes = await fetch(`${API_URL}/orders?scope=admin`, {
+    if (adminPassword) {
+      log('\n[12/12] Autenticando Administrador e validando observabilidade global (GET /orders?scope=admin)...')
+      admin = await authFn(adminEmail, adminPassword)
+      const adminOrdersRes = await fetchFn(`${apiUrl}/orders?scope=admin`, {
         headers: { Authorization: `Bearer ${admin.idToken}` },
       })
       const adminOrders = await adminOrdersRes.json()
@@ -569,15 +589,15 @@ export async function runE2E() {
         expectedSupplierName: 'Distribuidora Sul Teste',
         expectedStatus: 'entregue',
         expectedProductId: createdProductId,
-        expectedPaymentMethod: 'simulado',
-        expectedPaymentStatus: 'pago',
+        expectedPaymentMethod: 'pix',
+        expectedPaymentStatus: 'approved',
         expectedPaymentTxId: simulatedTxId,
       })
 
       const step12Ok = adminOrdersRes.status === 200 && adminValidation.ok
-      console.log(`  Auditoria administrativa do pedido: HTTP ${adminOrdersRes.status}, Válido: ${adminValidation.ok ? 'SIM' : 'NÃO'}`)
+      log(`  Auditoria administrativa do pedido: HTTP ${adminOrdersRes.status}, Válido: ${adminValidation.ok ? 'SIM' : 'NÃO'}`)
       if (!adminValidation.ok) {
-        console.error('  Erros na validação administrativa:', adminValidation.errors)
+        error('  Erros na validação administrativa:', adminValidation.errors)
       }
       results.push({
         step: '12. Integração API Admin: localização e conformidade do pedido (GET /orders?scope=admin)',
@@ -587,7 +607,7 @@ export async function runE2E() {
       })
       if (!step12Ok) throw new Error('Pedido não validado na visão administrativa')
     } else {
-      console.log('\n[12/12] Etapa administrativa ignorada (credencial QA_ADMIN_PASSWORD não fornecida).')
+      log('\n[12/12] Etapa administrativa ignorada (credencial QA_ADMIN_PASSWORD não fornecida).')
       results.push({
         step: '12. Integração API Admin (ignorado: credencial administrativa não configurada)',
         ok: true,
@@ -595,23 +615,24 @@ export async function runE2E() {
         category: 'admin',
       })
     }
-
+  } catch (flowErr) {
+    error(`\n❌ Interrupção do fluxo de execução: ${flowErr.message}`)
   } finally {
     // -------------------------------------------------------------
     // TEARDOWN: Limpeza do produto de teste no D1
     // -------------------------------------------------------------
     if (createdProductId && supplier?.idToken) {
-      console.log('\n[TEARDOWN] Removendo produto temporário de teste (DELETE /products/:id)...')
+      log('\n[TEARDOWN] Removendo produto temporário de teste (DELETE /products/:id)...')
       try {
-        const deleteRes = await fetch(`${API_URL}/products/${createdProductId}`, {
+        const deleteRes = await fetchFn(`${apiUrl}/products/${createdProductId}`, {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${supplier.idToken}` },
         })
-        const catalogCheckRes = await fetch(`${API_URL}/products`)
+        const catalogCheckRes = await fetchFn(`${apiUrl}/products`)
         const catalogCheck = await catalogCheckRes.json()
         const stillInCatalog = Array.isArray(catalogCheck) && !!catalogCheck.find((p) => p.id === createdProductId)
         const cleanupOk = deleteRes.status === 204 && !stillInCatalog
-        console.log(`  Remoção do produto: HTTP ${deleteRes.status}, Excluído do catálogo: ${!stillInCatalog ? 'SIM (limpo)' : 'NÃO'}`)
+        log(`  Remoção do produto: HTTP ${deleteRes.status}, Excluído do catálogo: ${!stillInCatalog ? 'SIM (limpo)' : 'NÃO'}`)
         results.push({
           step: '13. Teardown: exclusão do produto temporário',
           ok: cleanupOk,
@@ -619,7 +640,7 @@ export async function runE2E() {
           error: cleanupOk ? undefined : `Status HTTP inesperado: ${deleteRes.status}`,
         })
       } catch (cleanErr) {
-        console.error('  ❌ Falha crítica no teardown:', cleanErr.message)
+        error('  ❌ Falha crítica no teardown:', cleanErr.message)
         results.push({
           step: '13. Teardown: exclusão do produto temporário',
           ok: false,
@@ -630,25 +651,25 @@ export async function runE2E() {
     }
 
     if (createdOrderId) {
-      console.log(`\n  ⚠️  NOTA DE RASTREABILIDADE: O pedido de teste #${createdOrderId} permanece registrado no banco D1.`)
-      console.log('     Para ambientes de produção, pedidos de compra direta não são excluíveis pela API por integridade contábil.')
-      console.log('     Para isolamento estrito sem poluição de dados, execute este teste contra ambiente de preview ou D1 local.\n')
+      log(`\n  ⚠️  NOTA DE RASTREABILIDADE: O pedido de teste #${createdOrderId} permanece registrado no banco D1.`)
+      log('     Para ambientes de produção, pedidos de compra direta não são excluíveis pela API por integridade contábil.')
+      log('     Para isolamento estrito sem poluição de dados, execute este teste contra ambiente de preview ou D1 local.\n')
     }
   }
 
-  console.log('===================================================================')
-  console.log('  RESUMO DO TESTE END-TO-END DE API')
-  console.log('===================================================================')
-  console.table(results)
+  log('===================================================================')
+  log('  RESUMO DO TESTE END-TO-END DE API')
+  log('===================================================================')
+  table(results)
 
-  const summary = computeSummary(results, { isProduction: envLock.isProduction, blocked: false })
-  console.log(`\nVeredito Consolidado: [${summary.verdict}] - ${summary.passedSteps}/${summary.totalSteps} etapas aprovadas.`)
+  const summary = computeSummary(results, { isProduction: prereq.isProduction, blocked: false })
+  log(`\nVeredito Consolidado: [${summary.verdict}] - ${summary.passedSteps}/${summary.totalSteps} etapas aprovadas.`)
 
   if (!summary.allPassed) {
-    console.error('❌ Falha na execução da suíte E2E. Processo encerrado com exit code 1.')
+    error('❌ Falha na execução da suíte E2E. Processo encerrado com exit code 1.')
     process.exitCode = 1
   } else {
-    console.log('🎉 Suíte E2E da API aprovada com sucesso!')
+    log('🎉 Suíte E2E da API aprovada com sucesso!')
     process.exitCode = 0
   }
 

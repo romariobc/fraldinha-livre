@@ -1,4 +1,22 @@
-# Estado atual — 2026-10-01
+# Estado atual — 2026-10-03
+
+## Homologação Visual Concluída — Painel do Fornecedor (Recuperação Pós-Sucesso, Pedidos Reais, Transição de Status e Viewports Mobile) — 2026-10-03
+
+- **Homologação Visual Dirigida em Navegador Real (Chromium / DevTools)**:
+  - **Recuperação Pós-Sucesso e Pedidos Reais (Desktop 1280×900)**:
+    - Com o backend local ativo (`wrangler dev --port 8787`) e D1 local alimentado, o clique em "Tentar novamente" (`refetchDirectOrders`) recuperou instantaneamente do estado de erro, transitando por "Carregando pedidos..." com desabilitação temporária do botão de refresh.
+    - Exibição de 2 pedidos reais da distribuidora (`ord-local-qa-001` e `ord-local-qa-002`) com dados íntegros: IDs, datas/horas, cliente B2B, destinos (SP/Curitiba), itens e valores (R$ 89,90 e R$ 125,50).
+    - Contadores dinâmicos calculados: 1 aguardando, 1 confirmado, receita bruta R$ 215,40. Abas de filtro refletindo Todos(2), Aguardando(1), Confirmados(1).
+    - Evidência arquivada: `docs/qa/screenshots/fornecedor_pedidos_recovered_success_1280.png`.
+  - **Transição de Status pelo Fornecedor em Tempo Real**:
+    - Disparada a ação "Confirmar Pedido" via menu contextual da linha na UI. Requisição `PATCH /orders/ord-local-qa-001/status` respondida com HTTP 200 e persistida no D1 local (evento auditado `order.status.updated`).
+    - Clique em "Atualizar pedidos" revalidou a lista: ambos os pedidos migraram para status `Confirmado` e o indicador de Aguardando atualizou para 0.
+    - Evidência arquivada: `docs/qa/screenshots/fornecedor_pedidos_refreshed_both_confirmed_1280.png`.
+  - **Responsividade em Viewports Mobile (390×844 e 360×800)**:
+    - Validados viewports padrão iOS (390×844) e Android (360×800).
+    - Sidebar recolhida em botão toggle acessível; cards de KPI em pilha vertical uniforme; barra de busca e botão de atualização responsivos; tabela em container com scroll horizontal sem transbordamento global da tela.
+    - Evidências arquivadas: `docs/qa/screenshots/fornecedor_pedidos_mobile_390.png`, `docs/qa/screenshots/fornecedor_pedidos_mobile_360.png` e `docs/qa/screenshots/fornecedor_pedidos_status_updated_360.png`.
+  - **Relatório de QA Atualizado**: Matriz consolidada e detalhamento das rodadas 1 e 2 registrados em [Relatório de Code Review](../../docs/qa/code-review-pedidos-fornecedor-admin-2026-10-01.md).
 
 ## Correção do Fluxo de Pedidos, Fornecedor, Admin e Confiabilidade E2E — 2026-10-01
 

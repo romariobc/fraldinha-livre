@@ -12,8 +12,9 @@ Status Geral: **Revisão e Implementação Concluídas com Evidências Auditadas
 |---|---|---|
 | **Erro invisível ao fornecedor** | **Corrigido** | `MarketContext` expõe `directOrdersError`, `directOrdersDiagnostic` e `refetchDirectOrders`. `OrdersDataTable` renderiza estado amigável de erro, botão "Tentar novamente", cópia segura de `requestId` e suprime estado vazio falso em falha de API. |
 | **Retry dispara nova consulta** | **Corrigido** | Comprovado por testes unitários e comportamentais em `OrdersDataTable.test.tsx` e `market-context.test.tsx`. |
-| **Retry visual recupera após sucesso** | **Pendente** | Não homologado visualmente com resposta HTTP 200 real no navegador (requer backend local ativo com pedidos mockados). |
-| **Refresh manual do fornecedor** | **Corrigido** | Adicionado botão manual "Atualizar pedidos" na toolbar de `OrdersDataTable`, desabilitado durante refresh e preservando dados prévios com banner em falha. |
+| **Retry visual recupera após sucesso** | **Homologado** | Validado em Chromium com backend ativo em porta 8787 e D1 local: clique em "Tentar novamente" suprime estado de erro e carrega pedidos reais instantaneamente com contadores e paginação. |
+| **Refresh manual do fornecedor** | **Corrigido e Homologado** | Adicionado botão manual "Atualizar pedidos" na toolbar de `OrdersDataTable`, desabilitado durante refresh e preservando dados prévios com banner em falha. Homologado visualmente em desktop e mobile. |
+| **Transição de status na UI** | **Homologado** | Fornecedor aciona "Confirmar Pedido" via menu contextual da linha na UI; backend persiste no D1 (`PATCH /orders/:id/status` HTTP 200) e refresh atualiza contadores dinâmicos. |
 | **Refresh manual do admin** | **Corrigido por teste automatizado** | Teste comportamental em `AdminOrdersTab.test.tsx` comprovou chegada de novo pedido na tabela após acionar refresh manual. |
 | **API admin encontra mesmo pedido** | **Corrigido** | Passo 12 do script `test-e2e-catalog-to-history.mjs` e função `validateAdminOrder` validam rigorosamente o mesmo `createdOrderId`, comprador, fornecedor, itens e pagamento. |
 | **Admin visual autenticado** | **Pendente** | Não executada homologação visual da rota `/admin` com usuário administrativo real nesta sessão. |
@@ -22,7 +23,7 @@ Status Geral: **Revisão e Implementação Concluídas com Evidências Auditadas
 | **Cleanup integral** | **Pendente (restrito a ambiente isolado)** | Pedidos de compra direta persistem no D1; limpeza integral somente é possível em ambiente isolado descartável (D1 local / preview). |
 | **Poluição em produção** | **Parcialmente corrigido** | Trava fail-closed mantida (`QA_ALLOW_PRODUCTION_WRITE=true` exigido; bloqueia com `exitCode = 2` e status "NÃO EXECUTADO"). Se habilitada excepcionalmente, o pedido permanece no D1 para auditoria. |
 | **Toast duplicado** | **Corrigido** | Removidos toasts do `market-context.tsx`; feedback visual centralizado unicamente nos handlers de UI em `OrdersDataTable.tsx`. |
-| **Mobile** | **Pendente** | Viewports mobile (ex: 390×844) não foram submetidos a homologação visual dirigida nesta rodada. |
+| **Mobile** | **Homologado** | Viewports 390×844 e 360×800 validados visualmente: sidebar retrátil, cards de KPI verticais, tabela com scroll horizontal sem overflow global de viewport. |
 
 ---
 
@@ -64,22 +65,44 @@ Status Geral: **Revisão e Implementação Concluídas com Evidências Auditadas
 
 ## 3. Registro da Homologação Visual
 
-> **Homologação visual parcial — estado de erro, retry e RBAC do painel do fornecedor.**
->
-> Foi executada homologação visual dirigida em Chromium desktop do estado de erro do painel do fornecedor. Foram validados a diferenciação entre erro e vazio, a presença dos controles de retry/refresh e o bloqueio de acesso do fornecedor à rota administrativa. A recuperação visual após resposta bem-sucedida, o painel admin autenticado, o fluxo com pedidos reais e os viewports mobile permanecem pendentes.
-
-- **Ambiente de Teste Visual**:
-  - Servidor Next.js 16 local iniciado na porta 3000 com backend local (8787) inativo para forçar condição de falha controlada.
-  - Navegador Chromium desktop controlado via Chrome DevTools.
-- **Evidências Observadas**:
-  - Login executado com conta de fornecedor de teste (`fornecedor.teste1@fraldinhalivre.com.br`).
+### 3.1. Rodada 1 — Estado de Erro, Retry e RBAC do Fornecedor (2026-10-01)
+- **Ambiente**: Servidor Next.js local na porta 3000 com backend local (8787) inativo para condição forçada de falha de rede (`NetworkError`).
+- **Navegador**: Chromium desktop (1280×900).
+- **Evidências**:
+  - Login executado com conta de fornecedor (`fornecedor.teste1@fraldinhalivre.com.br`).
   - Redirecionamento correto para `/painel-fornecedor`.
   - Bloqueio de acesso a `/admin` por role protection (redirecionado para fora).
   - Acesso a `/painel-fornecedor/pedidos`: mensagem amigável exibida (*"Não foi possível carregar os pedidos diretos. Tente novamente."*).
   - Falso estado de lista vazia (*"Nenhum pedido encontrado"*) suprimido.
   - Presença dos botões "Atualizar pedidos" e "Tentar novamente".
-  - Clique em retry/refresh acionou nova requisição `refetchDirectOrders`.
-- **Arquivamento Transitório**: Capturas salvas localmente em `docs/qa/screenshots/` (diretório transitório ignorado pelo Git).
+  - Screenshot: `docs/qa/screenshots/fornecedor_pedidos_error_state.png`.
+
+### 3.2. Rodada 2 — Recuperação Visual, Pedidos Reais, Transição de Status e Viewports Mobile (2026-10-03)
+- **Ambiente**: Servidor Next.js (3000) e Cloudflare Worker local (`wrangler dev --port 8787`) conectado a D1 local (`DB`).
+- **Cenários Executados e Auditados**:
+  1. **Recuperação Instantânea Pós-Sucesso (Desktop 1280×900)**:
+     - Com o backend no ar, o clique em "Tentar novamente" (`refetchDirectOrders`) transitou temporariamente para "Carregando pedidos..." desabilitando o botão de refresh.
+     - A resposta HTTP 200 carregou com sucesso 2 pedidos reais do fornecedor (`ord-local-qa-001` e `ord-local-qa-002`).
+     - Alerta de erro desapareceu; tabela exibiu linhas detalhadas com ID (#ord-local-qa-001/002), data/hora, comprador B2B, destino (São Paulo/Curitiba), itens e valores (R$ 89,90 e R$ 125,50).
+     - Contadores de KPI atualizaram dinamicamente: 1 aguardando, 1 confirmado, receita R$ 215,40.
+     - Abas de filtro calcularam totais: Todos(2), Aguardando(1), Confirmados(1).
+     - Screenshot: `docs/qa/screenshots/fornecedor_pedidos_recovered_success_1280.png`.
+  2. **Transição de Status pelo Fornecedor em Tempo Real**:
+     - No menu contextual de ações da linha (`...`), foi acionada a ação "Confirmar Pedido".
+     - Disparada requisição `PATCH /orders/ord-local-qa-001/status` com sucesso (HTTP 200), auditada no log do backend com evento `order.status.updated`.
+     - O botão "Atualizar pedidos" foi acionado; a tabela refletiu ambos os pedidos em `Confirmado`, e os KPIs transitaram para Aguardando: 0, Confirmados: 2.
+     - Screenshot: `docs/qa/screenshots/fornecedor_pedidos_refreshed_both_confirmed_1280.png`.
+  3. **Responsividade em Viewports Mobile (390×844 e 360×800)**:
+     - Em 390×844 (iPhone standard) e 360×800 (Android standard):
+       * Sidebar é recolhida automaticamente para botão hamburger no topo (`Alternar barra lateral`).
+       * Top banner exibe breadcrumb e menu compacto do fornecedor.
+       * Cards de KPI empilham-se verticalmente com legibilidade e sem quebras de layout.
+       * Barra de filtros, busca e botão de atualização permanecem acessíveis e alinhados.
+       * Tabela de pedidos mantém scroll horizontal fluido sem transbordar o viewport global.
+       * Menu dropdown de ações e botões de paginação operam sem sobreposição.
+     - Screenshots: `docs/qa/screenshots/fornecedor_pedidos_mobile_390.png`, `docs/qa/screenshots/fornecedor_pedidos_mobile_360.png` e `docs/qa/screenshots/fornecedor_pedidos_status_updated_360.png`.
+
+- **Arquivamento**: Todas as capturas estão preservadas localmente em `docs/qa/screenshots/` (ignorado pelo Git para prevenir poluição do repositório).
 
 ---
 
@@ -181,6 +204,5 @@ node --test scripts/test-e2e-logic.test.mjs
 3. **Merge**:
    - Nenhum merge foi executado para a branch `main`. As alterações estão restritas à branch `fix/orders-flow-supplier-admin-e2e` (PR #18).
 4. **Pendências Mantidas**:
-   - **Admin visual autenticado**: pendente de sessão com credencial e navegador dedicado.
-   - **Mobile**: homologação visual em viewports reduzidos permanece pendente.
-   - **Recuperação visual com pedidos reais**: pendente de execução com backend local alimentado por dados reais.
+   - **Admin visual autenticado**: pendente de sessão com credencial e navegador dedicado da conta administradora.
+   - *(Concluído nesta sessão)*: Homologação visual em viewports mobile (390px e 360px), recuperação pós-sucesso com pedidos reais do D1 local e transição de status na UI concluídas com 100% de sucesso.

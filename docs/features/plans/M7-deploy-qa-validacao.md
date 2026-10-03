@@ -97,7 +97,7 @@ o `NEXT_PUBLIC_BACKEND_URL` que já existe.
 7. Foto ambígua/borrada de embalagem de fralda (`fralda_borrada_ambigua.png`): **APROVADO**. Diante de foto desfocada com logotipo Pampers não legível em detalhes, o modelo identificou a marca mas não chutou o produto nem tamanho, solicitando esclarecimento educadamente ("Temos Pampers! Qual tamanho você está procurando? RN, P, M, G, XG ou XXG?").
 8. Foto de algo que não é fralda (`flores_algodao.jpg`): **APROVADO**. Modelo identificou com bom senso que se tratava de flores de algodão e não inventou produto.
 9. Foto + texto juntos (`pampers.png` + "essa aqui, tamanho M"): **APROVADO**. Identificou Pampers tamanho M, localizou item real no D1 (Pampers Confort Sec M 108 un R$ 77,29) e perguntou a quantidade.
-10. **Foto tirada de iPhone** (valida conversão HEIC→JPEG do `accept`): **PENDENTE (REQUISITO DE HARDWARE FÍSICO APPLE)**. O componente `ChatUI` define `accept="image/jpeg,image/jpg,image/png,image/webp"` delegando ao Safari/iOS a transcodificação nativa. Requer validação em aparelho físico Apple iPhone com Safari.
+10. **Foto tirada de iPhone** (valida conversão HEIC→JPEG do `accept`): **PENDENTE (REQUISITO DE HARDWARE FÍSICO APPLE)**. O componente `ChatUI` define `accept="image/jpeg,image/jpg,image/png,image/webp"`. Esse atributo restringe os formatos sugeridos pelo seletor; a conversão efetiva pelo Safari/iOS ainda precisa ser observada no aparelho. Requer validação em aparelho físico Apple iPhone com Safari.
 11. Foto em formato não suportado (`image/gif`): **APROVADO**. Rejeitado na fronteira pelo schema de validação com HTTP 400 `INVALID_REQUEST` em 75ms. A UI emite feedback claro: "Essa foto está num formato que não consigo ler. Use JPEG, PNG ou WebP."
 
 **Fluxo e bordas:**
@@ -119,14 +119,18 @@ o `NEXT_PUBLIC_BACKEND_URL` que já existe.
 | **Identificação Pampers** | Produção Cloudflare (Worker `e5bdf187`) | Foto `pampers.png` + pergunta de tamanho | Reconhece marca e pede tamanho | Reconheceu Pampers e perguntou o tamanho desejado | Aprovado |
 | **Foto Borrada (Caso 7)** | Produção Cloudflare (Worker `e5bdf187`) | Foto `fralda_borrada_ambigua.png` | Não alucina produto; pede esclarecimento | Respondeu reconhecendo Pampers e listou tamanhos (RN a XXG) para o usuário escolher | Aprovado |
 | **Alucinação de ID / Catálogo** | Produção Cloudflare (Worker `e5bdf187`, pré-fix) | Prompt original com `(ex: "p1", "p2")` | Modelo poderia selecionar `"p1"` inexistente | O backend aceitava e o frontend bloqueava com "Não encontrei esse produto no catálogo" | Falha comprovada |
-| **Autocorreção Completa no Orchestrator** | Versão Corrigida (`fix/feature-018-assistant-m7`, commit `b1881b8`) | ID inexistente (`id-fantasma-999`) seguido de ID válido (`p1`) | 1ª chamada rejeitada pela tool; 2ª chamada autocorrige e envia checkout | Teste de integração `orchestrator-recovery.test.ts` aprovado (2/2): tool error capturado e checkout retornado com ID corrigido | Aprovado |
-| **Limpeza de Prompts e Tool Definitions** | Versão Corrigida (`fix/feature-018-assistant-m7`, commit `b1881b8`) | System prompt e schemas sem IDs fictícios | LLM usa apenas UUID retornado por `search_products` | Suíte `back` 287/287 testes verdes, prompts limpos | Aprovado |
+| **Autocorreção Completa no Orchestrator** | Versão Corrigida (`fix/feature-018-assistant-m7`, commit de código `b1881b8`, teste adicionado em `0b983d6`) | ID inexistente (`id-fantasma-999`) seguido de ID válido (`p1`) | 1ª chamada rejeitada pela tool; 2ª chamada autocorrige e envia checkout | Teste de integração com LLM simulado (`vi.fn()`), reportado pelo executor como aprovado (2/2): erro da tool entregue à segunda chamada e action de checkout retornada. Não comprova autocorreção do Workers AI real | Aprovado |
+| **Limpeza de Prompts e Tool Definitions** | Versão Corrigida (`fix/feature-018-assistant-m7`, commit de código `b1881b8`, teste adicionado em `0b983d6`) | System prompt e schemas sem IDs fictícios | LLM usa apenas UUID retornado por `search_products` | Exemplos removidos por inspeção do diff; 287/287 testes reportados pelo executor. A aderência do modelo real ao prompt corrigido ainda requer QA | Aprovado |
 
 ### 6. Registro
 - `feature_list.json` (018 mantida como `in_progress` com 14/15 casos aprovados e pendências de hardware/consumo registradas).
 - `progresso.md` (Atualizado com distinção de ambientes e evidências reconciliadas).
 - `integration-guide.md` (Referência ao endpoint `POST /chat/message`).
 - `decisoes.md` (D-057: decisão de manter Llama 4 Scout formalizada sem alegar homologação integral).
+
+### Limites da evidência da versão corrigida
+
+Os 14 casos aprovados acima são resultados relatados pelo executor sobre a versão de produção anterior à correção; não foram reexecutados pelo revisor. A fixture borrada foi versionada, mas a resposta bruta da inferência não foi anexada. `orchestrator-recovery.test.ts` usa D1 local e respostas programadas do LLM: comprova o tratamento de erro e retry no servidor, sem inferência real e sem navegação no checkout. A versão corrigida não recebeu novo deploy nesta tarefa.
 
 ## Critérios de aceite
 
@@ -135,6 +139,7 @@ o `NEXT_PUBLIC_BACKEND_URL` que já existe.
 - [x] Smoke test: 401 sem token, 200 com token, regressão de `/orders` e `/products` ok.
 - [ ] Checklist de QA (15 casos) concluído integralmente (14 casos aprovados com modelo real; Caso 10 mantido **PENDENTE** de iPhone físico).
 - [x] Validação ponta a ponta: login → chat → foto → seleção → checkout → pedido real em `/minha-conta`.
+- [ ] Autocorreção com Workers AI real na versão corrigida, com ambiente/versão e resposta observada registrados.
 - [ ] Custo em neurons medido formalmente no dashboard da Cloudflare (estimativa de ~100-300 neurons/turno anotada; medição contábil mantida **PENDENTE**).
 - [x] Decisão sobre o modelo registrada em `decisoes.md` (D-057: manter `@cf/meta/llama-4-scout-17b-16e-instruct` com base nos resultados comprovados).
 

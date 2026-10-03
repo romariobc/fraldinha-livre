@@ -1,5 +1,12 @@
 # Estado atual — 2026-10-03
 
+## Revalidação independente e limites da evidência
+
+- Cópia limpa obtida no commit `0b983d64e89afc35987f098b1782522e48d7c644`. A instalação local das dependências falhou com EPERM; outra tentativa de checkout retornou falta de espaço em disco e o executor deixou de iniciar. Nenhuma suíte foi reexecutada localmente pelo revisor.
+- Adicionado workflow `PR validation` nas branches das PRs #19 e #20 para executar testes, tipos e lint sem deploy ou credenciais de produção. Resultados devem ser consultados no run associado ao commit; configuração do workflow não equivale a aprovação.
+- QA admin, iPhone, medição oficial de neurons e autocorreção do modelo real na versão corrigida permanecem pendentes. A presença de um plugin instalado não comprovou acesso operacional ao Firebase/Cloudflare nesta sessão.
+
+
 ## Homologação M7 do Assistente de Compras (Feature 018) com Modelo Real Workers AI — 2026-10-03
 
 - **Branch**: `fix/feature-018-assistant-m7` (commits `b1881b8` e posteriores).
@@ -18,7 +25,7 @@
 - **Correção da Causa-Raiz de Alucinação e Autocorreção no Orchestrator**:
   - Remoção de IDs de exemplo fictícios (`p1`, `p2`) no prompt do sistema (`prompts.ts`) e nas definições de tools (`tools/index.ts`).
   - Validação defensiva no backend (`harness.ts`): `select_product_for_purchase` valida no D1 via `getProduct`. Se o ID não existir, retorna erro explicativo ao modelo.
-  - Comprovada a autocorreção completa no orchestrator (`back/test/ai/orchestrator-recovery.test.ts`): ID inexistente → erro da ferramenta → modelo se autocorrige com ID válido → checkout gerado com sucesso.
+  - Teste de integração do orchestrator (`back/test/ai/orchestrator-recovery.test.ts`, adicionado em `0b983d6`) com LLM simulado: ID inexistente → erro entregue à segunda chamada → resposta programada com ID válido → action retornada. A autocorreção do Workers AI real na versão corrigida e a navegação no checkout não são comprovadas por esse teste.
 - **Suíte de Testes 100% Verde**:
   - `front`: 66 arquivos / 696 testes aprovados.
   - `back`: 28 arquivos / 287 testes aprovados (incluindo `orchestrator-recovery.test.ts`).

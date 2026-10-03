@@ -49,7 +49,8 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
   const [directOrdersLoading, setDirectOrdersLoading] = useState(useBackend)
   const [directOrdersError, setDirectOrdersError] = useState<string | null>(null)
   const [directOrdersDiagnostic, setDirectOrdersDiagnostic] = useState<DiagnosticResult | null>(null)
-  const [directOrdersOwnerUid, setDirectOrdersOwnerUid] = useState<string | null>(null)
+  const [directOrdersDataOwnerUid, setDirectOrdersDataOwnerUid] = useState<string | null>(null)
+  const [directOrdersQueryOwnerUid, setDirectOrdersQueryOwnerUid] = useState<string | null>(null)
   const [offers, setOffers] = useState<SupplierOffer[]>(MOCK_OFFERS)
   const [declinedIds, setDeclinedIds] = useState<Set<string>>(new Set())
 
@@ -62,6 +63,7 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
     if (!user || role !== 'fornecedor') return
 
     const fetchId = ++activeFetchIdRef.current
+    const currentUid = user.uid
     setDirectOrdersLoading(true)
     setDirectOrdersError(null)
     setDirectOrdersDiagnostic(null)
@@ -71,7 +73,8 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
       const result = await repo.listForSupplier()
       if (fetchId !== activeFetchIdRef.current) return
       setDirectOrders(result.map(contractOrderToDirectOrder))
-      setDirectOrdersOwnerUid(user.uid)
+      setDirectOrdersDataOwnerUid(currentUid)
+      setDirectOrdersQueryOwnerUid(currentUid)
     } catch (err) {
       if (fetchId !== activeFetchIdRef.current) return
       console.error('Erro ao carregar pedidos diretos:', err)
@@ -79,6 +82,7 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
       logFrontendDiagnostic(diag, { operation: 'listForSupplier' })
       setDirectOrdersError('Não foi possível carregar os pedidos diretos. Tente novamente.')
       setDirectOrdersDiagnostic(diag)
+      setDirectOrdersQueryOwnerUid(currentUid)
     } finally {
       if (fetchId === activeFetchIdRef.current) {
         setDirectOrdersLoading(false)
@@ -92,6 +96,8 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
     if (!user || role !== 'fornecedor') return
 
     const fetchId = ++activeFetchIdRef.current
+    const currentUid = user.uid
+
     const repo: OrderRepository = new HttpOrderRepository()
 
     repo
@@ -99,7 +105,8 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
       .then((result) => {
         if (fetchId !== activeFetchIdRef.current) return
         setDirectOrders(result.map(contractOrderToDirectOrder))
-        setDirectOrdersOwnerUid(user.uid)
+        setDirectOrdersDataOwnerUid(currentUid)
+        setDirectOrdersQueryOwnerUid(currentUid)
         setDirectOrdersError(null)
         setDirectOrdersDiagnostic(null)
       })
@@ -110,6 +117,7 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
         logFrontendDiagnostic(diag, { operation: 'listForSupplier' })
         setDirectOrdersError('Não foi possível carregar os pedidos diretos. Tente novamente.')
         setDirectOrdersDiagnostic(diag)
+        setDirectOrdersQueryOwnerUid(currentUid)
       })
       .finally(() => {
         if (fetchId === activeFetchIdRef.current) {
@@ -186,6 +194,10 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
   }
 
   function addDirectOrder(directOrder: DirectOrder) {
+    if (user) {
+      setDirectOrdersDataOwnerUid(user.uid)
+      setDirectOrdersQueryOwnerUid(user.uid)
+    }
     setDirectOrders((prev) => [directOrder, ...prev])
   }
 
@@ -194,16 +206,28 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Deriva loading, dados e erros expostos em vez de setState no corpo do effect (react-hooks/set-state-in-effect):
-  // enquanto o Firebase resolve a sessao ou se nao for fornecedor logado, protege o estado sem cascata de renders.
+  // separando a propriedade dos dados (directOrdersDataOwnerUid) da propriedade do estado de consulta/erro (directOrdersQueryOwnerUid).
   const isEligibleSupplier = Boolean(user && role === 'fornecedor')
+  const hasDataForCurrentAccount = Boolean(user && directOrdersDataOwnerUid === user.uid)
+  const hasQueryForCurrentAccount = Boolean(user && directOrdersQueryOwnerUid === user.uid)
+
   const directOrdersExposed =
-    useBackend && (!isEligibleSupplier || (directOrdersOwnerUid !== null && directOrdersOwnerUid !== user?.uid))
+    useBackend && (!isEligibleSupplier || !hasDataForCurrentAccount)
       ? []
       : directOrders
-  const directOrdersErrorExposed = useBackend && !isEligibleSupplier ? null : directOrdersError
-  const directOrdersDiagnosticExposed = useBackend && !isEligibleSupplier ? null : directOrdersDiagnostic
+
+  const directOrdersErrorExposed =
+    useBackend && (!isEligibleSupplier || !hasQueryForCurrentAccount)
+      ? null
+      : directOrdersError
+
+  const directOrdersDiagnosticExposed =
+    useBackend && (!isEligibleSupplier || !hasQueryForCurrentAccount)
+      ? null
+      : directOrdersDiagnostic
+
   const directOrdersLoadingExposed =
-    useBackend && (authLoading || (isEligibleSupplier && directOrdersLoading))
+    useBackend && (authLoading || (isEligibleSupplier && (directOrdersLoading || !hasQueryForCurrentAccount)))
 
   return (
     <MarketContext.Provider

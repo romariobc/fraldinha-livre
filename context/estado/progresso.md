@@ -1,5 +1,26 @@
 # Estado atual — 2026-10-03
 
+## Correção e Regressão da PR #18 (E2E API e Estado de Carregamento Multi-Conta) — 2026-10-03
+
+- **Confirmação e Correção de Achados de Code Review (Rodada 2 / Commit f74a818)**:
+  - **Achado 1 [P1] (Vazamento de pedidos entre fornecedores)**:
+    - *Cenário reproduzido*: Fornecedor A carrega pedidos com sucesso; troca para conta B; consulta de B falha no backend; catch definia `directOrdersOwnerUid` como B mas mantinha `directOrders` de A; `isSameAccount` passava a ser `true`, expondo pedidos de A para B!
+    - *Correção*: Separação da propriedade dos dados (`directOrdersDataOwnerUid`) da propriedade do estado de consulta/diagnóstico (`directOrdersQueryOwnerUid`). Uma falha na conta B nunca atribui a B a titularidade dos dados de A. Dados de A permanecem estritamente isolados (`directOrdersExposed = []`).
+    - *Preservações garantidas*: Dados prévios mantidos em refresh falho da mesma conta; loading ativo durante a primeira consulta de nova conta; erro/diagnóstico pertencentes à conta atual; descarte de respostas tardias via `activeFetchIdRef`; isolamento total após logout.
+    - *Testes comportamentais React*: 5 testes em `front/src/contexts/__tests__/market-context.test.tsx` (totalizando 25/25 aprovados).
+  - **Achado 2 [P2] (Exceção de rede pode aprovar indevidamente o E2E)**:
+    - *Cenário reproduzido*: Quando `POST /products` (ou qualquer passo posterior) lançava exceção (ex: `TypeError('fetch failed')`), o bloco catch apenas logava o erro sem inserir falha em `results`. O resumo avaliava apenas os passos anteriores aprovados e emitia veredito `APROVADO`, `allPassed: true` e exit code 0!
+    - *Correção*: Bloco catch em [scripts/test-e2e-catalog-to-history.mjs](file:///E:/Labdev/Projetos/fraldinha-livre/scripts/test-e2e-catalog-to-history.mjs) insere registro de falha funcional em `results` com a mensagem da exceção (`category: 'functional'`), garantindo `allPassed: false`, veredito `FALHA_FUNCIONAL` e exit code 1. Teardown é rigorosamente preservado no `finally`.
+    - *Testes de regressão E2E*: 4 novos testes em [scripts/test-e2e-logic.test.mjs](file:///E:/Labdev/Projetos/fraldinha-livre/scripts/test-e2e-logic.test.mjs) (totalizando 5 suítes / 32 testes 100% aprovados), cobrindo exceção no `POST /products`, exceção em chamada posterior com teardown executado, rejeição de `json()` malformado e falha na autenticação administrativa.
+- **Validação de Testes e Tipagem (Resultados Auditados)**:
+  - Frontend Vitest: 25/25 testes em `market-context.test.tsx` e 18/18 em `OrdersDataTable.test.tsx` (100% aprovados).
+  - Lógica E2E (Node Test Runner): 5 suítes / 32 testes unitários 100% aprovados (`scripts/test-e2e-logic.test.mjs`, exit code 0).
+  - Backend Vitest: 22/22 testes em `back/test/orders.mutations.test.ts` (100% aprovados).
+  - Contratos Vitest: 7 arquivos / 57 testes 100% aprovados (`packages/contracts`, exit code 0).
+  - Tipagem: `tsc --noEmit` limpo com 0 erros em `front/`, `back/` e `packages/contracts`.
+  - Linters: ESLint com 0 erros.
+- **Declarações Operacionais**: Nenhuma escrita em produção; trabalho desenvolvido na branch `fix/orders-flow-e2e-and-context-state`; sem merge para `main` e sem deploy remoto.
+
 ## Merge da PR #18 e Deploy em Produção Cloudflare (Fluxo de Pedidos e Fornecedor) — 2026-10-03
 
 - **Merge da PR #18 Concluído**:

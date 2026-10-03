@@ -63,6 +63,8 @@ back/scripts/test-search.ts
 back/scripts/*.json
 back/scripts/*.sql
 *.patch
+*.bundle
+patches/
 
 back/.wrangler/
 .dev.vars

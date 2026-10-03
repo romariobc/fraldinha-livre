@@ -9,6 +9,7 @@ Frontend Next.js em front/ → apiFetch com Firebase ID Token → API Hono em ba
 - [Cliente HTTP](../../front/src/lib/api-client.ts): token, request ID e contrato tipado de erros.
 - [Autenticação](../../back/src/middleware/auth.ts): valida assinatura, issuer, audience e validade do token; resolve Custom Claims. Claims conflitantes falham de forma fechada. Existe fallback legado ADMIN_UID, sujeito às regras do middleware; não é substituto para provisionar claims corretamente.
 - [Produtos](../../front/src/lib/adapters/http-product-repository.ts) e [pedidos](../../front/src/lib/adapters/http-order-repository.ts) já possuem adapters HTTP e backend real.
+- [Assistente de compras](../../back/src/routes/chat.ts): endpoint `POST /chat/message` autenticado via Firebase ID Token, com motor Workers AI (`@cf/meta/llama-4-scout-17b-16e-instruct`), tool-use sobre catálogo D1 e handoff direto para o fluxo de checkout.
 - [Rotas](../../back/src/routes/) e [schemas](../../back/src/schema/) são a referência para endpoints e persistência atuais.
 - [Contratos](../../packages/contracts/src/) são compartilhados; preserve compatibilidade e teste consumidores ao alterá-los.
 

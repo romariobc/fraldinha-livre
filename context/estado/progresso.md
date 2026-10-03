@@ -1,5 +1,48 @@
 # Estado atual — 2026-10-03
 
+## Homologação M7 do Assistente de Compras (Feature 018) com Modelo Real Workers AI — 2026-10-03
+
+- **Branch**: `fix/feature-018-assistant-m7` (head commit `b1881b8`).
+- **Pull Request #20 Criada**: `https://github.com/romariobc/fraldinha-livre/pull/20` (aguardando revisão no GitHub).
+- **Homologação M7 com Modelo Real Cloudflare Workers AI (`@cf/meta/llama-4-scout-17b-16e-instruct`)**:
+  - Smoke test autenticado de `POST /chat/message` com Firebase ID token real de comprador: resposta fluida, contextualizada com a última compra do usuário (`MamyPoko RN`).
+  - Segurança e autorização: 401 sem token em `POST /chat/message` e `GET /orders`; `GET /products` 200 OK (314 produtos).
+  - Execução dos 15 casos do checklist M7 com modelo real e navegador:
+    - Casos de texto 1, 2, 3, 4: **APROVADOS** (busca exata, esclarecimento de pedidos vagos, fallback para marcas fora do catálogo sem alucinar, e quantidade de pacotes preservada).
+    - Casos de visão multimodal 5, 6, 7, 8, 9: **APROVADOS** (reconhecimento de embalagens reais Pampers e Personal Baby, identificação de ausência no catálogo com sugestões, bom senso em fotos de flores e não-fraldas, busca combinada de foto + texto).
+    - Caso 10 (Foto de iPhone / HEIC nativo): **PENDENTE (REQUISITO DE HARDWARE)** mantido honestamente pendente para validação em aparelho físico Apple com Safari.
+    - Caso 11 (Formato não suportado / GIF): **APROVADO** (HTTP 400 em 75ms e mensagem amigável no front).
+    - Fluxo de ponta a ponta 12, 13, 14, 15: **APROVADOS** (handoff para `/checkout`, persistência em `/minha-conta`, interceptação de perfil incompleto RN-06 para `/minha-conta?tab=perfil`, e redirecionamento de deslogado para `/login?redirect=/assistente`).
+- **Correção de Falha Comprovada em Escopo**:
+  - Identificada tendência do modelo em utilizar identificadores de exemplo como `"p1"`, `"p2"`.
+  - Remoção de IDs de exemplo no prompt do sistema (`prompts.ts`) e na definição das ferramentas (`tools/index.ts`).
+  - Validação defensiva adicionada no backend (`harness.ts`): `select_product_for_purchase` agora valida a existência do produto no D1 via `getProduct`. Se inexistente, retorna erro semântico instruindo o modelo a usar o UUID retornado por `search_products`.
+  - Teste de regressão adicionado em `back/test/ai/harness.test.ts`.
+- **Suíte de Testes 100% Verde**:
+  - `front`: 66 arquivos / 696 testes aprovados.
+  - `back`: 27 arquivos / 285 testes aprovados.
+  - `packages/contracts`: 7 arquivos / 56 testes aprovados.
+  - `tsc --noEmit`: 0 erros nos três workspaces.
+- **Decisão Arquitetural Registrada**: ADR D-057 formalizada mantendo `@cf/meta/llama-4-scout-17b-16e-instruct`.
+
+## Abertura da PR #19 e Validação do Fluxo de Pedidos / Fornecedor — 2026-10-03
+
+- **Branch**: `fix/orders-flow-e2e-and-context-state` (head commit `1b2d53fc091288e6199c6e70ad6c269d268ac3bc`).
+- **Pull Request #19 Criada**: `https://github.com/romariobc/fraldinha-livre/pull/19` (aguardando revisão no GitHub).
+- **Garantias Validadas**:
+  - Isolamento estrito entre contas: troca de conta limpa dados do fornecedor anterior mesmo se a nova consulta falhar (`directOrdersOwnerUid` separado de `directOrdersDiagnostic`).
+  - Respostas atrasadas da conta anterior não contaminam a conta ativa (`activeFetchIdRef`).
+  - Exit code estrito na suíte E2E: falhas de rede ou JSON geram reprovação e código de saída diferente de zero.
+  - Payload de pedidos em conformidade com `supplierId` e unidades do contrato (`un`).
+- **QA Autenticado no Navegador (Chromium / DevTools)**:
+  - Painel do fornecedor testado com conta autenticada real (`fornecedor.teste1@fraldinhalivre.com.br`).
+  - Atualização manual de pedidos (`refetchDirectOrders`) executada com sucesso, mantendo integridade de pedidos e métricas.
+  - Logout e transição de sessão verificados.
+- **Testes Automatizados**:
+  - `front/src/contexts/__tests__/market-context.test.tsx`: 25 testes aprovados.
+  - `scripts/test-e2e-logic.test.mjs`: 32 testes aprovados.
+  - `back/test/orders.mutations.test.ts`: 22 testes aprovados.
+
 ## Merge da PR #18 e Deploy em Produção Cloudflare (Fluxo de Pedidos e Fornecedor) — 2026-10-03
 
 - **Merge da PR #18 Concluído**:

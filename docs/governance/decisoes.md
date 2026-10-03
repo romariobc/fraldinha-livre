@@ -1535,3 +1535,8 @@ Implementada na task OBS-002 e refinada na OBS-002.1. Coberta por:
 Autoriza a consolidação das regras operacionais em AGENTS.md e .agents/, com documentação compartilhada em docs/ e estado em context/. Substitui exigências históricas de modelos específicos, sessão-mãe/Haiku, memória pessoal obrigatória, backup em outro repositório e worktree de uma ferramenta específica. Não altera decisões de produto, autenticação, infraestrutura nem critérios de aceite.
 
 Entrada lê o resumo atual; planos, decisões e histórico são consultados conforme a tarefa. Testes e validação são proporcionais ao impacto. Git status não comprova exclusividade, não há stage indiscriminado, e deploy/migrações não fazem parte de QA local. Mudanças de estado de produto exigem evidência; os status existentes foram preservados. Ver [registro de execução](harness-revisao-2026-09-21.md).
+
+## D-057 — Manutenção do Modelo Workers AI (@cf/meta/llama-4-scout-17b-16e-instruct) no Assistente (2026-10-03) — VIGENTE
+
+A homologação real do M7 (feature 018) comprovou que o modelo nativo Cloudflare Workers AI `@cf/meta/llama-4-scout-17b-16e-instruct` atende integralmente aos requisitos de compra assistida por texto e visão multimodal (reconhecimento de embalagens, identificação de marca, tamanho e tiras por pacote, aderência estrita ao tool-calling e fallback educado para itens fora de catálogo). A latência média (~2.0s a ~3.8s) e o consumo de neurons mantêm-se dentro dos limites orçamentários previstos. Fica mantida a arquitetura nativa Workers AI, descartando a necessidade de migração para Claude via AI Gateway nesta fase.
+

@@ -1,5 +1,21 @@
 # Estado atual — 2026-10-03
 
+## Merge da PR #18 e Deploy em Produção Cloudflare (Fluxo de Pedidos e Fornecedor) — 2026-10-03
+
+- **Merge da PR #18 Concluído**:
+  - Pull Request #18 aprovada e mergeada em `main` via commit de merge `e528d30`.
+  - Descrição da PR sincronizada no GitHub com a matriz consolidada de achados reconciliados e evidências de homologação visual.
+- **Pipeline CI/CD Cloudflare (GitHub Actions Run 37134345945)**:
+  - Workflow `Deploy to Cloudflare` concluído com sucesso (`status: success`) em 3m2s.
+  - Step `Apply D1 Migrations`: `No migrations to apply!` (D1 de produção `fraldinha-livre-db` íntegro e em dia).
+  - Step `Deploy Backend`: Cloudflare Worker `fraldinha-livre-backend` atualizado (Version ID `e5bdf187-5c1c-474d-a908-1f69f3ea83e3`).
+  - Step `Deploy Frontend (Container)`: Container `fraldinha-livre-frontend` atualizado (Version ID `4f41a6c7-160b-4c67-8025-513d765a85b5`, Image Digest `sha256:a1ecf79bee6a6df867529ebf65f40d1f592a21c2f9d4bdb02375166e75ae75e3`).
+- **Smoke Tests Remotos Pós-Deploy em Produção**:
+  - `GET /health` (Backend): HTTP 200 `{"ok":true}` (`X-Request-Id: c99a061c-6c4d-4b68-88e5-9b42c646aba1`).
+  - `GET /`, `GET /catalogo`, `GET /painel-fornecedor` (Frontend): HTTP 200 OK.
+- **Branch Local**: `main` atualizada e sincronizada com `origin/main`.
+
+
 ## Homologação Visual Concluída — Painel do Fornecedor (Recuperação Pós-Sucesso, Pedidos Reais, Transição de Status e Viewports Mobile) — 2026-10-03
 
 - **Homologação Visual Dirigida em Navegador Real (Chromium / DevTools)**:

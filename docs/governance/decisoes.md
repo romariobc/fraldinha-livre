@@ -1538,5 +1538,6 @@ Entrada lê o resumo atual; planos, decisões e histórico são consultados conf
 
 ## D-057 — Manutenção do Modelo Workers AI (@cf/meta/llama-4-scout-17b-16e-instruct) no Assistente (2026-10-03) — VIGENTE
 
-A homologação real do M7 (feature 018) comprovou que o modelo nativo Cloudflare Workers AI `@cf/meta/llama-4-scout-17b-16e-instruct` atende integralmente aos requisitos de compra assistida por texto e visão multimodal (reconhecimento de embalagens, identificação de marca, tamanho e tiras por pacote, aderência estrita ao tool-calling e fallback educado para itens fora de catálogo). A latência média (~2.0s a ~3.8s) e o consumo de neurons mantêm-se dentro dos limites orçamentários previstos. Fica mantida a arquitetura nativa Workers AI, descartando a necessidade de migração para Claude via AI Gateway nesta fase.
+Com base nos testes executados contra o modelo real (14 de 15 casos do checklist M7 validados com sucesso, abrangendo busca de texto, pedido vago, visão multimodal com fotos nítidas e borradas, e fluxo completo até o checkout), comprovou-se que o modelo nativo Cloudflare Workers AI `@cf/meta/llama-4-scout-17b-16e-instruct` atende com precisão aos requisitos da feature 018 sem alucinações de catálogo (reforçado pela validação em `harness.ts` e suíte `orchestrator-recovery`). O consumo foi estimado tecnicamente em ~100–300 neurons/turno (telemetria contábil formal e teste em hardware físico iPhone permanecem pendentes). Fica mantida a arquitetura nativa Workers AI, descartando a necessidade de migração para Claude via AI Gateway nesta fase.
+
 

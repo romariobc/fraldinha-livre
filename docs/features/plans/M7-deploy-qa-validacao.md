@@ -94,10 +94,10 @@ o `NEXT_PUBLIC_BACKEND_URL` que já existe.
 **Foto (o motivo da feature existir):**
 5. Foto nítida de embalagem de fralda de marca do catálogo (`pampers.png`): **APROVADO**. Visão multimodal do modelo reconheceu embalagem da marca Pampers e perguntou o tamanho desejado.
 6. Foto de embalagem de marca que NÃO está no catálogo (`personal_baby.png`): **APROVADO**. Modelo identificou "Personal Baby", consultou o D1 via `search_products`, constatou ausência no catálogo e informou ao usuário oferecendo marcas similares.
-7. Foto ambígua/borrada (`portfolio-1.jpg`): **APROVADO**. Modelo respondeu que a imagem não exibe fraldas infantis e solicitou detalhes em texto.
+7. Foto ambígua/borrada de embalagem de fralda (`fralda_borrada_ambigua.png`): **APROVADO**. Diante de foto desfocada com logotipo Pampers não legível em detalhes, o modelo identificou a marca mas não chutou o produto nem tamanho, solicitando esclarecimento educadamente ("Temos Pampers! Qual tamanho você está procurando? RN, P, M, G, XG ou XXG?").
 8. Foto de algo que não é fralda (`flores_algodao.jpg`): **APROVADO**. Modelo identificou com bom senso que se tratava de flores de algodão e não inventou produto.
 9. Foto + texto juntos (`pampers.png` + "essa aqui, tamanho M"): **APROVADO**. Identificou Pampers tamanho M, localizou item real no D1 (Pampers Confort Sec M 108 un R$ 77,29) e perguntou a quantidade.
-10. **Foto tirada de iPhone** (valida conversão HEIC→JPEG do `accept`): **PENDENTE (REQUISITO DE HARDWARE)**. O componente `ChatUI` define `accept="image/jpeg,image/jpg,image/png,image/webp"` delegando ao Safari/iOS a transcodificação nativa. Requer validação em aparelho físico Apple iPhone.
+10. **Foto tirada de iPhone** (valida conversão HEIC→JPEG do `accept`): **PENDENTE (REQUISITO DE HARDWARE FÍSICO APPLE)**. O componente `ChatUI` define `accept="image/jpeg,image/jpg,image/png,image/webp"` delegando ao Safari/iOS a transcodificação nativa. Requer validação em aparelho físico Apple iPhone com Safari.
 11. Foto em formato não suportado (`image/gif`): **APROVADO**. Rejeitado na fronteira pelo schema de validação com HTTP 400 `INVALID_REQUEST` em 75ms. A UI emite feedback claro: "Essa foto está num formato que não consigo ler. Use JPEG, PNG ou WebP."
 
 **Fluxo e bordas:**
@@ -109,23 +109,34 @@ o `NEXT_PUBLIC_BACKEND_URL` que já existe.
 **Custo e Performance:**
 - Modelo: `@cf/meta/llama-4-scout-17b-16e-instruct` (Cloudflare Workers AI).
 - Latência média por turno: ~2.0s a ~3.8s (multimodal com visão e function calling).
-- Consumo por chamada: ~100 a ~300 neurons por turno.
+- Consumo por chamada: **PENDENTE (TELEMETRIA DO DASHBOARD REQUERIDA)**. A faixa de 100–300 neurons/turno é classificada formalmente como **ESTIMATIVA TÉCNICA** baseada na especificação do modelo Llama-4-Scout-17B multimodal. A contabilidade e medição exata por chamada requer acesso ao painel de observabilidade da conta Cloudflare.
 
-### 5. Registro
-- `feature_list.json` (018 atualizada com evidências de homologação real M7; 14 aprovados, 1 pendente de hardware físico).
-- `progresso.md` (Atualizado com log da homologação M7 e correção de ID).
+### 5. Separação de Resultados por Versão e Ambiente
+
+| Cenário / Teste | Ambiente e Versão | Entrada | Resultado Esperado | Resultado Observado | Status |
+|---|---|---|---|---|---|
+| **Smoke Test Inicial** | Produção Cloudflare (Worker `e5bdf187`, front `4f41a6c7`) | `POST /chat/message` sem token | 401 Unauthorized | HTTP 401 `Token de autenticação ausente ou malformado.` (RequestId: `69c7bcfa...`) | Aprovado |
+| **Identificação Pampers** | Produção Cloudflare (Worker `e5bdf187`) | Foto `pampers.png` + pergunta de tamanho | Reconhece marca e pede tamanho | Reconheceu Pampers e perguntou o tamanho desejado | Aprovado |
+| **Foto Borrada (Caso 7)** | Produção Cloudflare (Worker `e5bdf187`) | Foto `fralda_borrada_ambigua.png` | Não alucina produto; pede esclarecimento | Respondeu reconhecendo Pampers e listou tamanhos (RN a XXG) para o usuário escolher | Aprovado |
+| **Alucinação de ID / Catálogo** | Produção Cloudflare (Worker `e5bdf187`, pré-fix) | Prompt original com `(ex: "p1", "p2")` | Modelo poderia selecionar `"p1"` inexistente | O backend aceitava e o frontend bloqueava com "Não encontrei esse produto no catálogo" | Falha comprovada |
+| **Autocorreção Completa no Orchestrator** | Versão Corrigida (`fix/feature-018-assistant-m7`, commit `b1881b8`) | ID inexistente (`id-fantasma-999`) seguido de ID válido (`p1`) | 1ª chamada rejeitada pela tool; 2ª chamada autocorrige e envia checkout | Teste de integração `orchestrator-recovery.test.ts` aprovado (2/2): tool error capturado e checkout retornado com ID corrigido | Aprovado |
+| **Limpeza de Prompts e Tool Definitions** | Versão Corrigida (`fix/feature-018-assistant-m7`, commit `b1881b8`) | System prompt e schemas sem IDs fictícios | LLM usa apenas UUID retornado por `search_products` | Suíte `back` 287/287 testes verdes, prompts limpos | Aprovado |
+
+### 6. Registro
+- `feature_list.json` (018 mantida como `in_progress` com 14/15 casos aprovados e pendências de hardware/consumo registradas).
+- `progresso.md` (Atualizado com distinção de ambientes e evidências reconciliadas).
 - `integration-guide.md` (Referência ao endpoint `POST /chat/message`).
-- `decisoes.md` (D-057: decisão de manter Llama 4 Scout formalizada).
+- `decisoes.md` (D-057: decisão de manter Llama 4 Scout formalizada sem alegar homologação integral).
 
 ## Critérios de aceite
 
 - [x] Workers AI confirmado na conta (Cloudflare Workers AI ativo e respondendo).
 - [x] Backend e frontend deployados/executáveis em ambiente integrado.
 - [x] Smoke test: 401 sem token, 200 com token, regressão de `/orders` e `/products` ok.
-- [x] Checklist de QA (15 casos) executado e **cada resultado registrado** (14 aprovados, 1 pendente de iPhone físico).
+- [ ] Checklist de QA (15 casos) concluído integralmente (14 casos aprovados com modelo real; Caso 10 mantido **PENDENTE** de iPhone físico).
 - [x] Validação ponta a ponta: login → chat → foto → seleção → checkout → pedido real em `/minha-conta`.
-- [x] Custo em neurons anotado (~100-300 neurons/turno).
-- [x] Decisão sobre o modelo registrada em `decisoes.md` (D-057: manter `@cf/meta/llama-4-scout-17b-16e-instruct`).
+- [ ] Custo em neurons medido formalmente no dashboard da Cloudflare (estimativa de ~100-300 neurons/turno anotada; medição contábil mantida **PENDENTE**).
+- [x] Decisão sobre o modelo registrada em `decisoes.md` (D-057: manter `@cf/meta/llama-4-scout-17b-16e-instruct` com base nos resultados comprovados).
 
 ## Riscos e o que fazer
 

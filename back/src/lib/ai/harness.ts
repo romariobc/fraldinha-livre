@@ -52,10 +52,13 @@ export async function executeToolHarness(
       }
 
       case 'select_product_for_purchase': {
-        // Valida os argumentos mas não acessa o DB.
-        // O orchestrator usa o resultado validado para montar a ChatResponse de checkout.
-        // userId é incluído no retorno para rastreabilidade/auditoria.
         const args = SelectProductArgsSchema.parse(rawArgs)
+        const product = await getProduct(db, { productId: args.productId })
+        if (!product) {
+          return {
+            error: `Produto com id "${args.productId}" não existe no catálogo. Você deve usar o id exato retornado por search_products.`,
+          }
+        }
         return { ...args, userId: userContext.userId }
       }
 

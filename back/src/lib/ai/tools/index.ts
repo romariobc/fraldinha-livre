@@ -33,7 +33,7 @@ export const AI_TOOLS: ChatCompletionTool[] = [
       properties: {
         productId: {
           type: 'string',
-          description: 'O id exato do produto retornado no campo "id" por search_products (ex: "p1", "p2", "t3")',
+          description: 'O id exato do produto retornado no campo "id" por search_products',
         },
       },
       required: ['productId'],
@@ -47,7 +47,7 @@ export const AI_TOOLS: ChatCompletionTool[] = [
       properties: {
         productId: {
           type: 'string',
-          description: 'O id exato do produto retornado no campo "id" por search_products (ex: "p1", "p2", "t3")',
+          description: 'O id exato do produto retornado no campo "id" por search_products',
         },
         quantity: {
           type: 'number',

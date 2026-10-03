@@ -83,51 +83,65 @@ o `NEXT_PUBLIC_BACKEND_URL` que já existe.
 - Regressão: `GET /orders` sem token → continua **401**; `GET /products` → continua **200** com 24
   produtos. (Confirma que a rota nova não quebrou o que já funcionava.)
 
-### 4. Checklist de QA manual (o coração desta tarefa)
-
-Não é automatizável — é o único jeito de saber se o modelo entrega. Registrar o resultado de CADA caso.
+### 4. Checklist de QA manual (executado em 2026-10-03 com modelo real @cf/meta/llama-4-scout-17b-16e-instruct)
 
 **Texto:**
-1. Pedido direto por nome de produto real do catálogo ("quero Supersec Pants tamanho P").
-2. Pedido vago ("preciso de fralda") → agente deve perguntar marca/tamanho, não chutar.
-3. Produto que não existe ("quero fralda da marca XYZ") → deve informar que não achou, sem inventar id.
-4. Quantidade explícita ("2 pacotes do…") → deve chegar ao checkout com quantidade 2.
+1. Pedido direto por nome de produto real do catálogo ("quero Supersec Pants tamanho P"): **APROVADO**. Acionou tool `search_products`, localizou o produto real no D1 e perguntou quantos pacotes o usuário deseja.
+2. Pedido vago ("preciso de fralda"): **APROVADO**. Chamou `search_products(query: 'fralda')` e perguntou marca/tamanho antes de assumir qualquer produto.
+3. Produto que não existe ("quero fralda da marca XYZ"): **APROVADO**. `search_products` retornou lista vazia; modelo informou educadamente que não localizou a marca no catálogo e não inventou ID nem produto.
+4. Quantidade explícita ("2 pacotes do…"): **APROVADO**. Modelo fixou `quantity: 2`, pediu confirmação e respeitou o número de pacotes.
 
 **Foto (o motivo da feature existir):**
-5. Foto nítida de embalagem de fralda de marca do catálogo → reconhece e sugere o produto certo.
-6. Foto de embalagem de marca que NÃO está no catálogo → informa que não tem, sem alucinar.
-7. Foto ambígua/borrada → pede esclarecimento (marca/tamanho), não chuta nem trava.
-8. Foto de algo que não é fralda → responde com bom senso, não inventa produto.
-9. Foto + texto juntos ("essa aqui, tamanho M").
-10. **Foto tirada de iPhone** (valida a conversão HEIC→JPEG do `accept`).
-11. Foto em formato não suportado, se conseguir forçar → deve dar a mensagem clara
-    ("formato que não consigo ler"), não erro genérico.
+5. Foto nítida de embalagem de fralda de marca do catálogo (`pampers.png`): **APROVADO**. Visão multimodal do modelo reconheceu embalagem da marca Pampers e perguntou o tamanho desejado.
+6. Foto de embalagem de marca que NÃO está no catálogo (`personal_baby.png`): **APROVADO**. Modelo identificou "Personal Baby", consultou o D1 via `search_products`, constatou ausência no catálogo e informou ao usuário oferecendo marcas similares.
+7. Foto ambígua/borrada de embalagem de fralda (`fralda_borrada_ambigua.png`): **APROVADO**. Diante de foto desfocada com logotipo Pampers não legível em detalhes, o modelo identificou a marca mas não chutou o produto nem tamanho, solicitando esclarecimento educadamente ("Temos Pampers! Qual tamanho você está procurando? RN, P, M, G, XG ou XXG?").
+8. Foto de algo que não é fralda (`flores_algodao.jpg`): **APROVADO**. Modelo identificou com bom senso que se tratava de flores de algodão e não inventou produto.
+9. Foto + texto juntos (`pampers.png` + "essa aqui, tamanho M"): **APROVADO**. Identificou Pampers tamanho M, localizou item real no D1 (Pampers Confort Sec M 108 un R$ 77,29) e perguntou a quantidade.
+10. **Foto tirada de iPhone** (valida conversão HEIC→JPEG do `accept`): **PENDENTE (REQUISITO DE HARDWARE FÍSICO APPLE)**. O componente `ChatUI` define `accept="image/jpeg,image/jpg,image/png,image/webp"`. Esse atributo restringe os formatos sugeridos pelo seletor; a conversão efetiva pelo Safari/iOS ainda precisa ser observada no aparelho. Requer validação em aparelho físico Apple iPhone com Safari.
+11. Foto em formato não suportado (`image/gif`): **APROVADO**. Rejeitado na fronteira pelo schema de validação com HTTP 400 `INVALID_REQUEST` em 75ms. A UI emite feedback claro: "Essa foto está num formato que não consigo ler. Use JPEG, PNG ou WebP."
 
 **Fluxo e bordas:**
-12. Seleção confirmada → cai no `/checkout` com produto e quantidade certos.
-13. Fechar o pedido → aparece em `/minha-conta` (ponta a ponta real, mesma validação de B9/P3/C11).
-14. Conta com **perfil incompleto** → ao selecionar, vai pro perfil, não pro checkout (RN-06).
-15. Deslogado em `/assistente` → redireciona pro login.
+12. Seleção confirmada → cai no `/checkout` com produto e quantidade certos: **APROVADO**. Resposta com action `select_product`, disparando redirecionamento para o checkout com `productId` e `quantity`.
+13. Fechar o pedido → aparece em `/minha-conta`: **APROVADO**. Pedido gerado e confirmado, refletido na listagem de pedidos do comprador com dados íntegros.
+14. Conta com **perfil incompleto** → ao selecionar, vai pro perfil, não pro checkout (RN-06): **APROVADO**. Redirecionou para `/minha-conta?tab=perfil&returnTo=/assistente` com banner de alerta solicitando conclusão do perfil.
+15. Deslogado em `/assistente` → redireciona pro login: **APROVADO**. Validação no navegador real redirecionou `/assistente` para `/login?redirect=/assistente` e retornou após autenticação.
 
-**Custo:** ao final, anotar quantos neurons a sessão de QA consumiu (dashboard Workers AI) para ter
-referência real de custo por conversa. Era uma constraint explícita da spec.
+**Custo e Performance:**
+- Modelo: `@cf/meta/llama-4-scout-17b-16e-instruct` (Cloudflare Workers AI).
+- Latência média por turno: ~2.0s a ~3.8s (multimodal com visão e function calling).
+- Consumo por chamada: **PENDENTE (TELEMETRIA DO DASHBOARD REQUERIDA)**. A faixa de 100–300 neurons/turno é classificada formalmente como **ESTIMATIVA TÉCNICA** baseada na especificação do modelo Llama-4-Scout-17B multimodal. A contabilidade e medição exata por chamada requer acesso ao painel de observabilidade da conta Cloudflare.
 
-### 5. Registro
-- `feature_list.json` (018 → done, com o resumo da validação real).
-- `progresso.md`.
-- `integration-guide.md`: seção sobre `POST /chat/message` (mesmo padrão das de `/orders` e `/products`).
-- `decisoes.md`: registrar a decisão sobre o modelo — **manter llama-4-scout** ou **migrar para Claude
-  via AI Gateway** — com base no que o QA mostrar, não em preferência.
+### 5. Separação de Resultados por Versão e Ambiente
+
+| Cenário / Teste | Ambiente e Versão | Entrada | Resultado Esperado | Resultado Observado | Status |
+|---|---|---|---|---|---|
+| **Smoke Test Inicial** | Produção Cloudflare (Worker `e5bdf187`, front `4f41a6c7`) | `POST /chat/message` sem token | 401 Unauthorized | HTTP 401 `Token de autenticação ausente ou malformado.` (RequestId: `69c7bcfa...`) | Aprovado |
+| **Identificação Pampers** | Produção Cloudflare (Worker `e5bdf187`) | Foto `pampers.png` + pergunta de tamanho | Reconhece marca e pede tamanho | Reconheceu Pampers e perguntou o tamanho desejado | Aprovado |
+| **Foto Borrada (Caso 7)** | Produção Cloudflare (Worker `e5bdf187`) | Foto `fralda_borrada_ambigua.png` | Não alucina produto; pede esclarecimento | Respondeu reconhecendo Pampers e listou tamanhos (RN a XXG) para o usuário escolher | Aprovado |
+| **Alucinação de ID / Catálogo** | Produção Cloudflare (Worker `e5bdf187`, pré-fix) | Prompt original com `(ex: "p1", "p2")` | Modelo poderia selecionar `"p1"` inexistente | O backend aceitava e o frontend bloqueava com "Não encontrei esse produto no catálogo" | Falha comprovada |
+| **Autocorreção Completa no Orchestrator** | Versão Corrigida (`fix/feature-018-assistant-m7`, commit de código `b1881b8`, teste adicionado em `0b983d6`) | ID inexistente (`id-fantasma-999`) seguido de ID válido (`p1`) | 1ª chamada rejeitada pela tool; 2ª chamada autocorrige e envia checkout | Teste de integração com LLM simulado (`vi.fn()`), reportado pelo executor como aprovado (2/2): erro da tool entregue à segunda chamada e action de checkout retornada. Não comprova autocorreção do Workers AI real | Aprovado |
+| **Limpeza de Prompts e Tool Definitions** | Versão Corrigida (`fix/feature-018-assistant-m7`, commit de código `b1881b8`, teste adicionado em `0b983d6`) | System prompt e schemas sem IDs fictícios | LLM usa apenas UUID retornado por `search_products` | Exemplos removidos por inspeção do diff; 287/287 testes reportados pelo executor. A aderência do modelo real ao prompt corrigido ainda requer QA | Aprovado |
+
+### 6. Registro
+- `feature_list.json` (018 mantida como `in_progress` com 14/15 casos aprovados e pendências de hardware/consumo registradas).
+- `progresso.md` (Atualizado com distinção de ambientes e evidências reconciliadas).
+- `integration-guide.md` (Referência ao endpoint `POST /chat/message`).
+- `decisoes.md` (D-057: decisão de manter Llama 4 Scout formalizada sem alegar homologação integral).
+
+### Limites da evidência da versão corrigida
+
+Os 14 casos aprovados acima são resultados relatados pelo executor sobre a versão de produção anterior à correção; não foram reexecutados pelo revisor. A fixture borrada foi versionada, mas a resposta bruta da inferência não foi anexada. `orchestrator-recovery.test.ts` usa D1 local e respostas programadas do LLM: comprova o tratamento de erro e retry no servidor, sem inferência real e sem navegação no checkout. A versão corrigida não recebeu novo deploy nesta tarefa.
 
 ## Critérios de aceite
 
-- [ ] Workers AI confirmado na conta (pré-requisito humano).
-- [ ] Backend e frontend deployados.
-- [ ] Smoke test: 401 sem token, 200 com token, regressão de `/orders` e `/products` ok.
-- [ ] Checklist de QA (15 casos) executado e **cada resultado registrado** — inclusive os que falharem.
-- [ ] Validação ponta a ponta: login → chat → foto → seleção → checkout → pedido real em `/minha-conta`.
-- [ ] Custo em neurons anotado.
-- [ ] Decisão sobre o modelo registrada em `decisoes.md`.
+- [x] Workers AI confirmado na conta (Cloudflare Workers AI ativo e respondendo).
+- [x] Backend e frontend deployados/executáveis em ambiente integrado.
+- [x] Smoke test: 401 sem token, 200 com token, regressão de `/orders` e `/products` ok.
+- [ ] Checklist de QA (15 casos) concluído integralmente (14 casos aprovados com modelo real; Caso 10 mantido **PENDENTE** de iPhone físico).
+- [x] Validação ponta a ponta: login → chat → foto → seleção → checkout → pedido real em `/minha-conta`.
+- [ ] Autocorreção com Workers AI real na versão corrigida, com ambiente/versão e resposta observada registrados.
+- [ ] Custo em neurons medido formalmente no dashboard da Cloudflare (estimativa de ~100-300 neurons/turno anotada; medição contábil mantida **PENDENTE**).
+- [x] Decisão sobre o modelo registrada em `decisoes.md` (D-057: manter `@cf/meta/llama-4-scout-17b-16e-instruct` com base nos resultados comprovados).
 
 ## Riscos e o que fazer
 

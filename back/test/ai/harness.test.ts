@@ -95,6 +95,19 @@ describe('executeToolHarness', () => {
     })
   })
 
+  it('select_product_for_purchase: productId inexistente no banco retorna erro estruturado ao modelo', async () => {
+    const db = drizzle(env.DB)
+    const result = await executeToolHarness(
+      'select_product_for_purchase',
+      { productId: 'id-inexistente-xyz-123', quantity: 1 },
+      USER_CONTEXT,
+      db,
+    )
+
+    expect(result).toHaveProperty('error')
+    expect((result as { error: string }).error).toContain('não existe no catálogo')
+  })
+
   it('select_product_for_purchase: userId SEMPRE vem do UserContext (nunca do rawArgs)', async () => {
     const db = drizzle(env.DB)
     // Simula um LLM malicioso tentando injetar userId nos rawArgs

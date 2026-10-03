@@ -332,6 +332,9 @@ describe('test-e2e-catalog-to-history: runE2E() fluxo completo e regressões', (
         return { idToken: 'token-buyer', uid: 'buyer-uid-1', email }
       }
       if (email.includes('admin')) {
+        if (options.failAdminAuth) {
+          throw new Error('Falha de rede na autenticação administrativa')
+        }
         return { idToken: 'token-admin', uid: 'admin-uid-1', email }
       }
       return { idToken: 'token-user', uid: 'user-uid-1', email }
@@ -353,6 +356,9 @@ describe('test-e2e-catalog-to-history: runE2E() fluxo completo e regressões', (
 
       // POST /products
       if (url.endsWith('/products') && method === 'POST') {
+        if (options.throwStep2) {
+          throw new TypeError('fetch failed')
+        }
         if (options.failStep2) {
           return new Response(JSON.stringify({ error: 'Erro ao cadastrar produto' }), { status: 400 })
         }
@@ -361,6 +367,12 @@ describe('test-e2e-catalog-to-history: runE2E() fluxo completo e regressões', (
 
       // GET /products
       if (url.endsWith('/products') && method === 'GET') {
+        if (options.malformedJsonStep3) {
+          return new Response('<html>502 Bad Gateway</html>', {
+            status: 502,
+            headers: { 'Content-Type': 'text/html' },
+          })
+        }
         if (!inCatalog) {
           return new Response(JSON.stringify([]), { status: 200 })
         }
@@ -379,6 +391,9 @@ describe('test-e2e-catalog-to-history: runE2E() fluxo completo e regressões', (
 
       // POST /orders
       if (url.endsWith('/orders') && method === 'POST') {
+        if (options.throwStep4) {
+          throw new TypeError('fetch failed on order creation')
+        }
         if (options.failStep4) {
           return new Response(JSON.stringify({ error: 'Erro ao criar pedido' }), { status: 400 })
         }
@@ -623,5 +638,74 @@ describe('test-e2e-catalog-to-history: runE2E() fluxo completo e regressões', (
       process.exitCode = originalExitCode
     }
   })
+
+  it('8. [REGRESSÃO P2] exceção de rede em POST /products não pode aprovar indevidamente o E2E', async () => {
+    const originalExitCode = process.exitCode
+    try {
+      const env = createMockEnvironment({ throwStep2: true })
+      const summary = await runE2E(env.defaultRunOptions)
+
+      assert.equal(summary.allPassed, false, 'Suíte não pode ser aprovada quando POST /products lança exceção')
+      assert.equal(summary.verdict, 'FALHA_FUNCIONAL')
+      assert.equal(process.exitCode, 1)
+    } finally {
+      process.exitCode = originalExitCode
+    }
+  })
+
+  it('9. chamada posterior (POST /orders) lança exceção após criação do produto: teardown é executado e suíte falha', async () => {
+    const originalExitCode = process.exitCode
+    try {
+      const env = createMockEnvironment({ throwStep4: true })
+      const summary = await runE2E(env.defaultRunOptions)
+
+      assert.equal(summary.allPassed, false)
+      assert.equal(summary.verdict, 'FALHA_FUNCIONAL')
+      assert.equal(process.exitCode, 1)
+
+      const deleteCall = env.calls.find((c) => c.method === 'DELETE' && c.url.includes('/products/'))
+      assert.ok(deleteCall, 'Teardown do produto temporário deve ter sido executado após exceção no POST /orders')
+    } finally {
+      process.exitCode = originalExitCode
+    }
+  })
+
+  it('10. json() rejeita com resposta malformada após criação do produto: teardown é executado e suíte falha', async () => {
+    const originalExitCode = process.exitCode
+    try {
+      const env = createMockEnvironment({ malformedJsonStep3: true })
+      const summary = await runE2E(env.defaultRunOptions)
+
+      assert.equal(summary.allPassed, false)
+      assert.equal(summary.verdict, 'FALHA_FUNCIONAL')
+      assert.equal(process.exitCode, 1)
+
+      const deleteCall = env.calls.find((c) => c.method === 'DELETE' && c.url.includes('/products/'))
+      assert.ok(deleteCall, 'Teardown do produto temporário deve ter sido executado após erro de parsing JSON')
+    } finally {
+      process.exitCode = originalExitCode
+    }
+  })
+
+  it('11. autenticação administrativa falha após etapas anteriores: teardown é executado e suíte falha', async () => {
+    const originalExitCode = process.exitCode
+    try {
+      const env = createMockEnvironment({
+        adminPassword: 'admin-password-test',
+        failAdminAuth: true,
+      })
+      const summary = await runE2E(env.defaultRunOptions)
+
+      assert.equal(summary.allPassed, false)
+      assert.equal(summary.verdict, 'FALHA_FUNCIONAL')
+      assert.equal(process.exitCode, 1)
+
+      const deleteCall = env.calls.find((c) => c.method === 'DELETE' && c.url.includes('/products/'))
+      assert.ok(deleteCall, 'Teardown do produto temporário deve ter sido executado após falha de autenticação do admin')
+    } finally {
+      process.exitCode = originalExitCode
+    }
+  })
 })
+
 

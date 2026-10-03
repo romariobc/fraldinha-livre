@@ -617,6 +617,17 @@ export async function runE2E(options = {}) {
     }
   } catch (flowErr) {
     error(`\n❌ Interrupção do fluxo de execução: ${flowErr.message}`)
+    const lastResult = results[results.length - 1]
+    if (lastResult && !lastResult.ok) {
+      if (!lastResult.error) lastResult.error = flowErr.message
+    } else {
+      results.push({
+        step: `Execução do fluxo interrompida por exceção: ${flowErr.message}`,
+        ok: false,
+        category: 'functional',
+        error: flowErr.message,
+      })
+    }
   } finally {
     // -------------------------------------------------------------
     // TEARDOWN: Limpeza do produto de teste no D1

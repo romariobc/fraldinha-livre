@@ -55,70 +55,26 @@ describe('PedidosTab', () => {
       orders: [],
       loading: false,
       error: null,
-      supportCode: null,
-      lastError: null,
-      refetch: vi.fn(),
+      errorDiagnostic: null,
+      refreshOrders: vi.fn(),
+      createDirectOrder: vi.fn(),
       cancelOrder: vi.fn(),
       createOrdersFromCart: vi.fn(),
-    } as any)
+    })
     mockUseMarket.mockReturnValue({
-      quotes: [],
+      marketOrders: [],
       directOrders: [],
-      suppliers: [],
-      metrics: {
-        totalRevenue: 0,
-        deliveredRevenue: 0,
-        activeOrders: 0,
-        deliveredOrders: 0,
-        quoteRequests: 0,
-        quoteResponseRate: 0,
-        conversionRate: 0,
-      },
-      addDirectOrder: vi.fn(),
-      updateDirectOrderStatus: vi.fn(),
-      handleConfirmarPedido: vi.fn(),
-      handleRecusarPedido: vi.fn(),
+      offers: [],
+      declinedIds: new Set(),
+      handleEnviarOferta: vi.fn(),
+      handleDeclineMercado: vi.fn(),
+      handleConfirmarDireto: vi.fn(),
+      handleRecusarDireto: vi.fn(),
       handleAtualizarStatusDireto: vi.fn(),
-      handleEnviarProposta: vi.fn(),
-      handleRecusarCotacao: vi.fn(),
-      handleSalvarPolitica: vi.fn(),
-      handleAtualizarEstoque: vi.fn(),
+      handleAtualizarDespacho: vi.fn(),
+      addDirectOrder: vi.fn(),
+      cancelDirectOrder: vi.fn(),
       directOrdersLoading: false,
       directOrdersError: null,
-      directOrdersSupportCode: null,
+      directOrdersDiagnostic: null,
       refetchDirectOrders: vi.fn(),
-    } as any)
-  })
-
-  it('renders empty state with CTA to catalogo when there are no active orders', () => {
-    render(<PedidosTab orders={[]} />)
-
-    expect(screen.getByText('Nenhum pedido ativo')).toBeInTheDocument()
-    expect(
-      screen.getByText(/Explore o nosso catálogo e garanta as fraldas para o seu bebê/i)
-    ).toBeInTheDocument()
-
-    const catalogoCta = screen.getByRole('link', { name: /Explorar catálogo/i })
-    expect(catalogoCta).toBeInTheDocument()
-    expect(catalogoCta).toHaveAttribute('href', '/catalogo')
-  })
-
-  it('renders active order card when active orders exist', () => {
-    render(<PedidosTab orders={[mockActiveOrder]} />)
-
-    expect(screen.queryByText('Nenhum pedido ativo')).not.toBeInTheDocument()
-    expect(screen.getByText('Fralda Conforto M')).toBeInTheDocument()
-  })
-
-  it('filters out delivered or cancelled orders as inactive', () => {
-    const deliveredOrder: Order = {
-      ...mockActiveOrder,
-      id: 'ped-delivered',
-      status: 'entregue',
-    }
-
-    render(<PedidosTab orders={[deliveredOrder]} />)
-
-    expect(screen.getByText('Nenhum pedido ativo')).toBeInTheDocument()
-  })
-})

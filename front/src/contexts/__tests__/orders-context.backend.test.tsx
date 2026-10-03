@@ -99,7 +99,7 @@ describe('OrdersContext — modo backend gateado por auth', () => {
       }),
     }
 
-    act(() => authCallback(mockSupplierUser as any))
+    act(() => authCallback(mockSupplierUser))
 
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(listMock).not.toHaveBeenCalled()

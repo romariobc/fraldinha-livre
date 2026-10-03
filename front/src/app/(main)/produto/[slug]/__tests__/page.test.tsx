@@ -438,7 +438,7 @@ describe('ProductPage', () => {
 
     beforeEach(() => {
       mockUseProducts.mockReturnValue({
-        products: MULTI_SUPPLIER_PRODUCTS as any,
+        products: MULTI_SUPPLIER_PRODUCTS,
         loading: false,
         error: null,
       })

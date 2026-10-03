@@ -44,5 +44,7 @@ jobs:
       - name: Install Linux native test dependency missing from lockfile
         run: |
           VERSION=$(node -p "require('./node_modules/rolldown/package.json').optionalDependencies['@rolldown/binding-linux-x64-gnu']")
-          npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund "@rolldown/binding-linux-x64-gnu@$VERSION"
+          TARBALL=$(npm pack "@rolldown/binding-linux-x64-gnu@$VERSION" --pack-destination "$RUNNER_TEMP" --silent)
+          mkdir -p node_modules/@rolldown/binding-linux-x64-gnu
+          tar -xzf "$RUNNER_TEMP/$TARBALL" -C node_modules/@rolldown/binding-linux-x64-gnu --strip-components=1
       - run: ${{ matrix.command }}

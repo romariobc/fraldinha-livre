@@ -78,3 +78,38 @@ describe('PedidosTab', () => {
       directOrdersError: null,
       directOrdersDiagnostic: null,
       refetchDirectOrders: vi.fn(),
+    })
+  })
+
+  it('renders empty state with CTA to catalogo when there are no active orders', () => {
+    render(<PedidosTab orders={[]} />)
+
+    expect(screen.getByText('Nenhum pedido ativo')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Explore o nosso catálogo e garanta as fraldas para o seu bebê/i)
+    ).toBeInTheDocument()
+
+    const catalogoCta = screen.getByRole('link', { name: /Explorar catálogo/i })
+    expect(catalogoCta).toBeInTheDocument()
+    expect(catalogoCta).toHaveAttribute('href', '/catalogo')
+  })
+
+  it('renders active order card when active orders exist', () => {
+    render(<PedidosTab orders={[mockActiveOrder]} />)
+
+    expect(screen.queryByText('Nenhum pedido ativo')).not.toBeInTheDocument()
+    expect(screen.getByText('Fralda Conforto M')).toBeInTheDocument()
+  })
+
+  it('filters out delivered or cancelled orders as inactive', () => {
+    const deliveredOrder: Order = {
+      ...mockActiveOrder,
+      id: 'ped-delivered',
+      status: 'entregue',
+    }
+
+    render(<PedidosTab orders={[deliveredOrder]} />)
+
+    expect(screen.getByText('Nenhum pedido ativo')).toBeInTheDocument()
+  })
+})

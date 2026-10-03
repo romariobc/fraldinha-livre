@@ -234,4 +234,43 @@ describe('AdminOrdersTab', () => {
     await waitFor(() => expect(screen.getByText(/erro ao carregar pedidos/i)).toBeInTheDocument())
     expect(screen.getByRole('button', { name: /tentar novamente/i })).toBeInTheDocument()
   })
+
+  it('após clicar em atualizar, a segunda resposta contém o novo pedido e a tabela passa a exibi-lo', async () => {
+    const newOrder = {
+      id: 'order-3-novo',
+      uid: 'uid-buyer-3',
+      status: 'aguardando',
+      product: 'Fralda Babysec Nova',
+      quantity: 3,
+      unit: 'un',
+      price: 9000,
+      supplierId: 'sup-1',
+      supplierName: 'Distribuidora São Paulo',
+      createdAt: '2026-10-01T12:00:00.000Z',
+      items: [
+        { productId: 'prod-3', productName: 'Fralda Babysec Nova', unitPrice: 3000, quantity: 3, unit: 'un' },
+      ],
+    }
+
+    // Primeira resposta: apenas mockOrders (não contém order-3-novo)
+    // Segunda resposta (após refresh): mockOrders + newOrder
+    vi.mocked(apiFetch)
+      .mockResolvedValueOnce(jsonResponse(mockOrders))
+      .mockResolvedValueOnce(jsonResponse([newOrder, ...mockOrders]))
+
+    render(<AdminOrdersTab />)
+
+    // Confirma que primeira resposta não contém o novo pedido
+    await waitFor(() => expect(screen.getByText('order-1')).toBeInTheDocument())
+    expect(screen.queryByText('order-3-novo')).not.toBeInTheDocument()
+
+    // Clica em Atualizar
+    const refreshButton = screen.getByRole('button', { name: /atualizar/i })
+    fireEvent.click(refreshButton)
+
+    // Confirma que a tabela passa a exibir o novo pedido
+    await waitFor(() => expect(screen.getByText('order-3-novo')).toBeInTheDocument())
+    expect(screen.getByText('Fralda Babysec Nova')).toBeInTheDocument()
+    expect(screen.getByText('order-1')).toBeInTheDocument()
+  })
 })

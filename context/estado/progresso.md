@@ -1,4 +1,42 @@
-# Estado atual — 2026-10-01
+# Estado atual — 2026-10-03
+
+## Homologação Visual Concluída — Painel do Fornecedor (Recuperação Pós-Sucesso, Pedidos Reais, Transição de Status e Viewports Mobile) — 2026-10-03
+
+- **Homologação Visual Dirigida em Navegador Real (Chromium / DevTools)**:
+  - **Recuperação Pós-Sucesso e Pedidos Reais (Desktop 1280×900)**:
+    - Com o backend local ativo (`wrangler dev --port 8787`) e D1 local alimentado, o clique em "Tentar novamente" (`refetchDirectOrders`) recuperou instantaneamente do estado de erro, transitando por "Carregando pedidos..." com desabilitação temporária do botão de refresh.
+    - Exibição de 2 pedidos reais da distribuidora (`ord-local-qa-001` e `ord-local-qa-002`) com dados íntegros: IDs, datas/horas, cliente B2B, destinos (SP/Curitiba), itens e valores (R$ 89,90 e R$ 125,50).
+    - Contadores dinâmicos calculados: 1 aguardando, 1 confirmado, receita bruta R$ 215,40. Abas de filtro refletindo Todos(2), Aguardando(1), Confirmados(1).
+    - Evidência arquivada: `docs/qa/screenshots/fornecedor_pedidos_recovered_success_1280.png`.
+  - **Transição de Status pelo Fornecedor em Tempo Real**:
+    - Disparada a ação "Confirmar Pedido" via menu contextual da linha na UI. Requisição `PATCH /orders/ord-local-qa-001/status` respondida com HTTP 200 e persistida no D1 local (evento auditado `order.status.updated`).
+    - Clique em "Atualizar pedidos" revalidou a lista: ambos os pedidos migraram para status `Confirmado` e o indicador de Aguardando atualizou para 0.
+    - Evidência arquivada: `docs/qa/screenshots/fornecedor_pedidos_refreshed_both_confirmed_1280.png`.
+  - **Responsividade em Viewports Mobile (390×844 e 360×800)**:
+    - Validados viewports padrão iOS (390×844) e Android (360×800).
+    - Sidebar recolhida em botão toggle acessível; cards de KPI em pilha vertical uniforme; barra de busca e botão de atualização responsivos; tabela em container com scroll horizontal sem transbordamento global da tela.
+    - Evidências arquivadas: `docs/qa/screenshots/fornecedor_pedidos_mobile_390.png`, `docs/qa/screenshots/fornecedor_pedidos_mobile_360.png` e `docs/qa/screenshots/fornecedor_pedidos_status_updated_360.png`.
+  - **Relatório de QA Atualizado**: Matriz consolidada e detalhamento das rodadas 1 e 2 registrados em [Relatório de Code Review](../../docs/qa/code-review-pedidos-fornecedor-admin-2026-10-01.md).
+
+## Correção do Fluxo de Pedidos, Fornecedor, Admin e Confiabilidade E2E — 2026-10-01
+
+- **Reconciliação e Resolução de Achados de Code Review**:
+  - Matriz completa de status registrada em [Relatório de Code Review](../../docs/qa/code-review-pedidos-fornecedor-admin-2026-10-01.md).
+  - **Erro visível ao fornecedor e retry**: `MarketContext` expõe `directOrdersError`, `directOrdersDiagnostic` e `refetchDirectOrders`. `OrdersDataTable` renderiza mensagem de erro com suporte a cópia de `requestId` e botão "Tentar novamente", suprimindo falsos estados de lista vazia em falhas de API.
+  - **Atualização manual em painel aberto**: Botão "Atualizar pedidos" adicionado no topo da tabela do fornecedor com estado de carregamento e preservação de dados prévios (com banner de alerta) em falhas intermitentes. No painel do Admin, teste comportamental comprovou recepção de novos pedidos criados dinamicamente após acionar o refresh.
+  - **Correção da semântica E2E e validação administrativa da API**: `scripts/test-e2e-catalog-to-history.mjs` redefinido explicitamente como suíte API E2E (REST). Adicionado Passo 12 (`validateAdminOrder`) consultando `GET /orders?scope=admin` com o mesmo `createdOrderId` e checando correspondência total de status, comprador, fornecedor, itens e pagamento.
+  - **Exit code estrito e trava de segurança unificada**: `computeSummary` exige aprovação de todas as etapas (inclusive `teardown`); falhas de limpeza geram `allPassed = false` e `process.exitCode = 1`. Trava fail-closed mantida contra produção (`QA_ALLOW_PRODUCTION_WRITE=true` exigido; bloqueia com `exitCode = 2` e status "NÃO EXECUTADO"), sem criação de rotas destrutivas em produção.
+  - **Desduplicação de toasts**: Removidos toasts redundantes de `market-context.tsx`; feedback visual centralizado unicamente nos handlers de UI em `OrdersDataTable.tsx`.
+- **Validação de Testes e Tipagem (Resultados Auditados)**:
+  - Frontend Vitest: 7 arquivos / 91 testes 100% aprovados (`npx vitest run ...`, exit code 0).
+  - Lógica E2E (Node Test Runner): 4 suítes / 19 testes unitários 100% aprovados (`scripts/test-e2e-logic.test.mjs`, exit code 0).
+  - Backend Vitest: 5 arquivos / 45 testes 100% aprovados (`back/test/orders.*`, exit code 0).
+  - Contratos: 7 arquivos / 56 testes 100% aprovados (exit code 0).
+  - Tipagem: `tsc --noEmit` limpo com 0 erros em ambos os workspaces.
+  - Linters: ESLint com 0 erros e 4 avisos triados pré-existentes.
+- **Homologação Visual Parcial — Estado de Erro, Retry e RBAC do Painel do Fornecedor**:
+  - Foi executada homologação visual dirigida em Chromium desktop do estado de erro do painel do fornecedor. Foram validados a diferenciação entre erro e vazio, a presença dos controles de retry/refresh e o bloqueio de acesso do fornecedor à rota administrativa. A recuperação visual após resposta bem-sucedida, o painel admin autenticado, o fluxo com pedidos reais e os viewports mobile permanecem pendentes.
+- **Declarações Operacionais**: Nenhuma escrita executada contra o D1 de produção (trava fail-closed mantida para evitar pedidos permanentes sem cleanup); testes executados exclusivamente contra D1 local em memória; sem deploy remoto e sem merge para `main`.
 
 ## Expansão Multi-Fornecedor e Testes de Carga Concorrentes — 2026-10-01
 

@@ -15,6 +15,7 @@ app.post('/qa/chat/recovery', async (c) => {
   let providerSawHarnessError = false
   const toolNames: string[][] = []
   const harnessErrors: string[] = []
+  try {
   const response = await createChatHandler(async (messages, tools) => {
     providerSawHarnessError ||= messages.some((message) =>
       message.role === 'tool' && message.content.includes('qa-id-inexistente'),
@@ -43,6 +44,13 @@ app.post('/qa/chat/recovery', async (c) => {
     trace: { providerCalls, faultInjected, providerSawHarnessError, toolNames, harnessErrors },
     method: 'real-provider-with-one-corrupted-selection-id',
   }, response.status as 200 | 400 | 502)
+  } catch (error) {
+    return c.json({
+      error: 'QA_PROVIDER_EXCEPTION',
+      detail: error instanceof Error ? error.message : String(error),
+      trace: { providerCalls, faultInjected, providerSawHarnessError, toolNames, harnessErrors },
+    }, 502)
+  }
 })
 
 export default app

@@ -12,6 +12,26 @@
 - [Relatório desta jornada](../../docs/qa/loja-fluxo-simulado-2026-10-05.md). Feature 011 continua pendente; nenhum status foi promovido sem evidência.
 - Registros anteriores preservados abaixo como histórico.
 
+## Sincronização local com GitHub — 2026-10-05
+
+- Cópia local atualizada por fast-forward para `main`, commit `bbfb68fa42686e7ec248e094649beec45c00b9f2`, igual a `origin/main` nesta sincronização. A main inclui a PR #21 e as correções das PRs #19 e #20.
+- Código publicado corresponde ao merge `d49aadd386837e9fefc1503b04ad0b8701b685cd`; o commit posterior `bbfb68f` registra a validação de produção, sem mudança funcional.
+- Alteração preexistente de progresso preservada no stash identificado como `Preservar progresso local antes da sincronizacao 2026-10-05`; seu diagnóstico foi incorporado abaixo como evidência histórica, sem reintroduzir estados antigos como atuais.
+- Verificação desta sessão: igualdade de HEAD/origin/main, ausência de commits remotos faltantes, diff documental e caminhos dos relatórios. Suítes não reexecutadas: a tarefa sincroniza código já integrado e atualiza documentação; evidência de CI/deploy permanece nos registros acima. Nenhum deploy ou alteração de status do backlog realizado nesta sessão.
+- Pendências atuais preservadas: pagamento real (011), leilão inativo, QA administrativo autenticado, iPhone físico e medição oficial de neurons. Recuperação com Workers AI real comprovada na homologação integrada de 2026-10-04, conforme registro existente; não inferir nova homologação de produção nesta sincronização.
+
+### Diagnóstico local preservado — evidência de 2026-10-03
+
+O trecho abaixo descreve o ambiente e a produção observados em 2026-10-03. Versões de produção e pendências de publicação/autocorreção nele citadas foram sucedidas pelos registros de 2026-10-04/05 acima; limitações locais daquela sessão não foram retestadas aqui.
+
+- Diagnóstico de acesso e ambiente concluído em 2026-10-03:
+  - `wrangler whoami` retornou `You are not authenticated. Please run wrangler login.` acompanhado de erro de sistema `ENOSPC: no space left on device` no disco `C:\` (217,70 GB usados / 0,00 GB livres).
+  - Versões ativas em produção na Cloudflare: Backend `e5bdf187-5c1c-474d-a908-1f69f3ea83e3` e Frontend `4f41a6c7-160b-4c67-8025-513d765a85b5`, ambas originadas do merge da PR #18 (`e528d30`). Nem a PR #19 (`faecd2e`) nem a PR #20 (`23013b4`) foram publicadas em produção. Requisições contra produção avaliam o código legado anterior à PR #20, o qual não contém a validação defensiva de catálogo do D1 em `harness.ts` e ainda continha exemplos `p1`/`p2` nos prompts.
+  - Autocorreção com Workers AI real na versão corrigida permanece pendente de ambiente de execução (deploy em staging/preview ou sessão ativa do Wrangler com espaço em disco).
+  - Telemetria de neurons: API HTTP do Workers AI não retorna contadores de faturamento em headers de resposta; medição contábil oficial permanece pendente de acesso ao Cloudflare Dashboard (Workers & Pages > AI > Analytics).
+  - QA autenticado do administrador (`/admin`): `.env.qa.local` contém apenas credenciais de comprador e fornecedor (`QA_ADMIN_*` ausentes). Bloqueio e proteção RBAC confirmados (401/403 e redirecionamentos); QA visual autenticado em navegador mantido pendente de credenciais administrativas sem escalação de privilégios.
+  - Caso 10 (iPhone / Safari): Mantido expressamente pendente até validação em hardware físico Apple.
+
 # Estado atual — 2026-10-04
 
 ## Prontidão da loja e produção

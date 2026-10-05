@@ -183,3 +183,19 @@ describe('structured Workers AI response regression', () => {
     await expect(complete([{ role: 'user', content: 'Confirmo' }], SAMPLE_TOOLS)).resolves.toEqual({ text: null, toolCalls: [] })
   })
 })
+
+
+describe('nested address transport regression', () => {
+  it('decodes JSON address from a named tool without inventing missing fields', async () => {
+    const address = { logradouro: 'Rua QA', numero: '123', bairro: 'Centro', cidade: 'Fortaleza', estado: 'CE', cep: '60000000' }
+    const run = vi.fn().mockResolvedValue({ tool_calls: [{ name: 'select_product_for_purchase', arguments: { productId: 'id', quantity: 2, address: JSON.stringify(address) } }] })
+    const result = await createWorkersAiChatCompletion({ run } as unknown as Ai)([{ role: 'user', content: 'Confirmo' }], SAMPLE_TOOLS)
+    expect(result.toolCalls[0].arguments.address).toEqual(address)
+  })
+
+  it('retains invalid address text for strict harness rejection', async () => {
+    const run = vi.fn().mockResolvedValue({ tool_calls: [{ name: 'select_product_for_purchase', arguments: { productId: 'id', quantity: 2, address: 'Rua QA 123' } }] })
+    const result = await createWorkersAiChatCompletion({ run } as unknown as Ai)([{ role: 'user', content: 'Confirmo' }], SAMPLE_TOOLS)
+    expect(result.toolCalls[0].arguments.address).toBe('Rua QA 123')
+  })
+})

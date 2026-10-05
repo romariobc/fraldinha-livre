@@ -203,6 +203,19 @@ export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
       ? processedText.replace(/(?:\[)?\b(search_products|get_product|select_product_for_purchase)\(([^)]*)\)(?:\])?/g, '').trim()
       : null
 
+    // Some real tool calls encode the nested address as JSON text. Decode only
+    // this transport representation; the harness still validates every field.
+    toolCalls = toolCalls.map((call) => {
+      if (call.name !== 'select_product_for_purchase' || typeof call.arguments.address !== 'string') return call
+      try {
+        const address: unknown = JSON.parse(call.arguments.address)
+        if (address && typeof address === 'object' && !Array.isArray(address)) {
+          return { ...call, arguments: { ...call.arguments, address } }
+        }
+      } catch { /* Keep invalid values for the harness to reject. */ }
+      return call
+    })
+
     return { text: parsedText || null, toolCalls }
   }
 }

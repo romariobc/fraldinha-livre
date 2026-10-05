@@ -14,10 +14,17 @@ app.post('/qa/chat/recovery', async (c) => {
   let faultInjected = false
   let providerSawHarnessError = false
   const toolNames: string[][] = []
+  const harnessErrors: string[] = []
   const response = await createChatHandler(async (messages, tools) => {
     providerSawHarnessError ||= messages.some((message) =>
       message.role === 'tool' && message.content.includes('qa-id-inexistente'),
     )
+    for (const message of messages.filter((m) => m.role === 'tool')) {
+      try {
+        const parsed = JSON.parse(message.content) as { error?: string }
+        if (parsed.error && !harnessErrors.includes(parsed.error)) harnessErrors.push(parsed.error)
+      } catch { /* A tool may return a non-object result. */ }
+    }
     const result = await realCompletion(messages, tools)
     providerCalls++
     toolNames.push(result.toolCalls.map((call) => call.name))
@@ -33,7 +40,7 @@ app.post('/qa/chat/recovery', async (c) => {
   const body: unknown = await response.json()
   return c.json({
     response: body,
-    trace: { providerCalls, faultInjected, providerSawHarnessError, toolNames },
+    trace: { providerCalls, faultInjected, providerSawHarnessError, toolNames, harnessErrors },
     method: 'real-provider-with-one-corrupted-selection-id',
   }, response.status as 200 | 400 | 502)
 })

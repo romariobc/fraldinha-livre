@@ -142,7 +142,10 @@ function extractLeakedJsonToolCalls(text: string): { calls: ChatCompletionToolCa
   return { calls, cleanedText: cleanedText.trim() }
 }
 
-export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
+export function createWorkersAiChatCompletion(
+  ai: Ai,
+  inspectResponse?: (response: WorkersAiChatCompletionResponse) => void,
+): RunChatCompletion {
   return async (messages, tools) => {
     const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')
 
@@ -154,6 +157,8 @@ export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
         tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
       } as AiModels['@cf/meta/llama-4-scout-17b-16e-instruct']['inputs'],
     )) as unknown as WorkersAiChatCompletionResponse
+
+    inspectResponse?.(response)
 
     // DIAGNOSTICO TEMPORARIO (2026-08-03) — achado de QA: o modelo as vezes nao
     // chama tool nenhuma com entrada curta/ambigua, ou escreve a sintaxe da tool

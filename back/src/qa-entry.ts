@@ -9,7 +9,10 @@ app.use('/qa/*', (c, next) => createAuthMiddleware((token) =>
 )(c, next))
 
 app.post('/qa/chat/recovery', async (c) => {
-  const realCompletion = createWorkersAiChatCompletion(c.env.AI)
+  const providerResponses: unknown[] = []
+  const realCompletion = createWorkersAiChatCompletion(c.env.AI, (response) => {
+    providerResponses.push({ response: response.response, tool_calls: response.tool_calls })
+  })
   let providerCalls = 0
   let faultInjected = false
   let providerSawHarnessError = false
@@ -41,14 +44,14 @@ app.post('/qa/chat/recovery', async (c) => {
   const body: unknown = await response.json()
   return c.json({
     response: body,
-    trace: { providerCalls, faultInjected, providerSawHarnessError, toolNames, harnessErrors },
+    trace: { providerCalls, faultInjected, providerSawHarnessError, toolNames, harnessErrors, providerResponses },
     method: 'real-provider-with-one-corrupted-selection-id',
   }, response.status as 200 | 400 | 502)
   } catch (error) {
     return c.json({
       error: 'QA_PROVIDER_EXCEPTION',
       detail: error instanceof Error ? error.message : String(error),
-      trace: { providerCalls, faultInjected, providerSawHarnessError, toolNames, harnessErrors },
+      trace: { providerCalls, faultInjected, providerSawHarnessError, toolNames, harnessErrors, providerResponses },
     }, 502)
   }
 })

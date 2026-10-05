@@ -200,3 +200,27 @@ describe('nested address transport regression', () => {
     expect(result.toolCalls[0].arguments.address).toBe('Rua QA 123')
   })
 })
+
+describe('real recovery response variants', () => {
+  const address = { bairro: 'Centro', cep: '60000000', cidade: 'Fortaleza', estado: 'CE', logradouro: 'Rua Teste QA', numero: '123' }
+  const args = { address, paymentMethod: 'pix', productId: 'c472ea87-3d21-4ccd-8b98-3bb1ee58dbb9', quantity: 2 }
+  it('recognizes the captured object with arguments before name and nested address', async () => {
+    const run = vi.fn().mockResolvedValue({ response: { arguments: args, id: '', name: 'select_product_for_purchase' }, tool_calls: [] })
+    const result = await createWorkersAiChatCompletion({ run } as unknown as Ai)([{ role: 'user', content: 'Confirmo' }], SAMPLE_TOOLS)
+    expect(result.toolCalls).toEqual([expect.objectContaining({ name: 'select_product_for_purchase', arguments: args })])
+    expect(result.text).toBeNull()
+  })
+  it('preserves the complete nested address from the captured function notation', async () => {
+    const run = vi.fn().mockResolvedValue({ response: `select_product_for_purchase(productId="${args.productId}", quantity=2, address=${JSON.stringify(address)}, paymentMethod="pix")`, tool_calls: [] })
+    const result = await createWorkersAiChatCompletion({ run } as unknown as Ai)([{ role: 'user', content: 'Confirmo' }], SAMPLE_TOOLS)
+    expect(result.toolCalls[0].arguments).toEqual(args)
+    expect(result.text).toBeNull()
+  })
+  it('preserves commas, parentheses and braces inside quoted address fields', async () => {
+    const trickyAddress = { ...address, logradouro: 'Rua QA (Norte), casa {A}' }
+    const run = vi.fn().mockResolvedValue({ response: `Texto [select_product_for_purchase(address=${JSON.stringify(trickyAddress)}, quantity=2, productId="id")] fim`, tool_calls: [] })
+    const result = await createWorkersAiChatCompletion({ run } as unknown as Ai)([{ role: 'user', content: 'Confirmo' }], SAMPLE_TOOLS)
+    expect(result.toolCalls[0].arguments.address).toEqual(trickyAddress)
+    expect(result.text).toBe('Texto  fim')
+  })
+})

@@ -5,7 +5,10 @@
 - Escopo reafirmado pelo usuário: compra e venda de ponta a ponta com pagamento simulado. Pagamento real via módulo/API (Appmax ou Pagar.me a decidir) fica posterior, como D-037/feature 011 já determinam. A leitura anterior de prontidão comercial não bloqueia este beta.
 - Corrigidos vitrine inicial/CTAs, comunicação, preservação de endereço e itens no painel do fornecedor, fixture incompatível com o frontend e checkout sem fallback de endereço fictício.
 - Navegador + Firebase real + D1 exclusivo de homologação: home → sacola com dois produtos/três pacotes/R$ 79,70 → recusa sem pedido → Pix simulado aprovado → fornecedor confirma/despacha/entrega → comprador vê histórico após novo login. Pedido QA ec6ac19d-6dd0-42f8-afe6-631ebdf8cb81. Nenhum chat usado.
-- Testes locais: 708 frontend antes do ajuste adicional de endereço; 27 checkout final; build final e tipos aprovados; lint exit 0/11 avisos preexistentes. Imagem Docker/CI final e deploy ainda serão conferidos antes de declarar publicação.
+- Cartão simulado e cancelamento pelo comprador também validados no navegador e API. Cadastro sem endereço exige preenchimento manual antes de continuar.
+- CI final [37258800660](https://github.com/romariobc/fraldinha-livre/actions/runs/37258800660): 709 frontend, 296 backend, 57 contratos e 32 runner; tipos, lint e imagem Docker aprovados. Webpack no contêiner contorna falha de fontes do Turbopack em Alpine.
+- [PR #21](https://github.com/romariobc/fraldinha-livre/pull/21) integrada em `d49aadd386837e9fefc1503b04ad0b8701b685cd`; [deploy de produção 37259072795](https://github.com/romariobc/fraldinha-livre/actions/runs/37259072795) aprovado. Backend versão `2449a17e-ad0c-4d70-97a8-0efc462e2e6e`; frontend `8d86f76a-cece-4ce4-8785-12d848c35f38`. D1 sem migrações pendentes.
+- [Loja beta publicada](https://fraldinha-livre-frontend.romariobc.workers.dev) conferida no navegador: nova home, produtos reais, aviso sem cobrança e compra anônima encaminhada ao login. API: health 200, catálogo 200/314 produtos válidos pelo contrato, orders sem token 401. Nenhum pedido de teste criado em produção; ciclo completo demonstrado no D1 de homologação.
 - [Relatório desta jornada](../../docs/qa/loja-fluxo-simulado-2026-10-05.md). Feature 011 continua pendente; nenhum status foi promovido sem evidência.
 - Registros anteriores preservados abaixo como histórico.
 

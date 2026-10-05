@@ -25,6 +25,7 @@ Frontend compilado localmente, contra Worker/D1 exclusivos de homologação. Log
 6. Comprador viu o pedido aguardando confirmação. Logout e login do fornecedor exibiram o mesmo pedido, endereço completo e todas as linhas.
 7. Pelo painel: aguardando → confirmado → a-caminho → entregue. F5 preservou o estado entregue.
 8. Logout do fornecedor e novo login do comprador: zero pedidos ativos; pedido no histórico como entregue, com linhas, endereço e pagamento simulado aprovado. API confirmou o mesmo estado no D1.
+9. No build final, cadastro sem endereço deixou Continuar desabilitado. Endereço de teste informado manualmente permitiu seguir. Cartão simulado aprovou um pedido de R$ 24,90 (`1745dd00-7a21-4b3e-95b3-eea7f471369a`); cancelamento pelo comprador apareceu no histórico e foi confirmado por leitura da API.
 
 Capturas e respostas JSON foram salvas localmente em outputs/; não contêm credenciais. Compra/admin em produção não são presumidos a partir desta prova de homologação.
 
@@ -34,7 +35,17 @@ Capturas e respostas JSON foram salvas localmente em outputs/; não contêm cred
 - Checkout final: 27 testes aprovados, incluindo ausência de endereço sem fallback.
 - Build final (Next 16.2.11): aprovado; inclui TypeScript e geração de todas as rotas.
 - Lint: exit 0, 11 avisos preexistentes, nenhum erro.
-- CI final e publicação: consultar o run associado ao commit candidato; resultado de deploy será registrado após execução, sem presumir sucesso.
+- CI final do candidato `814bc31c653310547c34e878deb634119679a47e`: 709 testes frontend, 296 backend, 57 contratos e 32 regressões do runner; tipos dos três workspaces e lint aprovados. [Run 37258800660](https://github.com/romariobc/fraldinha-livre/actions/runs/37258800660) concluído com sucesso, incluindo homologação.
+- Imagem Docker de produção aprovada no mesmo run. A compilação usa Webpack no contêiner para contornar erro de resolução de fontes Google pelo Turbopack em Alpine; mantém as fontes e a saída standalone existentes.
+- [PR #21](https://github.com/romariobc/fraldinha-livre/pull/21) integrada em `d49aadd386837e9fefc1503b04ad0b8701b685cd`. Publicação acompanhada separadamente, sem inferir sucesso apenas do merge.
+
+## Publicação e verificação de produção
+
+- [Deploy 37259072795](https://github.com/romariobc/fraldinha-livre/actions/runs/37259072795) concluído com sucesso no commit de merge acima. D1 informou que não havia migrações pendentes.
+- Backend publicado: versão `2449a17e-ad0c-4d70-97a8-0efc462e2e6e`. Frontend/contêiner publicado: versão `8d86f76a-cece-4ce4-8785-12d848c35f38`.
+- [Loja publicada](https://fraldinha-livre-frontend.romariobc.workers.dev): navegador confirmou a nova home, aviso de beta sem cobrança, quatro produtos reais da API e CTAs ativos. Comprar agora anônimo encaminhou ao login. Captura local: outputs/loja-producao-publicada.jpg.
+- API de produção: health 200; products 200 com 314 produtos aprovados pelo ProductListSchema; orders sem token 401. Resposta registrada em outputs/loja-producao-smoke.json.
+- O ciclo completo de compra/fornecedor foi executado em homologação. A verificação pós-deploy em produção foi de leitura e navegação anônima; nenhum pedido de teste foi criado no D1 de produção.
 
 ## Limites preservados
 

@@ -468,5 +468,268 @@ describe('MarketContext - directOrders loading (backend mode)', () => {
     expect(result.current.directOrdersError).toBe('Não foi possível carregar os pedidos diretos. Tente novamente.')
     expect(result.current.directOrdersLoading).toBe(false)
   })
+
+  it('modo backend: troca de fornecedor (UID A -> B) ativa loading e isola pedidos/erros da conta anterior', async () => {
+    let resolveB: (value: ContractOrder[]) => void
+    const pendingPromiseB = new Promise<ContractOrder[]>((resolve) => {
+      resolveB = resolve
+    })
+
+    const orderSupplierA: ContractOrder = { ...fakeContractOrder, id: 'ord-sup-A' }
+    const orderSupplierB: ContractOrder = { ...fakeContractOrder, id: 'ord-sup-B', supplierId: 'sup-B' }
+
+    const listForSupplierMock = vi
+      .fn()
+      .mockResolvedValueOnce([orderSupplierA]) // Carga do Fornecedor A
+      .mockReturnValueOnce(pendingPromiseB) // Carga do Fornecedor B em andamento
+
+    mockedHttpOrderRepository.mockImplementation(
+      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository }
+    )
+
+    // 1. Fornecedor A logado
+    mockUseAuth.mockReturnValue({
+      ...FORNECEDOR_LOGADO,
+      user: { uid: 'sup-A', email: 'fornecedorA@test.com', displayName: 'Fornecedor A' },
+    })
+
+    const { result, rerender } = renderHook(() => useMarket(), { wrapper: AllProviders })
+
+    await waitFor(() => expect(result.current.directOrdersLoading).toBe(false))
+    expect(result.current.directOrders).toHaveLength(1)
+    expect(result.current.directOrders[0].id).toBe('ord-sup-A')
+
+    // 2. Troca de conta para Fornecedor B
+    act(() => {
+      mockUseAuth.mockReturnValue({
+        ...FORNECEDOR_LOGADO,
+        user: { uid: 'sup-B', email: 'fornecedorB@test.com', displayName: 'Fornecedor B' },
+      })
+      rerender()
+    })
+
+    // Enquanto a busca de B está pendente, o loading DEVE ser true e pedidos devem ser []
+    expect(result.current.directOrdersLoading).toBe(true)
+    expect(result.current.directOrders).toEqual([])
+    expect(result.current.directOrdersError).toBeNull()
+
+    // 3. Resposta de B chega
+    await act(async () => {
+      resolveB!([orderSupplierB])
+    })
+
+    expect(result.current.directOrdersLoading).toBe(false)
+    expect(result.current.directOrders).toHaveLength(1)
+    expect(result.current.directOrders[0].id).toBe('ord-sup-B')
+  })
+
+  it('modo backend: erro de um fornecedor não vaza para outro na troca de conta', async () => {
+    let rejectB: (reason: Error) => void
+    const pendingPromiseB = new Promise<ContractOrder[]>((_, reject) => {
+      rejectB = reject
+    })
+
+    const listForSupplierMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Falha no Fornecedor A'))
+      .mockReturnValueOnce(pendingPromiseB)
+
+    mockedHttpOrderRepository.mockImplementation(
+      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository }
+    )
+
+    // 1. Fornecedor A logado falha
+    mockUseAuth.mockReturnValue({
+      ...FORNECEDOR_LOGADO,
+      user: { uid: 'sup-A', email: 'fornecedorA@test.com', displayName: 'Fornecedor A' },
+    })
+
+    const { result, rerender } = renderHook(() => useMarket(), { wrapper: AllProviders })
+
+    await waitFor(() => expect(result.current.directOrdersLoading).toBe(false))
+    expect(result.current.directOrdersError).toBe('Não foi possível carregar os pedidos diretos. Tente novamente.')
+    expect(result.current.directOrdersDiagnostic).not.toBeNull()
+
+    // 2. Troca de conta para Fornecedor B
+    act(() => {
+      mockUseAuth.mockReturnValue({
+        ...FORNECEDOR_LOGADO,
+        user: { uid: 'sup-B', email: 'fornecedorB@test.com', displayName: 'Fornecedor B' },
+      })
+      rerender()
+    })
+
+    // Enquanto B carrega, o erro do A NÃO pode estar visível para o B
+    expect(result.current.directOrdersLoading).toBe(true)
+    expect(result.current.directOrdersError).toBeNull()
+    expect(result.current.directOrdersDiagnostic).toBeNull()
+    expect(result.current.directOrders).toEqual([])
+
+    // 3. Fornecedor B também falha
+    await act(async () => {
+      rejectB!(new Error('Falha no Fornecedor B'))
+    })
+
+    // Agora o erro e diagnóstico devem ser exibidos para o Fornecedor B
+    expect(result.current.directOrdersLoading).toBe(false)
+    expect(result.current.directOrdersError).toBe('Não foi possível carregar os pedidos diretos. Tente novamente.')
+    expect(result.current.directOrdersDiagnostic).not.toBeNull()
+  })
+
+  it('modo backend: [REGRESSÃO P1] Fornecedor A com pedidos -> troca para B -> consulta de B falha: NENHUM pedido de A vaza para B, erro de B visível e loading false', async () => {
+    let rejectB: (reason: Error) => void
+    const pendingPromiseB = new Promise<ContractOrder[]>((_, reject) => {
+      rejectB = reject
+    })
+
+    const orderSupplierA: ContractOrder = { ...fakeContractOrder, id: 'ord-sup-A-secreto' }
+
+    const listForSupplierMock = vi
+      .fn()
+      .mockResolvedValueOnce([orderSupplierA]) // Fornecedor A carrega com sucesso
+      .mockReturnValueOnce(pendingPromiseB) // Fornecedor B inicia consulta
+
+    mockedHttpOrderRepository.mockImplementation(
+      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository }
+    )
+
+    // 1. Fornecedor A carrega pedidos com sucesso
+    mockUseAuth.mockReturnValue({
+      ...FORNECEDOR_LOGADO,
+      user: { uid: 'sup-A', email: 'fornecedorA@test.com', displayName: 'Fornecedor A' },
+    })
+
+    const { result, rerender } = renderHook(() => useMarket(), { wrapper: AllProviders })
+
+    await waitFor(() => expect(result.current.directOrdersLoading).toBe(false))
+    expect(result.current.directOrders).toHaveLength(1)
+    expect(result.current.directOrders[0].id).toBe('ord-sup-A-secreto')
+
+    // 2. Troca de conta para Fornecedor B
+    act(() => {
+      mockUseAuth.mockReturnValue({
+        ...FORNECEDOR_LOGADO,
+        user: { uid: 'sup-B', email: 'fornecedorB@test.com', displayName: 'Fornecedor B' },
+      })
+      rerender()
+    })
+
+    // Enquanto B está pendente: loading true e nenhum pedido de A visível
+    expect(result.current.directOrdersLoading).toBe(true)
+    expect(result.current.directOrders).toEqual([])
+
+    // 3. Consulta de B falha
+    await act(async () => {
+      rejectB!(new Error('Falha de rede na conta B'))
+    })
+
+    // Loading deve ser false, erro de B deve estar visível e NENHUM pedido de A pode estar em directOrders!
+    expect(result.current.directOrdersLoading).toBe(false)
+    expect(result.current.directOrdersError).toBe('Não foi possível carregar os pedidos diretos. Tente novamente.')
+    expect(result.current.directOrders).toEqual([])
+  })
+
+  it('modo backend: Fornecedor A com pedidos -> troca para B -> refresh manual de B falha: pedidos de A permanecem isolados e erro de B é visível', async () => {
+    const orderSupplierA: ContractOrder = { ...fakeContractOrder, id: 'ord-sup-A-privado' }
+
+    const listForSupplierMock = vi
+      .fn()
+      .mockResolvedValueOnce([orderSupplierA]) // Fornecedor A carrega com sucesso
+      .mockRejectedValueOnce(new Error('Erro no efeito automático de B')) // Efeito de B falha
+      .mockRejectedValueOnce(new Error('Erro no refresh manual de B')) // Refresh manual de B também falha
+
+    mockedHttpOrderRepository.mockImplementation(
+      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository }
+    )
+
+    // 1. Fornecedor A logado com sucesso
+    mockUseAuth.mockReturnValue({
+      ...FORNECEDOR_LOGADO,
+      user: { uid: 'sup-A', email: 'fornecedorA@test.com', displayName: 'Fornecedor A' },
+    })
+
+    const { result, rerender } = renderHook(() => useMarket(), { wrapper: AllProviders })
+
+    await waitFor(() => expect(result.current.directOrdersLoading).toBe(false))
+    expect(result.current.directOrders).toHaveLength(1)
+    expect(result.current.directOrders[0].id).toBe('ord-sup-A-privado')
+
+    // 2. Troca para B e efeito falha
+    act(() => {
+      mockUseAuth.mockReturnValue({
+        ...FORNECEDOR_LOGADO,
+        user: { uid: 'sup-B', email: 'fornecedorB@test.com', displayName: 'Fornecedor B' },
+      })
+      rerender()
+    })
+
+    await waitFor(() => expect(result.current.directOrdersLoading).toBe(false))
+    expect(result.current.directOrders).toEqual([])
+    expect(result.current.directOrdersError).not.toBeNull()
+
+    // 3. Fornecedor B dispara refresh manual (refetchDirectOrders) e falha novamente
+    await act(async () => {
+      await result.current.refetchDirectOrders()
+    })
+
+    // Pedidos de A continuam rigorosamente isolados (vazios), loading false e erro visível para B
+    expect(result.current.directOrdersLoading).toBe(false)
+    expect(result.current.directOrdersError).toBe('Não foi possível carregar os pedidos diretos. Tente novamente.')
+    expect(result.current.directOrders).toEqual([])
+  })
+
+  it('modo backend: Fornecedor A com pedidos -> troca para B -> resposta tardia de A não sobrescreve os dados de B', async () => {
+    let resolveA: (value: ContractOrder[]) => void
+    const pendingPromiseA = new Promise<ContractOrder[]>((resolve) => {
+      resolveA = resolve
+    })
+
+    const orderSupplierA: ContractOrder = { ...fakeContractOrder, id: 'ord-sup-A-lento' }
+    const orderSupplierB: ContractOrder = { ...fakeContractOrder, id: 'ord-sup-B-rapido', supplierId: 'sup-B' }
+
+    const listForSupplierMock = vi
+      .fn()
+      .mockReturnValueOnce(pendingPromiseA) // Consulta de A demora
+      .mockResolvedValueOnce([orderSupplierB]) // Consulta de B responde rápido
+
+    mockedHttpOrderRepository.mockImplementation(
+      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository }
+    )
+
+    // 1. Monta com Fornecedor A (resposta ainda pendente)
+    mockUseAuth.mockReturnValue({
+      ...FORNECEDOR_LOGADO,
+      user: { uid: 'sup-A', email: 'fornecedorA@test.com', displayName: 'Fornecedor A' },
+    })
+
+    const { result, rerender } = renderHook(() => useMarket(), { wrapper: AllProviders })
+
+    expect(result.current.directOrdersLoading).toBe(true)
+
+    // 2. Troca para Fornecedor B antes de A responder
+    act(() => {
+      mockUseAuth.mockReturnValue({
+        ...FORNECEDOR_LOGADO,
+        user: { uid: 'sup-B', email: 'fornecedorB@test.com', displayName: 'Fornecedor B' },
+      })
+      rerender()
+    })
+
+    // Espera B resolver com sucesso
+    await waitFor(() => expect(result.current.directOrdersLoading).toBe(false))
+    expect(result.current.directOrders).toHaveLength(1)
+    expect(result.current.directOrders[0].id).toBe('ord-sup-B-rapido')
+
+    // 3. Resposta tardia de A chega depois que B já está ativo e carregado
+    await act(async () => {
+      resolveA!([orderSupplierA])
+    })
+
+    // O estado de B não pode ser sobrescrito pelos dados de A
+    expect(result.current.directOrders).toHaveLength(1)
+    expect(result.current.directOrders[0].id).toBe('ord-sup-B-rapido')
+  })
 })
+
+
 

@@ -4,6 +4,7 @@ on:
     branches:
       - fix/orders-flow-e2e-and-context-state
       - fix/feature-018-assistant-m7
+      - qa/integrated-orders-assistant
 permissions:
   contents: read
 concurrency:
@@ -48,3 +49,28 @@ jobs:
           mkdir -p node_modules/@rolldown/binding-linux-x64-gnu
           tar -xzf "$RUNNER_TEMP/$TARBALL" -C node_modules/@rolldown/binding-linux-x64-gnu --strip-components=1
       - run: ${{ matrix.command }}
+  homologation:
+    if: github.ref == 'refs/heads/qa/integrated-orders-assistant'
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: cloudflare-homologation
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Publish isolated backend and D1
+        run: node scripts/deploy-homologation.mjs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: homologation-deployment
+          path: qa-evidence/deployment.json
+          if-no-files-found: error

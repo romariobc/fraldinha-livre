@@ -149,6 +149,7 @@ export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
     const response = (await ai.run(
       '@cf/meta/llama-4-scout-17b-16e-instruct',
       {
+        max_tokens: 1024,
         messages: messages.map(toWorkersAiMessage),
         tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
       } as AiModels['@cf/meta/llama-4-scout-17b-16e-instruct']['inputs'],

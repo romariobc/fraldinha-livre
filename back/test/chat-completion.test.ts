@@ -20,6 +20,7 @@ describe('createWorkersAiChatCompletion', () => {
     expect(run).toHaveBeenCalledWith(
       '@cf/meta/llama-4-scout-17b-16e-instruct',
       {
+        max_tokens: 1024,
         messages: [{ role: 'user', content: 'ola', tool_call_id: undefined }],
         tools: [
           {

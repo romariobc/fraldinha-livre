@@ -50,25 +50,28 @@ export const AI_TOOLS: ChatCompletionTool[] = [
           description: 'O id exato do produto retornado no campo "id" por search_products',
         },
         quantity: {
-          type: 'number',
+          type: 'integer',
+          minimum: 1,
+          maximum: 50,
           description:
             'A quantidade de PACOTES a comprar (ex: 1, 2, 3). NUNCA envie a quantidade de tiras/unidades individuais do pacote (ex: se quer 1 pacote de 40 tiras, envie 1, e não 40). Máximo: 50.',
         },
         paymentMethod: {
           type: 'string',
+          enum: ['pix', 'cartao'],
           description: 'A forma de pagamento preferida pelo comprador ("pix" ou "cartao"). Opcional.',
         },
         address: {
           type: 'object',
-          description: 'O endereço de entrega fornecido pelo comprador. Opcional.',
+          description: 'Objeto JSON com os campos do endereço. Nunca envie uma string com o endereço completo. Todos os valores, inclusive numero e cep, são strings. Opcional.',
           properties: {
             logradouro: { type: 'string' },
-            numero: { type: 'string' },
+            numero: { type: 'string', description: 'Número do imóvel como string, por exemplo "123"' },
             complemento: { type: 'string' },
             bairro: { type: 'string' },
             cidade: { type: 'string' },
             estado: { type: 'string' },
-            cep: { type: 'string' },
+            cep: { type: 'string', description: 'CEP como string de 8 dígitos' },
           },
           required: ['logradouro', 'numero', 'bairro', 'cidade', 'estado', 'cep'],
         },

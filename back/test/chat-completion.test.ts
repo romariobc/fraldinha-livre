@@ -165,3 +165,21 @@ describe('createWorkersAiChatCompletion', () => {
     expect(result.text).toBe('Vou buscar novamente com a quantidade de unidades que você mencionou.')
   })
 })
+
+
+describe('structured Workers AI response regression', () => {
+  it('parses a structured tool wrapper without calling string methods on an object', async () => {
+    const args = { productId: 'catalogue-id', quantity: 2 }
+    const run = vi.fn().mockResolvedValue({ response: { select_product_for_purchase: args } })
+    const complete = createWorkersAiChatCompletion({ run } as unknown as Ai)
+    const result = await complete([{ role: 'user', content: 'Confirmo 2 pacotes' }], SAMPLE_TOOLS)
+    expect(result.toolCalls).toEqual([expect.objectContaining({ name: 'select_product_for_purchase', arguments: args })])
+    expect(result.text).toBeNull()
+  })
+
+  it('does not turn arbitrary structured checkout arguments into a tool call', async () => {
+    const run = vi.fn().mockResolvedValue({ response: { productId: 'catalogue-id', quantity: 2 } })
+    const complete = createWorkersAiChatCompletion({ run } as unknown as Ai)
+    await expect(complete([{ role: 'user', content: 'Confirmo' }], SAMPLE_TOOLS)).resolves.toEqual({ text: null, toolCalls: [] })
+  })
+})

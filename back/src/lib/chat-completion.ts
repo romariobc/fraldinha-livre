@@ -39,7 +39,7 @@ interface WorkersAiToolCall {
 }
 
 interface WorkersAiChatCompletionResponse {
-  response?: string
+  response?: string | Record<string, unknown>
   tool_calls?: WorkersAiToolCall[]
 }
 
@@ -165,7 +165,7 @@ export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
         hasUserMessage: Boolean(lastUserMessage),
         userMessageLength: lastUserMessage?.content?.length ?? 0,
         messagesCount: messages.length,
-        responseLength: response.response?.length ?? 0,
+        responseLength: typeof response.response === 'string' ? response.response.length : 0,
         toolCallsCount: response.tool_calls?.length ?? 0,
         toolNames: (response.tool_calls ?? []).map((call) => call.function?.name ?? call.name ?? 'unknown'),
       }),
@@ -179,7 +179,13 @@ export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
       }))
       .filter((call): call is ChatCompletionToolCall => Boolean(call.name))
 
-    const rawText = response.response ?? ''
+    // Workers AI may return structured JSON in response instead of a string.
+    // Feed known tool wrappers through the same parser; never assume string methods exist.
+    const rawText = typeof response.response === 'string'
+      ? response.response
+      : response.response && typeof response.response === 'object'
+        ? JSON.stringify(response.response)
+        : ''
     let processedText = rawText
 
     if (processedText) {
@@ -193,7 +199,7 @@ export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
       toolCalls = toolCalls.concat(leakedCalls)
     }
 
-    const parsedText = processedText
+    const parsedText = typeof response.response === 'string' && processedText
       ? processedText.replace(/(?:\[)?\b(search_products|get_product|select_product_for_purchase)\(([^)]*)\)(?:\])?/g, '').trim()
       : null
 

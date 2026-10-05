@@ -3,6 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import WaveDivider from '@/components/WaveDivider'
 import FaqAccordion from '@/components/FaqAccordion'
+import HomeProducts from '@/components/catalogo/HomeProducts'
 
 const BRANDS = [
   'Pampers', 'Huggies', 'MamyPoko', 'Turma da Mônica',
@@ -74,7 +75,7 @@ export default function Home() {
               {/* Badge */}
               <div className="inline-flex items-center gap-1.5 bg-primary/15 text-primary-dark rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide mb-5">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse2" />
-                Entrega garantida pelo fornecedor
+                Beta da loja · pagamento simulado
               </div>
 
               <h1 className="font-display font-black text-brand-text leading-[1.1] mb-5"
@@ -86,7 +87,7 @@ export default function Home() {
 
               <p className="text-brand-muted text-base lg:text-lg leading-relaxed mb-8 max-w-[480px]">
                 Conectamos você aos melhores fornecedores de fraldas do Brasil.
-                Compare ofertas, economize de verdade e garanta o conforto do seu bebê.
+                Escolha produtos e acompanhe seus pedidos. Neste beta, o pagamento é simulado e não há cobrança real.
               </p>
 
               {/* CTAs */}
@@ -98,7 +99,7 @@ export default function Home() {
                   ✨ Começar grátis
                 </Link>
                 <Link
-                  href="/#produtos"
+                  href="/catalogo"
                   className="inline-flex items-center justify-center px-7 py-3.5 rounded-full border-2 border-primary text-primary-dark font-display font-bold text-base hover:bg-primary-light transition-colors"
                 >
                   Ver produtos
@@ -122,7 +123,7 @@ export default function Home() {
                   ))}
                 </div>
                 <span className="text-xs text-brand-muted">
-                  +2.400 famílias economizando todo mês
+                  Catálogo, sacola e acompanhamento de pedidos
                 </span>
               </div>
             </div>
@@ -152,14 +153,14 @@ export default function Home() {
                   />
                   <div>
                     <p className="font-display font-extrabold text-sm text-brand-text leading-none">Pedido confirmado!</p>
-                    <p className="text-[11px] text-brand-muted mt-0.5">Chegando em 24–48h</p>
+                    <p className="text-[11px] text-brand-muted mt-0.5">Acompanhe na sua conta</p>
                   </div>
                 </div>
 
                 {/* Bubble bottom — economia */}
                 <div className="absolute -bottom-5 -left-4 sm:-left-7 bg-accent text-white rounded-2xl px-4 py-3 shadow-lg shadow-accent/25 z-20">
-                  <p className="text-[11px] opacity-90">Economia média</p>
-                  <p className="font-display font-black text-xl leading-none">R$ 87/mês</p>
+                  <p className="text-[11px] opacity-90">Pagamento neste beta</p>
+                  <p className="font-display font-black text-xl leading-none">Sem cobrança real</p>
                 </div>
               </div>
             </div>
@@ -218,7 +219,7 @@ export default function Home() {
                 Simples, rápido<br />e econômico 💛
               </h2>
               <p className="text-brand-muted text-sm leading-relaxed mb-10 max-w-[500px]">
-                Do pedido à entrega, cuidamos de tudo para que você foque no que importa — o seu bebê.
+                Valide o fluxo da loja: escolha os produtos, simule o pagamento e acompanhe o pedido com o fornecedor.
               </p>
 
               <div className="flex flex-col gap-7">
@@ -230,18 +231,18 @@ export default function Home() {
                   },
                   {
                     n: '2',
-                    title: 'Fornecedores competem por você',
-                    desc: 'Seu pedido vai para nossa rede de fornecedores. Eles confirmam ou fazem ofertas — você escolhe a melhor.',
+                    title: 'Revise sua compra',
+                    desc: 'Confira produtos, quantidades e endereço antes de finalizar a compra direta. Pedir ofertas estará disponível posteriormente.',
                   },
                   {
                     n: '3',
-                    title: 'Pague com segurança',
-                    desc: 'Checkout integrado com Mercado Pago. Pagamento protegido, entrega garantida.',
+                    title: 'Simule o pagamento',
+                    desc: 'Escolha Pix ou cartão no simulador. Nenhum valor é cobrado; o gateway real será integrado posteriormente.',
                   },
                   {
                     n: '4',
-                    title: 'Receba em casa',
-                    desc: 'O fornecedor cuida da entrega diretamente até você. Acompanhe tudo pela sua área de cliente.',
+                    title: 'Acompanhe o pedido',
+                    desc: 'O fornecedor confirma, despacha e registra a entrega. Acompanhe cada etapa pela sua conta; a logística deste beta é simulada.',
                   },
                 ].map((step) => (
                   <div key={step.n} className="flex gap-4 items-start">
@@ -264,7 +265,7 @@ export default function Home() {
                 Sua cegonha de fraldas<br />está a caminho!
               </p>
               <p className="text-sm text-brand-muted leading-relaxed">
-                Conectamos famílias a fornecedores confiáveis em todo o Brasil, com entrega rápida e preço justo.
+                Escolha produtos do catálogo e acompanhe a confirmação do fornecedor na sua conta.
               </p>
               <Link
                 href="/cadastro"
@@ -293,56 +294,14 @@ export default function Home() {
               </h2>
             </div>
             <Link
-              href="/#produtos"
+              href="/catalogo"
               className="inline-flex items-center px-5 py-2 rounded-full border-2 border-primary text-primary-dark font-display font-bold text-sm hover:bg-primary-light transition-colors self-start sm:self-auto"
             >
               Ver todos →
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
-            {[
-              { brand: 'Pampers', name: 'Supersec Pants', size: 'Tam. P · 28 un.', price: 16, badge: 'Mais vendido', badgeColor: 'bg-accent' },
-              { brand: 'Huggies', name: 'Supreme Care', size: 'Tam. M · 32 un.', price: 29, badge: null, badgeColor: '' },
-              { brand: 'MamyPoko', name: 'Pants Premium', size: 'Tam. G · 30 un.', price: 39, badge: 'Oferta', badgeColor: 'bg-primary-dark' },
-              { brand: 'Fraldinha Livre', name: 'Kit Inicial Bebê', size: 'P + M + G · 3 pcts', price: 49, badge: null, badgeColor: '' },
-            ].map((product) => (
-              <div
-                key={product.name}
-                className="bg-white rounded-card shadow-card overflow-hidden hover:-translate-y-1.5 hover:shadow-card-hover transition-all cursor-pointer"
-              >
-                <div className="aspect-square bg-primary-light flex items-center justify-center text-4xl sm:text-5xl relative">
-                  🧷
-                  {product.badge && (
-                    <span className={`absolute top-2.5 left-2.5 ${product.badgeColor} text-white text-[10px] font-bold rounded-full px-2.5 py-0.5`}>
-                      {product.badge}
-                    </span>
-                  )}
-                </div>
-                <div className="p-3.5 sm:p-4">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-primary-dark mb-0.5">
-                    {product.brand}
-                  </p>
-                  <p className="font-display font-extrabold text-sm text-brand-text mb-0.5">
-                    {product.name}
-                  </p>
-                  <p className="text-[11px] text-brand-muted mb-3">{product.size}</p>
-                  <div className="flex items-center justify-between">
-                    <p className="font-display font-black text-base sm:text-lg text-brand-text">
-                      R$&nbsp;{product.price.toFixed(2).replace('.', ',')}
-                      <span className="text-[11px] font-medium text-brand-muted font-body"> / pct</span>
-                    </p>
-                    <button
-                      className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-lg hover:bg-primary-dark hover:scale-110 transition-all"
-                      aria-label={`Adicionar ${product.name} ao carrinho`}
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <HomeProducts />
         </div>
       </section>
 
@@ -353,10 +312,10 @@ export default function Home() {
         <div className="container-fl">
           <div className="grid grid-cols-2 gap-8 text-center lg:grid-cols-4">
             {[
-              { num: '2.4k+', label: 'Famílias atendidas' },
-              { num: 'R$87', label: 'Economia média/mês' },
-              { num: '120+', label: 'Fornecedores parceiros' },
-              { num: '98%', label: 'Satisfação dos clientes' },
+              { num: 'Catálogo', label: 'Produtos dos fornecedores' },
+              { num: 'Sacola', label: 'Compra por fornecedor' },
+              { num: 'Simulado', label: 'Pagamento sem cobrança' },
+              { num: 'Pedidos', label: 'Acompanhamento e histórico' },
             ].map((stat) => (
               <div key={stat.label}>
                 <p className="font-display font-black text-white leading-none"
@@ -381,10 +340,10 @@ export default function Home() {
             </p>
             <h2 className="font-display font-black text-brand-text"
                 style={{ fontSize: 'clamp(24px, 3vw, 40px)' }}>
-              O que as famílias dizem
+              Exemplos de uso da loja
             </h2>
             <p className="text-brand-muted text-sm mt-2">
-              Mais de 2.400 famílias já economizaram com a Fraldinha Livre.
+              Depoimentos ilustrativos do protótipo; não representam avaliações verificadas.
             </p>
           </div>
 
@@ -426,13 +385,13 @@ export default function Home() {
                 Ainda tem dúvidas?
               </p>
               <p className="text-sm text-brand-muted leading-relaxed">
-                Fale com a nossa equipe pelo WhatsApp ou deixe sua mensagem — respondemos em até 2 horas.
+                Consulte os canais de contato da plataforma.
               </p>
               <Link
                 href="/contato"
                 className="mt-2 inline-flex items-center justify-center px-6 py-3 rounded-full bg-primary text-white font-display font-bold text-sm hover:bg-primary-dark transition-colors"
               >
-                💬 Falar no WhatsApp
+                Ver contato
               </Link>
             </div>
 

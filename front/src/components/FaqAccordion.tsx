@@ -14,19 +14,19 @@ const FAQ_ITEMS = [
   },
   {
     question: 'Como funciona a entrega?',
-    answer: 'A entrega é realizada diretamente pelo fornecedor que aceitou seu pedido. O prazo e método são informados no momento da confirmação, antes do pagamento.',
+    answer: 'Neste beta, o fornecedor atualiza as etapas de confirmação, despacho e entrega no painel. A logística é simulada; não há contratação de frete real pela plataforma.',
   },
   {
     question: 'As fraldas são originais e de qualidade garantida?',
-    answer: 'Sim! Todos os fornecedores passam por um processo de verificação antes de entrar na plataforma. Só trabalhamos com produtos originais e com nota fiscal.',
+    answer: 'Consulte as informações do produto e do fornecedor no catálogo. Este beta valida o fluxo da loja e não representa uma garantia de entrega ou certificação de produtos.',
   },
   {
     question: 'Posso cancelar ou alterar um pedido?',
-    answer: 'Você pode cancelar o pedido antes do pagamento a qualquer momento. Após o pagamento, entre em contato — avaliamos caso a caso com o fornecedor.',
+    answer: 'Você pode cancelar uma compra direta enquanto ela aguarda confirmação do fornecedor. Depois disso, acompanhe o status na sua conta. O pagamento deste beta é simulado, sem cobrança ou estorno real.',
   },
   {
     question: 'Como é feito o pagamento?',
-    answer: 'Aceitamos cartão de crédito, PIX e boleto via Mercado Pago. O pagamento é processado com total segurança e repassado ao fornecedor após confirmação da entrega.',
+    answer: 'O checkout simula Pix ou cartão, com resultado aprovado ou recusado para validar o fluxo. Nenhuma cobrança real é feita. A integração financeira será um módulo posterior; o provedor ainda está em decisão.',
   },
 ]
 

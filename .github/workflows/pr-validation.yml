@@ -49,9 +49,16 @@ jobs:
           mkdir -p node_modules/@rolldown/binding-linux-x64-gnu
           tar -xzf "$RUNNER_TEMP/$TARBALL" -C node_modules/@rolldown/binding-linux-x64-gnu --strip-components=1
       - run: ${{ matrix.command }}
+  frontend-container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production frontend image
+        run: docker build -f front/Dockerfile -t fraldinha-livre-frontend:qa .
   homologation:
     if: github.ref == 'refs/heads/qa/integrated-orders-assistant'
-    needs: tests
+    needs: [tests, frontend-container]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     concurrency:

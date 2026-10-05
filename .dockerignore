@@ -9,6 +9,7 @@ legacy
 app
 back
 node_modules
+.npm-cache
 front/node_modules
 front/.next
 front/.open-next

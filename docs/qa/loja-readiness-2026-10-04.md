@@ -1,3 +1,5 @@
+> Atualização de escopo em 2026-10-05: o usuário confirmou que a publicação desejada é da loja com pagamento simulado, sem dependência do chat, conforme D-037. Pagamento real não é bloqueio desse beta. O relatório abaixo registra a avaliação comercial anterior; resultado da jornada e correções em [loja-fluxo-simulado-2026-10-05.md](loja-fluxo-simulado-2026-10-05.md).
+
 # Prontidão da loja — 2026-10-04
 
 ## Veredito

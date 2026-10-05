@@ -103,14 +103,14 @@ function CadastroPageContent() {
           className="h-24 w-auto animate-float relative z-10"
         />
         <h2 className="font-display font-black text-2xl lg:text-3xl text-white relative z-10">
-          Junte-se a 2.400 famílias!
+          Experimente a loja!
         </h2>
         <p className="text-white/75 text-base leading-relaxed max-w-[300px] relative z-10">
           Crie sua conta grátis e comece a economizar nas fraldas do seu bebê ainda hoje.
         </p>
         {[
           '✨ Cadastro 100% gratuito',
-          '💸 Economia média de R$87/mês',
+          '🧪 Beta com pagamento simulado',
           '📦 Acesse seu histórico de pedidos',
         ].map((benefit) => (
           <div

@@ -1,5 +1,6 @@
 # ── Node / Next.js ────────────────────────────────────────────
 node_modules
+.npm-cache/
 front/node_modules
 front/.next/
 front/out/

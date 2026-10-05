@@ -1,3 +1,14 @@
+# Estado atual — 2026-10-05
+
+## Loja beta: fluxo completo sem dependência do chat
+
+- Escopo reafirmado pelo usuário: compra e venda de ponta a ponta com pagamento simulado. Pagamento real via módulo/API (Appmax ou Pagar.me a decidir) fica posterior, como D-037/feature 011 já determinam. A leitura anterior de prontidão comercial não bloqueia este beta.
+- Corrigidos vitrine inicial/CTAs, comunicação, preservação de endereço e itens no painel do fornecedor, fixture incompatível com o frontend e checkout sem fallback de endereço fictício.
+- Navegador + Firebase real + D1 exclusivo de homologação: home → sacola com dois produtos/três pacotes/R$ 79,70 → recusa sem pedido → Pix simulado aprovado → fornecedor confirma/despacha/entrega → comprador vê histórico após novo login. Pedido QA ec6ac19d-6dd0-42f8-afe6-631ebdf8cb81. Nenhum chat usado.
+- Testes locais: 708 frontend antes do ajuste adicional de endereço; 27 checkout final; build final e tipos aprovados; lint exit 0/11 avisos preexistentes. Imagem Docker/CI final e deploy ainda serão conferidos antes de declarar publicação.
+- [Relatório desta jornada](../../docs/qa/loja-fluxo-simulado-2026-10-05.md). Feature 011 continua pendente; nenhum status foi promovido sem evidência.
+- Registros anteriores preservados abaixo como histórico.
+
 # Estado atual — 2026-10-04
 
 ## Prontidão da loja e produção

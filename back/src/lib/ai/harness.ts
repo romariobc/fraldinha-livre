@@ -29,7 +29,7 @@ export interface UserContext {
  * 4. Capturar erros de execução do handler com try/catch e retornar mensagem
  *    estruturada em vez de propagar exceção para o orchestrator.
  *
- * Para `select_product_for_purchase`: esta tool não acessa o DB. O harness
+ * Para `select_product_for_purchase`: o harness consulta o produto ativo no DB,
  * valida os argumentos e os retorna para que o orchestrator monte a resposta
  * de checkout. O `userContext.userId` é retornado junto para auditoria.
  */
@@ -52,10 +52,13 @@ export async function executeToolHarness(
       }
 
       case 'select_product_for_purchase': {
-        // Valida os argumentos mas não acessa o DB.
-        // O orchestrator usa o resultado validado para montar a ChatResponse de checkout.
-        // userId é incluído no retorno para rastreabilidade/auditoria.
         const args = SelectProductArgsSchema.parse(rawArgs)
+        const product = await getProduct(db, { productId: args.productId })
+        if (!product) {
+          return {
+            error: `Produto com id "${args.productId}" não existe no catálogo. Você deve usar o id exato retornado por search_products.`,
+          }
+        }
         return { ...args, userId: userContext.userId }
       }
 

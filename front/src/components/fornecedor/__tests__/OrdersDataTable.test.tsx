@@ -4,6 +4,29 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { OrdersDataTable, type SupplierOrderRow } from '../OrdersDataTable'
+import { contractOrderToDirectOrder } from '@/lib/order-adapters'
+import type { Order } from '@contracts'
+
+it('exibe endereço e todas as linhas após a conversão real da API para o painel', async () => {
+  const order: Order = {
+    id: 'API-MULTI', uid: 'buyer', type: 'compra-direta', status: 'aguardando',
+    product: 'Compra de dois produtos', quantity: 3, unit: 'un', price: 8000,
+    createdAt: '2026-10-04T10:00:00Z', paymentStatus: 'approved',
+    deliveryAddress: { logradouro: 'Rua QA Real', numero: '123', complemento: 'Apto 4',
+      bairro: 'Centro', cidade: 'Fortaleza', estado: 'CE', cep: '60000000' },
+    items: [
+      { productId: 'p1', productName: 'Produto um real', unitPrice: 2500, quantity: 2, unit: 'un' },
+      { productId: 'p2', productName: 'Produto dois real', unitPrice: 3000, quantity: 1, unit: 'un' },
+    ],
+  }
+  render(<OrdersDataTable orders={[contractOrderToDirectOrder(order)]} />)
+  await userEvent.click(screen.getByTestId('order-id-API-MULTI'))
+  const dialog = await screen.findByRole('dialog')
+  expect(dialog).toHaveTextContent('Rua QA Real, 123 - Apto 4')
+  expect(dialog).toHaveTextContent('Produto um real')
+  expect(dialog).toHaveTextContent('Produto dois real')
+  expect(dialog).not.toHaveTextContent('Endereço Comercial')
+})
 
 vi.mock('sonner', () => ({
   toast: {

@@ -77,6 +77,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-primary/10">
+      <p className="bg-primary-light px-4 py-2 text-center text-xs text-primary-dark">Beta da loja: pagamento e logística simulados, sem cobrança real.</p>
       <div className="container-fl">
         <div className="flex items-center justify-between h-16 lg:h-20">
 

@@ -1,4 +1,98 @@
-# Estado atual — 2026-10-03
+# Estado atual — 2026-10-05
+
+## Loja beta: fluxo completo sem dependência do chat
+
+- Escopo reafirmado pelo usuário: compra e venda de ponta a ponta com pagamento simulado. Pagamento real via módulo/API (Appmax ou Pagar.me a decidir) fica posterior, como D-037/feature 011 já determinam. A leitura anterior de prontidão comercial não bloqueia este beta.
+- Corrigidos vitrine inicial/CTAs, comunicação, preservação de endereço e itens no painel do fornecedor, fixture incompatível com o frontend e checkout sem fallback de endereço fictício.
+- Navegador + Firebase real + D1 exclusivo de homologação: home → sacola com dois produtos/três pacotes/R$ 79,70 → recusa sem pedido → Pix simulado aprovado → fornecedor confirma/despacha/entrega → comprador vê histórico após novo login. Pedido QA ec6ac19d-6dd0-42f8-afe6-631ebdf8cb81. Nenhum chat usado.
+- Testes locais: 708 frontend antes do ajuste adicional de endereço; 27 checkout final; build final e tipos aprovados; lint exit 0/11 avisos preexistentes. Imagem Docker/CI final e deploy ainda serão conferidos antes de declarar publicação.
+- [Relatório desta jornada](../../docs/qa/loja-fluxo-simulado-2026-10-05.md). Feature 011 continua pendente; nenhum status foi promovido sem evidência.
+- Registros anteriores preservados abaixo como histórico.
+
+# Estado atual — 2026-10-04
+
+## Prontidão da loja e produção
+
+- Verificação solicitada: loja funcional antes de publicar, seguindo o harness. Resultado: operação comercial paga ainda não pronta; publicação de produção não executada nesta sessão.
+- Integração #21 (`75534be4e3b86b423f3a61db2b4e48df341023f6`) validada em CI e homologação isolada: 701 testes front, 296 back, 57 contratos, 32 runner; ciclo de pedidos e checkout/recuperação com Workers AI real passaram. Isso resolve a pendência anterior de recuperação real apenas no ambiente/versão testados.
+- Produção lida: health 200, catálogo 200/314 produtos, orders sem token 401. Navegador: catálogo carrega e checkout anônimo vai ao login. Compra frontend/admin não homologada nesta sessão.
+- Impedimentos: pagamento/logística simulados; botões de adicionar da home sem ação; “Ver todos” volta à mesma seção; comunicação promete Mercado Pago, competição e entrega garantida sem integração correspondente. Feature 011 continua pendente.
+- Relatório e distinção beta/pago: [prontidão da loja](../../docs/qa/loja-readiness-2026-10-04.md). Solicitada clarificação sobre publicar beta sem cobrança ou aguardar pagamento real; nenhuma resposta foi presumida como autorização.
+- Registros anteriores de 2026-10-03 preservados abaixo. Nenhuma feature foi marcada como done nesta revisão.
+
+## Revalidação independente e limites da evidência
+
+- Cópia limpa obtida no commit `0b983d64e89afc35987f098b1782522e48d7c644`. A instalação local das dependências falhou com EPERM; outra tentativa de checkout retornou falta de espaço em disco e o executor deixou de iniciar. Nenhuma suíte foi reexecutada localmente pelo revisor.
+- Adicionado workflow `PR validation` nas branches das PRs #19 e #20 para executar testes, tipos e lint sem deploy ou credenciais de produção. Resultados devem ser consultados no run associado ao commit; configuração do workflow não equivale a aprovação.
+- QA admin, iPhone, medição oficial de neurons e autocorreção do modelo real na versão corrigida permanecem pendentes. A presença de um plugin instalado não comprovou acesso operacional ao Firebase/Cloudflare nesta sessão.
+
+
+## Homologação M7 do Assistente de Compras (Feature 018) com Modelo Real Workers AI — 2026-10-03
+
+- **Branch**: `fix/feature-018-assistant-m7` (commits `b1881b8` e posteriores).
+- **Pull Request #20 Criada**: `https://github.com/romariobc/fraldinha-livre/pull/20` (aguardando revisão no GitHub).
+- **Homologação M7 com Modelo Real Cloudflare Workers AI (`@cf/meta/llama-4-scout-17b-16e-instruct`)**:
+  - Smoke test autenticado de `POST /chat/message` com Firebase ID token real de comprador: resposta fluida, contextualizada com a última compra do usuário (`MamyPoko RN`).
+  - Segurança e autorização: 401 sem token em `POST /chat/message` e `GET /orders`; `GET /products` 200 OK (314 produtos).
+  - Execução dos 15 casos do checklist M7 com modelo real e navegador:
+    - Casos de texto 1, 2, 3, 4: **APROVADOS** (busca exata, esclarecimento de pedidos vagos, fallback para marcas fora do catálogo sem alucinar, e quantidade de pacotes preservada).
+    - Casos de visão multimodal 5, 6, 8, 9: **APROVADOS** (reconhecimento de embalagens reais Pampers e Personal Baby, identificação de ausência no catálogo com sugestões, bom senso em fotos de flores e não-fraldas, busca combinada de foto + texto).
+    - Caso 7 (Foto de embalagem de fralda borrada/ambígua): **APROVADO**. Executado contra o modelo real com imagem de fralda desfocada (`fralda_borrada_ambigua.png`). O modelo reconheceu a marca Pampers, não inventou tamanho nem produto, e solicitou esclarecimento ao usuário ("Temos Pampers! Qual tamanho você está procurando? RN, P, M, G, XG ou XXG?").
+    - Caso 10 (Foto de iPhone / HEIC nativo): **PENDENTE (REQUISITO DE HARDWARE FÍSICO APPLE)** mantido expressamente pendente até validação em aparelho físico Apple com Safari.
+    - Caso 11 (Formato não suportado / GIF): **APROVADO** (HTTP 400 em 75ms e mensagem amigável no front).
+    - Fluxo de ponta a ponta 12, 13, 14, 15: **APROVADOS** (handoff para `/checkout`, persistência em `/minha-conta`, interceptação de perfil incompleto RN-06 para `/minha-conta?tab=perfil`, e redirecionamento de deslogado para `/login?redirect=/assistente`).
+  - Métricas e consumo: Latência média entre ~2.0s e ~3.8s por turno multimodal. Consumo de ~100–300 neurons/turno classificado como **ESTIMATIVA TÉCNICA**; telemetria contábil em tempo real mantida **PENDENTE** de acesso humano ao dashboard da Cloudflare.
+- **Correção da Causa-Raiz de Alucinação e Autocorreção no Orchestrator**:
+  - Remoção de IDs de exemplo fictícios (`p1`, `p2`) no prompt do sistema (`prompts.ts`) e nas definições de tools (`tools/index.ts`).
+  - Validação defensiva no backend (`harness.ts`): `select_product_for_purchase` valida no D1 via `getProduct`. Se o ID não existir, retorna erro explicativo ao modelo.
+  - Teste de integração do orchestrator (`back/test/ai/orchestrator-recovery.test.ts`, adicionado em `0b983d6`) com LLM simulado: ID inexistente → erro entregue à segunda chamada → resposta programada com ID válido → action retornada. A autocorreção do Workers AI real na versão corrigida e a navegação no checkout não são comprovadas por esse teste.
+- **Suíte de Testes 100% Verde**:
+  - `front`: 66 arquivos / 696 testes aprovados.
+  - `back`: 28 arquivos / 287 testes aprovados (incluindo `orchestrator-recovery.test.ts`).
+  - `packages/contracts`: 7 arquivos / 56 testes aprovados.
+  - `tsc --noEmit`: 0 erros nos três workspaces.
+- **Decisão Arquitetural Registrada**: ADR D-057 formalizada em `decisoes.md` mantendo o modelo Llama 4 Scout.
+
+## Abertura da PR #19 e Validação do Fluxo de Pedidos / Fornecedor — 2026-10-03
+
+- **Branch**: `fix/orders-flow-e2e-and-context-state` (head commit `1b2d53fc091288e6199c6e70ad6c269d268ac3bc`).
+- **Pull Request #19 Criada**: `https://github.com/romariobc/fraldinha-livre/pull/19` (aguardando revisão no GitHub).
+- **Garantias Validadas**:
+  - Isolamento estrito entre contas: troca de conta limpa dados do fornecedor anterior mesmo se a nova consulta falhar (`directOrdersOwnerUid` separado de `directOrdersDiagnostic`).
+  - Respostas atrasadas da conta anterior não contaminam a conta ativa (`activeFetchIdRef`).
+  - Exit code estrito na suíte E2E: falhas de rede ou JSON geram reprovação e código de saída diferente de zero.
+  - Payload de pedidos em conformidade com `supplierId` e unidades do contrato (`un`).
+- **QA Autenticado no Navegador (Chromium / DevTools)**:
+  - Painel do fornecedor testado com conta autenticada real (`fornecedor.teste1@fraldinhalivre.com.br`).
+  - Atualização manual de pedidos (`refetchDirectOrders`) executada com sucesso, mantendo integridade de pedidos e métricas.
+  - Logout e transição de sessão verificados.
+- **QA Autenticado do Administrador (/admin)**:
+  - Status: **PENDENTE (ACESSO ADMINISTRATIVO REQUERIDO)**. O painel `/admin` é restrito à autoridade administrativa única (`claims.admin === true` ou fallback legado `ADMIN_UID: KOQclmb5eshfkufioK03ayRh6Fi2`, associado ao Google OAuth do desenvolvedor). As variáveis `QA_ADMIN_EMAIL` e `QA_ADMIN_PASSWORD` estão vazias no ambiente (`.env.qa.local`). O bloqueio de acesso a `/admin` para papéis não-administrativos (comprador e fornecedor) foi validado tanto em testes unitários quanto na navegação real.
+- **Testes Automatizados**:
+  - `front/src/contexts/__tests__/market-context.test.tsx`: 25 testes aprovados.
+  - `scripts/test-e2e-logic.test.mjs`: 32 testes aprovados.
+  - `back/test/orders.mutations.test.ts`: 22 testes aprovados.
+
+## Correção e Regressão da PR #18 (E2E API e Estado de Carregamento Multi-Conta) — 2026-10-03
+
+- **Confirmação e Correção de Achados de Code Review (Rodada 2 / Commit f74a818)**:
+  - **Achado 1 [P1] (Vazamento de pedidos entre fornecedores)**:
+    - *Cenário reproduzido*: Fornecedor A carrega pedidos com sucesso; troca para conta B; consulta de B falha no backend; catch definia `directOrdersOwnerUid` como B mas mantinha `directOrders` de A; `isSameAccount` passava a ser `true`, expondo pedidos de A para B!
+    - *Correção*: Separação da propriedade dos dados (`directOrdersDataOwnerUid`) da propriedade do estado de consulta/diagnóstico (`directOrdersQueryOwnerUid`). Uma falha na conta B nunca atribui a B a titularidade dos dados de A. Dados de A permanecem estritamente isolados (`directOrdersExposed = []`).
+    - *Preservações garantidas*: Dados prévios mantidos em refresh falho da mesma conta; loading ativo durante a primeira consulta de nova conta; erro/diagnóstico pertencentes à conta atual; descarte de respostas tardias via `activeFetchIdRef`; isolamento total após logout.
+    - *Testes comportamentais React*: 5 testes em `front/src/contexts/__tests__/market-context.test.tsx` (totalizando 25/25 aprovados).
+  - **Achado 2 [P2] (Exceção de rede pode aprovar indevidamente o E2E)**:
+    - *Cenário reproduzido*: Quando `POST /products` (ou qualquer passo posterior) lançava exceção (ex: `TypeError('fetch failed')`), o bloco catch apenas logava o erro sem inserir falha em `results`. O resumo avaliava apenas os passos anteriores aprovados e emitia veredito `APROVADO`, `allPassed: true` e exit code 0!
+    - *Correção*: Bloco catch em [scripts/test-e2e-catalog-to-history.mjs](file:///E:/Labdev/Projetos/fraldinha-livre/scripts/test-e2e-catalog-to-history.mjs) insere registro de falha funcional em `results` com a mensagem da exceção (`category: 'functional'`), garantindo `allPassed: false`, veredito `FALHA_FUNCIONAL` e exit code 1. Teardown é rigorosamente preservado no `finally`.
+    - *Testes de regressão E2E*: 4 novos testes em [scripts/test-e2e-logic.test.mjs](file:///E:/Labdev/Projetos/fraldinha-livre/scripts/test-e2e-logic.test.mjs) (totalizando 5 suítes / 32 testes 100% aprovados), cobrindo exceção no `POST /products`, exceção em chamada posterior com teardown executado, rejeição de `json()` malformado e falha na autenticação administrativa.
+- **Validação de Testes e Tipagem (Resultados Auditados)**:
+  - Frontend Vitest: 25/25 testes em `market-context.test.tsx` e 18/18 em `OrdersDataTable.test.tsx` (100% aprovados).
+  - Lógica E2E (Node Test Runner): 5 suítes / 32 testes unitários 100% aprovados (`scripts/test-e2e-logic.test.mjs`, exit code 0).
+  - Backend Vitest: 22/22 testes em `back/test/orders.mutations.test.ts` (100% aprovados).
+  - Contratos Vitest: 7 arquivos / 57 testes 100% aprovados (`packages/contracts`, exit code 0).
+  - Tipagem: `tsc --noEmit` limpo com 0 erros em `front/`, `back/` e `packages/contracts`.
+  - Linters: ESLint com 0 erros.
+- **Declarações Operacionais**: Nenhuma escrita em produção; trabalho desenvolvido na branch `fix/orders-flow-e2e-and-context-state`; sem merge para `main` e sem deploy remoto.
 
 ## Merge da PR #18 e Deploy em Produção Cloudflare (Fluxo de Pedidos e Fornecedor) — 2026-10-03
 

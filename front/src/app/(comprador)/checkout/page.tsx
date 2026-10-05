@@ -8,7 +8,6 @@ import { useOrders } from '@/contexts/orders-context'
 import { useMarket } from '@/contexts/market-context'
 import { useProducts } from '@/contexts/products-context'
 import { STORE_SUPPLIERS } from '@/lib/suppliers'
-import { MOCK_USER } from '@/lib/account-mock'
 import type { Address, Order } from '@/lib/account-mock'
 import type { PaymentMethod } from '@/lib/ports/payment'
 import { lineTotal, cartSubtotal } from '@/lib/domain/cart'
@@ -107,21 +106,22 @@ function CheckoutContent() {
   const [completedPayment, setCompletedPayment] = useState<{ transactionId: string; method: PaymentMethod } | null>(null)
   const idempotencyKeyRef = useRef<string>(generateIdempotencyKey())
 
-  // Determine default address: profile.address or MOCK_USER.address
-  const defaultAddress = profile?.address || MOCK_USER.address
+  // Endereço ausente nunca recebe dados de demonstração.
+  const defaultAddress: Address = profile?.address ?? { logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', cep: '' }
   const deliveryAddress = useCustomAddress ? customAddress : defaultAddress
 
-  // Validation: custom address requires logradouro, numero, cep, cidade, estado (trimmed)
-  const isAddressValid =
-    !useCustomAddress ||
-    (customAddress.logradouro.trim() &&
-      customAddress.numero.trim() &&
-      customAddress.cep.trim() &&
-      customAddress.cidade.trim() &&
-      customAddress.estado.trim())
+  const isAddressValid = Boolean(
+    deliveryAddress.logradouro.trim() && deliveryAddress.numero.trim() &&
+    deliveryAddress.cep.trim() && deliveryAddress.cidade.trim() && deliveryAddress.estado.trim()
+  )
 
   // Handler: Pagar (pagamento simulado primeiro, pedido apenas se aprovado — MVP-03)
   const handlePagar = async () => {
+    if (!isAddressValid) {
+      setStep('endereco')
+      toast.error('Informe um endereço de entrega completo antes de finalizar.')
+      return
+    }
     // Guard: already submitted
     if (submitting) {
       return
@@ -306,6 +306,7 @@ function CheckoutContent() {
                 </label>
                 {!useCustomAddress && (
                   <div className="mt-3 ml-7 p-3 bg-slate-50 rounded text-xs text-brand-muted">
+                    {!isAddressValid && <p>Seu cadastro não tem um endereço completo. Informe outro endereço para continuar.</p>}
                     <p>
                       {defaultAddress.logradouro}, {defaultAddress.numero}
                       {defaultAddress.complemento && ` — ${defaultAddress.complemento}`}

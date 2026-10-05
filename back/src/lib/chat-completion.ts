@@ -39,7 +39,7 @@ interface WorkersAiToolCall {
 }
 
 interface WorkersAiChatCompletionResponse {
-  response?: string
+  response?: string | Record<string, unknown>
   tool_calls?: WorkersAiToolCall[]
 }
 
@@ -57,102 +57,119 @@ function toWorkersAiMessage(message: ChatCompletionMessage) {
   }
 }
 
-function extractLeakedToolCalls(text: string): ChatCompletionToolCall[] {
+
+function closingDelimiter(text: string, start: number, open: string, close: string): number {
+  let depth = 0
+  let quote = ''
+  let escaped = false
+  for (let i = start; i < text.length; i++) {
+    const char = text[i]
+    if (quote) {
+      if (escaped) escaped = false
+      else if (char === '\\') escaped = true
+      else if (char === quote) quote = ''
+      continue
+    }
+    if (char === '"' || char === "'") { quote = char; continue }
+    if (char === open) depth++
+    else if (char === close && --depth === 0) return i
+  }
+  return -1
+}
+function parseLeakedArguments(text: string): Record<string, unknown> {
+  const parts: string[] = []
+  let start = 0
+  let depth = 0
+  let quote = ''
+  let escaped = false
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i]
+    if (quote) {
+      if (escaped) escaped = false
+      else if (char === '\\') escaped = true
+      else if (char === quote) quote = ''
+      continue
+    }
+    if (char === '"' || char === "'") quote = char
+    else if ('{[('.includes(char)) depth++
+    else if ('}])'.includes(char)) depth--
+    else if (char === ',' && depth === 0) { parts.push(text.slice(start, i)); start = i + 1 }
+  }
+  parts.push(text.slice(start))
+  const args: Record<string, unknown> = {}
+  for (const part of parts) {
+    const match = part.match(/^\s*([a-zA-Z0-9_]+)\s*=\s*([\s\S]+)$/)
+    if (!match) continue
+    const value = match[2].trim()
+    try { args[match[1]] = JSON.parse(value) as unknown }
+    catch { args[match[1]] = value.startsWith("'") && value.endsWith("'") ? value.slice(1, -1) : value }
+  }
+  return args
+}
+function extractLeakedToolCalls(text: string): { calls: ChatCompletionToolCall[]; cleanedText: string } {
   const calls: ChatCompletionToolCall[] = []
-  const regex = /(?:\[)?\b(search_products|get_product|select_product_for_purchase)\(([^)]*)\)(?:\])?/g
-  let match
+  const regex = /\b(search_products|get_product|select_product_for_purchase)\s*\(/g
+  let cleanedText = ''
+  let previousEnd = 0
+  let match: RegExpExecArray | null
   while ((match = regex.exec(text)) !== null) {
-    const name = match[1]
-    const argsStr = match[2]
-    const args: Record<string, unknown> = {}
-    const argRegex = /([a-zA-Z0-9_]+)\s*=\s*(?:'([^']*)'|"([^"]*)"|([^,\s)]+))/g
-    let argMatch
-    while ((argMatch = argRegex.exec(argsStr)) !== null) {
-      const key = argMatch[1]
-      const strVal = argMatch[2] !== undefined ? argMatch[2] : argMatch[3]
-      const rawVal = argMatch[4]
-      if (strVal !== undefined) {
-        args[key] = strVal
-      } else if (rawVal !== undefined) {
-        const num = Number(rawVal)
-        args[key] = isNaN(num) ? rawVal : num
-      }
-    }
-    calls.push({ id: `leaked-${Math.random().toString(36).slice(2)}`, name, arguments: args })
+    const open = regex.lastIndex - 1
+    const close = closingDelimiter(text, open, '(', ')')
+    if (close === -1) continue
+    const hasBrackets = text[match.index - 1] === '[' && text[close + 1] === ']'
+    const start = hasBrackets ? match.index - 1 : match.index
+    const end = close + (hasBrackets ? 2 : 1)
+    calls.push({ id: `leaked-${Math.random().toString(36).slice(2)}`, name: match[1], arguments: parseLeakedArguments(text.slice(open + 1, close)) })
+    cleanedText += text.slice(previousEnd, start)
+    previousEnd = end
+    regex.lastIndex = end
   }
-  return calls
+  return { calls, cleanedText: (cleanedText + text.slice(previousEnd)).trim() }
 }
-
 function extractLeakedJsonToolCalls(text: string): { calls: ChatCompletionToolCall[]; cleanedText: string } {
-  let cleanedText = text
   const calls: ChatCompletionToolCall[] = []
-  const toolNames = ['search_products', 'get_product', 'select_product_for_purchase']
-
-  for (const name of toolNames) {
-    let index = cleanedText.indexOf(name)
-    while (index !== -1) {
-      const startIdx = cleanedText.lastIndexOf('{', index)
-      if (startIdx !== -1) {
-        let braceCount = 0
-        let endIdx = -1
-        for (let i = startIdx; i < cleanedText.length; i++) {
-          if (cleanedText[i] === '{') braceCount++
-          else if (cleanedText[i] === '}') {
-            braceCount--
-            if (braceCount === 0) {
-              endIdx = i
-              break
-            }
-          }
-        }
-
-        if (endIdx !== -1) {
-          const jsonStr = cleanedText.slice(startIdx, endIdx + 1)
-          try {
-            const parsed = JSON.parse(jsonStr)
-            if (parsed[name] && typeof parsed[name] === 'object') {
-              calls.push({
-                id: `leaked-json-${Math.random().toString(36).slice(2)}`,
-                name,
-                arguments: parsed[name] as Record<string, unknown>
-              })
-              cleanedText = cleanedText.slice(0, startIdx) + cleanedText.slice(endIdx + 1)
-              index = cleanedText.indexOf(name)
-              continue
-            }
-            if (parsed.name === name && parsed.arguments && typeof parsed.arguments === 'object') {
-              calls.push({
-                id: `leaked-json-${Math.random().toString(36).slice(2)}`,
-                name,
-                arguments: parsed.arguments as Record<string, unknown>
-              })
-              cleanedText = cleanedText.slice(0, startIdx) + cleanedText.slice(endIdx + 1)
-              index = cleanedText.indexOf(name)
-              continue
-            }
-          } catch (e) {
-            // parsing error or invalid format
-          }
+  const names = ['search_products', 'get_product', 'select_product_for_purchase']
+  let cleanedText = ''
+  let previousEnd = 0
+  let start = text.indexOf('{')
+  while (start !== -1) {
+    const end = closingDelimiter(text, start, '{', '}')
+    if (end === -1) break
+    try {
+      const parsed: unknown = JSON.parse(text.slice(start, end + 1))
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const record = parsed as Record<string, unknown>
+        const name = typeof record.name === 'string' && names.includes(record.name) ? record.name : names.find((candidate) => candidate in record)
+        const args = name && (record.name === name ? record.arguments : record[name])
+        if (name && args && typeof args === 'object' && !Array.isArray(args)) {
+          calls.push({ id: `leaked-json-${Math.random().toString(36).slice(2)}`, name, arguments: args as Record<string, unknown> })
+          cleanedText += text.slice(previousEnd, start)
+          previousEnd = end + 1
         }
       }
-      index = cleanedText.indexOf(name, index + name.length)
-    }
+    } catch { /* Leave malformed or unrelated JSON untouched. */ }
+    start = text.indexOf('{', end + 1)
   }
-
-  return { calls, cleanedText: cleanedText.trim() }
+  return { calls, cleanedText: (cleanedText + text.slice(previousEnd)).trim() }
 }
 
-export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
+export function createWorkersAiChatCompletion(
+  ai: Ai,
+  inspectResponse?: (response: WorkersAiChatCompletionResponse) => void,
+): RunChatCompletion {
   return async (messages, tools) => {
     const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user')
 
     const response = (await ai.run(
       '@cf/meta/llama-4-scout-17b-16e-instruct',
       {
+        max_tokens: 1024,
         messages: messages.map(toWorkersAiMessage),
         tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
       } as AiModels['@cf/meta/llama-4-scout-17b-16e-instruct']['inputs'],
     )) as unknown as WorkersAiChatCompletionResponse
+
+    inspectResponse?.(response)
 
     // DIAGNOSTICO TEMPORARIO (2026-08-03) — achado de QA: o modelo as vezes nao
     // chama tool nenhuma com entrada curta/ambigua, ou escreve a sintaxe da tool
@@ -165,7 +182,7 @@ export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
         hasUserMessage: Boolean(lastUserMessage),
         userMessageLength: lastUserMessage?.content?.length ?? 0,
         messagesCount: messages.length,
-        responseLength: response.response?.length ?? 0,
+        responseLength: typeof response.response === 'string' ? response.response.length : 0,
         toolCallsCount: response.tool_calls?.length ?? 0,
         toolNames: (response.tool_calls ?? []).map((call) => call.function?.name ?? call.name ?? 'unknown'),
       }),
@@ -179,7 +196,13 @@ export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
       }))
       .filter((call): call is ChatCompletionToolCall => Boolean(call.name))
 
-    const rawText = response.response ?? ''
+    // Workers AI may return structured JSON in response instead of a string.
+    // Feed known tool wrappers through the same parser; never assume string methods exist.
+    const rawText = typeof response.response === 'string'
+      ? response.response
+      : response.response && typeof response.response === 'object'
+        ? JSON.stringify(response.response)
+        : ''
     let processedText = rawText
 
     if (processedText) {
@@ -189,13 +212,27 @@ export function createWorkersAiChatCompletion(ai: Ai): RunChatCompletion {
       processedText = cleanedText
 
       // 2. Extrai chamadas no formato tradicional de função [search_products(...)]
-      const leakedCalls = extractLeakedToolCalls(processedText)
-      toolCalls = toolCalls.concat(leakedCalls)
+      const leaked = extractLeakedToolCalls(processedText)
+      toolCalls = toolCalls.concat(leaked.calls)
+      processedText = leaked.cleanedText
     }
 
-    const parsedText = processedText
-      ? processedText.replace(/(?:\[)?\b(search_products|get_product|select_product_for_purchase)\(([^)]*)\)(?:\])?/g, '').trim()
+    const parsedText = typeof response.response === 'string' && processedText
+      ? processedText.trim()
       : null
+
+    // Some real tool calls encode the nested address as JSON text. Decode only
+    // this transport representation; the harness still validates every field.
+    toolCalls = toolCalls.map((call) => {
+      if (call.name !== 'select_product_for_purchase' || typeof call.arguments.address !== 'string') return call
+      try {
+        const address: unknown = JSON.parse(call.arguments.address)
+        if (address && typeof address === 'object' && !Array.isArray(address)) {
+          return { ...call, arguments: { ...call.arguments, address } }
+        }
+      } catch { /* Keep invalid values for the harness to reject. */ }
+      return call
+    })
 
     return { text: parsedText || null, toolCalls }
   }

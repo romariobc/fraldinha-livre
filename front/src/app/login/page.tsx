@@ -112,9 +112,9 @@ function LoginPageContent() {
           Entre na sua conta e aproveite as melhores ofertas de fraldas para o seu bebê.
         </p>
         {[
-          '💰 Fornecedores competindo pelo seu pedido',
-          '🚀 Entrega rápida e garantida',
-          '🔒 Pagamento seguro via Mercado Pago',
+          '🛍️ Compra direta no catálogo',
+          '📦 Acompanhamento de pedidos',
+          '🧪 Pagamento simulado, sem cobrança real',
         ].map((benefit) => (
           <div
             key={benefit}

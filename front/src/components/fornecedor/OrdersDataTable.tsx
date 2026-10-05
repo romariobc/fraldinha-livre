@@ -110,7 +110,7 @@ function normalizeOrder(order: DirectOrder | ContractOrder | SupplierOrderRow): 
   }
 
   // If ContractOrder
-  if ('deliveryAddress' in order && order.deliveryAddress) {
+  if ('uid' in order && order.deliveryAddress) {
     const contractOrder = order as ContractOrder
     const addr = contractOrder.deliveryAddress
     const buyerLoc = [addr.bairro, addr.cidade, addr.estado].filter(Boolean).join(' - ') || `${addr.cidade}, ${addr.estado}`
@@ -126,6 +126,7 @@ function normalizeOrder(order: DirectOrder | ContractOrder | SupplierOrderRow): 
       status: contractOrder.status,
       deliveryAddress: addr,
       items: contractOrder.items,
+      paymentStatus: contractOrder.paymentStatus === 'approved' ? 'confirmado' : 'pendente',
     }
   }
 
@@ -142,7 +143,7 @@ function normalizeOrder(order: DirectOrder | ContractOrder | SupplierOrderRow): 
     buyerLocation: buyerLoc,
     createdAt: directOrder.createdAt,
     status: directOrder.status,
-    deliveryAddress: {
+    deliveryAddress: directOrder.deliveryAddress ?? {
       logradouro: 'Endereço Comercial',
       numero: 'S/N',
       bairro: 'Centro',
@@ -150,7 +151,7 @@ function normalizeOrder(order: DirectOrder | ContractOrder | SupplierOrderRow): 
       estado: directOrder.buyerState || 'SP',
       cep: '01000-000',
     },
-    items: [
+    items: directOrder.items ?? [
       {
         productId: directOrder.id + '-item',
         productName: directOrder.product,

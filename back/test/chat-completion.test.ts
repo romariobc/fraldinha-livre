@@ -20,6 +20,7 @@ describe('createWorkersAiChatCompletion', () => {
     expect(run).toHaveBeenCalledWith(
       '@cf/meta/llama-4-scout-17b-16e-instruct',
       {
+        max_tokens: 1024,
         messages: [{ role: 'user', content: 'ola', tool_call_id: undefined }],
         tools: [
           {
@@ -163,5 +164,63 @@ describe('createWorkersAiChatCompletion', () => {
     expect(result.toolCalls[0].name).toBe('search_products')
     expect(result.toolCalls[0].arguments).toEqual({ brand: 'MamyPoko', size: 'G', query: '36 unidades' })
     expect(result.text).toBe('Vou buscar novamente com a quantidade de unidades que você mencionou.')
+  })
+})
+
+
+describe('structured Workers AI response regression', () => {
+  it('parses a structured tool wrapper without calling string methods on an object', async () => {
+    const args = { productId: 'catalogue-id', quantity: 2 }
+    const run = vi.fn().mockResolvedValue({ response: { select_product_for_purchase: args } })
+    const complete = createWorkersAiChatCompletion({ run } as unknown as Ai)
+    const result = await complete([{ role: 'user', content: 'Confirmo 2 pacotes' }], SAMPLE_TOOLS)
+    expect(result.toolCalls).toEqual([expect.objectContaining({ name: 'select_product_for_purchase', arguments: args })])
+    expect(result.text).toBeNull()
+  })
+
+  it('does not turn arbitrary structured checkout arguments into a tool call', async () => {
+    const run = vi.fn().mockResolvedValue({ response: { productId: 'catalogue-id', quantity: 2 } })
+    const complete = createWorkersAiChatCompletion({ run } as unknown as Ai)
+    await expect(complete([{ role: 'user', content: 'Confirmo' }], SAMPLE_TOOLS)).resolves.toEqual({ text: null, toolCalls: [] })
+  })
+})
+
+
+describe('nested address transport regression', () => {
+  it('decodes JSON address from a named tool without inventing missing fields', async () => {
+    const address = { logradouro: 'Rua QA', numero: '123', bairro: 'Centro', cidade: 'Fortaleza', estado: 'CE', cep: '60000000' }
+    const run = vi.fn().mockResolvedValue({ tool_calls: [{ name: 'select_product_for_purchase', arguments: { productId: 'id', quantity: 2, address: JSON.stringify(address) } }] })
+    const result = await createWorkersAiChatCompletion({ run } as unknown as Ai)([{ role: 'user', content: 'Confirmo' }], SAMPLE_TOOLS)
+    expect(result.toolCalls[0].arguments.address).toEqual(address)
+  })
+
+  it('retains invalid address text for strict harness rejection', async () => {
+    const run = vi.fn().mockResolvedValue({ tool_calls: [{ name: 'select_product_for_purchase', arguments: { productId: 'id', quantity: 2, address: 'Rua QA 123' } }] })
+    const result = await createWorkersAiChatCompletion({ run } as unknown as Ai)([{ role: 'user', content: 'Confirmo' }], SAMPLE_TOOLS)
+    expect(result.toolCalls[0].arguments.address).toBe('Rua QA 123')
+  })
+})
+
+describe('real recovery response variants', () => {
+  const address = { bairro: 'Centro', cep: '60000000', cidade: 'Fortaleza', estado: 'CE', logradouro: 'Rua Teste QA', numero: '123' }
+  const args = { address, paymentMethod: 'pix', productId: 'c472ea87-3d21-4ccd-8b98-3bb1ee58dbb9', quantity: 2 }
+  it('recognizes the captured object with arguments before name and nested address', async () => {
+    const run = vi.fn().mockResolvedValue({ response: { arguments: args, id: '', name: 'select_product_for_purchase' }, tool_calls: [] })
+    const result = await createWorkersAiChatCompletion({ run } as unknown as Ai)([{ role: 'user', content: 'Confirmo' }], SAMPLE_TOOLS)
+    expect(result.toolCalls).toEqual([expect.objectContaining({ name: 'select_product_for_purchase', arguments: args })])
+    expect(result.text).toBeNull()
+  })
+  it('preserves the complete nested address from the captured function notation', async () => {
+    const run = vi.fn().mockResolvedValue({ response: `select_product_for_purchase(productId="${args.productId}", quantity=2, address=${JSON.stringify(address)}, paymentMethod="pix")`, tool_calls: [] })
+    const result = await createWorkersAiChatCompletion({ run } as unknown as Ai)([{ role: 'user', content: 'Confirmo' }], SAMPLE_TOOLS)
+    expect(result.toolCalls[0].arguments).toEqual(args)
+    expect(result.text).toBeNull()
+  })
+  it('preserves commas, parentheses and braces inside quoted address fields', async () => {
+    const trickyAddress = { ...address, logradouro: 'Rua QA (Norte), casa {A}' }
+    const run = vi.fn().mockResolvedValue({ response: `Texto [select_product_for_purchase(address=${JSON.stringify(trickyAddress)}, quantity=2, productId="id")] fim`, tool_calls: [] })
+    const result = await createWorkersAiChatCompletion({ run } as unknown as Ai)([{ role: 'user', content: 'Confirmo' }], SAMPLE_TOOLS)
+    expect(result.toolCalls[0].arguments.address).toEqual(trickyAddress)
+    expect(result.text).toBe('Texto  fim')
   })
 })

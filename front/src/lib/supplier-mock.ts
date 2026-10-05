@@ -1,3 +1,6 @@
+import type { Address } from '@/lib/account-mock'
+import type { OrderItem } from '@/lib/domain/order'
+
 // ─── New types ────────────────────────────────────────────────────────────────
 
 export type DeliveryType =
@@ -72,6 +75,8 @@ export interface DirectOrder {
   status: DirectOrderStatus
   paymentStatus?: PaymentStatus
   dispatchStatus?: DispatchStatus
+  deliveryAddress?: Address
+  items?: OrderItem[]
 }
 
 export type OfferStatus = 'enviada' | 'aceita' | 'recusada' | 'expirada'

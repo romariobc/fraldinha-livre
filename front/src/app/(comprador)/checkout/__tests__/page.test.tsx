@@ -59,7 +59,8 @@ import { useAuth } from '@/contexts/auth-context'
 function authValue(overrides: Partial<ReturnType<typeof useAuth>> = {}): ReturnType<typeof useAuth> {
   return {
     user: { uid: 'u1', email: 'ana@example.com', displayName: 'Ana Lima' },
-    profile: null,
+    profile: { role: 'comprador', name: 'Ana Lima', email: 'ana@example.com',
+      address: { logradouro: 'Av. Paulista', numero: '1374', complemento: 'Apto 52', bairro: 'Bela Vista', cidade: 'São Paulo', estado: 'SP', cep: '01310-100' } },
     role: 'comprador',
     claims: { role: 'comprador' },
     isAdmin: false,
@@ -162,6 +163,14 @@ describe('CheckoutPage', () => {
   })
 
   describe('Passo: Endereco', () => {
+    it('não inventa endereço quando o perfil não possui endereço cadastrado', () => {
+      vi.mocked(useAuth).mockReturnValue(authValue({ profile: null }))
+      renderCheckout([mockItem1])
+      expect(screen.queryByText(/Av. Paulista/)).not.toBeInTheDocument()
+      expect(screen.getByText(/Seu cadastro não tem um endereço completo/)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Continuar/i })).toBeDisabled()
+    })
+
     it('should render endereco step with cart items', () => {
       renderCheckout([mockItem1, mockItem2])
 
@@ -173,7 +182,7 @@ describe('CheckoutPage', () => {
     it('should display default address when using cadastro', () => {
       renderCheckout([mockItem1])
 
-      // Default address from MOCK_USER
+      // Endereço do perfil autenticado, sem fallback de demonstração.
       expect(screen.getByText(/Av. Paulista/)).toBeInTheDocument()
       expect(screen.getByText(/São Paulo/)).toBeInTheDocument()
     })

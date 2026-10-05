@@ -1,0 +1,83 @@
+name: PR validation
+on:
+  push:
+    branches:
+      - fix/orders-flow-e2e-and-context-state
+      - fix/feature-018-assistant-m7
+      - qa/integrated-orders-assistant
+permissions:
+  contents: read
+concurrency:
+  group: validation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Frontend tests
+            command: npm test --workspace front
+          - name: Backend tests
+            command: npm test --workspace back
+          - name: Contracts tests
+            command: npm test --workspace packages/contracts
+          - name: API E2E runner regressions
+            command: node --test scripts/test-e2e-logic.test.mjs
+          - name: Frontend types
+            command: npm exec --workspace front -- tsc --noEmit -p tsconfig.json
+          - name: Backend types
+            command: npm exec --workspace back -- tsc --noEmit -p tsconfig.json
+          - name: Contracts types
+            command: npm exec --workspace packages/contracts -- tsc --noEmit -p tsconfig.json
+          - name: Frontend lint
+            command: npm run lint --workspace front
+    name: ${{ matrix.name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Install Linux native test dependency missing from lockfile
+        run: |
+          VERSION=$(node -p "require('./node_modules/rolldown/package.json').optionalDependencies['@rolldown/binding-linux-x64-gnu']")
+          TARBALL=$(npm pack "@rolldown/binding-linux-x64-gnu@$VERSION" --pack-destination "$RUNNER_TEMP" --silent)
+          mkdir -p node_modules/@rolldown/binding-linux-x64-gnu
+          tar -xzf "$RUNNER_TEMP/$TARBALL" -C node_modules/@rolldown/binding-linux-x64-gnu --strip-components=1
+      - run: ${{ matrix.command }}
+  frontend-container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production frontend image
+        run: docker build -f front/Dockerfile -t fraldinha-livre-frontend:qa .
+  homologation:
+    if: github.ref == 'refs/heads/qa/integrated-orders-assistant'
+    needs: [tests, frontend-container]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: cloudflare-homologation
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Publish isolated backend and D1
+        run: node scripts/deploy-homologation.mjs
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: homologation-deployment
+          path: qa-evidence/deployment.json
+          if-no-files-found: error

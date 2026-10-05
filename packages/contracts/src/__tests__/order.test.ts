@@ -198,6 +198,33 @@ describe('CreateOrderRequestSchema', () => {
     expect(result.success).toBe(false)
   })
 
+  it('rejeita unit inválida como "pct" tanto na raiz quanto nos itens', () => {
+    const invalidRequest = {
+      product: 'Fralda Tamanho M',
+      quantity: 2,
+      unit: 'pct',
+      deliveryAddress: {
+        logradouro: 'Rua X',
+        numero: '123',
+        bairro: 'Centro',
+        cidade: 'Sao Paulo',
+        estado: 'SP',
+        cep: '01000-000',
+      },
+      items: [
+        {
+          productId: 'prod-123',
+          productName: 'Fralda Tamanho M',
+          unitPrice: 2500,
+          quantity: 2,
+          unit: 'pct',
+        },
+      ],
+    }
+    const result = CreateOrderRequestSchema.safeParse(invalidRequest)
+    expect(result.success).toBe(false)
+  })
+
   it('ignora e descarta campos id/uid/status/createdAt enviados pelo cliente (RN-03)', () => {
     const requestWithExtraFields = {
       product: 'Fralda Tamanho M',

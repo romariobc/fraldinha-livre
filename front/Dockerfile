@@ -15,7 +15,8 @@ COPY front front
 COPY packages/contracts packages/contracts
 
 WORKDIR /app/front
-RUN npm run build
+# Turbopack fails resolving next/font/google inside the Alpine image.
+RUN npm run build -- --webpack
 
 FROM node:22-alpine AS runner
 RUN apk add --no-cache libc6-compat

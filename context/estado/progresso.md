@@ -1,4 +1,13 @@
-# Estado atual — 2026-10-03
+# Estado atual — 2026-10-04
+
+## Prontidão da loja e produção
+
+- Verificação solicitada: loja funcional antes de publicar, seguindo o harness. Resultado: operação comercial paga ainda não pronta; publicação de produção não executada nesta sessão.
+- Integração #21 (`75534be4e3b86b423f3a61db2b4e48df341023f6`) validada em CI e homologação isolada: 701 testes front, 296 back, 57 contratos, 32 runner; ciclo de pedidos e checkout/recuperação com Workers AI real passaram. Isso resolve a pendência anterior de recuperação real apenas no ambiente/versão testados.
+- Produção lida: health 200, catálogo 200/314 produtos, orders sem token 401. Navegador: catálogo carrega e checkout anônimo vai ao login. Compra frontend/admin não homologada nesta sessão.
+- Impedimentos: pagamento/logística simulados; botões de adicionar da home sem ação; “Ver todos” volta à mesma seção; comunicação promete Mercado Pago, competição e entrega garantida sem integração correspondente. Feature 011 continua pendente.
+- Relatório e distinção beta/pago: [prontidão da loja](../../docs/qa/loja-readiness-2026-10-04.md). Solicitada clarificação sobre publicar beta sem cobrança ou aguardar pagamento real; nenhuma resposta foi presumida como autorização.
+- Registros anteriores de 2026-10-03 preservados abaixo. Nenhuma feature foi marcada como done nesta revisão.
 
 ## Revalidação independente e limites da evidência
 

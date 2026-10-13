@@ -86,18 +86,27 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
       setErrorDiagnostic(null)
 
       try {
-        // Se a rota atual é do painel do fornecedor, não dispara GET /orders (escopo de comprador)
-        if (typeof window !== 'undefined' && window.location.pathname.startsWith('/painel-fornecedor')) {
+        // Se a rota atual é do painel do fornecedor ou admin, não dispara GET /orders (escopo de comprador)
+        if (
+          typeof window !== 'undefined' &&
+          (window.location.pathname.startsWith('/painel-fornecedor') ||
+            window.location.pathname.startsWith('/admin'))
+        ) {
           setOrders([])
           setLoading(false)
           return
         }
 
-        // Se o usuário possui claim de fornecedor, não dispara GET /orders (escopo de comprador)
+        // Se o usuário possui claim de fornecedor ou admin, não dispara GET /orders (escopo de comprador)
         if (auth?.currentUser && typeof auth.currentUser.getIdTokenResult === 'function') {
           const tokenResult = await auth.currentUser.getIdTokenResult(reloadTick > 0)
           const claims = tokenResult?.claims
-          if (claims?.role === 'fornecedor' || claims?.fornecedor === true) {
+          if (
+            claims?.role === 'fornecedor' ||
+            claims?.fornecedor === true ||
+            claims?.role === 'admin' ||
+            claims?.admin === true
+          ) {
             setOrders([])
             setLoading(false)
             return
@@ -139,7 +148,12 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
             .then((tokenResult) => {
               if (cancelled) return
               const claims = tokenResult?.claims
-              if (claims?.role === 'fornecedor' || claims?.fornecedor === true) {
+              if (
+                claims?.role === 'fornecedor' ||
+                claims?.fornecedor === true ||
+                claims?.role === 'admin' ||
+                claims?.admin === true
+              ) {
                 setOrders([])
                 setError(null)
                 setErrorDiagnostic(null)

@@ -130,5 +130,47 @@ describe('OrdersContext — modo backend gateado por auth', () => {
       })
     }
   })
+
+  it('com usuario com claim de admin: nao chama list(), termina sem loading e sem erro', async () => {
+    const { result } = renderHook(() => useOrders(), { wrapper })
+
+    const mockAdminUser = {
+      uid: 'admin-user-1',
+      getIdTokenResult: vi.fn().mockResolvedValue({
+        claims: { role: 'admin', admin: true },
+      }),
+    }
+
+    act(() => authCallback(mockAdminUser))
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(listMock).not.toHaveBeenCalled()
+    expect(result.current.orders).toEqual([])
+    expect(result.current.error).toBeNull()
+  })
+
+  it('em rota do painel administrativo (/admin): nao chama list()', async () => {
+    const originalPathname = window.location.pathname
+    try {
+      Object.defineProperty(window, 'location', {
+        value: { ...window.location, pathname: '/admin' },
+        writable: true,
+      })
+
+      const { result } = renderHook(() => useOrders(), { wrapper })
+
+      act(() => authCallback({ uid: 'user-c' }))
+
+      await waitFor(() => expect(result.current.loading).toBe(false))
+      expect(listMock).not.toHaveBeenCalled()
+      expect(result.current.orders).toEqual([])
+      expect(result.current.error).toBeNull()
+    } finally {
+      Object.defineProperty(window, 'location', {
+        value: { ...window.location, pathname: originalPathname },
+        writable: true,
+      })
+    }
+  })
 })
 

@@ -111,7 +111,7 @@
       "fase": 2,
       "status": "done",
       "criterio_aceite": "Admin consegue ver todos os usuarios, pedidos e ofertas; pode intervir em disputas",
-      "notas": "Escopo fechado via brainstorming (D-039): admin unico hardcoded (UID fixo), read-only, sem disputas (fora de escopo ate leilao ser reativado). H-012 executado, revisado (D-012) e deployado (2026-08-02). Pendente futuro se necessario: multiplos admins, acoes de gestao, intervencao em disputas. Backlog futuro — observabilidade do fluxo de compra no admin: refresh/polling na aba Pedidos; detalhe com fornecedor, data, pagamento, itens, endereco e requestId; registro das transicoes de pedidos em audit_logs; estado de confirmacao de recebimento pelo comprador apos entrega; retry e estados vazios/erro; tabelas responsivas em mobile."
+      "notas": "Escopo fechado via brainstorming (D-039): admin unico hardcoded (UID fixo), read-only, sem disputas (fora de escopo ate leilao ser reativado). H-012 executado, revisado (D-012) e deployado (2026-08-02). Homologado visual e funcionalmente em navegador real autenticado (desktop 1280x900 e mobile 390x844/360x800) + Passo 12 do E2E (13/13 etapas verdes) em 2026-10-12: 4 abas (Usuarios, Pedidos com modal de detalhes e paginacao, Produtos com moderacao e restauracao, Auditoria com eventos reais no D1) — ver docs/qa/admin-homologacao-2026-10-12.md. Pendente futuro se necessario: multiplos admins, acoes de gestao de pedidos, intervencao em disputas, registro das transicoes de pedidos em audit_logs."
     },
     {
       "id": "013",
@@ -208,7 +208,7 @@
       "fase": 1,
       "status": "done",
       "criterio_aceite": "Tabela audit_logs no D1 com índices; helper recordAuditEvent com logger estruturado; endpoints /admin/audit-logs e /admin/products/:id/status restritos a admin; justificativa obrigatória (min 5 chars); aba Auditoria e modal de moderação no front; 100% testes verdes",
-      "notas": "Implementação, segurança, revisão e deploys concluídos em 2026-09-23. Migration 0010_audit_logs.sql ativa no D1 remoto. Regras do Firestore endurecidas contra escalação de perfil e publicadas no Firebase produção. Front desacoplado de data.role para permissões de admin. PR #16 mergeada na main (4b66ac9). Backend Worker (39d7b1cb) e Frontend Container (05e5d56c) publicados na Cloudflare com 100% dos smoke tests remotos verdes. Suíte total com 933 testes verdes. Homologação final com usuário e token admin em navegador permanece como verificação pós-deploy. Ver docs/qa/AUDIT-001-QA-relatorio.md."
+      "notas": "Implementação, segurança, revisão e deploys concluídos em 2026-09-23. Migration 0010_audit_logs.sql ativa no D1 remoto. Regras do Firestore endurecidas contra escalação de perfil e publicadas no Firebase produção. Front desacoplado de data.role para permissões de admin. PR #16 mergeada na main (4b66ac9). Backend Worker (39d7b1cb) e Frontend Container (05e5d56c) publicados na Cloudflare com 100% dos smoke tests remotos verdes. Suíte total com 933 testes verdes. Homologação visual e funcional pós-deploy em navegador real concluída em 2026-10-12: moderação real (PATCH /admin/products/:id/status com desativação + reativação imediata e bloqueio de justificativa < 5 chars) e leitura dos eventos product.deactivated / product.activated na aba Auditoria (GET /admin/audit-logs) comprovadas em produção. Ver docs/qa/AUDIT-001-QA-relatorio.md e docs/qa/admin-homologacao-2026-10-12.md."
     },
     {
       "id": "AUDIT-001-QA",

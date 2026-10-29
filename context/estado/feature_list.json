@@ -571,7 +571,7 @@
         "Runs de CI ligados ao commit e caso negativo de bloqueio; diff dos scripts; registro de permissões/configurações e limitações remotas."
       ],
       "aprovacao_usuario": "aprovado_pelo_usuario",
-      "notas": "Implementação e validação do MP-01 concluídas: CI hospedado com 11 jobs aprovados, gate negativo exercitado nos testes, imagem Docker validada e proteção de main aplicada/verificada. PR #22 em rascunho, sem merge ou deploy. Aguardando aprovação da entrega; MP-02 não autorizado. Resultados locais e limites no relatório. Entrega aprovada pelo usuário em 29/10/2026 com prossiga, autorizando somente MP-02; isso não autoriza merge ou deploy.",
+      "notas": "Entrega implementada e validada; aprovada pelo usuário em 29/10/2026, autorizando somente MP-02. PR #22 em rascunho; aprovação da etapa não autorizou merge ou deploy. Evidências em docs/qa/MP-01-validacao-publicacao.md.",
       "conclusao_em": "2026-10-29",
       "evidencias_registradas": [
         "docs/qa/MP-01-validacao-publicacao.md",
@@ -583,7 +583,7 @@
       "id": "MP-02",
       "titulo": "Garantir integridade de pedidos e estoque",
       "fase": 1,
-      "status": "in_progress",
+      "status": "done",
       "ordem": 2,
       "prioridade": "P0",
       "dependencias": [
@@ -604,8 +604,14 @@
       "evidencias_exigidas": [
         "Testes de integração D1 contra handlers com concorrência, retry, falha intermediária e disputa cancelamento/confirmação/despacho; contratos e tipos dos consumidores."
       ],
-      "aprovacao_usuario": "inicio_autorizado_pelo_usuario",
-      "notas": "Implementação e validação do MP-02 em andamento; migração somente em D1 local; não iniciar MP-03."
+      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
+      "notas": "Criação/transições atômicas com estoque e evento; CAS por status/mutação; idempotência por dono/conteúdo e snapshot legado; motivo obrigatório antes do despacho. Testes locais e 11 jobs do CI aprovados. Migração 0012 somente no D1 local. PR #23 em rascunho, dependente da PR #22; sem merge/deploy/migração remota. Aguardando aprovação; MP-03 não autorizado.",
+      "conclusao_em": "2026-10-29",
+      "evidencias_registradas": [
+        "docs/qa/MP-02-integridade-pedidos-estoque.md",
+        "https://github.com/romariobc/fraldinha-livre/pull/23",
+        "https://github.com/romariobc/fraldinha-livre/actions/runs/40888766097"
+      ]
     },
     {
       "id": "MP-03",
@@ -946,9 +952,8 @@
     ],
     "regra_execucao": "Uma etapa por item MP, em ordem numerica; concluir, validar, registrar e parar. Dependencias satisfeitas nao autorizam avancar. Exigir aprovacao explicita do usuario para iniciar a proxima etapa.",
     "controle_execucao": {
-      "etapa_concluida": "MP-01",
-      "aprovacao_entrega": "aprovado_pelo_usuario",
-      "etapa_em_execucao": "MP-02",
+      "etapa_concluida": "MP-02",
+      "aprovacao_entrega": "aguardando_usuario",
       "proxima_etapa": "MP-03",
       "autorizada_proxima_etapa": false
     },

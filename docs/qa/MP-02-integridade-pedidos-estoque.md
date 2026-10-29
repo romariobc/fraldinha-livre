@@ -40,12 +40,13 @@ Em rollback operacional, pausar gravações e voltar código apenas com plano ap
 | Idempotência por conteúdo/dono | Mesmo payload, payload diferente, UID diferente, snapshot sem hash e itens reordenados | Passou localmente; 200/409/403 conforme contrato. |
 | Regras de status/motivo | Contratos, testes de API e envio do motivo pelo cliente | Passou nos testes dirigidos; inclui admin após despacho e estados terminais. |
 | Legado | Pedido sem mutation/hash e snapshot válido; nenhum evento de criação fabricado | Verificação local nos testes de mutação/replay. |
-| Sacola maior | 21 produtos no novo teste de guarda JSON | Em consolidação. |
+| Sacola maior | 21 produtos no novo teste de guarda JSON | Passou; arquivo de atomicidade com 17 testes aprovados após os casos adicionais. |
 | Frontend | Suíte completa | 69 arquivos / 717 testes aprovados, exit 0. |
 | Backend | Suíte completa antes do último caso de limite | 29 arquivos / 311 testes aprovados, exit 0. Nova execução dirigida inclui o caso de 21 produtos. |
 | Contratos | Suíte completa | 7 arquivos / 58 testes aprovados, exit 0. |
 | Tipos | Front, back e contracts | Aprovados, exit 0 nos três. |
-| Lint e CI hospedado | Resultados a consolidar | Não confundir implementação local com aprovação operacional. |
+| Lint local | npm run lint --workspace front | Passou, exit 0, 0 erros/11 avisos. |
+| CI hospedado | [PR #23](https://github.com/romariobc/fraldinha-livre/pull/23), [run 40888766097](https://github.com/romariobc/fraldinha-livre/actions/runs/40888766097), candidato 1f19a3d | 11 jobs aprovados: 715 testes front, 313 back, 58 contratos, 32 runner e 9 de segurança (1.127 no total), tipos, imagem Docker, gate agregado e lint com 0 erros/11 avisos; sem deploy. |
 
 Testes novos em `back/test/order-atomicity.test.ts` usam handlers e armazenamento D1/Miniflare reais. Somente autenticação é substituída por identidades de teste; proxies de D1 sincronizam entrada no batch ou mudam catálogo antes dele sem substituir a execução SQL. Não comprovam Firebase, Cloudflare de produção ou carga distribuída. O gatilho de falha existe somente na base de teste e é removido em finally.
 
@@ -57,8 +58,12 @@ Falhas iniciais registradas: motivos ausentes em fixtures antigas, fixture de ca
 - A branch `codex/mp-02-order-atomicity` parte de `f88027f` (PR #22). A nova PR depende da entrega anterior, ainda em rascunho; não há merge implícito.
 - Sem homologação visual autenticada em navegador ou dispositivo físico nesta etapa. Os testes do modal cobrem comportamento/acessibilidade DOM, envio, falha e requisição pendente. A homologação completa das jornadas segue em MP-07/MP-12.
 - Pagamento continua simulado. Aprovação de fornecedor, avisos e atendimento não foram antecipados.
-- O veredito final e a revisão candidata serão registrados após consolidar testes e CI. Não iniciar MP-03 automaticamente.
+- CI hospedado aprovado no candidato 1f19a3d; implementação local e validação não equivalem a deploy/homologação em produção. Não iniciar MP-03 automaticamente.
 
 ## Referência técnica
 
 A [documentação de D1.batch](https://developers.cloudflare.com/d1/worker-api/d1-database/) descreve a transação e o rollback da sequência em erro; [funções JSON do D1](https://developers.cloudflare.com/d1/sql-api/query-json/) documentam a expansão usada na guarda. As garantias desta implementação também foram exercitadas por falhas injetadas no runtime local.
+
+## Veredito — 29/10/2026
+
+MP-02 concluído tecnicamente e aguardando aprovação da entrega pelo usuário. Os 17 testes novos passaram, incluindo concorrência sincronizada, injeção de falha no evento, fronteira de 21 produtos e replay legado com linhas repetidas sem nova escrita. As suítes locais completas (front 717, back 311 antes dos dois últimos casos, contratos 58), os três typechecks, o lint e o CI hospedado foram aprovados. A PR #23 permanece em rascunho e depende da PR #22; não há merge, deploy ou migração remota. MP-03 permanece todo e sem autorização.

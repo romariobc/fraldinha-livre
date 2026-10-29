@@ -1,5 +1,21 @@
 # Estado atual — 2026-10-29
 
+## MP-02 — Concluído, aguardando aprovação da entrega
+
+- **Autorização:** MP-01 aprovado e MP-02 executado. O “prossiga” recebido durante a execução manteve o trabalho nesta etapa; MP-03 continua não iniciado e sem autorização.
+- **Entrega:** criação/transição em D1.batch único com guardas SQL, comparação de status/mutação, estoque e evento atômicos. Idempotência vincula chave ao dono e ao conteúdo canônico, com replay de snapshot legado válido; não há compensação posterior à transação.
+- **Regra e cliente:** comprador cancela em aguardando; fornecedor/admin antes do despacho, com motivo obrigatório de 5 a 500 caracteres. Retry não duplica restituição/evento. Contrato, adaptadores e modal mínimo do fornecedor alinhados; jornadas completas de telas permanecem em MP-07.
+- **Evidência:** [PR #23 em rascunho](https://github.com/romariobc/fraldinha-livre/pull/23), candidato `1f19a3d`, [run 40888766097](https://github.com/romariobc/fraldinha-livre/actions/runs/40888766097) com 11 jobs aprovados e 1.127 testes (715 front + 313 back + 58 contratos + 32 runner + 9 segurança), tipos, imagem Docker e lint com 0 erros/11 avisos.
+- **Validação local:** 717 testes front, 311 back na suíte completa antes dos dois últimos casos e 58 contratos aprovados. O arquivo novo com os 17 casos passou novamente após os limites de sacola e legado; tipos dos três workspaces e lint passaram. Diferença de dois testes front em relação ao CI corresponde ao commit anterior local preservado fora da PR.
+- **Registro completo:** [MP-02 — integridade de pedidos e estoque](../../docs/qa/MP-02-integridade-pedidos-estoque.md). Testes usam D1 local, autenticação substituída e barreiras de concorrência; não comprovam produção. Nenhuma migração remota, merge ou deploy.
+- **Implantação futura:** migração 0012 aditiva e rollout coordenado de API/cliente, com atualização de abas antigas para enviar motivo. O workflow atual publica backend antes do frontend; não presumir zero downtime.
+- **Preservação:** PR #23 parte de f88027f e depende da PR #22, ainda em rascunho. Checkout principal, tooling/documentação anterior e commit 1322ac6 preservados. A etapa conclui implementação/validação, sem ativação em produção.
+- **Ponto de parada:** aguardar aprovação da entrega MP-02 antes de iniciar MP-03.
+
+---
+
+# Estado atual — 2026-10-29
+
 ## MP-02 — Integridade de pedidos e estoque (em validação)
 
 - **Autorização:** MP-01 aprovado pelo usuário com “prossiga”; execução somente de MP-02. MP-03 não iniciado e sem autorização. PR #22 continua sem merge/deploy.

@@ -1,5 +1,20 @@
 # Estado atual — 2026-10-29
 
+## MP-03 — Concluído localmente, aguardando aprovação da entrega
+
+- **Autorização:** MP-02 aprovado pelo usuário; MP-03 implementado e validado. MP-04 não iniciado e sem autorização.
+- **Entrega:** D1 com pendente/aprovado/rejeitado/suspenso; decisões de admin com motivo, versão e auditoria atômica; guardas SQL em ofertas/compras; painel e admin; cadastro retomável; recuperação ligada ao login. Suspensão preserva atendimento de pedidos anteriores.
+- **Evidências:** [PR #24 em rascunho](https://github.com/romariobc/fraldinha-livre/pull/24), dependente de #22/#23. Candidato 33423d4 com [CI 40899799519](https://github.com/romariobc/fraldinha-livre/actions/runs/40899799519) aprovado nos 11 jobs; commit final submetido ao mesmo gate.
+- **Validação local:** suítes completas com 728 front/324 back/58 contratos; rechecagens finais de UI e dos 12 cenários D1 de habilitação aprovadas. Tipos dos três workspaces e lint (0 erros/11 avisos) aprovados. Navegador Edge com Firebase real e API/D1 local confirmou as três personas, aprovação, suspensão, persistência, pedido e logout; mobile sem overflow e sem selo falso de verificação.
+- **Inventário remoto:** SELECT sem escrita confirmou 314 ofertas ativas em sete IDs e 79 pedidos abertos; migrations 0012/0013 ausentes. Não ativar a API sem reconciliação e janela; nada aprovado por claim. [Inventário e plano](../../docs/qa/MP-03-inventario-ativacao.md).
+- **Limites:** cadastro de nova identidade/perfil e envio/retorno de recuperação têm testes com dependências substituídas; validação externa completa fica para homologação autorizada da versão. Não houve envio real de recuperação, edição remota de perfis/claims ou migração/publicação. Relatório: [MP-03](../../docs/qa/MP-03-cadastro-aprovacao.md).
+- **Preservação:** checkout principal 1322ac6 e alterações preexistentes mantidos; branch isolada parte de 580f2d8. Histórico abaixo preservado com seus bytes originais; Git recebeu renormalização desativada somente para este arquivo, sem mudança de configuração global.
+- **Ponto de parada:** aguardar aprovação da entrega MP-03; próxima proposta MP-04 — homologar catálogo e manutenção de ofertas.
+
+---
+
+# Estado atual — 2026-10-29
+
 ## MP-03 — Cadastro, acesso e aprovação de fornecedores (em validação)
 
 - **Autorização:** MP-02 aprovado pelo usuário com “prossiga”; execução limitada a MP-03. MP-04 não iniciado e sem autorização.

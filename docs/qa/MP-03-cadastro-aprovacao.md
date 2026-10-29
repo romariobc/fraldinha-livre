@@ -32,7 +32,21 @@ Etapa autorizada com “prossiga” após a entrega MP-02. Implementação sobre
 
 ## Validação desta execução
 
-Em consolidação: testes completos, tipos, lint, navegador local com contas de QA e CI da branch isolada. Não considerar este parágrafo evidência de aprovação até os resultados finais serem registrados.
+- **Suítes completas locais:** 728 testes front (72 arquivos), 324 back (30 arquivos), 58 contratos (7 arquivos), todos aprovados. Depois dos ajustes finais, rechecagem de 18 casos de login/onboarding/admin, quatro do painel e 12 casos D1 de habilitação, incluindo suspensão antes do INSERT de oferta. O CI final executa novamente todas as suítes na branch isolada; dois testes front anteriores do checkout principal ficam fora dela.
+- **Tipos:** tsc --noEmit dos três workspaces aprovado. **Lint:** 0 erros, 11 avisos preexistentes. **Sintaxe do harness:** node --check aprovado.
+- **CI candidato:** [run 40899799519](https://github.com/romariobc/fraldinha-livre/actions/runs/40899799519), commit 33423d4, 11/11 jobs aprovados (testes, tipos, lint, regressões do runner/CI e imagem Docker). Os últimos ajustes de UI/documentação recebem novo run no commit final; consultar o status da [PR #24](https://github.com/romariobc/fraldinha-livre/pull/24), dependente de #22/#23. Não houve publicação.
+- **Navegador Edge real:** comprador QA com perfil existente, fornecedor e admin autenticados pelo Firebase real, frontend localhost:3001 e API/D1 localhost:8787. Pendência após reload; aprovação com motivo; acompanhamento do estado; compra simulada local visível ao comprador após reload; suspensão impede nova compra/visibilidade pública; JWT do fornecedor atende pedido anterior; logout; rota de recuperação. Dados comerciais gravados somente no D1 local, sem editar perfis ou claims remotos.
+- **Visual:** 1365×900 e 375×812. Captura mobile revisada, sem overflow horizontal e sem selo estático “Verificado” para suspenso; selo antigo também removido do menu lateral. Outras métricas/curadoria de painel pertencem a MP-10.
+- **Artefatos locais ignorados:** docs/qa-artifacts/mp03-browser-result.json, mp03-fornecedor-mobile.png, mp03-admin.png e logs mp03-*. O JSON final registra passed=true; capturas inspecionadas. Não versionar credenciais ou tokens.
+- **Ajustes do harness:** a automação agora espera o formulário estar hidratado antes de preencher; a primeira tentativa preenchia inputs antes do React assumir o controle e não submeteu credenciais. O comprador QA inicial tinha perfil Firestore ausente (404); outra conta existente retornou 200 e foi usada, sem fabricar perfil remoto. A primeira execução local de testes expôs uma fixture de estoque sem aprovação e a preparação sequencial de 55 solicitações excedendo 5s; foram corrigidas com fixture explícita/batch, seguidas de execução aprovada. Lint detectou dois efeitos HTTP; justificativa local documenta que suas alterações de estado ocorrem após await, mantendo a regra ativa no restante do projeto.
+
+### Reprodução do navegador
+
+Usar banco D1 local novo, migrations locais aplicadas e API na porta 8787; iniciar o front com NEXT_PUBLIC_BACKEND_URL=http://localhost:8787 na porta 3001. O teste requer .env.qa.local com QA_SUPPLIER, QA_ADMIN e QA_BUYER1 já existentes e com perfis; não cria identidades. Configurar PLAYWRIGHT_MODULE_PATH para package.json do Playwright instalado e QA_BROWSER_EXECUTABLE para o navegador; executar node scripts/qa-mp03-browser.cjs. A rotina usa o formulário de login e decisões pela interface; chamadas de API do navegador para outras origens são bloqueadas. Nova execução completa exige D1 local novo, pois o teste termina com fornecedor suspenso e não reinicia decisões administrativas.
+
+### Limites da evidência externa
+
+Cadastro de identidade nova, gravação de perfil em Firestore e envio de recuperação possuem testes de componentes/contratos e falhas entre serviços; não foram executados sobre novas contas remotas nesta etapa. Entrega de e-mail e retorno do link de redefinição precisam de homologação no ambiente autorizado da versão. O login/leituras de perfis e as claims das contas QA existentes foram executados, sem demonstrar sozinho o ciclo de cadastro de uma conta nova. Isso não autoriza promover o marketplace a pronto para produção antes de MP-12.
 
 ## Limites de ativação
 

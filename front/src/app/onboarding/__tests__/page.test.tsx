@@ -123,6 +123,16 @@ describe('OnboardingPage — Provisionamento e Renovação de Token (AUTH-001)',
     })
   })
 
+  it('retoma papel já provisionado sem oferecer troca de identidade', () => {
+    vi.mocked(useAuth).mockReturnValue(createMockAuth({
+      user: { uid: 'user-123', email: 'qa@teste.com', displayName: 'QA' },
+      role: 'comprador', profile: null,
+    }))
+    render(<OnboardingPage />)
+    expect(screen.getByText('Sou Fornecedor').closest('button')).toBeDisabled()
+    expect(screen.getByText('Sou Comprador').closest('button')).toBeEnabled()
+  })
+
   it('provisiona claim fornecedor, renova ID token e redireciona para painel-fornecedor', async () => {
     vi.mocked(useAuth).mockReturnValue(createMockAuth({
       user: { uid: 'user-forn', email: 'forn@teste.com', displayName: 'Distribuidora' },

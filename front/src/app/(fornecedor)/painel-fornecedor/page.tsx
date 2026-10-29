@@ -12,8 +12,6 @@ import {
   BarChart3,
   Settings,
   ArrowRight,
-  ShieldCheck,
-  CheckCircle2,
   Clock,
   Sparkles,
   RefreshCw,
@@ -49,13 +47,7 @@ export default function SupplierDashboardOverviewPage() {
                 <Sparkles className="size-3" />
                 Painel da Distribuidora B2B
               </Badge>
-              <span className="text-xs text-muted-foreground font-medium flex items-center gap-1">
-                <ShieldCheck className="size-3.5 text-green-600" />
-                Status:{' '}
-                <span className="text-green-600 font-bold flex items-center gap-0.5">
-                  <CheckCircle2 className="size-3" /> Verificado
-                </span>
-              </span>
+
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-display font-black text-foreground tracking-tight">

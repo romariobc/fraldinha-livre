@@ -617,7 +617,7 @@
       "id": "MP-03",
       "titulo": "Concluir cadastro, acesso e aprovação de fornecedores",
       "fase": 1,
-      "status": "in_progress",
+      "status": "done",
       "ordem": 3,
       "prioridade": "P0",
       "dependencias": [
@@ -641,8 +641,15 @@
       "evidencias_exigidas": [
         "Jornadas comprador/fornecedor/admin em navegador; testes de bypass da API, ownership, aprovação/rejeição/suspensão e falha entre serviços; inventário e plano de ativação."
       ],
-      "aprovacao_usuario": "execucao_autorizada",
-      "notas": "MP-02 aprovado pelo usuário com prossiga; MP-03 em execução local, sem deploy ou migrações remotas."
+      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
+      "notas": "Implementação e validação local concluídas; PR #24 em rascunho sobre MP-02. Aprovação do usuário pendente. Sem merge/deploy/migração remota. Envio real da recuperação e cadastro de identidade nova em ambiente publicado permanecem para homologação da versão; critérios locais cobertos por testes e navegação com QA existente.",
+      "conclusao_em": "2026-10-29",
+      "evidencias_registradas": [
+        "docs/qa/MP-03-cadastro-aprovacao.md",
+        "docs/qa/MP-03-inventario-ativacao.md",
+        "https://github.com/romariobc/fraldinha-livre/pull/24",
+        "https://github.com/romariobc/fraldinha-livre/actions/runs/40899799519"
+      ]
     },
     {
       "id": "MP-04",
@@ -952,7 +959,8 @@
     ],
     "regra_execucao": "Uma etapa por item MP, em ordem numerica; concluir, validar, registrar e parar. Dependencias satisfeitas nao autorizam avancar. Exigir aprovacao explicita do usuario para iniciar a proxima etapa.",
     "controle_execucao": {
-      "etapa_em_execucao": "MP-03",
+      "etapa_concluida": "MP-03",
+      "aprovacao_entrega": "aguardando_usuario",
       "proxima_etapa": "MP-04",
       "autorizada_proxima_etapa": false
     },

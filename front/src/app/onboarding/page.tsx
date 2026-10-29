@@ -15,6 +15,10 @@ export default function OnboardingPage() {
 
   // Se user ja tem role, redireciona para o destino apropriado
   useEffect(() => {
+    if (!loading && user && role === 'admin') {
+      router.push('/admin')
+      return
+    }
     if (!loading && user && role && profile) {
       if (role === 'comprador') {
         router.push('/minha-conta')
@@ -146,7 +150,7 @@ export default function OnboardingPage() {
           {/* Card Fornecedor */}
           <button
             onClick={() => handleSubmit('fornecedor')}
-            disabled={isSubmitting}
+            disabled={isSubmitting || (role !== null && role !== 'fornecedor')}
             className="relative p-6 border-2 border-slate-200 rounded-2xl text-left transition-all hover:border-accent hover:bg-accent/5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="flex items-start gap-4">

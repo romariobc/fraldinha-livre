@@ -1,12 +1,12 @@
 # Backlog vigente — Marketplace demonstrativo em produção
 
-**Revisão:** 26 de outubro de 2026.
+**Revisão:** 29 de outubro de 2026.
 
 **Base local:** `1322ac6`; árvore de trabalho limpa na entrada do MP-00.
 
 **Origem:** plano e decisões aprovados pelo usuário nesta conversa.
 
-**Escopo desta edição:** somente MP-00, documental; nenhuma regra abaixo foi implementada no runtime por esta etapa.
+**Origem:** MP-00 organizou o contrato e a sequência. A execução por etapa e suas evidências estão registradas no ponto de controle abaixo; status local não equivale a ativação em produção.
 
 ## Objetivo e contrato da versão
 
@@ -40,7 +40,7 @@ Essas regras são o alvo aprovado. Não descrever aprovação de fornecedores, n
 5. Commit, push, publicação, migrações e alteração de segredos seguem o escopo autorizado; não são efeitos colaterais de QA ou de conclusão de etapa.
 6. Não delegar nem iniciar trabalho concorrente sem autorização. Não alterar o harness incidentalmente.
 
-**Ponto de controle atual (29/10/2026):** MP-01 aprovado. MP-02 concluído, com testes e CI hospedado aprovados, aguardando aprovação da entrega; PR #23 em rascunho, dependente da PR #22. Sem merge/deploy/migração remota. MP-03 não iniciado e sem autorização. Ver [relatório MP-02](qa/MP-02-integridade-pedidos-estoque.md).
+**Ponto de controle atual (29/10/2026):** MP-02 aprovado. MP-03 concluído em implementação/validação local, aguardando aprovação da entrega; PR #24 em rascunho, dependente de #22/#23. Navegador autenticado e inventário remoto somente leitura registrados. Sem merge/deploy/migração remota. MP-04 não iniciado e sem autorização. Ver [relatório MP-03](qa/MP-03-cadastro-aprovacao.md) e [inventário/ativação](qa/MP-03-inventario-ativacao.md).
 
 ## Ordem do backlog
 
@@ -50,8 +50,8 @@ P0 = fluxo obrigatório, integridade ou condição de liberação; P1 = conclus�
 |---|---|---|---|---|
 | MP-00 | P0 | Organizar o backlog e o contrato da versão | — | done; aprovado pelo usuário |
 | MP-01 | P0 | Tornar validação e publicação previsíveis | MP-00 | done; aprovado pelo usuário |
-| MP-02 | P0 | Garantir integridade de pedidos e estoque | MP-01 | done; aguarda aprovação da entrega |
-| MP-03 | P0 | Concluir cadastro, acesso e aprovação de fornecedores | MP-02 | todo; início depende de aprovação |
+| MP-02 | P0 | Garantir integridade de pedidos e estoque | MP-01 | done; entrega aprovada |
+| MP-03 | P0 | Concluir cadastro, acesso e aprovação de fornecedores | MP-02 | done; aguarda aprovação da entrega |
 | MP-04 | P0 | Homologar catálogo e manutenção de ofertas | MP-03 | todo; início depende de aprovação |
 | MP-05 | P0 | Fechar checkout simulado e recuperação de falhas | MP-02, MP-04 | todo; início depende de aprovação |
 | MP-06 | P0 | Registrar e acompanhar o ciclo do pedido | MP-05 | todo; início depende de aprovação |

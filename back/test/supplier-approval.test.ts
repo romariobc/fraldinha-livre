@@ -147,6 +147,25 @@ describe('MP-03 — aprovação comercial com D1 real e identidades de teste', (
     expect((await send('buyer', 'POST', '/orders', order(uid, p.id), db)).status).toBe(409)
     expect((await env.DB.prepare('SELECT quantity FROM products WHERE id = ?').bind(p.id).first<{ quantity: number }>())!.quantity).toBe(10)
   })
+  it('suspensão antes da execução do INSERT impede publicação mesmo após autorização inicial', async () => {
+    const uid = await approved()
+    const db = new Proxy(env.DB, { get(target, prop) {
+      if (prop === 'prepare') return (query: string) => {
+        const statement = target.prepare(query)
+        if (!query.startsWith('INSERT INTO products')) return statement
+        return { bind: (...values: unknown[]) => {
+          const bound = statement.bind(...values)
+          return { run: async () => {
+            await target.prepare("UPDATE supplier_applications SET status = 'suspenso' WHERE uid = ?").bind(uid).run()
+            return bound.run()
+          } }
+        } }
+      }
+      const v = Reflect.get(target, prop); return typeof v === 'function' ? v.bind(target) : v
+    } })
+    expect((await send(uid, 'POST', '/products', product, db)).status).toBe(403)
+    expect((await env.DB.prepare('SELECT COUNT(*) AS n FROM products WHERE supplier_id = ?').bind(uid).first<{ n: number }>())!.n).toBe(0)
+  })
   it('paginação administrativa não perde solicitações além da primeira página', async () => {
     await env.DB.batch(Array.from({ length: 55 }, (_, i) => env.DB.prepare("INSERT INTO supplier_applications (uid, status, created_at, updated_at) VALUES (?, 'pendente', '2026-10-29', '2026-10-29')").bind('page-' + String(i).padStart(3, '0'))))
     const first = await (await send('admin', 'GET', '/admin/suppliers')).json() as { applications: { uid: string }[]; nextCursor: string }

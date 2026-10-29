@@ -6,6 +6,7 @@ const assert = require('node:assert/strict')
 const { createRequire } = require('node:module')
 const root = path.resolve(__dirname, '..')
 const output = path.join(root, 'docs/qa-artifacts')
+fs.mkdirSync(output, { recursive: true })
 const envFile = file => Object.fromEntries(fs.readFileSync(path.join(root, file), 'utf8').split(/\r?\n/)
   .filter(line => /^[A-Z_0-9]+=/.test(line)).map(line => {
     const at = line.indexOf('='); return [line.slice(0, at), line.slice(at + 1).replace(/^['"]|['"]$/g, '')]
@@ -35,6 +36,11 @@ async function main() {
   const login = async who => {
     console.log('Login QA: ' + who)
     const context = await browser.newContext({ viewport: { width: 1365, height: 900 } }); contexts.push(context)
+    await context.route('**/*', route => {
+      const url = new URL(route.request().url())
+      const apiPath = /^\/(auth|admin)\/|^\/(products|orders)(\/|$)/.test(url.pathname)
+      return apiPath && url.origin !== api ? route.abort() : route.continue()
+    })
     const page = await context.newPage(); page.setDefaultTimeout(20000)
     await page.goto(origin + '/login', { waitUntil: 'domcontentloaded', timeout: 120000 })
     await page.waitForFunction(() => document.querySelector('button[type="submit"]')?.disabled === false, undefined, { timeout: 60000 })

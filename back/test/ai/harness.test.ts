@@ -1,3 +1,4 @@
+import { approveFixtures, seedSuppliers } from '../approve-fixtures'
 import { describe, it, expect, vi, beforeAll } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
 import { env } from 'cloudflare:workers'
@@ -9,6 +10,7 @@ const USER_CONTEXT = { userId: 'uid-comprador-teste', email: 'comprador@example.
 describe('executeToolHarness', () => {
   beforeAll(async () => {
     await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
+    await approveFixtures(env.DB, ...seedSuppliers, 'uid-fornecedor-teste', 'uid-outro-fornecedor', 'uid-fornecedor-a', 'uid-fornecedor-b', 'supplier-a')
   })
 
   // ── search_products ──────────────────────────────────────────────────────────

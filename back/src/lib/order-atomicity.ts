@@ -57,7 +57,7 @@ export async function createOrderAtomically(db: Env['DB'], input: {
     req.paymentStatus ?? null, input.fingerprint, mutationId]
   // Guard every item inside the transaction. External prevalidation is only for useful error messages.
   // JSON table expansion keeps the number of bind parameters constant for larger baskets.
-  const guard = `NOT EXISTS (SELECT 1 FROM json_each(?) item
+  const guard = `EXISTS (SELECT 1 FROM supplier_applications s WHERE s.uid = ? AND s.status = 'aprovado') AND NOT EXISTS (SELECT 1 FROM json_each(?) item
     LEFT JOIN products p ON p.id = json_extract(item.value, '$.productId')
     WHERE p.id IS NULL OR p.active IS NOT 1 OR p.supplier_id != ?
       OR p.price_cents != json_extract(item.value, '$.unitPrice')
@@ -67,7 +67,7 @@ export async function createOrderAtomically(db: Env['DB'], input: {
      delivery_address, created_at, idempotency_key, payment_method, payment_transaction_id,
      payment_status, request_fingerprint, mutation_id)
     SELECT ${values.map(() => '?').join(', ')} WHERE ${guard}`)
-    .bind(...values, JSON.stringify(req.items), req.supplierId!)
+    .bind(...values, req.supplierId!, JSON.stringify(req.items), req.supplierId!)
   const statements = [insert]
   for (const item of req.items) {
     statements.push(db.prepare(`INSERT INTO order_items

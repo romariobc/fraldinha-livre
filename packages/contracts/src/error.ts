@@ -11,6 +11,8 @@ export const ApiErrorCodeSchema = z.enum([
   // Autenticação e Autorização (401 / 403 / 409)
   'UNAUTHORIZED',
   'FORBIDDEN',
+  'SUPPLIER_NOT_APPROVED',
+  'SUPPLIER_STATE_CONFLICT',
   'AUTHORIZATION_STATE_CONFLICT',
   'ROLE_CHANGE_NOT_ALLOWED',
 

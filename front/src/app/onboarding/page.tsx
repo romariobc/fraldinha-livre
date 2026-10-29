@@ -5,26 +5,24 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import Image from 'next/image'
 import { useAuth, UserRole } from '@/contexts/auth-context'
-import { doc, setDoc } from 'firebase/firestore'
-import { auth, db } from '@/lib/firebase'
-import { apiFetch } from '@/lib/api-client'
+import { completeOnboarding } from '@/lib/complete-onboarding'
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const { user, role, loading } = useAuth()
+  const { user, profile, role, loading, refreshClaims } = useAuth()
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Se user ja tem role, redireciona para o destino apropriado
   useEffect(() => {
-    if (!loading && user && role) {
+    if (!loading && user && role && profile) {
       if (role === 'comprador') {
         router.push('/minha-conta')
       } else if (role === 'fornecedor') {
         router.push('/painel-fornecedor')
       }
     }
-  }, [user, role, loading, router])
+  }, [user, profile, role, loading, router])
 
   // Se nao esta logado, redireciona para login
   useEffect(() => {
@@ -40,30 +38,10 @@ export default function OnboardingPage() {
       setIsSubmitting(true)
       setSelectedRole(chosenRole)
 
-      // 1. Provisionar Custom Claim via backend Cloudflare Worker (AUTH-001)
-      const claimRes = await apiFetch('/auth/claim', {
-        method: 'POST',
-        body: JSON.stringify({ role: chosenRole }),
-      })
-
-      if (!claimRes.ok) {
-        const errorData = await claimRes.json().catch(() => ({}))
-        const errorMsg = (errorData as { message?: string }).message || 'Erro ao provisionar permissões'
-        throw new Error(errorMsg)
-      }
-
-      // 2. Renovar Firebase ID Token para carregar o novo Custom Claim assinado
-      if (auth.currentUser) {
-        await auth.currentUser.getIdToken(true)
-      }
-
-      // 3. Gravar perfil do usuário no Firestore
-      await setDoc(doc(db, 'users', user.uid), {
-        role: chosenRole,
-        name: user.displayName || 'Usuario',
-        email: user.email,
-        createdAt: new Date().toISOString(),
-      })
+      const effectiveRole = role === 'comprador' || role === 'fornecedor' ? role : chosenRole
+      if (effectiveRole !== 'comprador' && effectiveRole !== 'fornecedor') throw new Error('Papel inválido.')
+      await completeOnboarding(user, effectiveRole)
+      await refreshClaims?.()
 
       toast.success(`Bem-vindo, ${chosenRole === 'comprador' ? 'comprador' : 'fornecedor'}!`)
 
@@ -88,7 +66,7 @@ export default function OnboardingPage() {
   }
 
   // Se ja tem role, nao mostrar onboarding (vai redirecionar via useEffect)
-  if (role) {
+  if (role && profile) {
     return null
   }
 
@@ -134,7 +112,7 @@ export default function OnboardingPage() {
         </div>
 
         <h3 className="font-display font-black text-2xl sm:text-3xl text-brand-text mb-2">
-          Escolha seu perfil
+          Conclua seu cadastro
         </h3>
         <p className="text-sm text-brand-muted mb-8">
           Logado como <strong>{user.email}</strong>
@@ -144,7 +122,7 @@ export default function OnboardingPage() {
           {/* Card Comprador */}
           <button
             onClick={() => handleSubmit('comprador')}
-            disabled={isSubmitting}
+            disabled={isSubmitting || (role !== null && role !== 'comprador')}
             className="relative p-6 border-2 border-slate-200 rounded-2xl text-left transition-all hover:border-primary hover:bg-primary-light disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <div className="flex items-start gap-4">
@@ -178,7 +156,7 @@ export default function OnboardingPage() {
                   Sou Fornecedor
                 </h4>
                 <p className="text-sm text-brand-muted mt-1">
-                  Quero oferecer meus produtos para os melhores preços e conquistar novos clientes
+                  Solicito habilitação para vender. A publicação de ofertas depende de aprovação administrativa.
                 </p>
               </div>
             </div>

@@ -604,7 +604,7 @@
       "evidencias_exigidas": [
         "Testes de integração D1 contra handlers com concorrência, retry, falha intermediária e disputa cancelamento/confirmação/despacho; contratos e tipos dos consumidores."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
+      "aprovacao_usuario": "aprovado",
       "notas": "Criação/transições atômicas com estoque e evento; CAS por status/mutação; idempotência por dono/conteúdo e snapshot legado; motivo obrigatório antes do despacho. Testes locais e 11 jobs do CI aprovados. Migração 0012 somente no D1 local. PR #23 em rascunho, dependente da PR #22; sem merge/deploy/migração remota. Aguardando aprovação; MP-03 não autorizado.",
       "conclusao_em": "2026-10-29",
       "evidencias_registradas": [
@@ -617,7 +617,7 @@
       "id": "MP-03",
       "titulo": "Concluir cadastro, acesso e aprovação de fornecedores",
       "fase": 1,
-      "status": "todo",
+      "status": "in_progress",
       "ordem": 3,
       "prioridade": "P0",
       "dependencias": [
@@ -641,8 +641,8 @@
       "evidencias_exigidas": [
         "Jornadas comprador/fornecedor/admin em navegador; testes de bypass da API, ownership, aprovação/rejeição/suspensão e falha entre serviços; inventário e plano de ativação."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_para_iniciar",
-      "notas": "Planejado; implementação, validação e homologação ainda pendentes. Exige aprovação explícita do usuário para iniciar, além das dependências técnicas."
+      "aprovacao_usuario": "execucao_autorizada",
+      "notas": "MP-02 aprovado pelo usuário com prossiga; MP-03 em execução local, sem deploy ou migrações remotas."
     },
     {
       "id": "MP-04",
@@ -952,9 +952,8 @@
     ],
     "regra_execucao": "Uma etapa por item MP, em ordem numerica; concluir, validar, registrar e parar. Dependencias satisfeitas nao autorizam avancar. Exigir aprovacao explicita do usuario para iniciar a proxima etapa.",
     "controle_execucao": {
-      "etapa_concluida": "MP-02",
-      "aprovacao_entrega": "aguardando_usuario",
-      "proxima_etapa": "MP-03",
+      "etapa_em_execucao": "MP-03",
+      "proxima_etapa": "MP-04",
       "autorizada_proxima_etapa": false
     },
     "decisoes": {

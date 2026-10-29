@@ -1,3 +1,4 @@
+import { approveFixtures, seedSuppliers } from './approve-fixtures'
 import { describe, it, expect, beforeAll } from 'vitest'
 import { Hono } from 'hono'
 import { env } from 'cloudflare:workers'
@@ -13,6 +14,7 @@ import type { Order } from '../../packages/contracts/src/order'
 describe('POST /orders + PATCH /orders/:id/cancel', () => {
   beforeAll(async () => {
     await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
+    await approveFixtures(env.DB, ...seedSuppliers, 'uid-fornecedor-teste', 'uid-outro-fornecedor', 'uid-fornecedor-a', 'uid-fornecedor-b', 'supplier-a')
   })
 
   /**

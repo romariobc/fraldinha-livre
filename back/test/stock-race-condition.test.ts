@@ -1,3 +1,4 @@
+import { approveFixtures } from './approve-fixtures'
 import { describe, it, expect, beforeAll } from 'vitest'
 import { env } from 'cloudflare:workers'
 import { applyD1Migrations } from 'cloudflare:test'
@@ -9,6 +10,7 @@ import { orders } from '../src/schema/orders'
 describe('Stock decrement race condition & constraints', () => {
   beforeAll(async () => {
     await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
+    await approveFixtures(env.DB, 'sup-race')
   })
 
   it('Verifica o comportamento de db.batch com update e returning', async () => {

@@ -151,6 +151,8 @@ export const ordersGetHandler = async (c: Context<{ Bindings: Env; Variables: Ap
   }
 }
 
+import { isSupplierApproved } from '../lib/supplier-approval'
+
 export const ordersPostHandler = async (c: OrderContext) => {
   const uid = c.get('uid')
   if (!uid) return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
@@ -187,6 +189,8 @@ export const ordersPostHandler = async (c: OrderContext) => {
     const total = request.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
     if (request.price !== total) return respondError(c, 'TOTAL_MISMATCH', 400, 'Total divergente da soma dos itens.')
 
+    if (!await isSupplierApproved(c.env.DB, request.supplierId)) return respondError(c, 'SUPPLIER_NOT_APPROVED', 409, 'Fornecedor indisponível para novas compras.')
+
     const orderId = crypto.randomUUID()
     let inserted: boolean
     try {
@@ -201,6 +205,7 @@ export const ordersPostHandler = async (c: OrderContext) => {
       throw error
     }
     if (!inserted) {
+      if (!await isSupplierApproved(c.env.DB, request.supplierId)) return respondError(c, 'SUPPLIER_NOT_APPROVED', 409, 'Fornecedor indisponível para novas compras.')
       const fresh = await db.select().from(products).where(inArray(products.id, ids)).all()
       return validateCatalog(fresh) ?? respondError(c, 'INSUFFICIENT_STOCK', 409, 'Catálogo alterado durante a compra. Atualize e tente novamente.')
     }

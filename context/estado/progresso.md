@@ -1,5 +1,18 @@
 # Estado atual — 2026-10-29
 
+## MP-03 — Cadastro, acesso e aprovação de fornecedores (em validação)
+
+- **Autorização:** MP-02 aprovado pelo usuário com “prossiga”; execução limitada a MP-03. MP-04 não iniciado e sem autorização.
+- **Implementação:** registro comercial D1, decisões administrativas versionadas/auditadas, guardas SQL em publicação/compra, telas de habilitação e análise, cadastro retomável e recuperação de acesso.
+- **Validação:** 728 testes front, 324 back e 58 contratos passaram antes dos últimos ajustes de navegação/efeitos; rechecagens em andamento. Migração 0013 aplicada somente em D1 local.
+- **Inventário remoto somente leitura:** 314 ofertas ativas em sete IDs de fornecedor; 79 pedidos abertos. Migrations 0012/0013 ainda ausentes em produção. Plano de reconciliação em [inventário/ativação](../../docs/qa/MP-03-inventario-ativacao.md).
+- **Navegador:** pendência/aprovação administrativa confirmadas com contas QA e API/D1 locais; jornada completa em consolidação. Comprador QA inicial sem perfil Firestore (404); outra conta existente com perfil foi selecionada, sem alterar o perfil remoto.
+- **Ponto de parada:** concluir MP-03 e aguardar aprovação; sem merge, deploy ou migração remota.
+
+---
+
+# Estado atual — 2026-10-29
+
 ## MP-02 — Concluído, aguardando aprovação da entrega
 
 - **Autorização:** MP-01 aprovado e MP-02 executado. O “prossiga” recebido durante a execução manteve o trabalho nesta etapa; MP-03 continua não iniciado e sem autorização.

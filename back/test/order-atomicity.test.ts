@@ -1,3 +1,4 @@
+import { approveFixtures, seedSuppliers } from './approve-fixtures'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { Hono } from 'hono'
 import { env } from 'cloudflare:workers'
@@ -76,7 +77,8 @@ async function injectEventFailure(requestId: string, work: () => Promise<void>) 
 }
 
 describe('MP-02: atomicidade em D1 pelos handlers reais', () => {
-  beforeAll(async () => { await applyD1Migrations(env.DB, env.TEST_MIGRATIONS) })
+  beforeAll(async () => { await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
+    await approveFixtures(env.DB, ...seedSuppliers, 'uid-fornecedor-teste', 'uid-outro-fornecedor', 'uid-fornecedor-a', 'uid-fornecedor-b', 'supplier-a') })
 
   it('cria pedido/itens/estoque/evento juntos sem expor hash ou mutation_id', async () => {
     const payload = await fixture(2)

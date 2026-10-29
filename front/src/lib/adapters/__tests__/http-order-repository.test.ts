@@ -541,7 +541,7 @@ function createFakeFetch() {
           { status: 404, headers: { 'Content-Type': 'application/json' } }
         )
       }
-      if (order.status !== 'aguardando') {
+      if (order.status !== 'aguardando' && order.status !== 'cancelado') {
         return new Response(
           JSON.stringify({
             error: {
@@ -585,6 +585,19 @@ describe('HttpOrderRepository - Parte B: Contract test com fetch mockado', () =>
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.clearAllMocks()
+  })
+
+  it('envia o motivo do fornecedor no contrato HTTP de cancelamento', async () => {
+    const fetchMock = vi.fn(createFakeFetch())
+    vi.stubGlobal('fetch', fetchMock)
+    const repo = new HttpOrderRepository()
+    const created = await repo.create({
+      product: 'Teste', quantity: 1, unit: 'un', price: 100, supplierId: 'supplier',
+      deliveryAddress: { logradouro: 'Rua A', numero: '1', bairro: 'Centro', cidade: 'Fortaleza', estado: 'CE', cep: '60000-000' },
+      items: [{ productId: 'product', productName: 'Teste', unitPrice: 100, quantity: 1, unit: 'un' }],
+    })
+    await repo.updateStatus(created.id, 'cancelado', 'Sem disponibilidade')
+    expect(JSON.parse(fetchMock.mock.calls.at(-1)![1]!.body as string)).toEqual({ status: 'cancelado', reason: 'Sem disponibilidade' })
   })
 
   runOrderRepositoryContract('HttpOrderRepository (fetch mockado)', () => {

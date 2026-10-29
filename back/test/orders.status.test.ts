@@ -168,7 +168,7 @@ describe('PATCH /orders/:id/status', () => {
         Authorization: 'Bearer token-fornecedor-a',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ status: 'cancelado' }),
+      body: JSON.stringify({ status: 'cancelado', reason: 'Cancelamento de teste' }),
     })
     const res4 = await app.fetch(req4, env)
     expect(res4.status).toBe(409)
@@ -203,7 +203,7 @@ describe('PATCH /orders/:id/status', () => {
         Authorization: 'Bearer token-fornecedor-a',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ status: 'cancelado' }),
+      body: JSON.stringify({ status: 'cancelado', reason: 'Produto indisponível' }),
     })
     const res = await app.fetch(req, env)
     expect(res.status).toBe(200)

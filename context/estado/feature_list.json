@@ -570,8 +570,8 @@
       "evidencias_exigidas": [
         "Runs de CI ligados ao commit e caso negativo de bloqueio; diff dos scripts; registro de permissões/configurações e limitações remotas."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
-      "notas": "Implementação e validação do MP-01 concluídas: CI hospedado com 11 jobs aprovados, gate negativo exercitado nos testes, imagem Docker validada e proteção de main aplicada/verificada. PR #22 em rascunho, sem merge ou deploy. Aguardando aprovação da entrega; MP-02 não autorizado. Resultados locais e limites no relatório.",
+      "aprovacao_usuario": "aprovado_pelo_usuario",
+      "notas": "Implementação e validação do MP-01 concluídas: CI hospedado com 11 jobs aprovados, gate negativo exercitado nos testes, imagem Docker validada e proteção de main aplicada/verificada. PR #22 em rascunho, sem merge ou deploy. Aguardando aprovação da entrega; MP-02 não autorizado. Resultados locais e limites no relatório. Entrega aprovada pelo usuário em 29/10/2026 com prossiga, autorizando somente MP-02; isso não autoriza merge ou deploy.",
       "conclusao_em": "2026-10-29",
       "evidencias_registradas": [
         "docs/qa/MP-01-validacao-publicacao.md",
@@ -583,7 +583,7 @@
       "id": "MP-02",
       "titulo": "Garantir integridade de pedidos e estoque",
       "fase": 1,
-      "status": "todo",
+      "status": "in_progress",
       "ordem": 2,
       "prioridade": "P0",
       "dependencias": [
@@ -604,8 +604,8 @@
       "evidencias_exigidas": [
         "Testes de integração D1 contra handlers com concorrência, retry, falha intermediária e disputa cancelamento/confirmação/despacho; contratos e tipos dos consumidores."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_para_iniciar",
-      "notas": "Planejado; implementação, validação e homologação ainda pendentes. Exige aprovação explícita do usuário para iniciar, além das dependências técnicas."
+      "aprovacao_usuario": "inicio_autorizado_pelo_usuario",
+      "notas": "Implementação e validação do MP-02 em andamento; migração somente em D1 local; não iniciar MP-03."
     },
     {
       "id": "MP-03",
@@ -947,8 +947,9 @@
     "regra_execucao": "Uma etapa por item MP, em ordem numerica; concluir, validar, registrar e parar. Dependencias satisfeitas nao autorizam avancar. Exigir aprovacao explicita do usuario para iniciar a proxima etapa.",
     "controle_execucao": {
       "etapa_concluida": "MP-01",
-      "aprovacao_entrega": "aguardando_usuario",
-      "proxima_etapa": "MP-02",
+      "aprovacao_entrega": "aprovado_pelo_usuario",
+      "etapa_em_execucao": "MP-02",
+      "proxima_etapa": "MP-03",
       "autorizada_proxima_etapa": false
     },
     "decisoes": {

@@ -69,6 +69,7 @@ import {
 import { formatPrice, cn } from '@/lib/utils'
 import { useMarket } from '@/contexts/market-context'
 import { OrderReportDialog } from './OrderReportDialog'
+import { OrderCancellationDialog } from './OrderCancellationDialog'
 import { copySupportCode } from '@/lib/frontend-diagnostics'
 import type { DirectOrder } from '@/lib/supplier-mock'
 import type { Order as ContractOrder } from '@contracts'
@@ -228,7 +229,7 @@ interface OrdersDataTableProps {
   error?: string | null
   requestId?: string
   onConfirm?: (orderId: string) => Promise<void> | void
-  onRefuse?: (orderId: string) => Promise<void> | void
+  onRefuse?: (orderId: string, reason: string) => Promise<void> | void
   onUpdateStatus?: (orderId: string, status: 'confirmado' | 'a-caminho' | 'entregue' | 'cancelado') => Promise<void> | void
   onRefresh?: () => Promise<void> | void
 }
@@ -305,6 +306,7 @@ export function OrdersDataTable({
   
   // State for reporting
   const [reportingOrder, setReportingOrder] = React.useState<SupplierOrderRow | null>(null)
+  const [cancellingOrderId, setCancellingOrderId] = React.useState<string | null>(null)
   const [isReportOpen, setIsReportOpen] = React.useState(false)
 
   // Status counts for tabs
@@ -351,12 +353,17 @@ export function OrdersDataTable({
     }
   }
 
-  const handleRefuseOrder = async (orderId: string) => {
+  const handleRefuseOrder = (orderId: string) => {
+    setIsDetailOpen(false)
+    setCancellingOrderId(orderId)
+  }
+
+  const confirmRefusal = async (orderId: string, reason: string) => {
     try {
       if (onRefuse) {
-        await onRefuse(orderId)
+        await onRefuse(orderId, reason)
       } else {
-        await market.handleRecusarDireto(orderId)
+        await market.handleRecusarDireto(orderId, reason)
       }
       toast.info(`Pedido #${orderId} recusado/cancelado.`)
       if (selectedOrder?.id === orderId) {
@@ -364,6 +371,7 @@ export function OrdersDataTable({
       }
     } catch {
       toast.error('Erro ao recusar pedido')
+      throw new Error('Cancelamento não concluído')
     }
   }
 
@@ -1262,6 +1270,13 @@ export function OrdersDataTable({
           )}
         </DialogContent>
       </Dialog>
+
+      {cancellingOrderId && (
+        <OrderCancellationDialog
+          onClose={() => setCancellingOrderId(null)}
+          onConfirm={(reason) => confirmRefusal(cancellingOrderId, reason)}
+        />
+      )}
 
       {/* Report to Client Dialog */}
       {reportingOrder && (

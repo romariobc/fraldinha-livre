@@ -1,5 +1,19 @@
 # Estado atual — 2026-10-29
 
+## MP-02 — Integridade de pedidos e estoque (em validação)
+
+- **Autorização:** MP-01 aprovado pelo usuário com “prossiga”; execução somente de MP-02. MP-03 não iniciado e sem autorização. PR #22 continua sem merge/deploy.
+- **Implementação:** criação e transição em um único D1.batch com guardas SQL e comparação de mutação; sem compensação posterior; evento persistido junto ao estoque/status. Idempotência compara conteúdo canônico e dono, com compatibilidade de snapshots sem hash.
+- **Contrato:** cancelamento do comprador apenas aguardando, com retry sem duplicar efeito; fornecedor/admin até confirmado com motivo obrigatório (5–500 caracteres); após despacho apenas ocorrência. Adaptadores e modal mínimo do fornecedor transportam o motivo; expansão de jornadas permanece em MP-07.
+- **Validação:** suítes locais com 717 testes front, 311 back e 58 contratos aprovados; tipos dos três workspaces e lint (0 erros/11 avisos) aprovados. Casos adicionais de fronteira/legado e CI hospedado em consolidação. Evidências e limitações no [relatório MP-02](../../docs/qa/MP-02-integridade-pedidos-estoque.md).
+- **Dados:** migração 0012 aplicada somente ao D1 local pelos testes; eventos legados não fabricados. Nenhuma migração remota, publicação ou alteração de segredos.
+- **Preservação:** tooling/documentação de MP-00/MP-01 e commit local anterior preservados. Revisão isolada parte de f88027f; não incluir alterações de aplicação alheias.
+- **Ponto de parada:** concluir e apresentar MP-02 para aprovação; não iniciar MP-03 automaticamente.
+
+---
+
+# Estado atual — 2026-10-29
+
 ## MP-01 — Concluído, aguardando aprovação da entrega
 
 - **Escopo:** MP-00 aprovado pelo usuário; MP-01 implementado e validado. MP-02 continua `todo`, não iniciado e sem autorização.

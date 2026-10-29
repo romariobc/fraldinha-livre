@@ -1,7 +1,7 @@
 import type { OrderRepository } from '@/lib/ports/order-repository'
 import { OrderNotFoundError, OrderCancelNotAllowedError } from '@/lib/ports/order-repository'
 import type { Order, CreateOrderRequest, OrderStatus } from '@contracts'
-import { OrderSchema } from '@contracts'
+import { OrderSchema, UpdateOrderStatusRequestSchema } from '@contracts'
 import { INITIAL_ORDERS, type Order as AccountMockOrder } from '@/lib/account-mock'
 import { getOrderItems } from '@/lib/order-items'
 
@@ -75,12 +75,14 @@ export class MockOrderRepository implements OrderRepository {
   async cancel(orderId: string): Promise<Order> {
     const order = this.orders.find((o) => o.id === orderId)
     if (!order) throw new OrderNotFoundError(orderId)
+    if (order.status === 'cancelado') return order
     if (order.status !== 'aguardando') throw new OrderCancelNotAllowedError(orderId, order.status)
     order.status = 'cancelado'
     return order
   }
 
-  async updateStatus(orderId: string, status: OrderStatus): Promise<Order> {
+  async updateStatus(orderId: string, status: OrderStatus, reason?: string): Promise<Order> {
+    UpdateOrderStatusRequestSchema.parse({ status, reason })
     const order = this.orders.find((o) => o.id === orderId)
     if (!order) throw new OrderNotFoundError(orderId)
     order.status = status

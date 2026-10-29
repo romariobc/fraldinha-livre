@@ -1,6 +1,6 @@
 # MP-01 — Validação e publicação previsíveis
 
-Data: 26/10/2026 (America/Fortaleza). Etapa autorizada pelo usuário após aprovação do MP-00. O MP-02 não está autorizado.
+Implementação: 26/10/2026; consolidação: 29/10/2026 (America/Fortaleza). Etapa autorizada pelo usuário após aprovação do MP-00. O MP-02 não está autorizado.
 
 ## Base, escopo e preservação
 
@@ -25,7 +25,7 @@ Data: 26/10/2026 (America/Fortaleza). Etapa autorizada pelo usuário após aprov
 
 `js-yaml` foi declarado como dependência de desenvolvimento direta, na versão já instalada (4.3.1), para ler os workflows nos testes. Não houve atualização ampla de dependências.
 
-## Inspeção remota somente leitura
+## Inspeção remota inicial (26/10) e proteção aplicada (29/10)
 
 | Consulta | Resultado nesta sessão | Implicação |
 |---|---|---|
@@ -34,7 +34,7 @@ Data: 26/10/2026 (America/Fortaleza). Etapa autorizada pelo usuário após aprov
 | GitHub Actions | Habilitado, ações permitidas | A execução hospedada pode ser validada pela PR. |
 | Environments | `Production`, `Preview`, `github-pages`, sem regras de proteção retornadas | O workflow reutiliza o nome `Production`; o simples nome não comprova aprovação manual. |
 
-Essas configurações remotas não foram alteradas. O gate de publicação protege o caminho do workflow entregue; a ausência de proteção de merge continua uma limitação explícita, a ser resolvida antes de considerar o processo operacionalmente encerrado. Após o primeiro run, usar o nome real do check agregado retornado pela API ao configurar checks obrigatórios; não inventar esse nome a partir da aparência no YAML.
+Após aprovação dos 11 jobs do run hospedado, a proteção da main foi aplicada e relida pela API: PR obrigatória; check `validate / Validation required` vinculado ao GitHub Actions (app 15368); branch atualizada exigida (`strict=true`); aplicação também a administradores; conversas resolvidas; force-push e exclusão negados. O nome do check foi confirmado no run, sem inferência pelo YAML. Não foi exigida aprovação de outro revisor (`required_approving_review_count=0`); a aprovação da etapa pelo usuário e o merge continuam pendentes. Environments e segredos não foram alterados.
 
 ## Matriz por critério
 
@@ -44,10 +44,14 @@ Essas configurações remotas não foram alteradas. O gate de publicação prote
 | QA para na primeira falha | Injeção de falha em cada posição e erros de processo | Passou localmente | Demais comandos simulados nesses testes específicos. |
 | YAML e semântica Actions | `actionlint` 1.7.12 em contêiner | Passou, exit 0 | Não comprova resultado de runner hospedado. |
 | Sintaxe PowerShell | Parser AST dos dois scripts | Passou | Execução completa registrada abaixo. |
-| Suítes/tipos/lint via novo runner | `pwsh -NoProfile -File ./run_checks.ps1` | Em execução | Resultado final pendente. |
-| Imagem de produção | `docker build -f front/Dockerfile -t fraldinha-livre-frontend:mp01 .` | Em execução | Primeiro build passou; repetição confere exclusão do .env.local. |
-| CI no GitHub | PR em rascunho | Pendente | Não confundir validação local com run hospedado. |
-| Proteção de merge | Consultas API acima | Ausente | Critério operacional ainda não encerrado. |
+| Suítes/tipos/lint via novo runner | `pwsh -NoProfile -File ./run_checks.ps1` | Passou, exit 0 em 29/10: 1.105 testes, tipos dos três workspaces e 0 erros/11 avisos no lint | 711 front + 296 back + 57 contratos + 32 runner + 9 segurança; log local em docs/qa-artifacts/mp01-qa-2026-10-29.log (ignorado pelo Git). |
+| Imagem de produção | `docker build -f front/Dockerfile -t fraldinha-livre-frontend:mp01 .` | Passou, exit 0, confirmado em 29/10 | Contexto final exclui .env.local; repetição de 29/10 usou cache válido. |
+| CI no GitHub | [PR #22](https://github.com/romariobc/fraldinha-livre/pull/22), [run 40849415706](https://github.com/romariobc/fraldinha-livre/actions/runs/40849415706), candidato `9b3f70f` | 11 jobs aprovados | Inclui subprocesso negativo real do gate e assertions do grafo; nenhum deploy foi tentado. |
+| Proteção de merge | PUT seguido de GET da API em 29/10 | Aplicada e verificada | PR e check obrigatório, inclusive admins; sem merge ou publicação. |
+
+## Resultado consolidado do CI
+
+O run 40849415706 aprovou 11 jobs: 709 testes front, 296 back, 57 contratos, 32 runner e 9 de segurança do processo (**1.103 testes**), tipos dos três workspaces, lint com 0 erros/11 avisos, imagem Docker e gate agregado. A diferença de dois testes em relação ao checkout principal deriva do commit de aplicação local preservado fora da PR. Não equivale a regressão causada pelo MP-01.
 
 ## Uso e revisão operacional
 
@@ -55,16 +59,20 @@ Essas configurações remotas não foram alteradas. O gate de publicação prote
 - PR: conferir os checks da revisão candidata e o agregado `Validation required`; não fazer merge com validação falha/ausente.
 - Produção: push em main ou disparo manual de main chama a validação antes do job de deploy. Não disparar nesta etapa.
 - Homologação: workflow separado, disparo manual e confirmação explícita; aplica migrações no D1 isolado. Não disparar como parte de QA local.
-- Proteção de merge deve exigir PR e o check agregado real; permissões de bypass e revisão precisam ser definidas pelo responsável antes de ativar restrições no repositório. A aprovação de uma etapa nesta conversa não é uma regra configurada no GitHub.
+- Proteção de merge já exige PR, branch atualizada e check agregado real, inclusive para admins; não há force-push/exclusão. A contagem de revisores externos permanece zero. Não fazer merge antes da aprovação explícita do usuário nesta conversa.
 
 ## Limites e achados adjacentes
 
 - O npm ci do build informou 26 vulnerabilidades (7 moderadas, 17 altas e 2 críticas). Isso é a saída automática do instalador, não uma auditoria de explorabilidade. Nenhum `npm audit fix` ou atualização ampla foi executado; precisa de triagem própria antes de aprovação de release em MP-11/MP-12.
 - A aprovação local desta infraestrutura não conclui funcionalidades do marketplace nem autoriza MP-02.
-- Resultados de CI, revisão candidata e veredito serão consolidados ao final da sessão.
+- A proteção de branch já está ativa. Os workflows novos estão somente na PR: passam a substituir os workflows antigos após merge autorizado; o workflow antigo de main não foi executado por esta tarefa.
 
 ## Referências de plataforma
 
 - [Reutilização de workflows](https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows): chamada local mantém o workflow na revisão do chamador.
 - [Checks obrigatórios e jobs dependentes](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks): job agregado com always evita que dependência falha seja apenas ignorada.
 - [Execução manual](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow): workflow_dispatch depende da presença do workflow na branch padrão.
+
+## Veredito da etapa — 29/10/2026
+
+MP-01 implementado e validado, aguardando aprovação da entrega pelo usuário. PR #22 permanece em rascunho, sem merge, deploy ou migração. A proteção remota da main está ativa; os workflows novos só substituem os antigos após merge autorizado. MP-02 permanece todo e sem autorização.

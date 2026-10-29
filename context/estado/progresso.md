@@ -1,3 +1,18 @@
+# Estado atual — 2026-10-29
+
+## MP-01 — Concluído, aguardando aprovação da entrega
+
+- **Escopo:** MP-00 aprovado pelo usuário; MP-01 implementado e validado. MP-02 continua `todo`, não iniciado e sem autorização.
+- **Entrega:** validação reutilizável para PR/produção; gate agregado que rejeita falha/cancelamento/skip; produção restrita à main e dependente de validação; homologação manual separada; QA local sem publicação/Git/exclusão; scripts versionados; Docker sem arquivos locais de ambiente.
+- **Evidência atual:** runner local `pwsh -NoProfile -File ./run_checks.ps1` terminou com exit 0 em 29/10: 1.105 testes (711 front + 296 back + 57 contratos + 32 runner + 9 segurança), tipos dos três workspaces e lint com 0 erros/11 avisos. Build Docker final e actionlint 1.7.12 também passaram.
+- **CI hospedado:** [PR #22 em rascunho](https://github.com/romariobc/fraldinha-livre/pull/22), candidato `9b3f70f`, [run 40849415706](https://github.com/romariobc/fraldinha-livre/actions/runs/40849415706) com 11 jobs aprovados e 1.103 testes. A diferença de dois testes deriva do commit de aplicação `1322ac6`, preservado no checkout principal e fora da PR baseada em `d5b64c9`.
+- **Proteção remota aplicada/verificada:** PR obrigatória; `validate / Validation required` (GitHub Actions app 15368) obrigatório, branch atualizada e regras para admins; resolução de conversas; force-push/exclusão negados. Contagem de aprovações externas zero; aprovação desta entrega pelo usuário continua pendente.
+- **Registro completo:** [MP-01 — validação e publicação](../../docs/qa/MP-01-validacao-publicacao.md). As configurações de environments/segredos não foram alteradas. O npm do build sinalizou vulnerabilidades para triagem posterior; nenhuma atualização ampla aplicada.
+- **Estado operacional:** PR sem merge; nenhum deploy ou migração. A proteção de branch já está ativa; os workflows novos substituem os antigos somente após merge autorizado. Checkout principal preservado com alterações locais; commits/push desta entrega apenas na branch isolada.
+- **Ponto de parada:** aprovar a entrega MP-01 antes de autorizar MP-02. Não avançar automaticamente.
+
+---
+
 # Estado atual — 2026-10-26
 
 ## MP-01 — Validação e publicação previsíveis (em andamento)

@@ -551,7 +551,7 @@
       "id": "MP-01",
       "titulo": "Tornar validação e publicação previsíveis",
       "fase": 1,
-      "status": "in_progress",
+      "status": "done",
       "ordem": 1,
       "prioridade": "P0",
       "dependencias": [
@@ -570,8 +570,14 @@
       "evidencias_exigidas": [
         "Runs de CI ligados ao commit e caso negativo de bloqueio; diff dos scripts; registro de permissões/configurações e limitações remotas."
       ],
-      "aprovacao_usuario": "inicio_autorizado_pelo_usuario",
-      "notas": "Implementação do MP-01 autorizada pelo usuário. Validação local em execução; CI hospedado e proteção de merge ainda não comprovados. Não iniciar MP-02."
+      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
+      "notas": "Implementação e validação do MP-01 concluídas: CI hospedado com 11 jobs aprovados, gate negativo exercitado nos testes, imagem Docker validada e proteção de main aplicada/verificada. PR #22 em rascunho, sem merge ou deploy. Aguardando aprovação da entrega; MP-02 não autorizado. Resultados locais e limites no relatório.",
+      "conclusao_em": "2026-10-29",
+      "evidencias_registradas": [
+        "docs/qa/MP-01-validacao-publicacao.md",
+        "https://github.com/romariobc/fraldinha-livre/pull/22",
+        "https://github.com/romariobc/fraldinha-livre/actions/runs/40849415706"
+      ]
     },
     {
       "id": "MP-02",
@@ -940,9 +946,8 @@
     ],
     "regra_execucao": "Uma etapa por item MP, em ordem numerica; concluir, validar, registrar e parar. Dependencias satisfeitas nao autorizam avancar. Exigir aprovacao explicita do usuario para iniciar a proxima etapa.",
     "controle_execucao": {
-      "etapa_concluida": "MP-00",
-      "aprovacao_entrega": "aprovado_pelo_usuario",
-      "etapa_em_execucao": "MP-01",
+      "etapa_concluida": "MP-01",
+      "aprovacao_entrega": "aguardando_usuario",
       "proxima_etapa": "MP-02",
       "autorizada_proxima_etapa": false
     },

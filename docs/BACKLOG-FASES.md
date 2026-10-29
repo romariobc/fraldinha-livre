@@ -40,7 +40,7 @@ Essas regras são o alvo aprovado. Não descrever aprovação de fornecedores, n
 5. Commit, push, publicação, migrações e alteração de segredos seguem o escopo autorizado; não são efeitos colaterais de QA ou de conclusão de etapa.
 6. Não delegar nem iniciar trabalho concorrente sem autorização. Não alterar o harness incidentalmente.
 
-**Ponto de controle atual:** MP-00 aprovado pelo usuário. MP-01 autorizado e em andamento; MP-02 não iniciado e sem autorização. Conclusão local não substitui a evidência de CI/configuração remota exigida no MP-01.
+**Ponto de controle atual (29/10/2026):** MP-00 aprovado pelo usuário. MP-01 concluído e aguardando aprovação da entrega: CI hospedado aprovado, proteção de main verificada e PR #22 em rascunho. Sem merge ou deploy; workflows novos passam a valer na main somente após merge autorizado. MP-02 não iniciado e sem autorização. Ver [relatório MP-01](qa/MP-01-validacao-publicacao.md).
 
 ## Ordem do backlog
 
@@ -49,7 +49,7 @@ P0 = fluxo obrigatório, integridade ou condição de liberação; P1 = conclus�
 | Etapa | Prioridade | Entrega | Dependências técnicas | Estado |
 |---|---|---|---|---|
 | MP-00 | P0 | Organizar o backlog e o contrato da versão | — | done; aprovado pelo usuário |
-| MP-01 | P0 | Tornar validação e publicação previsíveis | MP-00 | in_progress; início autorizado |
+| MP-01 | P0 | Tornar validação e publicação previsíveis | MP-00 | done; aguarda aprovação da entrega |
 | MP-02 | P0 | Garantir integridade de pedidos e estoque | MP-01 | todo; início depende de aprovação |
 | MP-03 | P0 | Concluir cadastro, acesso e aprovação de fornecedores | MP-02 | todo; início depende de aprovação |
 | MP-04 | P0 | Homologar catálogo e manutenção de ofertas | MP-03 | todo; início depende de aprovação |

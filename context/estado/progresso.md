@@ -1,3 +1,57 @@
+# Estado atual — 2026-10-26
+
+## MP-01 — Validação e publicação previsíveis (em andamento)
+
+- **Autorização:** o usuário aprovou MP-00 e autorizou somente MP-01 com “prossiga”. MP-02 continua não iniciado e sem autorização.
+- **Preservação:** os três documentos não commitados do MP-00 foram mantidos. A main local em `1322ac6` tem um commit anterior à frente de origin/main; a branch de revisão parte de `d5b64c9` e não inclui implicitamente alterações de aplicação desse commit.
+- **Implementação:** validação reutilizável para PR/produção, gate agregado que rejeita falha/cancelamento/skip, check de main antes de produção e homologação manual separada. Scripts de QA/recursos sem deploy, commit/push ou exclusão; passam a ser versionados. Contexto Docker exclui arquivos locais de ambiente.
+- **Evidências e limites:** [relatório MP-01](../../docs/qa/MP-01-validacao-publicacao.md). Nove testes do processo e actionlint passaram; suíte local, build final e CI hospedado em consolidação. Inspeção remota encontrou main sem proteção/rulesets; a presença de checks no YAML não significa proteção de merge.
+- **Estado de execução:** MP-01 permanece `in_progress` até consolidar critérios e evidências. PR será mantida em rascunho; nenhum merge, deploy, migração ou segredo é autorizado por esta validação.
+- **Ponto de parada:** apresentar MP-01 para aprovação após a verificação; não iniciar MP-02 automaticamente.
+
+---
+
+# Estado atual — 2026-10-26
+
+## MP-00 — Backlog e contrato da produção demonstrativa
+
+- **Escopo autorizado:** executar somente MP-00. Uma etapa é um item MP-00 a MP-12; ao concluir, validar, registrar e parar. A próxima depende de aprovação explícita do usuário. Aprovação do plano não é aprovação antecipada das entregas.
+- **Contrato aprovado:** compra/pagamento/entrega demonstrativos, sem cobrança ou obrigação de entrega física; fornecedor novo sujeito à aprovação administrativa; comprador cancela em `aguardando`; fornecedor/admin antes do despacho com motivo; após `a-caminho`, ocorrência sem restituição automática; fornecedor encerra como `entregue`; ocorrência com resposta; notificações internas obrigatórias. Assistente, gateway real, e-mail/push, leilão e integrações externas ficam posteriores.
+- **Resultado documental:** [backlog vigente](../../docs/BACKLOG-FASES.md) estrutura 13 etapas com prioridade, ordem, dependências, critérios e evidências. O documento anterior foi preservado integralmente em seção histórica sem vigência. [feature_list.json](feature_list.json) mantém os 29 itens anteriores e acrescenta MP-00 a MP-12, com reconciliação e controle de aprovação separados do status técnico.
+- **Estado:** MP-00 concluído documentalmente, aguardando aprovação da entrega pelo usuário; MP-01 está `todo`, não iniciado e sem autorização. Nenhuma funcionalidade anterior foi promovida/reaberta por esta edição.
+- **Base e preservação:** checkout local `1322ac6`, árvore limpa na entrada. Somente os três documentos deste escopo foram alterados. Marcos anteriores do progresso preservados integralmente abaixo.
+- **Validação documental:** Aprovada. Validador documental Python via stdin (exit 0): JSON com 42 IDs únicos, 29 registros anteriores preservados campo a campo, 13 etapas MP, dependências existentes/acíclicas/ordenadas, critérios idênticos entre Markdown e JSON e referências locais vigentes existentes. Backlog/progresso anteriores preservados integralmente; MP-00 aguarda aprovação humana e MP-01..MP-12 seguem todo. Revisão do diff e git diff --check (exit 0): somente os três caminhos autorizados; nenhum erro de whitespace. O Git apenas avisou sobre normalização futura LF/CRLF, sem mudança de configuração.
+- **Limites:** não altera código, banco, configuração de produção ou comportamento. Não executa suítes/build de aplicação, commit, push, deploy, migrações, segredos nem homologação remota. Evidências técnicas anteriores mantêm a data e o ambiente de origem.
+- **Próximo ponto de decisão:** aprovação do usuário para iniciar MP-01 — validação e publicação previsíveis. Não iniciar automaticamente.
+
+---
+
+# Estado atual — 2026-10-12
+
+## Homologação Visual e Funcional Autenticada do Painel Administrativo (`/admin`) e E2E Passo 12
+
+- **Escopo autorizado pelo usuário**: Provisionamento de conta de QA administrativa dedicada (`admin.teste@fraldinhalivre.com.br`, UID `SJu48kK1JiQDAT4mIDZjjwb6XZr1`) com Custom Claims verificadas no JWT (`{"role": "admin", "admin": true}`) e homologação completa em produção das 4 abas de `/admin` + Passo 12 do E2E (`scripts/test-e2e-catalog-to-history.mjs`).
+- **Suíte E2E de API com Passo 12 Administrativo (`scripts/test-e2e-catalog-to-history.mjs --require-admin --allow-production-write`)**:
+  - **13/13 etapas aprovadas (`[APROVADO]`, exit code 0)**.
+  - Ciclo completo executado: cadastro de produto temporário (`deef103b-bd63-446b-ad2a-a56afad8204e`), compra direta com PIX simulado aprovado (`406377c6-b759-4852-b7cb-a7702fc47a35`, Tx `sim-e2e-1791864211849`), fila do fornecedor, transições `confirmado` -> `a-caminho` -> `entregue`, migração para histórico do comprador, validação administrativa via `GET /orders?scope=admin` (HTTP 200, `errors: []`) e teardown do produto temporário (`DELETE /products/:id` HTTP 204).
+- **Homologação Visual e Funcional Autenticada no Navegador (Chromium / Chrome DevTools MCP)**:
+  - **Proteção RBAC e Header**: Tentativa de acesso a `/admin` autenticado como `Comprador Teste` redirecionou imediatamente para `/`; menu de comprador não exibiu `Painel Admin`. Após login com `admin.teste@fraldinhalivre.com.br` em `/login?redirect=/admin`, o redirecionamento levou a `/admin` e o dropdown do Header exibiu o atalho `Painel Admin`.
+  - **Aba 1 — Usuários (`AdminUsersTab`)**: Leitura real da coleção `users` do Firestore via regra `request.auth.token.admin == true` carregou 10 usuários (`Todos (10)`, `Compradores (7)`, `Fornecedores (2)`, `Administradores (1)`). Validados busca textual (`admin.teste`), filtro por papel, cópia de UID e botão `Atualizar`.
+  - **Aba 2 — Pedidos (`AdminOrdersTab`)**: `GET /orders?scope=admin` carregou 94 pedidos (`Página 1 de 10`). Validados paginação (`Próxima` -> página 2), filtro textual pelo ID `406377c6-b759-4852-b7cb-a7702fc47a35` e modal **Detalhes do Pedido** (status `entregue`, comprador, fornecedor, pagamento PIX `approved`, itens, endereço completo e cópia de IDs).
+  - **Aba 3 — Produtos (`AdminProductsTab`)**: `GET /products?scope=admin` carregou 314 produtos (`Página 1 de 32`). No modal de moderação, validado bloqueio do botão `Confirmar` (`disabled`) para justificativa vazia ou `< 5` caracteres (`"abc"`). Executada desativação real do produto `364f0966-a648-42f3-8c98-3812effb527b` (`Basic Jumbinho idades`) seguida de reativação imediata, restaurando integralmente o estado original (`Ativo: Sim`) no catálogo de produção.
+  - **Aba 4 — Auditoria (`AdminAuditTab`)**: `GET /admin/audit-logs` carregou os 2 eventos reais gravados atomicamente no D1 (`product.deactivated` com `requestId: 4f2d4716-7a87-4c50-8a71-ce63db653c2d` e `product.activated` com `requestId: 3bae251f-bede-4338-af45-c4ec3913a6d4`), validando `actorId`, `targetId`, justificativas e cópia de `requestId`.
+  - **Responsividade Mobile (`390×844` e `360×800`)**: Validada sem overflow horizontal global (`innerWidth === docScrollWidth`, `hasHorizontalOverflow: false`).
+- **Ajustes técnicos executados e aprovados (2026-10-13)**:
+  1. `OrdersProvider` (`front/src/contexts/orders-context.tsx`): adicionada supressão de `GET /orders` para claims `admin` / `role === 'admin'` e rotas iniciadas em `/admin`. Console 100% limpo sem aviso 403. Testes em `orders-context.backend.test.tsx` verdes.
+  2. `Header.tsx` (`front/src/components/Header.tsx`): consome `isAdmin` de `useAuth()` e oculta `Minha conta` (`/minha-conta`) quando o usuário é administrador, exibindo apenas `Painel Admin` e `Sair`. Testes em `Header.test.tsx` verdes.
+  3. Suíte de testes do frontend: **68 arquivos de teste, 711 testes aprovados (`100% pass`)**, typecheck `tsc --noEmit` aprovado com 0 erros.
+- **Confirmação visual e funcional da jornada transacional em produção (2026-10-13)**:
+  1. **Comprador faz pedido a fornecedor**: Comprador (`comprador.teste@fraldinhalivre.com.br`) logado no navegador acessou a vitrine pública da `Distribuidora Sul Teste` (`/catalogo/fornecedor/cSK4LXIakuajmCSiJFaHOccck2s1`), adicionou `Pampers Premium Care RN` (R$ 24,00) à sacola e prosseguiu para o checkout (`/checkout`) com endereço de entrega completo na Avenida Paulista.
+  2. **Pagamento simulado aprovado**: No `/checkout`, selecionado método PIX com simulação aprovada instantaneamente gerando transação `txn-sim-1791869342548-1`. Pedido `#754772ca-93ad-44d0-bd09-1ff30732095a` criado, tela de confirmação exibida, sacola esvaziada, pedido listado em `/minha-conta` com status `Aguardando confirmação` e comprovante PIX. Estoque do produto deduzido atômica e imediatamente no banco D1 de 100 para 99 unidades.
+  3. **Fornecedor recebe e entrega**: Fornecedor (`fornecedor.teste1@fraldinhalivre.com.br`) logado em `/painel-fornecedor` visualizou incremento de R$ 24,00 na Receita Total (`R$ 1311,71`) e localizou o pedido `#754772ca-93ad-44d0-bd09-1ff30732095a` na aba Pedidos com status `Aguardando`. Executado ciclo completo de entrega via menu de ações: `Confirmar Pedido` (`confirmado`) -> `Despachar (A Caminho)` (`a-caminho`) -> `Marcar como Entregue` (`entregue`). Contadores e status atualizados em tempo real em produção.
+- **Relatórios completos**: [admin-homologacao-2026-10-12.md](../../docs/qa/admin-homologacao-2026-10-12.md) e capturas em `docs/qa/screenshots/`.
+- **Pendências remanescentes do projeto**: Feature 011 (gateway de pagamento real), Feature 010 (ativação de `RESEND_API_KEY` / push), Feature 018 Caso 10 (iPhone físico / Safari) e telemetria contábil de neurons no dashboard Cloudflare.
+
 # Estado atual — 2026-10-05
 
 ## Loja beta: fluxo completo sem dependência do chat
@@ -18,7 +72,7 @@
 - Código publicado corresponde ao merge `d49aadd386837e9fefc1503b04ad0b8701b685cd`; o commit posterior `bbfb68f` registra a validação de produção, sem mudança funcional.
 - Alteração preexistente de progresso preservada no stash identificado como `Preservar progresso local antes da sincronizacao 2026-10-05`; seu diagnóstico foi incorporado abaixo como evidência histórica, sem reintroduzir estados antigos como atuais.
 - Verificação desta sessão: igualdade de HEAD/origin/main, ausência de commits remotos faltantes, diff documental e caminhos dos relatórios. Suítes não reexecutadas: a tarefa sincroniza código já integrado e atualiza documentação; evidência de CI/deploy permanece nos registros acima. Nenhum deploy ou alteração de status do backlog realizado nesta sessão.
-- Pendências atuais preservadas: pagamento real (011), leilão inativo, QA administrativo autenticado, iPhone físico e medição oficial de neurons. Recuperação com Workers AI real comprovada na homologação integrada de 2026-10-04, conforme registro existente; não inferir nova homologação de produção nesta sincronização.
+- Pendências atuais preservadas: pagamento real (011), leilão inativo, QA administrativo autenticado (concluído em 2026-10-12 acima), iPhone físico e medição oficial de neurons. Recuperação com Workers AI real comprovada na homologação integrada de 2026-10-04, conforme registro existente; não inferir nova homologação de produção nesta sincronização.
 
 ### Diagnóstico local preservado — evidência de 2026-10-03
 

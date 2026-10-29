@@ -1,5 +1,5 @@
 import { drizzle } from 'drizzle-orm/d1'
-import { eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import type { Context } from 'hono'
 import { products } from '../schema/products'
 import type { Env, AppContext } from '../env'
@@ -75,7 +75,7 @@ export const productsGetHandler = async (c: Context<{ Bindings: Env; Variables: 
     return c.json(rows.map(normalizeProduct))
   }
 
-  const rows = await db.select().from(products).where(eq(products.active, true)).all()
+  const rows = await db.select().from(products).where(and(eq(products.active, true), sql`EXISTS (SELECT 1 FROM supplier_applications s WHERE s.uid = ${products.supplierId} AND s.status = 'aprovado')`)).all()
   return c.json(rows.map(normalizeProduct))
 }
 
@@ -99,23 +99,17 @@ export const productsPostHandler = async (c: Context<{ Bindings: Env; Variables:
     const db = drizzle(c.env.DB)
     const id = generateUUID()
 
-    await db.insert(products).values({
-      id,
-      supplierId: uid,
-      supplierEmail,
-      active: true,
-      priceCents: createRequest.priceCents,
-      name: createRequest.name,
-      brand: createRequest.brand,
-      size: createRequest.size,
-      quantity: createRequest.quantity,
-      slug: createRequest.slug,
-      categoria: createRequest.categoria,
-      descricao: createRequest.descricao,
-      atributos: createRequest.atributos,
-      badge: createRequest.badge,
-      imageUrl: createRequest.imageUrl,
-    })
+    const fields = { id, supplier_id: uid, supplier_email: supplierEmail ?? null, active: 1,
+      price_cents: createRequest.priceCents, name: createRequest.name, brand: createRequest.brand,
+      size: createRequest.size, quantity: createRequest.quantity, slug: createRequest.slug,
+      categoria: createRequest.categoria, descricao: createRequest.descricao,
+      atributos: JSON.stringify(createRequest.atributos), badge: createRequest.badge ?? null,
+      image_url: createRequest.imageUrl ?? null }
+    const result = await c.env.DB.prepare(`INSERT INTO products (${Object.keys(fields).join(', ')})
+      SELECT ${Object.keys(fields).map(() => '?').join(', ')}
+      WHERE EXISTS (SELECT 1 FROM supplier_applications WHERE uid = ? AND status = 'aprovado')`)
+      .bind(...Object.values(fields), uid).run()
+    if (result.meta.changes !== 1) return respondError(c, 'SUPPLIER_NOT_APPROVED', 403, 'Aprovação administrativa necessária para publicar ofertas.')
 
     const savedRows = await db.select().from(products).where(eq(products.id, id)).all()
     const saved = savedRows[0]
@@ -173,7 +167,9 @@ export const productsPutHandler = async (c: Context<{ Bindings: Env; Variables: 
       }
     }
 
-    await db.update(products).set(finalUpdateRequest).where(eq(products.id, id))
+    const updatedResult = await db.update(products).set(finalUpdateRequest).where(and(eq(products.id, id),
+      sql`EXISTS (SELECT 1 FROM supplier_applications WHERE uid = ${uid} AND status = 'aprovado')`)).returning({ id: products.id })
+    if (updatedResult.length === 0) return respondError(c, 'SUPPLIER_NOT_APPROVED', 403, 'Aprovação administrativa necessária para editar ofertas.')
 
     const updatedRows = await db.select().from(products).where(eq(products.id, id)).all()
     const updated = updatedRows[0]

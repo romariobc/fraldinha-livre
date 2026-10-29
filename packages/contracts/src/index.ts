@@ -1,5 +1,6 @@
 export * from './address'
 export * from './auth'
+export * from './supplier'
 export * from './chat'
 export * from './order'
 export * from './product'

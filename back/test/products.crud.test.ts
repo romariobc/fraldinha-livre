@@ -1,3 +1,4 @@
+import { approveFixtures, seedSuppliers } from './approve-fixtures'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { Hono } from 'hono'
 import { drizzle } from 'drizzle-orm/d1'
@@ -15,6 +16,7 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
 
   beforeAll(async () => {
     await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
+    await approveFixtures(env.DB, ...seedSuppliers, 'uid-fornecedor-teste', 'uid-outro-fornecedor', 'uid-fornecedor-a', 'uid-fornecedor-b', 'supplier-a')
 
     const db = drizzle(env.DB)
     existingProductId = `crud-test-produto-1-${Date.now()}`

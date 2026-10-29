@@ -1,5 +1,6 @@
 'use client'
 
+import AdminSupplierApprovals from './AdminSupplierApprovals'
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
@@ -179,6 +180,7 @@ export default function AdminUsersTab() {
 
   return (
     <div className="space-y-4" data-testid="admin-users-tab">
+      <AdminSupplierApprovals />
       {/* Top Controls: Search, Filter, Refresh */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="flex flex-1 items-center gap-2 max-w-md">

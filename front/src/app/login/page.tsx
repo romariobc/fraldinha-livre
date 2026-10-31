@@ -37,7 +37,7 @@ function LoginPageSkeleton() {
 function LoginPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { signInGoogle, signInEmail, user, role, loading } = useAuth()
+  const { signInGoogle, signInEmail, user, profile, role, loading } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -50,8 +50,10 @@ function LoginPageContent() {
   // Efeito (nao no render) para evitar "Cannot update a component while rendering".
   useEffect(() => {
     if (loading || !user) return
-    if (role === null) {
+    if (role === null || (profile === null && role !== 'admin')) {
       router.push('/onboarding')
+    } else if (role === 'admin') {
+      router.push('/admin')
     } else if (role === 'fornecedor') {
       router.push('/painel-fornecedor')
     } else {
@@ -59,7 +61,7 @@ function LoginPageContent() {
       const redirect = searchParams.get('redirect')
       router.push(safeRedirect(redirect))
     }
-  }, [loading, user, role, router, searchParams])
+  }, [loading, user, profile, role, router, searchParams])
 
   async function handleGoogleSignIn() {
     if (isLoading || loading) return
@@ -200,9 +202,9 @@ function LoginPageContent() {
                 Lembrar de mim
               </Label>
             </div>
-            <span className="text-sm font-semibold text-brand-muted cursor-default opacity-50">
+            <Link href="/recuperar-acesso" className="text-sm font-semibold text-primary-dark hover:underline">
               Esqueci minha senha
-            </span>
+            </Link>
           </div>
 
           <Button

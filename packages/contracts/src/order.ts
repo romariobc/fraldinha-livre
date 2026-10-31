@@ -61,6 +61,11 @@ export type CreateOrderRequest = z.infer<typeof CreateOrderRequestSchema>
 // Body do PATCH /orders/:id/status — atualizacao de status pelo fornecedor ou admin
 export const UpdateOrderStatusRequestSchema = z.object({
   status: OrderStatusSchema,
+  reason: z.string().trim().min(5).max(500).optional(),
+}).superRefine((value, ctx) => {
+  if (value.status === 'cancelado' && !value.reason) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['reason'], message: 'Informe o motivo do cancelamento (5 a 500 caracteres).' })
+  }
 })
 export type UpdateOrderStatusRequest = z.infer<typeof UpdateOrderStatusRequestSchema>
 

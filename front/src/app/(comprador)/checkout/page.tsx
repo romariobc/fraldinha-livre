@@ -8,10 +8,8 @@ import { useOrders } from '@/contexts/orders-context'
 import { useMarket } from '@/contexts/market-context'
 import { useProducts } from '@/contexts/products-context'
 import { STORE_SUPPLIERS } from '@/lib/suppliers'
-import type { Address, Order } from '@/lib/account-mock'
+import type { Address, Order } from '@/lib/domain/account'
 import type { PaymentMethod } from '@/lib/ports/payment'
-import { lineTotal, cartSubtotal } from '@/lib/domain/cart'
-import { formatPrice } from '@/lib/utils'
 import { ShoppingBag } from 'lucide-react'
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { MockPaymentGateway } from '@/lib/adapters/mock-payment-gateway'
@@ -20,6 +18,10 @@ import { orderToDirectOrder } from '@/lib/order-adapters'
 import { InsufficientStockError } from '@/lib/ports/order-repository'
 import { toast } from 'sonner'
 import { showErrorToast, diagnoseError, logFrontendDiagnostic } from '@/lib/frontend-diagnostics'
+import { CheckoutAddressStep } from '@/components/checkout/CheckoutAddressStep'
+import { CheckoutReviewStep } from '@/components/checkout/CheckoutReviewStep'
+import { CheckoutPaymentStep } from '@/components/checkout/CheckoutPaymentStep'
+import { CheckoutConfirmationStep } from '@/components/checkout/CheckoutConfirmationStep'
 
 type CheckoutStep = 'endereco' | 'revisao' | 'pagamento' | 'confirmacao'
 
@@ -284,445 +286,42 @@ function CheckoutContent() {
     <section className="bg-brand-bg min-h-[60vh] py-8">
       <div className="container-fl">
         {/* Step: Endereco */}
-        {step === 'endereco' && (
-          <div className="max-w-2xl mx-auto">
-            <h1 className="font-display font-black text-2xl text-brand-text mb-8">
-              Endereço de entrega
-            </h1>
-
-            <div className="bg-white rounded-card shadow-card p-6 space-y-6">
-              <div>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="address"
-                    checked={!useCustomAddress}
-                    onChange={() => setUseCustomAddress(false)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-semibold text-brand-text">
-                    Usar endereço do cadastro
-                  </span>
-                </label>
-                {!useCustomAddress && (
-                  <div className="mt-3 ml-7 p-3 bg-slate-50 rounded text-xs text-brand-muted">
-                    {!isAddressValid && <p>Seu cadastro não tem um endereço completo. Informe outro endereço para continuar.</p>}
-                    <p>
-                      {defaultAddress.logradouro}, {defaultAddress.numero}
-                      {defaultAddress.complemento && ` — ${defaultAddress.complemento}`}
-                    </p>
-                    <p>
-                      {defaultAddress.bairro}, {defaultAddress.cidade}/{defaultAddress.estado}
-                    </p>
-                    <p>{defaultAddress.cep}</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="border-t border-slate-100 pt-6">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="radio"
-                    name="address"
-                    checked={useCustomAddress}
-                    onChange={() => setUseCustomAddress(true)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-semibold text-brand-text">Outro endereço</span>
-                </label>
-
-                {useCustomAddress && (
-                  <div className="mt-3 ml-7 space-y-3">
-                    <input
-                      type="text"
-                      placeholder="Logradouro *"
-                      value={customAddress.logradouro}
-                      onChange={(e) =>
-                        setCustomAddress({ ...customAddress, logradouro: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Número *"
-                      value={customAddress.numero}
-                      onChange={(e) =>
-                        setCustomAddress({ ...customAddress, numero: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Complemento"
-                      value={customAddress.complemento || ''}
-                      onChange={(e) =>
-                        setCustomAddress({ ...customAddress, complemento: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
-                    />
-                    <input
-                      type="text"
-                      placeholder="Bairro"
-                      value={customAddress.bairro}
-                      onChange={(e) =>
-                        setCustomAddress({ ...customAddress, bairro: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
-                    />
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="text"
-                        placeholder="CEP *"
-                        value={customAddress.cep}
-                        onChange={(e) =>
-                          setCustomAddress({ ...customAddress, cep: e.target.value })
-                        }
-                        className="px-3 py-2 border border-slate-300 rounded text-sm"
-                      />
-                      <input
-                        type="text"
-                        placeholder="Cidade *"
-                        value={customAddress.cidade}
-                        onChange={(e) =>
-                          setCustomAddress({ ...customAddress, cidade: e.target.value })
-                        }
-                        className="px-3 py-2 border border-slate-300 rounded text-sm"
-                      />
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="UF (ex: SP) *"
-                      value={customAddress.estado}
-                      onChange={(e) =>
-                        setCustomAddress({
-                          ...customAddress,
-                          estado: e.target.value.toUpperCase(),
-                        })
-                      }
-                      maxLength={2}
-                      className="w-full px-3 py-2 border border-slate-300 rounded text-sm"
-                    />
-                    {!isAddressValid && (
-                      <p className="text-xs text-red-600">
-                        Preencha todos os campos obrigatórios (*)
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="border-t border-slate-100 pt-6 flex gap-3">
-                <button
-                  disabled
-                  className="flex-1 py-3 px-4 border border-slate-300 rounded-full font-display font-bold text-sm opacity-50 cursor-not-allowed"
-                >
-                  Voltar
-                </button>
-                <button
-                  onClick={() => setStep('revisao')}
-                  disabled={!isAddressValid}
-                  className="flex-1 py-3 px-4 bg-primary-dark text-white rounded-full font-display font-bold text-sm hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Continuar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {step === 'endereco' && <CheckoutAddressStep
+          useCustomAddress={useCustomAddress}
+          setUseCustomAddress={setUseCustomAddress}
+          isAddressValid={isAddressValid}
+          defaultAddress={defaultAddress}
+          customAddress={customAddress}
+          setCustomAddress={setCustomAddress}
+          onContinue={() => setStep('revisao')}
+        />}
 
         {/* Step: Revisao */}
-        {step === 'revisao' && (
-          <div className="max-w-2xl mx-auto">
-            <h1 className="font-display font-black text-2xl text-brand-text mb-8">
-              Revisão do pedido
-            </h1>
-
-            <div className="bg-white rounded-card shadow-card overflow-hidden mb-6">
-              {/* Itens agrupados por fornecedor */}
-              <div className="divide-y divide-slate-100">
-                {Array.from(bySupplier.entries()).map(([supplierId, supplierItems]) => {
-                  const supplierName = supplierItems[0]?.supplierName || 'Fornecedor'
-                  const supplierSubtotal = cartSubtotal(supplierItems)
-
-                  return (
-                    <div key={supplierId} className="p-6">
-                      <h2 className="font-display font-bold text-base text-brand-text mb-4">
-                        {supplierName}
-                      </h2>
-
-                      <div className="space-y-2 mb-4">
-                        {supplierItems.map((item) => (
-                          <div
-                            key={`${item.productId}-${item.supplierId}`}
-                            className="flex items-center justify-between text-sm"
-                          >
-                            <span className="text-brand-text">
-                              {item.productName} × {item.quantity}
-                            </span>
-                            <span className="font-semibold text-brand-text">
-                              {formatPrice(lineTotal(item))}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="border-t border-slate-100 pt-3 flex items-center justify-between">
-                        <span className="text-sm font-semibold text-brand-muted">
-                          Subtotal
-                        </span>
-                        <span className="font-display font-bold text-base text-brand-text">
-                          {formatPrice(supplierSubtotal)}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              {/* Endereço de entrega */}
-              <div className="border-t border-slate-100 p-6 bg-slate-50">
-                <p className="text-xs font-semibold text-brand-muted uppercase mb-2">
-                  Entrega em
-                </p>
-                <p className="text-sm text-brand-text">
-                  {deliveryAddress.logradouro}, {deliveryAddress.numero}
-                  {deliveryAddress.complemento && ` — ${deliveryAddress.complemento}`}
-                </p>
-                <p className="text-sm text-brand-text">
-                  {deliveryAddress.bairro}, {deliveryAddress.cidade}/{deliveryAddress.estado}
-                </p>
-                <p className="text-sm text-brand-text">{deliveryAddress.cep}</p>
-              </div>
-
-              {/* Total */}
-              <div className="p-6 border-t border-slate-100">
-                <div className="flex items-center justify-between">
-                  <span className="font-display font-bold text-base text-brand-text">Total</span>
-                  <span className="font-display font-black text-2xl text-brand-text">
-                    {formatPrice(subtotal)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setStep('endereco')}
-                className="flex-1 py-3 px-4 border border-slate-300 rounded-full font-display font-bold text-sm hover:bg-slate-50 transition-colors text-brand-text"
-              >
-                Voltar
-              </button>
-              <button
-                onClick={() => setStep('pagamento')}
-                className="flex-1 py-3 px-4 bg-primary-dark text-white rounded-full font-display font-bold text-sm hover:bg-primary transition-colors"
-              >
-                Continuar
-              </button>
-            </div>
-          </div>
-        )}
+        {step === 'revisao' && <CheckoutReviewStep
+          bySupplier={bySupplier}
+          deliveryAddress={deliveryAddress}
+          subtotal={subtotal}
+          onBack={() => setStep('endereco')}
+          onContinue={() => setStep('pagamento')}
+        />}
 
         {/* Step: Pagamento */}
-        {step === 'pagamento' && (
-          <div className="max-w-2xl mx-auto">
-            <h1 className="font-display font-black text-2xl text-brand-text mb-8">
-              Forma de pagamento
-            </h1>
-
-            <div className="bg-white rounded-card shadow-card p-6 space-y-6">
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <p className="text-sm font-bold text-amber-900 mb-1">
-                  Pagamento simulado
-                </p>
-                <p className="text-xs text-amber-800 leading-relaxed">
-                  Ambiente de demonstração — nenhuma cobrança real será realizada. Esta etapa valida os contratos de pagamento e a criação de pedidos no sistema.
-                </p>
-              </div>
-
-              {/* Erro de pagamento recusado */}
-              {paymentState === 'declined' && paymentError && (
-                <div
-                  role="alert"
-                  className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800 space-y-1"
-                >
-                  <p className="font-bold">Pagamento simulado recusado</p>
-                  <p className="text-xs text-red-700">{paymentError}</p>
-                  <p className="text-xs text-brand-muted mt-2">
-                    Nenhum pedido foi gerado e sua sacola continua intacta. Para prosseguir no teste, selecione &quot;Aprovar simulação&quot; abaixo.
-                  </p>
-                </div>
-              )}
-
-              {/* Forma de pagamento */}
-              <div className="space-y-3">
-                <p className="text-xs font-bold text-brand-muted uppercase tracking-wider">
-                  Método de pagamento
-                </p>
-                <label className="flex items-center gap-3 cursor-pointer p-3 border border-slate-200 rounded-lg hover:border-primary-dark/40 transition-colors">
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="pix"
-                    checked={paymentMethod === 'pix'}
-                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                    className="w-4 h-4 text-primary-dark"
-                  />
-                  <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-brand-text">Pix</span>
-                    <span className="text-xs text-brand-muted">Aprovação instantânea na simulação</span>
-                  </div>
-                </label>
-
-                <label className="flex items-center gap-3 cursor-pointer p-3 border border-slate-200 rounded-lg hover:border-primary-dark/40 transition-colors">
-                  <input
-                    type="radio"
-                    name="payment"
-                    value="card"
-                    checked={paymentMethod === 'card'}
-                    onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                    className="w-4 h-4 text-primary-dark"
-                  />
-                  <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-brand-text">Cartão de crédito</span>
-                    <span className="text-xs text-brand-muted">Simulação sem coleta de dados do cartão (RN de segurança)</span>
-                  </div>
-                </label>
-              </div>
-
-              {/* Controle de Simulação para QA / Teste */}
-              <div className="border-t border-slate-100 pt-5 space-y-3">
-                <p className="text-xs font-bold text-brand-muted uppercase tracking-wider">
-                  Cenário de teste da simulação
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <label className={`flex items-center gap-2.5 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    simulationOutcome === 'approved'
-                      ? 'border-emerald-500 bg-emerald-50/50'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="simulationOutcome"
-                      value="approved"
-                      checked={simulationOutcome === 'approved'}
-                      onChange={() => {
-                        setSimulationOutcome('approved')
-                        if (paymentState === 'declined') {
-                          setPaymentState('idle')
-                          setPaymentError(null)
-                        }
-                      }}
-                      className="w-4 h-4 text-emerald-600"
-                    />
-                    <div className="text-xs">
-                      <p className="font-bold text-emerald-900">Aprovar simulação</p>
-                      <p className="text-emerald-700">Cria o pedido e conclui a compra</p>
-                    </div>
-                  </label>
-
-                  <label className={`flex items-center gap-2.5 p-3 rounded-lg border cursor-pointer transition-colors ${
-                    simulationOutcome === 'declined'
-                      ? 'border-rose-500 bg-rose-50/50'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="simulationOutcome"
-                      value="declined"
-                      checked={simulationOutcome === 'declined'}
-                      onChange={() => setSimulationOutcome('declined')}
-                      className="w-4 h-4 text-rose-600"
-                    />
-                    <div className="text-xs">
-                      <p className="font-bold text-rose-900">Recusar simulação</p>
-                      <p className="text-rose-700">Testa recusa sem gerar pedido</p>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              <div className="border-t border-slate-100 pt-6 flex gap-3">
-                <button
-                  onClick={() => setStep('revisao')}
-                  disabled={submitting}
-                  className="flex-1 py-3 px-4 border border-slate-300 rounded-full font-display font-bold text-sm hover:bg-slate-50 transition-colors text-brand-text disabled:opacity-50"
-                >
-                  Voltar
-                </button>
-                <button
-                  onClick={handlePagar}
-                  disabled={submitting}
-                  className="flex-1 py-3 px-4 bg-primary-dark text-white rounded-full font-display font-bold text-sm hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-                >
-                  {paymentState === 'processing' ? 'Processando pagamento...' : 'Pagar'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {step === 'pagamento' && <CheckoutPaymentStep
+          paymentState={paymentState}
+          paymentError={paymentError}
+          paymentMethod={paymentMethod}
+          setPaymentMethod={setPaymentMethod}
+          simulationOutcome={simulationOutcome}
+          setSimulationOutcome={setSimulationOutcome}
+          setPaymentState={setPaymentState}
+          setPaymentError={setPaymentError}
+          submitting={submitting}
+          onBack={() => setStep('revisao')}
+          onPay={handlePagar}
+        />}
 
         {/* Step: Confirmacao */}
-        {step === 'confirmacao' && (
-          <div className="max-w-2xl mx-auto">
-            <div className="bg-white rounded-card shadow-card p-12 text-center">
-              <div className="w-16 h-16 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
-                <svg
-                  className="w-8 h-8 text-green-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              </div>
-
-              <h1 className="font-display font-black text-2xl text-brand-text mb-4">
-                Pedido confirmado!
-              </h1>
-
-              <p className="text-sm text-brand-muted mb-2">
-                {createdOrders.length} pedido{createdOrders.length !== 1 ? 's' : ''} criado{createdOrders.length !== 1 ? 's' : ''} com sucesso.
-              </p>
-
-              {completedPayment && (
-                <div className="my-6 p-4 bg-slate-50 rounded-lg text-xs text-brand-text inline-block text-left border border-slate-200">
-                  <p className="font-bold text-brand-text mb-1">Comprovante de pagamento simulado</p>
-                  <p className="text-brand-muted">
-                    Método: <span className="font-medium text-brand-text">{completedPayment.method === 'pix' ? 'Pix' : 'Cartão de crédito'}</span>
-                  </p>
-                  <p className="text-brand-muted">
-                    Transação: <span className="font-mono text-brand-text">{completedPayment.transactionId}</span>
-                  </p>
-                  <p className="text-emerald-700 font-semibold mt-1">Status: Simulado e Aprovado</p>
-                </div>
-              )}
-
-              <p className="text-sm text-brand-muted mb-8">
-                Acompanhe seu pedido em Minha Conta.
-              </p>
-
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                <Link
-                  href="/minha-conta"
-                  className="inline-block py-3 px-6 rounded-full font-display font-bold text-sm transition-colors bg-primary-dark text-white hover:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-dark focus-visible:ring-offset-2"
-                >
-                  Ver meus pedidos
-                </Link>
-                <Link
-                  href="/catalogo"
-                  className="inline-block py-3 px-6 rounded-full font-display font-semibold text-sm transition-colors border-2 border-primary/30 text-primary-dark hover:bg-primary-light"
-                >
-                  Continuar comprando
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
+        {step === 'confirmacao' && <CheckoutConfirmationStep createdOrders={createdOrders} completedPayment={completedPayment} />}
       </div>
     </section>
   )

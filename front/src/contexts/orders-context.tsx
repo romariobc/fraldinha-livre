@@ -1,36 +1,20 @@
 'use client'
 
+import { contractOrderToAccountOrder } from '@/lib/order-adapters'
+
 import { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
-import { Order, Address } from '@/lib/account-mock'
+import type { Order, Address } from '@/lib/domain/account'
 import type { CartItem } from '@/lib/domain/cart'
 import { buildOrdersFromCart } from '@/lib/domain/order'
 import type { OrderRepository } from '@/lib/ports/order-repository'
 import { MockOrderRepository } from '@/lib/adapters/mock-order-repository'
 import { HttpOrderRepository } from '@/lib/adapters/http-order-repository'
-import type { Order as ContractOrder, CreateOrderRequest } from '@contracts'
+import type { CreateOrderRequest } from '@contracts'
 import { diagnoseError, logFrontendDiagnostic, type DiagnosticResult } from '@/lib/frontend-diagnostics'
 
-function contractOrderToAccountMockOrder(order: ContractOrder): Order {
-  return {
-    id: order.id,
-    type: order.type,
-    product: order.product,
-    quantity: order.quantity,
-    unit: order.unit,
-    deliveryAddress: order.deliveryAddress,
-    status: order.status,
-    createdAt: order.createdAt,
-    price: order.price,
-    supplierId: order.supplierId,
-    supplierName: order.supplierName,
-    items: order.items,
-    paymentMethod: order.paymentMethod,
-    paymentTransactionId: order.paymentTransactionId,
-    paymentStatus: order.paymentStatus,
-  }
-}
+
 
 export interface OrdersContextType {
   orders: Order[]
@@ -117,7 +101,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
         const result = await repo.list()
         if (cancelled) return
-        setOrders(result.map(contractOrderToAccountMockOrder))
+        setOrders(result.map(contractOrderToAccountOrder))
       } catch (err) {
         if (cancelled) return
         const diag = diagnoseError(err, { operation: 'orders.load_list' })
@@ -265,7 +249,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
       // DEC-A: uma chamada POST /orders por pedido resultante do split.
       const created = await repo.create(createRequest, orderKey)
-      newOrders.push(contractOrderToAccountMockOrder(created))
+      newOrders.push(contractOrderToAccountOrder(created))
     }
 
     setOrders((prev) => [...prev, ...newOrders])
@@ -274,7 +258,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
   const cancelOrder = async (orderId: string): Promise<void> => {
     const updated = await repo.cancel(orderId)
-    const mapped = contractOrderToAccountMockOrder(updated)
+    const mapped = contractOrderToAccountOrder(updated)
     setOrders((prev) => prev.map((o) => (o.id === orderId ? mapped : o)))
   }
 

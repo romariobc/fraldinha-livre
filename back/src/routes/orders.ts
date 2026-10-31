@@ -1,5 +1,5 @@
 import { drizzle } from 'drizzle-orm/d1'
-import { eq, sql, inArray, and, gte } from 'drizzle-orm'
+import { eq, sql, inArray, and } from 'drizzle-orm'
 import type { Context } from 'hono'
 import { OrderSchema, CreateOrderRequestSchema, UpdateOrderStatusRequestSchema } from '../../../packages/contracts/src/order'
 import { orders, orderItems } from '../schema/orders'
@@ -11,6 +11,7 @@ import { notifySupplierOfNewOrder, sendViaResend } from '../lib/notifications'
 import { hasAnyRole } from '../middleware/auth'
 import { logger } from '../lib/logger'
 import { respondError, respondZodError } from '../lib/errors'
+import { createOrderAtomically, transitionOrderAtomically, requestFingerprint } from '../lib/order-atomicity'
 
 /**
  * Gera um UUID v4 usando a API de crypto disponível (Workers/Node).
@@ -26,6 +27,28 @@ function generateUUID(): string {
     .join('')
   // Formata como UUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
   return `${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}`
+}
+
+type OrderContext = Context<{ Bindings: Env; Variables: AppContext['Variables'] }>
+type OrderDb = ReturnType<typeof drizzle>
+async function loadOrderResponse(db: OrderDb, orderId: string) {
+  const order = await db.select().from(orders).where(eq(orders.id, orderId)).get()
+  if (!order) throw new Error('Pedido não encontrado após operação persistida.')
+  const items = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId)).all()
+  return OrderSchema.parse({
+    ...order, deliveryAddress: JSON.parse(order.deliveryAddress), items,
+    price: order.price ?? undefined, supplierId: order.supplierId ?? undefined,
+    supplierName: order.supplierName ?? undefined, paymentMethod: order.paymentMethod ?? undefined,
+    paymentTransactionId: order.paymentTransactionId ?? undefined, paymentStatus: order.paymentStatus ?? undefined,
+  })
+}
+async function replayOrder(c: OrderContext, db: OrderDb, order: typeof orders.$inferSelect, fingerprint: string) {
+  if (order.uid !== c.get('uid')) return respondError(c, 'FORBIDDEN', 403, 'Acesso negado para esta chave de idempotência.')
+  const response = await loadOrderResponse(db, order.id)
+  // Legacy rows have no hash: compare their immutable snapshot without inventing history.
+  const original = order.requestFingerprint ?? await requestFingerprint(CreateOrderRequestSchema.parse(response))
+  if (original !== fingerprint) return respondError(c, 'IDEMPOTENCY_CONFLICT', 409, 'Chave de idempotência reutilizada com conteúdo diferente.')
+  return c.json(response, 200)
 }
 
 /**
@@ -128,420 +151,103 @@ export const ordersGetHandler = async (c: Context<{ Bindings: Env; Variables: Ap
   }
 }
 
-/**
- * POST /orders — cria um novo pedido.
- * Servidor define: id, uid, createdAt, status, type.
- * Grava order + todos os items num único db.batch() para garantir atomicidade (RN-03).
- */
-export const ordersPostHandler = async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>) => {
+import { isSupplierApproved } from '../lib/supplier-approval'
+
+export const ordersPostHandler = async (c: OrderContext) => {
   const uid = c.get('uid')
-  if (!uid) {
-    return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
-  }
-  if (!hasAnyRole(c, ['comprador'])) {
-    return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
-  }
-
+  if (!uid) return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
+  if (!hasAnyRole(c, ['comprador'])) return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
   try {
-    const idempotencyKey = c.req.header('idempotency-key') || c.req.header('Idempotency-Key')
-    if (!idempotencyKey || idempotencyKey.trim() === '') {
-      return respondError(c, 'IDEMPOTENCY_KEY_REQUIRED', 400, 'Cabeçalho Idempotency-Key é obrigatório.')
-    }
-
-    const body = await c.req.json()
-
-    // Valida body contra CreateOrderRequestSchema
-    // Zod ignora chaves desconhecidas, então id/uid/status/createdAt vindos do body são descartados
-    const createRequest = CreateOrderRequestSchema.parse(body)
-
-    // RN-P2b: price (total) e obrigatorio nesta rota, mesmo sendo .optional() no schema compartilhado.
-    if (createRequest.price === undefined) {
-      return respondError(c, 'INVALID_REQUEST', 400, 'Campo price é obrigatório.')
-    }
-
-    // RN-P2c: supplierId e obrigatorio nesta rota, mesmo sendo .optional() no schema compartilhado.
-    if (createRequest.supplierId === undefined) {
-      return respondError(c, 'INVALID_REQUEST', 400, 'Campo supplierId é obrigatório.')
-    }
-
+    const idempotencyKey = c.req.header('Idempotency-Key')?.trim()
+    if (!idempotencyKey) return respondError(c, 'IDEMPOTENCY_KEY_REQUIRED', 400, 'Cabeçalho Idempotency-Key é obrigatório.')
+    const request = CreateOrderRequestSchema.parse(await c.req.json().catch(() => null))
+    if (request.price === undefined) return respondError(c, 'INVALID_REQUEST', 400, 'Campo price é obrigatório.')
+    if (request.supplierId === undefined) return respondError(c, 'INVALID_REQUEST', 400, 'Campo supplierId é obrigatório.')
     const db = drizzle(c.env.DB)
-
-    // Lógica de Idempotência: busca se já existe um pedido com este idempotencyKey
-    const existingOrder = await db.select().from(orders).where(eq(orders.idempotencyKey, idempotencyKey)).get()
-    if (existingOrder) {
-      if (existingOrder.uid !== uid) {
-        return respondError(c, 'FORBIDDEN', 403, 'Acesso negado para esta chave de idempotência.')
-      }
-      const existingItems = await db.select().from(orderItems).where(eq(orderItems.orderId, existingOrder.id)).all()
-      const deliveryAddressObj = JSON.parse(existingOrder.deliveryAddress)
-      const responseExistingOrder = {
-        id: existingOrder.id,
-        uid: existingOrder.uid,
-        type: existingOrder.type,
-        status: existingOrder.status,
-        product: existingOrder.product,
-        quantity: existingOrder.quantity,
-        unit: existingOrder.unit,
-        price: existingOrder.price ?? undefined,
-        supplierId: existingOrder.supplierId ?? undefined,
-        supplierName: existingOrder.supplierName ?? undefined,
-        deliveryAddress: deliveryAddressObj,
-        createdAt: existingOrder.createdAt,
-        paymentMethod: (existingOrder.paymentMethod as any) ?? undefined,
-        paymentTransactionId: existingOrder.paymentTransactionId ?? undefined,
-        paymentStatus: (existingOrder.paymentStatus as any) ?? undefined,
-        items: existingItems.map((item) => ({
-          productId: item.productId,
-          productName: item.productName,
-          unitPrice: item.unitPrice,
-          quantity: item.quantity,
-          unit: item.unit,
-        })),
-      }
-      const validatedExisting = OrderSchema.parse(responseExistingOrder)
-      logger.info(c, 'order.idempotency.reused', { orderId: existingOrder.id })
-      return c.json(validatedExisting, 200)
+    const fingerprint = await requestFingerprint(request)
+    const existing = await db.select().from(orders).where(eq(orders.idempotencyKey, idempotencyKey)).get()
+    if (existing) return replayOrder(c, db, existing, fingerprint)
+    if (new Set(request.items.map((item) => item.productId)).size !== request.items.length) {
+      return respondError(c, 'INVALID_REQUEST', 400, 'Produtos repetidos devem ser agrupados em um único item.')
     }
 
-    // Busca em lote (nao 1 query por item) - RN-P2/P2c.
-    const productIds = createRequest.items.map((item) => item.productId)
-    const productRows = await db.select().from(products).where(inArray(products.id, productIds)).all()
-    const productById = new Map(productRows.map((p) => [p.id, p]))
+    const validateCatalog = (rows: (typeof products.$inferSelect)[]) => {
+      const byId = new Map(rows.map((product) => [product.id, product]))
+      for (const item of request.items) {
+        const product = byId.get(item.productId)
+        if (!product || !product.active) return respondError(c, 'PRODUCT_NOT_FOUND', 400, 'Produto não encontrado ou inativo.')
+        if (item.unitPrice !== product.priceCents) return respondError(c, 'PRICE_MISMATCH', 400, 'Preço divergente do catálogo.')
+        if (product.supplierId !== request.supplierId) return respondError(c, 'SUPPLIER_MISMATCH', 400, 'Fornecedor divergente do catálogo.')
+        if (product.quantity < item.quantity) return respondError(c, 'INSUFFICIENT_STOCK', 409, `Estoque insuficiente para o produto ${item.productName || item.productId} no momento da finalização.`)
+      }
+      return null
+    }
+    const ids = request.items.map((item) => item.productId)
+    const productRows = await db.select().from(products).where(inArray(products.id, ids)).all()
+    const invalidCatalog = validateCatalog(productRows)
+    if (invalidCatalog) return invalidCatalog
+    const total = request.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
+    if (request.price !== total) return respondError(c, 'TOTAL_MISMATCH', 400, 'Total divergente da soma dos itens.')
 
-    // Falha rapido no primeiro item invalido (RN-P3), antes de qualquer escrita (RN-P4).
-    for (const item of createRequest.items) {
-      const product = productById.get(item.productId)
-      if (!product) {
-        return respondError(c, 'PRODUCT_NOT_FOUND', 400, `Produto não encontrado: ${item.productId}`)
-      }
-      if (item.unitPrice !== product.priceCents) {
-        return respondError(c, 'PRICE_MISMATCH', 400, `Preço divergente para o produto: ${item.productId}`)
-      }
-      if (product.supplierId !== createRequest.supplierId) {
-        return respondError(c, 'SUPPLIER_MISMATCH', 400, `Fornecedor divergente para o produto: ${item.productId}`)
-      }
-      if (product.quantity < item.quantity) {
-        logger.warn(c, 'order.stock.insufficient', { productId: item.productId })
-        return respondError(c, 'INSUFFICIENT_STOCK', 409, `Estoque insuficiente para o produto ${item.productName || item.productId} no momento da finalização.`)
-      }
+    if (!await isSupplierApproved(c.env.DB, request.supplierId)) return respondError(c, 'SUPPLIER_NOT_APPROVED', 409, 'Fornecedor indisponível para novas compras.')
+
+    const orderId = crypto.randomUUID()
+    let inserted: boolean
+    try {
+      inserted = await createOrderAtomically(c.env.DB, {
+        orderId, uid, idempotencyKey, fingerprint, request,
+        requestId: c.get('requestId') ?? null, createdAt: new Date().toISOString(),
+      })
+    } catch (error) {
+      // A concurrent equivalent request can win the unique key. No stock compensation is necessary.
+      const winner = await db.select().from(orders).where(eq(orders.idempotencyKey, idempotencyKey)).get()
+      if (winner) return replayOrder(c, db, winner, fingerprint)
+      throw error
+    }
+    if (!inserted) {
+      if (!await isSupplierApproved(c.env.DB, request.supplierId)) return respondError(c, 'SUPPLIER_NOT_APPROVED', 409, 'Fornecedor indisponível para novas compras.')
+      const fresh = await db.select().from(products).where(inArray(products.id, ids)).all()
+      return validateCatalog(fresh) ?? respondError(c, 'INSUFFICIENT_STOCK', 409, 'Catálogo alterado durante a compra. Atualize e tente novamente.')
     }
 
-    // RN-P2b: total tem que bater com a soma dos itens.
-    const computedTotal = createRequest.items.reduce(
-      (sum, item) => sum + item.unitPrice * item.quantity,
-      0,
-    )
-    if (createRequest.price !== computedTotal) {
-      return respondError(c, 'TOTAL_MISMATCH', 400, 'Total divergente da soma dos itens.')
-    }
-
-    // Servidor define metadados (RN-03)
-    const orderId = generateUUID()
-    const createdAt = new Date().toISOString()
-    const status = 'aguardando'
-    const type = 'compra-direta'
-
-    // Serializa deliveryAddress para JSON
-    const deliveryAddressJson = JSON.stringify(createRequest.deliveryAddress)
-
-    // Constrói a query de inserção de order
-    const orderInsert = db.insert(orders).values({
-      id: orderId,
-      uid,
-      type,
-      status,
-      product: createRequest.product,
-      quantity: createRequest.quantity,
-      unit: createRequest.unit,
-      price: createRequest.price ?? null,
-      supplierId: createRequest.supplierId ?? null,
-      supplierName: createRequest.supplierName ?? null,
-      deliveryAddress: deliveryAddressJson,
-      createdAt,
-      idempotencyKey,
-      paymentMethod: createRequest.paymentMethod ?? null,
-      paymentTransactionId: createRequest.paymentTransactionId ?? null,
-      paymentStatus: createRequest.paymentStatus ?? null,
+    await notifySupplierOfNewOrder({
+      supplierEmail: productRows[0]?.supplierEmail, orderId,
+      items: request.items.map((item) => ({ productName: item.productName, quantity: item.quantity, unit: item.unit })),
+      totalCents: request.price, requestId: c.get('requestId'),
+    }, {
+      notificationsEnabled: c.env.NOTIFICATIONS_ENABLED === 'true',
+      sendEmail: (email) => sendViaResend(email, c.env.RESEND_API_KEY),
     })
-
-    // Constrói queries de inserção para cada item
-    const itemInserts = createRequest.items.map((item) =>
-      db.insert(orderItems).values({
-        orderId,
-        productId: item.productId,
-        productName: item.productName,
-        unitPrice: item.unitPrice,
-        quantity: item.quantity,
-        unit: item.unit,
-      }),
-    )
-
-    // Constrói e executa queries de decremento atômico de estoque com RETURNING
-    // para eliminar Race Condition (TOCTOU) e garantir que quantity >= requested na escrita.
-    const productUpdates = createRequest.items.map((item) =>
-      db.update(products)
-        .set({ quantity: sql`${products.quantity} - ${item.quantity}` })
-        .where(and(eq(products.id, item.productId), gte(products.quantity, item.quantity)))
-        .returning({ id: products.id })
-    )
-
-    let updateResults: { id: string }[][]
-    try {
-      updateResults = await db.batch(productUpdates as any)
-    } catch (batchError) {
-      // Se estourar constraint no D1 (ex: CHECK products_quantity_check), aborta imediatamente com 409
-      logger.warn(c, 'stock.decrement.failed')
-      return respondError(c, 'INSUFFICIENT_STOCK', 409, 'Estoque insuficiente para um ou mais produtos no momento da finalização.')
-    }
-
-    const failedItemIndex = updateResults.findIndex((rows) => !rows || rows.length === 0)
-    if (failedItemIndex !== -1) {
-      // Compensação: restaura os itens que porventura foram decrementados nesta mesma tentativa
-      const rollbacks = []
-      for (let i = 0; i < createRequest.items.length; i++) {
-        if (i !== failedItemIndex && updateResults[i]?.length > 0) {
-          const itemToRollback = createRequest.items[i]
-          rollbacks.push(
-            db.update(products)
-              .set({ quantity: sql`${products.quantity} + ${itemToRollback.quantity}` })
-              .where(eq(products.id, itemToRollback.productId))
-          )
-        }
-      }
-      if (rollbacks.length > 0) {
-        await db.batch(rollbacks as any)
-        logger.warn(c, 'stock.rollback.executed', { rollbacksCount: rollbacks.length })
-      }
-
-      const failedItem = createRequest.items[failedItemIndex]
-      logger.warn(c, 'order.stock.insufficient', { productId: failedItem.productId })
-      return respondError(c, 'INSUFFICIENT_STOCK', 409, `Estoque insuficiente para o produto ${failedItem.productName || failedItem.productId} no momento da finalização.`)
-    }
-
-    // Com o estoque atomicamente garantido e decrementado, persiste a order e os items
-    try {
-      await db.batch([orderInsert, ...itemInserts] as any)
-    } catch (orderInsertError: any) {
-      // Caso a gravação do pedido falhe inesperadamente, restaura o estoque de todos os itens
-      const fullRollbacks = createRequest.items.map((item) =>
-        db.update(products)
-          .set({ quantity: sql`${products.quantity} + ${item.quantity}` })
-          .where(eq(products.id, item.productId))
-      )
-      await db.batch(fullRollbacks as any)
-      logger.warn(c, 'stock.rollback.executed', { rollbacksCount: fullRollbacks.length })
-
-      // Tratamento de colisão / Race Condition da chave de idempotência
-      const errStr = `${orderInsertError?.message || ''} ${orderInsertError?.cause?.message || ''}`
-      if (errStr.includes('UNIQUE constraint failed') && errStr.includes('idempotency_key')) {
-        const collidedOrder = await db.select().from(orders).where(eq(orders.idempotencyKey, idempotencyKey)).get()
-        if (collidedOrder && collidedOrder.uid === uid) {
-          const collidedItems = await db.select().from(orderItems).where(eq(orderItems.orderId, collidedOrder.id)).all()
-          const deliveryAddressObj = JSON.parse(collidedOrder.deliveryAddress)
-          const responseCollidedOrder = {
-            id: collidedOrder.id,
-            uid: collidedOrder.uid,
-            type: collidedOrder.type,
-            status: collidedOrder.status,
-            product: collidedOrder.product,
-            quantity: collidedOrder.quantity,
-            unit: collidedOrder.unit,
-            price: collidedOrder.price ?? undefined,
-            supplierId: collidedOrder.supplierId ?? undefined,
-            supplierName: collidedOrder.supplierName ?? undefined,
-            deliveryAddress: deliveryAddressObj,
-            createdAt: collidedOrder.createdAt,
-            paymentMethod: (collidedOrder.paymentMethod as any) ?? undefined,
-            paymentTransactionId: collidedOrder.paymentTransactionId ?? undefined,
-            paymentStatus: (collidedOrder.paymentStatus as any) ?? undefined,
-            items: collidedItems.map((item) => ({
-              productId: item.productId,
-              productName: item.productName,
-              unitPrice: item.unitPrice,
-              quantity: item.quantity,
-              unit: item.unit,
-            })),
-          }
-          const validatedCollided = OrderSchema.parse(responseCollidedOrder)
-          logger.info(c, 'order.idempotency.reused', { orderId: collidedOrder.id })
-          return c.json(validatedCollided, 200)
-        }
-      }
-
-      throw orderInsertError
-    }
-
-    // Notifica o fornecedor (best-effort — nunca afeta a resposta, RN-02 da spec H-011)
-    const notificationItems = createRequest.items.map((item) => ({
-      productName: item.productName,
-      quantity: item.quantity,
-      unit: item.unit,
-    }))
-    await notifySupplierOfNewOrder(
-      {
-        supplierEmail: productRows[0]?.supplierEmail,
-        orderId,
-        items: notificationItems,
-        // `?? 0` e' so pro TS (createRequest.price ja foi validado como definido
-        // no early-return acima) — nunca e' 0 de verdade nesse ponto do fluxo.
-        totalCents: createRequest.price ?? 0,
-        requestId: c.get('requestId'),
-      },
-      {
-        notificationsEnabled: c.env.NOTIFICATIONS_ENABLED === 'true',
-        sendEmail: (emailParams) => sendViaResend(emailParams, c.env.RESEND_API_KEY),
-      },
-    )
-
-    // Busca a order e items para retornar
-    const savedOrderList = await db.select().from(orders).where(eq(orders.id, orderId)).all()
-
-    if (savedOrderList.length === 0) {
-      throw new Error('Order não foi persistida após insert')
-    }
-
-    const savedOrder = savedOrderList[0]
-    const savedItems = await db.select().from(orderItems).where(eq(orderItems.orderId, orderId)).all()
-
-    // Mapeia D1 → contrato
-    const deliveryAddressObject = JSON.parse(savedOrder.deliveryAddress)
-
-    const responseOrder = {
-      id: savedOrder.id,
-      uid: savedOrder.uid,
-      type: savedOrder.type,
-      status: savedOrder.status,
-      product: savedOrder.product,
-      quantity: savedOrder.quantity,
-      unit: savedOrder.unit,
-      price: savedOrder.price ?? undefined,
-      supplierId: savedOrder.supplierId ?? undefined,
-      supplierName: savedOrder.supplierName ?? undefined,
-      deliveryAddress: deliveryAddressObject,
-      createdAt: savedOrder.createdAt,
-      paymentMethod: (savedOrder.paymentMethod as any) ?? undefined,
-      paymentTransactionId: savedOrder.paymentTransactionId ?? undefined,
-      paymentStatus: (savedOrder.paymentStatus as any) ?? undefined,
-      items: savedItems.map((item) => ({
-        productId: item.productId,
-        productName: item.productName,
-        unitPrice: item.unitPrice,
-        quantity: item.quantity,
-        unit: item.unit,
-      })),
-    }
-
-    // Valida contra OrderSchema antes de responder
-    const validatedOrder = OrderSchema.parse(responseOrder)
-    logger.info(c, 'order.created', { orderId, itemCount: createRequest.items.length, totalCents: createRequest.price })
-
-    return c.json(validatedOrder, 201)
+    logger.info(c, 'order.created', { orderId, itemCount: request.items.length, totalCents: request.price })
+    return c.json(await loadOrderResponse(db, orderId), 201)
   } catch (error) {
-    // Verifica se é um erro de validação Zod
-    // Pode vir com name === 'ZodError' ou ter .issues
-    if (error instanceof ZodError || (error instanceof Error && error.name === 'ZodError') || (error && typeof error === 'object' && 'issues' in error)) {
-      const err = error as ZodError
-      return respondZodError(c, err)
-    }
-    // Para outros erros, deixa ser tratado pelo middleware de erro
+    if (error instanceof ZodError) return respondZodError(c, error)
     throw error
   }
 }
 
-/**
- * PATCH /orders/:id/cancel — cancela um pedido.
- * Só permite cancelar se status === 'aguardando' (trava logística, D-025).
- */
-export const ordersCancelHandler = async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>) => {
+export const ordersCancelHandler = async (c: OrderContext) => {
   const uid = c.get('uid')
-  if (!uid) {
-    return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
-  }
-  if (!hasAnyRole(c, ['comprador'])) {
-    return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
-  }
-
+  if (!uid) return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
+  if (!hasAnyRole(c, ['comprador'])) return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
   const orderId = c.req.param('id')
-
-  try {
-    const db = drizzle(c.env.DB)
-
-    // Busca a order atualizada para retornar.
-    // Usamos o RETURNING do SQLite D1 para evitar TOCTOU e garantir a atomicidade da trava de status.
-    const updatedOrders = await db.update(orders)
-      .set({ status: 'cancelado' })
-      .where(sql`${orders.id} = ${orderId} AND ${orders.uid} = ${uid} AND ${orders.status} = 'aguardando'`)
-      .returning()
-
-    if (updatedOrders.length === 0) {
-      // Se n˜åo atualizou nada, precisamos saber o motivo para retornar o erro correto (404, 403 ou 409).
-      const current = await db.select().from(orders).where(sql`${orders.id} = ${orderId}`).all()
-      if (current.length === 0) {
-        logger.warn(c, 'order.cancel.failed', { orderId, reason: 'not_found' })
-        return respondError(c, 'ORDER_NOT_FOUND', 404, 'Pedido não encontrado.')
-      }
-      if (current[0].uid !== uid) {
-        logger.warn(c, 'order.cancel.failed', { orderId, reason: 'forbidden' })
-        return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
-      }
-      logger.warn(c, 'order.cancel.failed', { orderId, reason: 'not_awaiting' })
-      return respondError(c, 'ORDER_NOT_AWAITING', 409, 'Não é possível cancelar: o pedido não está com status aguardando.')
-    }
-
-    const updatedOrder = updatedOrders[0]
-    logger.info(c, 'order.cancelled', { orderId })
-
-    // Restaura o estoque dos itens cancelados
-    const itemsToRestore = await db.select().from(orderItems).where(sql`${orderItems.orderId} = ${orderId}`).all()
-    const restoreUpdates = itemsToRestore.map((item) => 
-      db.update(products).set({ quantity: sql`${products.quantity} + ${item.quantity}` }).where(eq(products.id, item.productId))
-    )
-    if (restoreUpdates.length > 0) {
-      await db.batch(restoreUpdates as any)
-      logger.info(c, 'stock.restore.after_cancel', { orderId, itemsCount: itemsToRestore.length })
-    }
-
-    // (a order atualizada já está em updatedOrder pelo returning)
-
-    // Busca items
-    const items = await db.select().from(orderItems).where(sql`${orderItems.orderId} = ${orderId}`).all()
-
-    // Mapeia D1 → contrato
-    const deliveryAddressObject = JSON.parse(updatedOrder.deliveryAddress)
-
-    const responseOrder = {
-      id: updatedOrder.id,
-      uid: updatedOrder.uid,
-      type: updatedOrder.type,
-      status: updatedOrder.status,
-      product: updatedOrder.product,
-      quantity: updatedOrder.quantity,
-      unit: updatedOrder.unit,
-      price: updatedOrder.price ?? undefined,
-      supplierId: updatedOrder.supplierId ?? undefined,
-      supplierName: updatedOrder.supplierName ?? undefined,
-      deliveryAddress: deliveryAddressObject,
-      createdAt: updatedOrder.createdAt,
-      paymentMethod: (updatedOrder.paymentMethod as any) ?? undefined,
-      paymentTransactionId: updatedOrder.paymentTransactionId ?? undefined,
-      paymentStatus: (updatedOrder.paymentStatus as any) ?? undefined,
-      items: items.map((item) => ({
-        productId: item.productId,
-        productName: item.productName,
-        unitPrice: item.unitPrice,
-        quantity: item.quantity,
-        unit: item.unit,
-      })),
-    }
-
-    // Valida contra OrderSchema antes de responder
-    const validatedOrder = OrderSchema.parse(responseOrder)
-
-    return c.json(validatedOrder, 200)
-  } catch (error) {
-    // Não esconde erros
-    throw error
+    if (!orderId) return respondError(c, 'ORDER_NOT_FOUND', 404, 'Pedido não encontrado.')
+  const db = drizzle(c.env.DB)
+  const current = await db.select().from(orders).where(eq(orders.id, orderId)).get()
+  if (!current) return respondError(c, 'ORDER_NOT_FOUND', 404, 'Pedido não encontrado.')
+  if (current.uid !== uid) return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
+  if (current.status === 'cancelado') return c.json(await loadOrderResponse(db, orderId), 200)
+  if (current.status !== 'aguardando') return respondError(c, 'ORDER_NOT_AWAITING', 409, 'O pedido não está aguardando confirmação.')
+  const changed = await transitionOrderAtomically(c.env.DB, {
+    orderId, expectedStatus: current.status, expectedMutationId: current.mutationId,
+    targetStatus: 'cancelado', actorId: uid, requestId: c.get('requestId') ?? null,
+    reason: 'Cancelado pelo comprador',
+  })
+  if (!changed) {
+    const fresh = await db.select().from(orders).where(eq(orders.id, orderId)).get()
+    if (fresh?.status !== 'cancelado') return respondError(c, 'ORDER_NOT_AWAITING', 409, 'Pedido alterado ou estoque indisponível para restituição. Atualize os dados.')
   }
+  return c.json(await loadOrderResponse(db, orderId), 200)
 }
 
 /**
@@ -557,6 +263,7 @@ export const ordersReportHandler = async (c: Context<{ Bindings: Env; Variables:
   }
 
   const orderId = c.req.param('id')
+    if (!orderId) return respondError(c, 'ORDER_NOT_FOUND', 404, 'Pedido não encontrado.')
 
   try {
     const body = await c.req.json()
@@ -597,158 +304,43 @@ export const ordersReportHandler = async (c: Context<{ Bindings: Env; Variables:
   }
 }
 
-/**
- * PATCH /orders/:id/status — atualiza o status de um pedido.
- * Exclusivo para fornecedor (do pedido) ou admin.
- * Transições permitidas:
- * - aguardando -> confirmado | cancelado
- * - confirmado -> a-caminho | cancelado
- * - a-caminho -> entregue | cancelado
- * Se cancelado, restaura estoque dos itens no banco D1 atomicamente.
- */
-export const ordersStatusPatchHandler = async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>) => {
+export const ordersStatusPatchHandler = async (c: OrderContext) => {
   const uid = c.get('uid')
-  if (!uid) {
-    return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
-  }
-  if (!hasAnyRole(c, ['fornecedor', 'admin'])) {
-    return respondError(c, 'FORBIDDEN', 403, 'Acesso negado: apenas fornecedores ou administradores podem atualizar o status do pedido.')
-  }
-
-  const orderId = c.req.param('id')
-
+  if (!uid) return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
+  if (!hasAnyRole(c, ['fornecedor', 'admin'])) return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
   try {
-    const body = await c.req.json()
-    const updateRequest = UpdateOrderStatusRequestSchema.parse(body)
-    const targetStatus = updateRequest.status
-
+    const request = UpdateOrderStatusRequestSchema.parse(await c.req.json().catch(() => null))
+    const orderId = c.req.param('id')
+    if (!orderId) return respondError(c, 'ORDER_NOT_FOUND', 404, 'Pedido não encontrado.')
     const db = drizzle(c.env.DB)
-    const currentOrders = await db.select().from(orders).where(sql`${orders.id} = ${orderId}`).all()
-    if (currentOrders.length === 0) {
-      return respondError(c, 'ORDER_NOT_FOUND', 404, 'Pedido não encontrado.')
-    }
-    const currentOrder = currentOrders[0]
-
-    // Se fornecedor, verifica se o pedido pertence a ele
+    const current = await db.select().from(orders).where(eq(orders.id, orderId)).get()
+    if (!current) return respondError(c, 'ORDER_NOT_FOUND', 404, 'Pedido não encontrado.')
     if (!hasAnyRole(c, ['admin'])) {
-      const matchingItems = await db
-        .select({ orderId: orderItems.orderId })
-        .from(orderItems)
-        .innerJoin(products, eq(orderItems.productId, products.id))
-        .where(and(sql`${orderItems.orderId} = ${orderId}`, eq(products.supplierId, uid)))
-        .all()
-      const isSupplier = currentOrder.supplierId === uid || matchingItems.length > 0
-      if (!isSupplier) {
-        return respondError(c, 'FORBIDDEN', 403, 'Acesso negado: apenas o fornecedor deste pedido pode atualizar seu status.')
-      }
+      // The persisted supplier is authoritative. Item lookup is only a legacy fallback.
+      const legacyItems = current.supplierId ? [] : await db.select({ orderId: orderItems.orderId })
+        .from(orderItems).innerJoin(products, eq(orderItems.productId, products.id))
+        .where(and(eq(orderItems.orderId, orderId), eq(products.supplierId, uid))).all()
+      if (current.supplierId !== uid && legacyItems.length === 0) return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
     }
-
-    // Se já estiver no targetStatus, retorno idempotente
-    if (currentOrder.status === targetStatus) {
-      const items = await db.select().from(orderItems).where(sql`${orderItems.orderId} = ${orderId}`).all()
-      const deliveryAddressObj = JSON.parse(currentOrder.deliveryAddress)
-      const resOrder = {
-        id: currentOrder.id,
-        uid: currentOrder.uid,
-        type: currentOrder.type,
-        status: currentOrder.status,
-        product: currentOrder.product,
-        quantity: currentOrder.quantity,
-        unit: currentOrder.unit,
-        price: currentOrder.price ?? undefined,
-        supplierId: currentOrder.supplierId ?? undefined,
-        supplierName: currentOrder.supplierName ?? undefined,
-        deliveryAddress: deliveryAddressObj,
-        createdAt: currentOrder.createdAt,
-        paymentMethod: (currentOrder.paymentMethod as any) ?? undefined,
-        paymentTransactionId: currentOrder.paymentTransactionId ?? undefined,
-        paymentStatus: (currentOrder.paymentStatus as any) ?? undefined,
-        items: items.map((item) => ({
-          productId: item.productId,
-          productName: item.productName,
-          unitPrice: item.unitPrice,
-          quantity: item.quantity,
-          unit: item.unit,
-        })),
-      }
-      return c.json(OrderSchema.parse(resOrder), 200)
+    if (current.status === request.status) return c.json(await loadOrderResponse(db, orderId), 200)
+    const allowed: Record<string, readonly string[]> = {
+      aguardando: ['confirmado', 'cancelado'], confirmado: ['a-caminho', 'cancelado'],
+      'a-caminho': ['entregue'], entregue: [], cancelado: [],
     }
-
-    const ALLOWED_TRANSITIONS: Record<string, string[]> = {
-      'aguardando': ['confirmado', 'cancelado'],
-      'confirmado': ['a-caminho', 'cancelado'],
-      'a-caminho': ['entregue', 'cancelado'],
-      'entregue': [],
-      'cancelado': [],
+    if (!(allowed[current.status] ?? []).includes(request.status)) {
+      return respondError(c, 'ORDER_STATUS_NOT_ALLOWED', 409, 'Transição de status não permitida.')
     }
-
-    const allowed = ALLOWED_TRANSITIONS[currentOrder.status] || []
-    if (!allowed.includes(targetStatus)) {
-      logger.warn(c, 'order.status_transition.disallowed', { orderId, from: currentOrder.status, to: targetStatus })
-      return respondError(
-        c,
-        'ORDER_STATUS_NOT_ALLOWED',
-        409,
-        `Transição de status inválida: não é permitido alterar de '${currentOrder.status}' para '${targetStatus}'.`
-      )
+    const changed = await transitionOrderAtomically(c.env.DB, {
+      orderId, expectedStatus: current.status, expectedMutationId: current.mutationId,
+      targetStatus: request.status, actorId: uid, requestId: c.get('requestId') ?? null, reason: request.reason,
+    })
+    if (!changed) {
+      const fresh = await db.select().from(orders).where(eq(orders.id, orderId)).get()
+      if (fresh?.status !== request.status) return respondError(c, 'ORDER_STATUS_NOT_ALLOWED', 409, 'Pedido alterado ou estoque indisponível para restituição. Atualize os dados.')
     }
-
-    // Se transição para 'cancelado', restaura estoque dos itens atomicamente
-    if (targetStatus === 'cancelado') {
-      const itemsToRestore = await db.select().from(orderItems).where(sql`${orderItems.orderId} = ${orderId}`).all()
-      const restoreUpdates = itemsToRestore.map((item) =>
-        db.update(products).set({ quantity: sql`${products.quantity} + ${item.quantity}` }).where(eq(products.id, item.productId))
-      )
-      if (restoreUpdates.length > 0) {
-        await db.batch(restoreUpdates as any)
-        logger.info(c, 'stock.restore.after_supplier_cancel', { orderId, itemsCount: itemsToRestore.length })
-      }
-    }
-
-    const updatedOrders = await db.update(orders)
-      .set({ status: targetStatus })
-      .where(sql`${orders.id} = ${orderId}`)
-      .returning()
-    const updatedOrder = updatedOrders[0]
-
-    const items = await db.select().from(orderItems).where(sql`${orderItems.orderId} = ${orderId}`).all()
-    const deliveryAddressObject = JSON.parse(updatedOrder.deliveryAddress)
-
-    const responseOrder = {
-      id: updatedOrder.id,
-      uid: updatedOrder.uid,
-      type: updatedOrder.type,
-      status: updatedOrder.status,
-      product: updatedOrder.product,
-      quantity: updatedOrder.quantity,
-      unit: updatedOrder.unit,
-      price: updatedOrder.price ?? undefined,
-      supplierId: updatedOrder.supplierId ?? undefined,
-      supplierName: updatedOrder.supplierName ?? undefined,
-      deliveryAddress: deliveryAddressObject,
-      createdAt: updatedOrder.createdAt,
-      paymentMethod: (updatedOrder.paymentMethod as any) ?? undefined,
-      paymentTransactionId: updatedOrder.paymentTransactionId ?? undefined,
-      paymentStatus: (updatedOrder.paymentStatus as any) ?? undefined,
-      items: items.map((item) => ({
-        productId: item.productId,
-        productName: item.productName,
-        unitPrice: item.unitPrice,
-        quantity: item.quantity,
-        unit: item.unit,
-      })),
-    }
-
-    const validatedOrder = OrderSchema.parse(responseOrder)
-    logger.info(c, 'order.status.updated', { orderId, oldStatus: currentOrder.status, newStatus: targetStatus, uid })
-
-    return c.json(validatedOrder, 200)
+    return c.json(await loadOrderResponse(db, orderId), 200)
   } catch (error) {
-    if (error instanceof ZodError || (error instanceof Error && error.name === 'ZodError') || (error && typeof error === 'object' && 'issues' in error)) {
-      const err = error as ZodError
-      return respondZodError(c, err)
-    }
+    if (error instanceof ZodError) return respondZodError(c, error)
     throw error
   }
 }
-

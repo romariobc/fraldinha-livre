@@ -14,7 +14,6 @@ import {
   LogOut,
   ExternalLink,
   ShieldCheck,
-  CheckCircle2,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -194,9 +193,8 @@ export function SupplierSidebar() {
               <span className="truncate text-xs font-semibold text-foreground">
                 {user?.displayName || user?.email?.split("@")[0] || "Distribuidora"}
               </span>
-              <span className="truncate text-[10px] text-green-600 font-medium flex items-center gap-1">
-                <CheckCircle2 className="size-3 shrink-0" />
-                Verificado
+              <span className="truncate text-[10px] text-muted-foreground font-medium flex items-center gap-1">
+                Perfil fornecedor
               </span>
             </div>
           </div>

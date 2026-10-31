@@ -1,3 +1,4 @@
+import { approveFixtures, seedSuppliers } from './approve-fixtures'
 import { describe, it, expect, beforeAll } from 'vitest'
 import { drizzle } from 'drizzle-orm/d1'
 import { env } from 'cloudflare:workers'
@@ -10,6 +11,7 @@ describe('searchProducts / getProduct (lib/ai/tools/handlers)', () => {
 
   beforeAll(async () => {
     await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
+    await approveFixtures(env.DB, ...seedSuppliers, 'uid-fornecedor-teste', 'uid-outro-fornecedor', 'uid-fornecedor-a', 'uid-fornecedor-b', 'supplier-a')
 
     const db = drizzle(env.DB)
     despublicadoId = `test-chat-tools-${Date.now()}`

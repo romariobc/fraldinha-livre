@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import type { GeoScope } from '@/lib/supplier-mock'
+import type { GeoScope } from '@/lib/domain/supplier'
 import { MOCK_SUPPLIER } from '@/lib/supplier-mock'
 import { geoMatch } from '@/lib/market-utils'
 import { useMarket } from '@/contexts/market-context'

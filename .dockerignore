@@ -16,4 +16,9 @@ front/.open-next
 front/.wrangler
 front/out
 front/build
+.env*
+**/.env*
+!front/.env.production
+!front/.env.production.local
+**/.dev.vars
 packages/contracts/node_modules

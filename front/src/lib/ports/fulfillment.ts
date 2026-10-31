@@ -1,4 +1,4 @@
-import type { Address } from '@/lib/account-mock'
+import type { Address } from '@/lib/domain/account'
 import type { OrderItem } from '@/lib/domain/order'
 
 /**

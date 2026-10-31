@@ -1,0 +1,83 @@
+name: Validation suite
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Context boundaries
+            command: node --test scripts/context.test.mjs
+          - name: CI safety regressions
+            command: node --test scripts/ci-safety.test.mjs
+          - name: Frontend tests
+            command: npm test --workspace front -- --maxWorkers=2
+          - name: Backend tests
+            command: npm test --workspace back -- --maxWorkers=1
+          - name: Contracts tests
+            command: npm test --workspace packages/contracts
+          - name: API E2E runner regressions
+            command: node --test scripts/test-e2e-logic.test.mjs
+          - name: Frontend types
+            command: npm exec --workspace front -- tsc --noEmit -p tsconfig.json
+          - name: Backend types
+            command: npm exec --workspace back -- tsc --noEmit -p tsconfig.json
+          - name: Contracts types
+            command: npm exec --workspace packages/contracts -- tsc --noEmit -p tsconfig.json
+          - name: Frontend lint
+            command: npm run lint --workspace front
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Install Linux native test dependency missing from lockfile
+        run: |
+          VERSION=$(node -p "require('./node_modules/rolldown/package.json').optionalDependencies['@rolldown/binding-linux-x64-gnu']")
+          TARBALL=$(npm pack "@rolldown/binding-linux-x64-gnu@$VERSION" --pack-destination "$RUNNER_TEMP" --silent)
+          mkdir -p node_modules/@rolldown/binding-linux-x64-gnu
+          tar -xzf "$RUNNER_TEMP/$TARBALL" -C node_modules/@rolldown/binding-linux-x64-gnu --strip-components=1
+      - run: ${{ matrix.command }}
+
+  frontend-container:
+    name: Frontend container
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Build production frontend image
+        run: docker build -f front/Dockerfile -t fraldinha-livre-frontend:qa .
+
+  required:
+    name: Validation required
+    if: ${{ always() }}
+    needs: [tests, frontend-container]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Reject failed, cancelled or skipped validation
+        run: node scripts/ci-gate.mjs '${{ needs.tests.result }}' '${{ needs.frontend-container.result }}'

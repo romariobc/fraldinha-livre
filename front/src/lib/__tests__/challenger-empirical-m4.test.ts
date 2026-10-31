@@ -36,7 +36,7 @@ import {
   filterOrdersByDateRange,
   generateReportTimeSeries,
 } from '@/hooks/use-supplier-data'
-import type { DirectOrder } from '@/lib/supplier-mock'
+import type { DirectOrder } from '@/lib/domain/supplier'
 
 describe('Challenger 1 Empirical Stress Test Harness — Milestone 4', () => {
   describe('1. Weekly & Long-Range Order Aggregation (>31 days, 90d, 365d, Multi-Year)', () => {

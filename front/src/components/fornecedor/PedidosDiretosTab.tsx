@@ -1,7 +1,7 @@
 // src/components/fornecedor/PedidosDiretosTab.tsx
 import { useState } from 'react'
 import { ShoppingBag } from 'lucide-react'
-import { DirectOrder } from '@/lib/supplier-mock'
+import type { DirectOrder } from '@/lib/domain/supplier'
 import DirectOrderCard from './DirectOrderCard'
 
 type Filter = 'todos' | 'aguardando' | 'confirmados'

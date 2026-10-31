@@ -1,3 +1,4 @@
+import { approveFixtures, seedSuppliers } from './approve-fixtures'
 import { describe, it, expect, beforeAll } from 'vitest'
 import { Hono } from 'hono'
 import { env } from 'cloudflare:workers'
@@ -17,6 +18,7 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
 
   beforeAll(async () => {
     await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
+    await approveFixtures(env.DB, ...seedSuppliers, 'uid-fornecedor-teste', 'uid-outro-fornecedor', 'uid-fornecedor-a', 'uid-fornecedor-b', 'supplier-a')
 
     const db = drizzle(env.DB)
     prodFornecedorAId = `prod-adv-fornecedor-a-${Date.now()}`

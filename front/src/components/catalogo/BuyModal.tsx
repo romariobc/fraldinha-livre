@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { Product } from '@/lib/products'
-import { Address, MOCK_USER } from '@/lib/account-mock'
+import type { Address } from '@/lib/domain/account'
+import { MOCK_USER } from '@/lib/account-mock'
 import { STORE_SUPPLIERS } from '@/lib/suppliers'
 import { formatPrice } from '@/lib/utils'
 import { useAuth } from '@/contexts/auth-context'

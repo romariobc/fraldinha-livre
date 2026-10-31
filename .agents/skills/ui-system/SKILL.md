@@ -72,7 +72,7 @@ Componente existente em `front/src/components/FaqAccordion.tsx` — reutilizar e
 
 ## Hydration mismatch com `timeAgo()`
 
-`timeAgo()` (de `front/src/lib/supplier-mock.ts`) usa `Date.now()` — gera valor diferente no SSR vs. cliente. Hoje é usado nos componentes do domínio fornecedor (`DirectOrderCard`, `OfertasMercadoTab`, `LogisticaTab`); o domínio comprador usa um `formatDate` local sem esse problema.
+`timeAgo()` (de `front/src/lib/formatters.ts`) usa `Date.now()` — gera valor diferente no SSR vs. cliente. Hoje é usado nos componentes do domínio fornecedor (`DirectOrderCard`, `OfertasMercadoTab`, `LogisticaTab`); o domínio comprador usa um `formatDate` local sem esse problema.
 
 ```tsx
 // ✅ CORRETO — suppressHydrationWarning no span
@@ -181,3 +181,7 @@ O projeto segue **mobile-first**. Usar breakpoints do Tailwind progressivamente:
 ## Imports de UI
 
 Componentes de `front/src/components/ui/` são os primitivos base (`Button`, `Dialog`, `Tabs`, `Select`, `Badge`, `Avatar`, `Checkbox`, `Input`, `Label`, `Separator`, `Sheet`, `Textarea`, `Accordion`). Sempre preferir esses sobre implementar do zero ou importar `@base-ui/react` diretamente.
+
+## Compatibilidade local
+
+Tabela/gráficos usam imports explícitos de @/lib/compat/tanstack-table e @/lib/compat/recharts. Essas implementações locais não prometem a API completa dos pacotes homônimos; não usar aliases com nomes de pacotes para ocultá-las.

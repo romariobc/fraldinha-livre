@@ -5,8 +5,8 @@ import { vi } from 'vitest'
 import RelatoriosPage from '../page'
 
 // Mock Recharts
-vi.mock('recharts', async () => {
-  const original = await vi.importActual<typeof import('recharts')>('recharts')
+vi.mock('@/lib/compat/recharts', async () => {
+  const original = await vi.importActual<typeof import('@/lib/compat/recharts')>('@/lib/compat/recharts')
   return {
     ...original,
     ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (

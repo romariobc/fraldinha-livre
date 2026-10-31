@@ -1,7 +1,9 @@
-import { and, eq, like, or } from 'drizzle-orm'
+import { and, eq, like, or, sql } from 'drizzle-orm'
 import type { drizzle } from 'drizzle-orm/d1'
 import { products } from '../../../schema/products'
 import type { SearchProductsArgs, GetProductArgs } from './schemas'
+
+const commercialApproval = sql`EXISTS (SELECT 1 FROM supplier_applications s WHERE s.uid = ${products.supplierId} AND s.status = 'aprovado')`
 
 const SEARCH_COLUMNS = {
   id: products.id,
@@ -51,7 +53,7 @@ export async function searchProducts(db: ReturnType<typeof drizzle>, args: Searc
     return []
   }
 
-  return db.select(SEARCH_COLUMNS).from(products).where(and(...conditions)).all()
+  return db.select(SEARCH_COLUMNS).from(products).where(and(...conditions, commercialApproval)).all()
 }
 
 /**
@@ -62,7 +64,7 @@ export async function getProduct(db: ReturnType<typeof drizzle>, args: GetProduc
   const rows = await db
     .select(SEARCH_COLUMNS)
     .from(products)
-    .where(and(eq(products.id, args.productId), eq(products.active, true)))
+    .where(and(eq(products.id, args.productId), eq(products.active, true), commercialApproval))
     .all()
   return rows[0] ?? null
 }

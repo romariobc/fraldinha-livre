@@ -3,7 +3,7 @@
 import { render, screen } from '@testing-library/react'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import PedidosTab from '../PedidosTab'
-import type { Order } from '@/lib/account-mock'
+import type { Order } from '@/lib/domain/account'
 
 // Mock contexts
 vi.mock('@/contexts/orders-context', () => ({

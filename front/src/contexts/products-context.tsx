@@ -1,33 +1,17 @@
 'use client'
 
+import { contractProductToCatalogProduct } from '@/lib/product-adapters'
+
 import { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react'
-import type { Product as LegacyProduct } from '@/lib/products'
+import type { Product as CatalogProduct } from '@/lib/products'
 import type { ProductRepository } from '@/lib/ports/product-repository'
 import { HttpProductRepository } from '@/lib/adapters/http-product-repository'
-import type { Product as ContractProduct } from '@contracts'
 import { diagnoseError, logFrontendDiagnostic } from '@/lib/frontend-diagnostics'
 
-function contractProductToLegacyProduct(p: ContractProduct): LegacyProduct {
-  return {
-    id: p.id,
-    name: p.name,
-    brand: p.brand,
-    size: p.size,
-    quantity: p.quantity,
-    priceInCents: p.priceCents,
-    oldPriceCents: p.oldPriceCents ?? undefined,
-    supplierId: p.supplierId,
-    slug: p.slug,
-    categoria: p.categoria,
-    descricao: p.descricao,
-    atributos: p.atributos,
-    badge: p.badge,
-    imageUrl: p.imageUrl,
-  }
-}
+
 
 interface ProductsContextType {
-  products: LegacyProduct[]
+  products: CatalogProduct[]
   loading: boolean
   error: string | null
   refetch?: () => Promise<void>
@@ -36,7 +20,7 @@ interface ProductsContextType {
 const ProductsContext = createContext<ProductsContextType | undefined>(undefined)
 
 export function ProductsProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts] = useState<LegacyProduct[]>([])
+  const [products, setProducts] = useState<CatalogProduct[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -50,7 +34,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
 
     try {
       const result = await repo.list()
-      setProducts(result.map(contractProductToLegacyProduct))
+      setProducts(result.map(contractProductToCatalogProduct))
     } catch (err) {
       const diag = diagnoseError(err, { operation: 'products.load_list' })
       logFrontendDiagnostic(diag, { operation: 'products.load_list' })
@@ -71,7 +55,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
       try {
         const result = await repo.list()
         if (cancelled) return
-        setProducts(result.map(contractProductToLegacyProduct))
+        setProducts(result.map(contractProductToCatalogProduct))
       } catch (err) {
         if (cancelled) return
         const diag = diagnoseError(err, { operation: 'products.load_list' })

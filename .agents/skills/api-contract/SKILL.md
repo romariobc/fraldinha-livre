@@ -5,6 +5,8 @@ description: Contratos e integração real entre frontend, API e dados; consulta
 
 # Frontend ↔ backend
 
+Modelos de apresentação ficam em front/src/lib/domain/ e products.ts, derivados dos contratos; conversões em order-adapters.ts e product-adapters.ts. Fixtures não são fonte de tipos de runtime.
+
 A fonte compartilhada de tipos e schemas Zod é `packages/contracts/src/`. Confirme exports e consumidores antes de criar contratos duplicados.
 
 - Pedidos: `front/src/lib/ports/order-repository.ts`, adapters mock/http e `front/src/contexts/orders-context.tsx`.

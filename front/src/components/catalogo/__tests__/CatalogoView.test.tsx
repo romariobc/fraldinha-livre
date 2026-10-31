@@ -241,23 +241,23 @@ describe('CatalogoView and useFilters Component Decoupling Suite', () => {
       render(<CatalogoView />)
 
       expect(screen.getByText('Loja Exclusiva')).toBeInTheDocument()
-      expect(screen.getByText('Catálogo: Distribuidora Sul')).toBeInTheDocument()
+      expect(screen.getByText('Catálogo: Fornecedor sup-001')).toBeInTheDocument()
       // Only products from sup-001 should be rendered
       const productCards = screen.getAllByRole('link')
       expect(productCards.length).toBeGreaterThan(0)
     })
 
-    it('falls back to "Fornecedor Parceiro" when route supplierId is not in STORE_SUPPLIERS', () => {
+    it('identifies an unknown supplier by the exact route ID', () => {
       mockUsePathname.mockReturnValue('/catalogo/fornecedor/unknown-supplier-999')
       mockUseParams.mockReturnValue({ fornecedorId: 'unknown-supplier-999' })
 
       render(<CatalogoView />)
 
       expect(screen.getByText('Loja Exclusiva')).toBeInTheDocument()
-      expect(screen.getByText('Catálogo: Fornecedor Parceiro')).toBeInTheDocument()
+      expect(screen.getByText('Catálogo: Fornecedor unknown-supplier-999')).toBeInTheDocument()
     })
 
-    it('renders authenticated supplier displayName when viewing own storefront not in STORE_SUPPLIERS', () => {
+    it('uses the same public supplier identity for owner and visitors', () => {
       mockUsePathname.mockReturnValue('/catalogo/fornecedor/custom-supplier-uid')
       mockUseParams.mockReturnValue({ fornecedorId: 'custom-supplier-uid' })
       mockUseAuth.mockReturnValue({
@@ -277,7 +277,7 @@ describe('CatalogoView and useFilters Component Decoupling Suite', () => {
       render(<CatalogoView />)
 
       expect(screen.getByText('Loja Exclusiva')).toBeInTheDocument()
-      expect(screen.getByText('Catálogo: Distribuidora Premium')).toBeInTheDocument()
+      expect(screen.getByText('Catálogo: Fornecedor custom-supplier-uid')).toBeInTheDocument()
     })
 
     it('renders empty state when supplier has no matching products', () => {

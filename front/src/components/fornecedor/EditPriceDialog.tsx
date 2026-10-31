@@ -29,15 +29,17 @@ export function EditPriceDialog({ open, onOpenChange, product, repo, onSuccess }
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [mode, setMode] = React.useState<'direct' | 'percentage'>('direct')
   const [inputValue, setInputValue] = React.useState('')
+  const [stockValue, setStockValue] = React.useState('')
   const [discountPercent, setDiscountPercent] = React.useState('')
   const [prevKey, setPrevKey] = React.useState<string | null>(null)
 
-  const currentKey = open && product ? `${product.id}:${product.priceCents}` : null
+  const currentKey = open && product ? `${product.id}:${product.priceCents}:${product.quantity}` : null
   if (currentKey && currentKey !== prevKey) {
     setPrevKey(currentKey)
     setMode('direct')
     setInputValue((product!.priceCents / 100).toFixed(2))
     setDiscountPercent('10')
+    setStockValue(String(product!.quantity))
   } else if (!currentKey && prevKey !== null) {
     setPrevKey(null)
   }
@@ -59,15 +61,20 @@ export function EditPriceDialog({ open, onOpenChange, product, repo, onSuccess }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (previewNewPriceCents <= 0) {
+    if (!Number.isSafeInteger(previewNewPriceCents) || previewNewPriceCents <= 0) {
       toast.error('O novo preço deve ser maior que zero.')
       return
     }
 
+    const stock = Number(stockValue)
+    if (!stockValue.trim() || !Number.isSafeInteger(stock) || stock < 0) {
+      toast.error('Informe um estoque inteiro maior ou igual a zero.')
+      return
+    }
     setIsSubmitting(true)
     try {
-      const updated = await repo.update(product.id, { priceCents: previewNewPriceCents })
-      toast.success('Preço atualizado com sucesso!')
+      const updated = await repo.update(product.id, { priceCents: previewNewPriceCents, quantity: stock })
+      toast.success('Preço e estoque atualizados com sucesso!')
       onSuccess(updated)
       onOpenChange(false)
     } catch (err) {
@@ -82,13 +89,18 @@ export function EditPriceDialog({ open, onOpenChange, product, repo, onSuccess }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Editar Preço de Venda</DialogTitle>
+          <DialogTitle>Editar Preço e Estoque</DialogTitle>
           <DialogDescription>
             {product.name} - Tam {product.size}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6 py-4">
+          <div className="space-y-2">
+            <label htmlFor="offer-stock" className="text-xs font-semibold">Estoque disponível</label>
+            <Input id="offer-stock" type="number" min="0" step="1" value={stockValue}
+              onChange={e => setStockValue(e.target.value)} required />
+          </div>
           <div className="flex gap-2 p-1 bg-muted rounded-lg">
             <button
               type="button"
@@ -114,8 +126,9 @@ export function EditPriceDialog({ open, onOpenChange, product, repo, onSuccess }
 
             {mode === 'direct' ? (
               <div className="space-y-2">
-                <label className="text-xs font-semibold text-foreground">Novo Preço (R$)</label>
+                <label htmlFor="offer-price" className="text-xs font-semibold text-foreground">Novo Preço (R$)</label>
                 <Input
+                  id="offer-price"
                   type="number"
                   step="0.01"
                   min="0.01"
@@ -165,8 +178,8 @@ export function EditPriceDialog({ open, onOpenChange, product, repo, onSuccess }
             <Button variant="outline" type="button" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting || previewNewPriceCents <= 0 || previewNewPriceCents === basePriceCents}>
-              {isSubmitting ? 'Salvando...' : 'Salvar Preço'}
+            <Button type="submit" disabled={isSubmitting || previewNewPriceCents <= 0 || (previewNewPriceCents === basePriceCents && Number(stockValue) === product.quantity)}>
+              {isSubmitting ? 'Salvando...' : 'Salvar oferta'}
             </Button>
           </DialogFooter>
         </form>

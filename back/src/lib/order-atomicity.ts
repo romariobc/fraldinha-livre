@@ -59,7 +59,7 @@ export async function createOrderAtomically(db: Env['DB'], input: {
   // JSON table expansion keeps the number of bind parameters constant for larger baskets.
   const guard = `EXISTS (SELECT 1 FROM supplier_applications s WHERE s.uid = ? AND s.status = 'aprovado') AND NOT EXISTS (SELECT 1 FROM json_each(?) item
     LEFT JOIN products p ON p.id = json_extract(item.value, '$.productId')
-    WHERE p.id IS NULL OR p.active IS NOT 1 OR p.supplier_id != ?
+    WHERE p.id IS NULL OR p.active IS NOT 1 OR p.moderation_blocked IS NOT 0 OR p.supplier_id != ?
       OR p.price_cents != json_extract(item.value, '$.unitPrice')
       OR p.quantity < json_extract(item.value, '$.quantity'))`
   const insert = db.prepare(`INSERT INTO orders
@@ -72,8 +72,9 @@ export async function createOrderAtomically(db: Env['DB'], input: {
   for (const item of req.items) {
     statements.push(db.prepare(`INSERT INTO order_items
       (order_id, product_id, product_name, unit_price, quantity, unit)
-      SELECT ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM orders WHERE id = ? AND mutation_id = ?)`)
-      .bind(orderId, item.productId, item.productName, item.unitPrice, item.quantity, item.unit, orderId, mutationId))
+      SELECT ?, p.id, trim(p.name || ' ' || p.size), ?, ?, ? FROM products p
+      WHERE p.id = ? AND EXISTS (SELECT 1 FROM orders WHERE id = ? AND mutation_id = ?)`)
+      .bind(orderId, item.unitPrice, item.quantity, item.unit, item.productId, orderId, mutationId))
     statements.push(db.prepare(`UPDATE products SET quantity = quantity - ? WHERE id = ?
       AND EXISTS (SELECT 1 FROM orders WHERE id = ? AND mutation_id = ?)`)
       .bind(item.quantity, item.productId, orderId, mutationId))

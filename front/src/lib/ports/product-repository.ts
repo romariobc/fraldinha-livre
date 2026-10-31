@@ -5,7 +5,7 @@ export interface ProductRepository {
   listForSupplier(): Promise<Product[]>                          // autenticado, todos do fornecedor atual
   create(req: CreateProductRequest): Promise<Product>
   update(id: string, req: UpdateProductRequest): Promise<Product>
-  remove(id: string): Promise<void>
+  remove(id: string): Promise<void> // desativa; preserva referências e histórico
 }
 
 export interface DomainErrorOptions {

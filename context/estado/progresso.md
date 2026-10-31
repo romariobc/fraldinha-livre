@@ -1,23 +1,22 @@
 # Estado atual — 2026-10-31
 
-## Etapa autorizada: CTX-01 — reduzir custo de contexto (concluída localmente; aguarda aprovação)
+## MP-04 — catálogo e manutenção de ofertas: entrega local concluída
 
-- Pedido: resolver os cinco pontos da auditoria antes de MP-04. Escopo: guias, contexto seletivo, modelos/fixtures, imports locais explícitos e decomposição de tabela/checkout.
-- MP-03: implementação entregue na PR #24, commit 17db34e; CI 40901914614 aprovado. Aprovação humana da entrega continua separada. PRs #22/#23/#24 sem merge/deploy por esta tarefa.
-- MP-04: todo, não iniciado e sem autorização de início. Compra/pagamento permanecem simulados.
-- Código local: monorepo front/back/contracts; identidade Firebase, perfis Firestore, dados comerciais D1. Alterações locais preexistentes das etapas anteriores preservadas.
-- Fontes atuais: [arquitetura](../../docs/architecture/arquitetura-vigente.md), [roteiro de contexto](../README.md). Use node scripts/context.mjs status ID para ler somente o item do backlog.
-- Dados remotos: inventário de 29/10 é fotografia, não revalidado nesta refatoração; nenhuma migração, publicação, aprovação comercial ou edição de dados remotos autorizada aqui.
-- CTX-01 validada: 732 testes frontend, 58 contratos, 14 guardas; tipos nos três módulos; lint com 0 erros/10 avisos; imagem Docker de produção construída após repetição por falha inicial em next/font. Navegador desktop/mobile aprovado. [Relatório e limites](../../docs/qa/CTX-01-contexto-ia.md). Sem commit/push/deploy nesta etapa.
+- Execução autorizada pelo usuário em 31/10; MP-03 e CTX-01 aprovados para avançar. Compra e pagamento permanecem simulados.
+- Checkpoint anterior publicado no GitHub: c12d4db; tag checkpoint/pre-mp04-2026-10-31; árvore recuperada por fetch em repositório separado e validada. [Como voltar](../../docs/governance/retorno-pre-mp04.md).
+- MP-04: cadastro original, edição de preço/estoque, desativação preservando histórico, identificação por fornecedor/oferta e moderação separada da publicação. [Relatório](../../docs/qa/MP-04-catalogo-ofertas.md).
+- Evidências locais: 737 testes front, 63 contratos, 46 harness; suíte back 336 antes da moderação final, seguida de 31 regressões e 28 verificações finais de catálogo/migração. Tipos aprovados; lint 0 erros/10 avisos. Navegador desktop/mobile e imagem Docker com fontes locais aprovados. CI completa do candidato fica registrada na PR.
+- Migração 0014 aplicada apenas no D1 local separado de QA. Nenhum merge, deploy, edição de perfil/identidade ou migração remota nesta entrega.
+- Branch da entrega: codex/mp-04-catalogo, baseada no checkpoint integral. PRs #22/#23/#24 preservadas como registros anteriores; não mesclar automaticamente branches sobrepostas.
+- MP-05: todo, não iniciado e sem autorização. Aguardar aprovação explícita da entrega antes de avançar.
 
-## Pendências da versão
+## Contexto seletivo e pendências
 
-- Seguir MP-04 a MP-12 somente conforme aprovação por etapa.
-- Antes de ativar MP-03: reconciliar fornecedores e seguir [inventário/ativação](../../docs/qa/MP-03-inventario-ativacao.md).
-- Cadastro de identidade nova e envio/retorno real da recuperação exigem homologação externa autorizada; evidências anteriores de navegador usaram contas QA existentes.
+- [Arquitetura vigente](../../docs/architecture/arquitetura-vigente.md), [roteiro](../README.md); usar node scripts/context.mjs status ID ou packet para o escopo necessário.
+- Homologação de produção, publicação e ativação continuam separadas. Antes de ativar MP-03, seguir o inventário e a reconciliação de fornecedores; antes da nova versão, planejar migração 0014 e backup operacional.
+- Identificação pública usa o ID real do fornecedor; não inventa razão social/reputação. Cadastro de nova identidade e recuperação real de senha ainda exigem homologação externa autorizada.
 
 ## Histórico sob demanda
 
-- [Registro integral até 30/10, sem reescrita](progresso-ate-2026-10-30.md).
-- [Histórico anterior](progresso-historico.md). Não carregar ambos na entrada normal.
-- O registro curto descreve o estado; os relatórios em docs/qa/ guardam evidências e limites de cada entrega.
+- [Registro integral anterior](progresso-ate-2026-10-30.md), [histórico anterior](progresso-historico.md). Não carregar ambos na entrada normal.
+- CTX-01 e etapas anteriores preservados no Git e em docs/qa/. O checkpoint de código não restaura bancos ou configurações remotas.

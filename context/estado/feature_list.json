@@ -641,7 +641,7 @@
       "evidencias_exigidas": [
         "Jornadas comprador/fornecedor/admin em navegador; testes de bypass da API, ownership, aprovação/rejeição/suspensão e falha entre serviços; inventário e plano de ativação."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
+      "aprovacao_usuario": "entrega_aprovada_pelo_usuario",
       "notas": "Implementação e validação local concluídas; PR #24 em rascunho sobre MP-02. Aprovação do usuário pendente. Sem merge/deploy/migração remota. Envio real da recuperação e cadastro de identidade nova em ambiente publicado permanecem para homologação da versão; critérios locais cobertos por testes e navegação com QA existente.",
       "conclusao_em": "2026-10-29",
       "evidencias_registradas": [
@@ -657,7 +657,7 @@
       "id": "MP-04",
       "titulo": "Homologar catálogo e manutenção de ofertas",
       "fase": 1,
-      "status": "todo",
+      "status": "done",
       "ordem": 4,
       "prioridade": "P0",
       "dependencias": [
@@ -678,8 +678,8 @@
       "evidencias_exigidas": [
         "Testes de CRUD/escopos/contratos e navegação entre páginas; jornada com fornecedores distintos e produto alterado/desativado após compra."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_para_iniciar",
-      "notas": "Planejado; implementação, validação e homologação ainda pendentes. Exige aprovação explícita do usuário para iniciar, além das dependências técnicas."
+      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
+      "notas": "Implementação e homologação locais concluídas em 31/10/2026; candidato versionado na branch codex/mp-04-catalogo. Relatório: docs/qa/MP-04-catalogo-ofertas.md. Migração 0014 aplicada somente em D1 local. CI completa registrada na PR. Sem merge/deploy/migração remota. MP-05 não autorizado."
     },
     {
       "id": "MP-05",
@@ -958,7 +958,7 @@
       "evidencias_exigidas": [
         "Medição antes/depois; histórico preservado; validação de links/limites; regressões dos fluxos e build."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
+      "aprovacao_usuario": "entrega_aprovada_pelo_usuario",
       "notas": "Implementação e validação locais concluídas em 31/10/2026. Evidência: docs/qa/CTX-01-contexto-ia.md. Build Docker aprovado após repetição por falha inicial em next/font. Nenhum commit/push/deploy ou alteração remota. MP-04 permanece não autorizado."
     }
   ],
@@ -985,12 +985,12 @@
     ],
     "regra_execucao": "Uma etapa por item MP, em ordem numerica; concluir, validar, registrar e parar. Dependencias satisfeitas nao autorizam avancar. Exigir aprovacao explicita do usuario para iniciar a proxima etapa.",
     "controle_execucao": {
-      "etapa_concluida": "MP-03",
+      "etapa_concluida": "MP-04",
       "aprovacao_entrega": "aguardando_usuario",
-      "proxima_etapa": "MP-04",
+      "proxima_etapa": "MP-05",
       "autorizada_proxima_etapa": false,
       "preparacao_concluida": "CTX-01",
-      "aprovacao_preparacao": "aguardando_usuario"
+      "aprovacao_preparacao": "aprovada_pelo_usuario"
     },
     "decisoes": {
       "compra_pagamento_entrega": "demonstrativos",

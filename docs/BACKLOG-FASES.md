@@ -40,7 +40,7 @@ Essas regras são o alvo aprovado. Não descrever aprovação de fornecedores, n
 5. Commit, push, publicação, migrações e alteração de segredos seguem o escopo autorizado; não são efeitos colaterais de QA ou de conclusão de etapa.
 6. Não delegar nem iniciar trabalho concorrente sem autorização. Não alterar o harness incidentalmente.
 
-**Ponto de controle atual (29/10/2026):** MP-02 aprovado. MP-03 concluído em implementação/validação local, aguardando aprovação da entrega; PR #24 em rascunho, dependente de #22/#23. Navegador autenticado e inventário remoto somente leitura registrados. Sem merge/deploy/migração remota. MP-04 não iniciado e sem autorização. Ver [relatório MP-03](qa/MP-03-cadastro-aprovacao.md) e [inventário/ativação](qa/MP-03-inventario-ativacao.md).
+**Ponto de controle atual (31/10/2026):** MP-03 e CTX-01 aprovados para avançar. MP-04 entregue localmente; candidato na branch codex/mp-04-catalogo, CI completa na PR. Checkpoint anterior remoto c12d4db e tag checkpoint/pre-mp04-2026-10-31, recuperação verificada. Migração 0014 somente local; sem merge/deploy/migração remota. MP-05 não autorizado. Ver [relatório MP-04](qa/MP-04-catalogo-ofertas.md) e [retorno](governance/retorno-pre-mp04.md).
 
 ### Preparação CTX-01, anterior à MP-04
 
@@ -55,8 +55,8 @@ P0 = fluxo obrigatório, integridade ou condição de liberação; P1 = conclus�
 | MP-00 | P0 | Organizar o backlog e o contrato da versão | — | done; aprovado pelo usuário |
 | MP-01 | P0 | Tornar validação e publicação previsíveis | MP-00 | done; aprovado pelo usuário |
 | MP-02 | P0 | Garantir integridade de pedidos e estoque | MP-01 | done; entrega aprovada |
-| MP-03 | P0 | Concluir cadastro, acesso e aprovação de fornecedores | MP-02 | done; aguarda aprovação da entrega |
-| MP-04 | P0 | Homologar catálogo e manutenção de ofertas | MP-03 | todo; início depende de aprovação |
+| MP-03 | P0 | Concluir cadastro, acesso e aprovação de fornecedores | MP-02 | done; entrega aprovada |
+| MP-04 | P0 | Homologar catálogo e manutenção de ofertas | MP-03 | done; aguarda aprovação da entrega |
 | MP-05 | P0 | Fechar checkout simulado e recuperação de falhas | MP-02, MP-04 | todo; início depende de aprovação |
 | MP-06 | P0 | Registrar e acompanhar o ciclo do pedido | MP-05 | todo; início depende de aprovação |
 | MP-07 | P0 | Completar operação de venda e cancelamento nas interfaces | MP-06 | todo; início depende de aprovação |

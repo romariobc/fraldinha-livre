@@ -1,6 +1,6 @@
 // src/app/layout.tsx
 import type { Metadata } from 'next'
-import { Nunito, Inter } from 'next/font/google'
+import localFont from 'next/font/local'
 import './globals.css'
 import { Toaster } from 'sonner'
 import { AuthProvider } from '@/contexts/auth-context'
@@ -10,17 +10,17 @@ import { OrdersProvider } from '@/contexts/orders-context'
 import { CartProvider } from '@/contexts/cart-context'
 import { ProductsProvider } from '@/contexts/products-context'
 
-const nunito = Nunito({
-  subsets: ['latin'],
+const nunito = localFont({
+  src: './fonts/nunito-latin-variable.woff2',
   variable: '--font-nunito',
-  weight: ['400', '600', '700', '800', '900'],
+  weight: '200 1000',
   display: 'swap',
 })
 
-const inter = Inter({
-  subsets: ['latin'],
+const inter = localFont({
+  src: './fonts/inter-latin-variable.woff2',
   variable: '--font-inter',
-  weight: ['400', '500', '600'],
+  weight: '100 900',
   display: 'swap',
 })
 

@@ -28,7 +28,7 @@ OrdersDataTable mantém estado e ações; orders-table/model.ts normaliza linhas
 - DTO canônico: @contracts.
 - Conta: domain/account.ts deriva o pedido do contrato, preservando explicitamente cotação legada e snapshots sem items.
 - Fornecedor: domain/supplier.ts é projeção para painel, não uma segunda entidade persistida.
-- Catálogo: products.ts deriva campos do DTO e preserva priceInCents na apresentação; conversão única em product-adapters.ts.
+- Catálogo: products.ts deriva campos do DTO e preserva priceInCents na apresentação; conversão única em product-adapters.ts. Identificação pública por supplier-label.ts, sem nomes/estrelas de fixtures. Cadastro original em CreateOfferDialog; manutenção de preço/estoque em EditPriceDialog.
 - order-adapters.ts concentra conversões de pedidos para conta/painel.
 - account-mock.ts e supplier-mock.ts guardam fixtures; formatters.ts guarda helpers de exibição. Fixtures não conferem autenticação ou segurança.
 - lib/compat/tanstack-table.ts e lib/compat/recharts.tsx são implementações locais; não equivalem automaticamente às APIs completas dos pacotes homônimos. Imports por caminho explícito.
@@ -38,6 +38,8 @@ OrdersDataTable mantém estado e ações; orders-table/model.ts normaliza linhas
 - Rotas → validação Zod → autorização → persistência D1. O backend acessa dados por Drizzle/SQL; operações críticas podem ser extraídas em back/src/lib/.
 - order-atomicity.ts grava pedido, itens, estoque e evento em D1.batch; controla concorrência/idempotência.
 - suppliers.ts registra habilitação comercial versionada e decisão/auditoria na mesma transação; ofertas/novas compras exigem aprovação.
+- Moderação administrativa usa moderation_blocked (migração 0014), separada de active; fornecedor não remove esse bloqueio. DELETE de produto desativa e preserva referências. Guards da compra revalidam ambos no D1.batch.
+- Layout usa fontes locais com licenças em front/src/app/fonts/, sem fetch de fontes durante build.
 - Pedidos anteriores continuam atendíveis por fornecedor suspenso, respeitadas regras de ownership/transição.
 - Erros/requestId: packages/contracts/src/error.ts, back/src/lib/errors.ts, front/src/lib/api-client.ts e frontend-diagnostics.ts.
 

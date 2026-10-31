@@ -152,7 +152,11 @@ describe('MP-02: atomicidade em D1 pelos handlers reais', () => {
     const payload = await fixture(2), key = crypto.randomUUID()
     const first = await send('POST', '/orders', payload, { key })
     const order = await first.json() as { id: string }
-    await env.DB.prepare('UPDATE orders SET request_fingerprint = NULL WHERE id = ?').bind(order.id).run()
+    // Reproduce an actual pre-canonicalization legacy row (client snapshot, no hash).
+    await env.DB.prepare('UPDATE orders SET request_fingerprint = NULL, product = ?, supplier_name = NULL WHERE id = ?')
+      .bind(payload.product, order.id).run()
+    await env.DB.prepare('UPDATE order_items SET product_name = ? WHERE order_id = ?')
+      .bind(payload.items[0].productName, order.id).run()
     expect((await send('POST', '/orders', { ...payload, items: [...payload.items].reverse() }, { key })).status).toBe(200)
     expect((await send('POST', '/orders', { ...payload, price: payload.price + 1 }, { key })).status).toBe(409)
     expect(await eventCount(order.id)).toBe(1)

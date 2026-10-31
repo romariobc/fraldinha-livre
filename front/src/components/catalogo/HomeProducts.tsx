@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/auth-context'
 import { useCart } from '@/contexts/cart-context'
 import { isProfileComplete } from '@/lib/utils'
 import type { Product } from '@/lib/products'
+import { supplierLabel } from '@/lib/supplier-label'
 import ProductCard from './ProductCard'
 
 export default function HomeProducts() {
@@ -20,7 +21,7 @@ export default function HomeProducts() {
       return
     }
     addItem({ productId: product.id, productName: `${product.name} ${product.size}`,
-      supplierId: product.supplierId, supplierName: 'Fornecedor parceiro',
+      supplierId: product.supplierId, supplierName: supplierLabel(product.supplierId),
       unitPrice: product.priceInCents, quantity, unit: 'un' })
     router.push('/checkout')
   }

@@ -3,6 +3,7 @@ import {
   ProductSchema,
   ProductAtributosSchema,
   CreateProductRequestSchema,
+  UpdateProductRequestSchema,
 } from '../index'
 
 describe('ProductSchema', () => {
@@ -87,6 +88,13 @@ describe('ProductSchema', () => {
 })
 
 describe('CreateProductRequestSchema', () => {
+  it.each([0, -1, 1.2, Number.MAX_SAFE_INTEGER + 1])('rejeita preço inválido na edição: %s', value => {
+    expect(UpdateProductRequestSchema.safeParse({ priceCents: value }).success).toBe(false)
+  })
+  it('não permite forjar preço anterior e mantém reposição zero válida', () => {
+    const result = UpdateProductRequestSchema.parse({ quantity: 0, oldPriceCents: 999999 })
+    expect(result).toEqual({ quantity: 0 })
+  })
   it('ignora e descarta campos id/supplierId/active extras (nao falha no parse)', () => {
     const requestWithExtraFields = {
       name: 'Supersec Pants',

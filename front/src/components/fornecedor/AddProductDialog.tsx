@@ -172,11 +172,11 @@ export function AddProductDialog({
     const priceNum = Number(customPriceReais.replace(',', '.'))
     const stockNum = Number(stockQuantity)
 
-    if (!customPriceReais.trim() || isNaN(priceNum) || priceNum <= 0) {
+    if (!customPriceReais.trim() || !Number.isSafeInteger(Math.round(priceNum * 100)) || priceNum <= 0) {
       errors.price = 'Informe um preço de venda válido maior que zero.'
     }
 
-    if (!stockQuantity.trim() || isNaN(stockNum) || stockNum < 0) {
+    if (!stockQuantity.trim() || !Number.isSafeInteger(stockNum) || stockNum < 0) {
       errors.stock = 'Informe uma quantidade de estoque válida maior ou igual a zero.'
     }
 

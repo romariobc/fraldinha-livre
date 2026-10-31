@@ -175,7 +175,7 @@ export const ordersPostHandler = async (c: OrderContext) => {
       const byId = new Map(rows.map((product) => [product.id, product]))
       for (const item of request.items) {
         const product = byId.get(item.productId)
-        if (!product || !product.active) return respondError(c, 'PRODUCT_NOT_FOUND', 400, 'Produto não encontrado ou inativo.')
+        if (!product || !product.active || product.moderationBlocked) return respondError(c, 'PRODUCT_NOT_FOUND', 400, 'Produto não encontrado ou inativo.')
         if (item.unitPrice !== product.priceCents) return respondError(c, 'PRICE_MISMATCH', 400, 'Preço divergente do catálogo.')
         if (product.supplierId !== request.supplierId) return respondError(c, 'SUPPLIER_MISMATCH', 400, 'Fornecedor divergente do catálogo.')
         if (product.quantity < item.quantity) return respondError(c, 'INSUFFICIENT_STOCK', 409, `Estoque insuficiente para o produto ${item.productName || item.productId} no momento da finalização.`)
@@ -195,7 +195,11 @@ export const ordersPostHandler = async (c: OrderContext) => {
     let inserted: boolean
     try {
       inserted = await createOrderAtomically(c.env.DB, {
-        orderId, uid, idempotencyKey, fingerprint, request,
+        orderId, uid, idempotencyKey, fingerprint,
+        request: { ...request,
+          supplierName: 'Fornecedor ' + request.supplierId,
+          product: productRows.map(p => (p.name + ' ' + p.size).trim()).join(', '),
+        },
         requestId: c.get('requestId') ?? null, createdAt: new Date().toISOString(),
       })
     } catch (error) {

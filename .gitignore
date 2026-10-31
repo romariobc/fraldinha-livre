@@ -48,8 +48,6 @@ firebase-debug*.log
 .agents/*
 !.agents/skills/
 !.agents/rules/
-run_checks.ps1
-check_resources.ps1
 
 # graphify (grafo de conhecimento gerado)
 graphify-out/

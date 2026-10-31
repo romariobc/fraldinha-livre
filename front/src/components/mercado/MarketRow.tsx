@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import type { GeoScope, DeliveryType, MarketOrder } from '@/lib/supplier-mock'
-import { maskCnpj, timeAgo } from '@/lib/supplier-mock'
+import type { GeoScope, DeliveryType, MarketOrder } from '@/lib/domain/supplier'
+import { maskCnpj, timeAgo } from '@/lib/formatters'
 import InlineOfferForm from './InlineOfferForm'
 
 interface MarketRowProps {

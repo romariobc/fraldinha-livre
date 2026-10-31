@@ -1,0 +1,26 @@
+{
+  "checkout": {
+    "description": "Orquestração da compra simulada; selecione a etapa visual afetada.",
+    "files": ["front/src/app/(comprador)/checkout/page.tsx", "front/src/components/checkout/CheckoutAddressStep.tsx", "front/src/components/checkout/CheckoutReviewStep.tsx", "front/src/components/checkout/CheckoutPaymentStep.tsx", "front/src/components/checkout/CheckoutConfirmationStep.tsx", "front/src/contexts/orders-context.tsx", "front/src/lib/ports/payment.ts", "front/src/app/(comprador)/checkout/__tests__/page.test.tsx"]
+  },
+  "supplier-orders": {
+    "description": "Tabela: controller, normalização, colunas, visualização ou detalhe conforme a mudança.",
+    "files": ["front/src/components/fornecedor/OrdersDataTable.tsx", "front/src/components/fornecedor/orders-table/model.ts", "front/src/components/fornecedor/orders-table/columns.tsx", "front/src/components/fornecedor/orders-table/OrdersTableView.tsx", "front/src/components/fornecedor/orders-table/OrderDetailsDialog.tsx", "front/src/contexts/market-context.tsx", "front/src/components/fornecedor/__tests__/OrdersDataTable.test.tsx"]
+  },
+  "supplier-approval": {
+    "description": "Papel Firebase e habilitação D1 são verificações distintas.",
+    "files": ["packages/contracts/src/supplier.ts", "back/src/routes/suppliers.ts", "back/src/lib/supplier-approval.ts", "back/test/supplier-approval.test.ts", "front/src/components/admin/AdminSupplierApprovals.tsx", "front/src/components/fornecedor/SupplierApprovalStatus.tsx"]
+  },
+  "order-integrity": {
+    "description": "Contrato, transação e testes D1 de pedido/estoque.",
+    "files": ["packages/contracts/src/order.ts", "back/src/routes/orders.ts", "back/src/lib/order-atomicity.ts", "back/src/schema/orders.ts", "back/src/schema/order-events.ts", "back/test/order-atomicity.test.ts"]
+  },
+  "identity": {
+    "description": "Sessão, perfil, claims e retomada de cadastro.",
+    "files": ["front/src/contexts/auth-context.tsx", "front/src/lib/complete-onboarding.ts", "back/src/middleware/auth.ts", "back/src/routes/auth.ts", "firestore.rules", "front/src/contexts/__tests__/auth-context-security.test.tsx", "front/src/lib/__tests__/complete-onboarding.test.ts"]
+  },
+  "catalog": {
+    "description": "Contrato HTTP, projeção para catálogo e catálogo próprio do fornecedor.",
+    "files": ["packages/contracts/src/product.ts", "front/src/lib/product-adapters.ts", "front/src/contexts/products-context.tsx", "front/src/app/(main)/catalogo/page.tsx", "front/src/app/(fornecedor)/painel-fornecedor/catalogo/page.tsx", "back/src/routes/products.ts", "back/test/products.crud.test.ts"]
+  }
+}

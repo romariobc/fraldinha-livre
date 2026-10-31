@@ -6,7 +6,7 @@ import { MetricCard } from '../MetricCard'
 import { useSupplierData } from '@/hooks/use-supplier-data'
 import SupplierDashboardOverviewPage from '@/app/(fornecedor)/painel-fornecedor/page'
 import { DollarSign, Package } from 'lucide-react'
-import type { DirectOrder } from '@/lib/supplier-mock'
+import type { DirectOrder } from '@/lib/domain/supplier'
 
 // Mock contexts for hook & page testing
 let mockDirectOrders: DirectOrder[] = []

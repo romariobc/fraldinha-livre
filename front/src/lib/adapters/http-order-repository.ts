@@ -64,11 +64,11 @@ export class HttpOrderRepository implements OrderRepository {
     }
   }
 
-  async updateStatus(orderId: string, status: OrderStatus): Promise<Order> {
+  async updateStatus(orderId: string, status: OrderStatus, reason?: string): Promise<Order> {
     try {
       const res = await apiFetch(`/orders/${orderId}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, reason }),
       })
       const json = await res.json()
       return OrderSchema.parse(json)

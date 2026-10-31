@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { Address, Order } from '@/lib/account-mock'
+import type { Address, Order } from '@/lib/domain/account'
 import { getOrderItems } from '../order-items'
 
 describe('getOrderItems', () => {

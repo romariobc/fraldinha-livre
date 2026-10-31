@@ -9,7 +9,7 @@ description: Mapa do catálogo público e integração com produtos, carrinho e 
 - Implementação compartilhada: front/src/components/catalogo/CatalogoView.tsx. A página de catálogo apenas envolve a view com Suspense.
 - Produtos vêm de useProducts em front/src/contexts/products-context.tsx. Consulte o provider e ProductRepository; não use PRODUCTS como catálogo real estático.
 - Filtros e paginação são derivados da URL. A vitrine também usa fornecedorId da rota; preserve esse escopo ao atualizar filtros.
-- Preços do modelo de apresentação usam priceInCents; os contratos usam priceCents. Confirme o mapeamento e mantenha valores em centavos.
+- Preços do modelo de apresentação usam priceInCents; os contratos usam priceCents. O mapeamento fica em front/src/lib/product-adapters.ts; mantenha valores em centavos.
 - Compras passam por autenticação/perfil, carrinho e checkout; verifique handleBuy na view. Não presuma que BuyModal participa do fluxo só por existir no diretório.
 - Cotação e leilão têm restrições próprias: confirme flags e implementação antes de declarar persistência ou disponibilidade.
 

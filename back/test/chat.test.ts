@@ -1,3 +1,4 @@
+import { approveFixtures, seedSuppliers } from './approve-fixtures'
 import { describe, it, expect, vi, beforeAll } from 'vitest'
 import { Hono } from 'hono'
 import { drizzle } from 'drizzle-orm/d1'
@@ -30,6 +31,7 @@ const AUTH_HEADER = { Authorization: 'Bearer token-uid-comprador-teste' }
 describe('POST /chat/message', () => {
   beforeAll(async () => {
     await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
+    await approveFixtures(env.DB, ...seedSuppliers, 'uid-fornecedor-teste', 'uid-outro-fornecedor', 'uid-fornecedor-a', 'uid-fornecedor-b', 'supplier-a')
   })
 
   it('sem Authorization retorna 401', async () => {

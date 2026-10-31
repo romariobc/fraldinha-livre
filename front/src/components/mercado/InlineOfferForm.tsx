@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { GeoScope, DeliveryType, MarketOrder } from '@/lib/supplier-mock'
+import type { GeoScope, DeliveryType, MarketOrder } from '@/lib/domain/supplier'
 import { parsePriceToCents } from '@/lib/market-utils'
 
 interface InlineOfferFormProps {

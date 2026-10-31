@@ -7,7 +7,7 @@ import { useOrders } from '@/contexts/orders-context'
 import { CartProvider } from '@/contexts/cart-context'
 import { MarketProvider } from '@/contexts/market-context'
 import { useRouter, useSearchParams } from 'next/navigation'
-import type { Order } from '@/lib/account-mock'
+import type { Order } from '@/lib/domain/account'
 
 vi.mock('@/contexts/auth-context', () => ({
   useAuth: vi.fn(),

@@ -1,5 +1,5 @@
 import { drizzle } from 'drizzle-orm/d1'
-import { eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import type { Context } from 'hono'
 import { products } from '../schema/products'
 import type { Env, AppContext } from '../env'
@@ -60,7 +60,7 @@ export const productsGetHandler = async (c: Context<{ Bindings: Env; Variables: 
       return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
     }
     const rows = await db.select().from(products).all()
-    return c.json(rows.map(normalizeProduct))
+    return c.json(rows.map(row => ProductSchema.parse(normalizeProduct(row))))
   }
 
   if (scope === 'fornecedor') {
@@ -72,11 +72,11 @@ export const productsGetHandler = async (c: Context<{ Bindings: Env; Variables: 
       return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
     }
     const rows = await db.select().from(products).where(eq(products.supplierId, uid)).all()
-    return c.json(rows.map(normalizeProduct))
+    return c.json(rows.map(row => ProductSchema.parse(normalizeProduct(row))))
   }
 
-  const rows = await db.select().from(products).where(eq(products.active, true)).all()
-  return c.json(rows.map(normalizeProduct))
+  const rows = await db.select().from(products).where(and(eq(products.active, true), eq(products.moderationBlocked, false), sql`${products.quantity} > 0 AND ${products.priceCents} > 0`, sql`EXISTS (SELECT 1 FROM supplier_applications s WHERE s.uid = ${products.supplierId} AND s.status = 'aprovado')`)).all()
+  return c.json(rows.map(row => ProductSchema.parse(normalizeProduct(row))))
 }
 
 // POST /products — cria produto do fornecedor autenticado. supplierId/active/id sempre
@@ -99,23 +99,17 @@ export const productsPostHandler = async (c: Context<{ Bindings: Env; Variables:
     const db = drizzle(c.env.DB)
     const id = generateUUID()
 
-    await db.insert(products).values({
-      id,
-      supplierId: uid,
-      supplierEmail,
-      active: true,
-      priceCents: createRequest.priceCents,
-      name: createRequest.name,
-      brand: createRequest.brand,
-      size: createRequest.size,
-      quantity: createRequest.quantity,
-      slug: createRequest.slug,
-      categoria: createRequest.categoria,
-      descricao: createRequest.descricao,
-      atributos: createRequest.atributos,
-      badge: createRequest.badge,
-      imageUrl: createRequest.imageUrl,
-    })
+    const fields = { id, supplier_id: uid, supplier_email: supplierEmail ?? null, active: 1,
+      price_cents: createRequest.priceCents, name: createRequest.name, brand: createRequest.brand,
+      size: createRequest.size, quantity: createRequest.quantity, slug: createRequest.slug,
+      categoria: createRequest.categoria, descricao: createRequest.descricao,
+      atributos: JSON.stringify(createRequest.atributos), badge: createRequest.badge ?? null,
+      image_url: createRequest.imageUrl ?? null }
+    const result = await c.env.DB.prepare(`INSERT INTO products (${Object.keys(fields).join(', ')})
+      SELECT ${Object.keys(fields).map(() => '?').join(', ')}
+      WHERE EXISTS (SELECT 1 FROM supplier_applications WHERE uid = ? AND status = 'aprovado')`)
+      .bind(...Object.values(fields), uid).run()
+    if (result.meta.changes !== 1) return respondError(c, 'SUPPLIER_NOT_APPROVED', 403, 'Aprovação administrativa necessária para publicar ofertas.')
 
     const savedRows = await db.select().from(products).where(eq(products.id, id)).all()
     const saved = savedRows[0]
@@ -160,7 +154,11 @@ export const productsPutHandler = async (c: Context<{ Bindings: Env; Variables: 
     const body = await c.req.json()
     const updateRequest = UpdateProductRequestSchema.parse(body)
 
-    let finalUpdateRequest = { ...updateRequest }
+    if (updateRequest.active === true && existingRows[0].moderationBlocked) {
+      return respondError(c, 'FORBIDDEN', 403, 'Oferta bloqueada pela administração.')
+    }
+
+    const finalUpdateRequest: typeof updateRequest & { oldPriceCents?: number | null } = { ...updateRequest }
 
     // Auto-track old price for discounts
     if (updateRequest.priceCents !== undefined && updateRequest.priceCents !== existingRows[0].priceCents) {
@@ -173,7 +171,14 @@ export const productsPutHandler = async (c: Context<{ Bindings: Env; Variables: 
       }
     }
 
-    await db.update(products).set(finalUpdateRequest).where(eq(products.id, id))
+    const updatedResult = await db.update(products).set(finalUpdateRequest).where(and(eq(products.id, id),
+      sql`(${updateRequest.active === true ? 1 : 0} = 0 OR ${products.moderationBlocked} = 0)`,
+      sql`EXISTS (SELECT 1 FROM supplier_applications WHERE uid = ${uid} AND status = 'aprovado')`)).returning({ id: products.id })
+    if (updatedResult.length === 0) {
+      const fresh = await db.select().from(products).where(eq(products.id, id)).get()
+      if (updateRequest.active === true && fresh?.moderationBlocked) return respondError(c, 'FORBIDDEN', 403, 'Oferta bloqueada pela administração.')
+      return respondError(c, 'SUPPLIER_NOT_APPROVED', 403, 'Aprovação administrativa necessária para editar ofertas.')
+    }
 
     const updatedRows = await db.select().from(products).where(eq(products.id, id)).all()
     const updated = updatedRows[0]
@@ -192,7 +197,7 @@ export const productsPutHandler = async (c: Context<{ Bindings: Env; Variables: 
   }
 }
 
-// DELETE /products/:id — remocao definitiva (nao e o mesmo que despublicar via active=false).
+// DELETE preserves products and order references; removal means unpublish.
 export const productsDeleteHandler = async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>) => {
   const uid = c.get('uid')
   if (!uid) {
@@ -213,6 +218,9 @@ export const productsDeleteHandler = async (c: Context<{ Bindings: Env; Variable
     return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
   }
 
-  await db.delete(products).where(eq(products.id, id))
+  const result = await db.update(products).set({ active: false }).where(and(eq(products.id, id),
+    eq(products.supplierId, uid),
+    sql`EXISTS (SELECT 1 FROM supplier_applications WHERE uid = ${uid} AND status = 'aprovado')`)).returning({ id: products.id })
+  if (result.length === 0) return respondError(c, 'SUPPLIER_NOT_APPROVED', 403, 'Aprovação administrativa necessária para alterar ofertas.')
   return c.body(null, 204)
 }

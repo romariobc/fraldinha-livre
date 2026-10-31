@@ -1,3 +1,4 @@
+import { approveFixtures, seedSuppliers } from '../approve-fixtures'
 import { describe, it, expect, vi, beforeAll } from 'vitest'
 import { Hono } from 'hono'
 import { env } from 'cloudflare:workers'
@@ -28,6 +29,7 @@ const AUTH_HEADER = { Authorization: 'Bearer token-uid-comprador-teste' }
 describe('Ciclo completo de autocorreção no Orchestrator', () => {
   beforeAll(async () => {
     await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
+    await approveFixtures(env.DB, ...seedSuppliers, 'uid-fornecedor-teste', 'uid-outro-fornecedor', 'uid-fornecedor-a', 'uid-fornecedor-b', 'supplier-a')
   })
 
   it('ID inexistente -> erro retornado pela tool -> modelo tenta novamente com ID válido -> checkout action bem-sucedido', async () => {

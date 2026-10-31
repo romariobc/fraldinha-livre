@@ -105,7 +105,8 @@ describe('ProductCard', () => {
       />
     )
 
-    const productLink = screen.getByRole('link')
+    const productLink = screen.getAllByRole('link').find(link => link.getAttribute('href') === `/produto/${TEST_PRODUCT.slug}?p=${TEST_PRODUCT.id}`)
+    expect(screen.getByRole('link', { name: 'Ver loja' })).toHaveAttribute('href', `/catalogo/fornecedor/${TEST_PRODUCT.supplierId}`)
     expect(productLink).toHaveAttribute('href', `/produto/${TEST_PRODUCT.slug}?p=${TEST_PRODUCT.id}`)
   })
 

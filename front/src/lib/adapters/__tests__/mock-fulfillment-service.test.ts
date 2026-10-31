@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { MockFulfillmentService } from '../mock-fulfillment-service'
 import { runFulfillmentServiceContract } from '@/lib/ports/__tests__/fulfillment-service.contract'
-import type { Address } from '@/lib/account-mock'
+import type { Address } from '@/lib/domain/account'
 import type { OrderItem } from '@/lib/domain/order'
 
 describe('MockFulfillmentService', () => {

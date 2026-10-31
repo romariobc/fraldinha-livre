@@ -1,33 +1,15 @@
-// src/lib/products.ts
+import type { Product as ProductContract } from '@contracts'
 
+// Catalog presentation model. HTTP fields remain canonical in @contracts; conversion is in product-adapters.ts.
 export type Brand = string
 export type Size = string
 export type Badge = string
 export type ProductCategory = string
-
-export interface ProductAtributos {
-  faixaPeso: string        // ex.: "5–9 kg" (mapeado por tamanho)
-  genero: string           // ex.: "unissex" (fraldas são unissex; tipo deixa espaço para variar no futuro)
-  absorcao: string         // ex.: "até 12 horas"
-  tecnologia: string       // ex.: "camada seca antivazamento"
-  erpId?: string           // Código ERP ou SKU interno do fornecedor
-}
-
-export interface Product {
-  id: string
-  name: string
-  brand: Brand
-  size: Size
-  quantity: number
+export type ProductAtributos = Omit<ProductContract['atributos'], 'genero'> & { genero: string }
+export interface Product extends Omit<ProductContract, 'priceCents' | 'oldPriceCents' | 'active' | 'atributos'> {
   priceInCents: number
   oldPriceCents?: number
-  supplierId: string
-  slug: string
-  categoria: ProductCategory
-  descricao: string
   atributos: ProductAtributos
-  badge?: Badge
-  imageUrl?: string
 }
 
 export const PRODUCTS: Product[] = []

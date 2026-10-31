@@ -1,6 +1,6 @@
 // src/components/minha-conta/HistoricoTab.tsx
 import { History } from 'lucide-react'
-import { Order } from '@/lib/account-mock'
+import type { Order } from '@/lib/domain/account'
 import OrderCard from './OrderCard'
 
 interface HistoricoTabProps {

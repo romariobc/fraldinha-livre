@@ -5,8 +5,8 @@ import { vi } from 'vitest'
 import { ReportsChart, type ReportDataPoint } from '../ReportsChart'
 
 // Mock Recharts ResponsiveContainer to render children reliably in JSDOM
-vi.mock('recharts', async () => {
-  const original = await vi.importActual<typeof import('recharts')>('recharts')
+vi.mock('@/lib/compat/recharts', async () => {
+  const original = await vi.importActual<typeof import('@/lib/compat/recharts')>('@/lib/compat/recharts')
   return {
     ...original,
     ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (

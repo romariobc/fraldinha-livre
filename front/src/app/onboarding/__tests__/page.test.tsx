@@ -14,12 +14,14 @@ vi.mock('@/contexts/auth-context', () => ({
 
 vi.mock('firebase/firestore', () => ({
   doc: vi.fn((_db, _col, id) => ({ id })),
+  getDoc: vi.fn().mockResolvedValue({ exists: () => false }),
   setDoc: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('@/lib/firebase', () => ({
   auth: {
     currentUser: {
+      uid: 'user-123',
       getIdToken: vi.fn().mockResolvedValue('fresh-jwt-token'),
     },
   },
@@ -75,6 +77,7 @@ describe('OnboardingPage — Provisionamento e Renovação de Token (AUTH-001)',
 
   beforeEach(() => {
     vi.clearAllMocks()
+    Object.assign(auth.currentUser!, { uid: 'user-123' })
     vi.mocked(useRouter).mockReturnValue(mockRouter)
   })
 
@@ -120,6 +123,16 @@ describe('OnboardingPage — Provisionamento e Renovação de Token (AUTH-001)',
     })
   })
 
+  it('retoma papel já provisionado sem oferecer troca de identidade', () => {
+    vi.mocked(useAuth).mockReturnValue(createMockAuth({
+      user: { uid: 'user-123', email: 'qa@teste.com', displayName: 'QA' },
+      role: 'comprador', profile: null,
+    }))
+    render(<OnboardingPage />)
+    expect(screen.getByText('Sou Fornecedor').closest('button')).toBeDisabled()
+    expect(screen.getByText('Sou Comprador').closest('button')).toBeEnabled()
+  })
+
   it('provisiona claim fornecedor, renova ID token e redireciona para painel-fornecedor', async () => {
     vi.mocked(useAuth).mockReturnValue(createMockAuth({
       user: { uid: 'user-forn', email: 'forn@teste.com', displayName: 'Distribuidora' },
@@ -133,6 +146,7 @@ describe('OnboardingPage — Provisionamento e Renovação de Token (AUTH-001)',
 
     render(<OnboardingPage />)
 
+    Object.assign(auth.currentUser!, { uid: 'user-forn' })
     const fornecedorBtn = screen.getByText('Sou Fornecedor').closest('button')!
     fireEvent.click(fornecedorBtn)
 
@@ -164,9 +178,7 @@ describe('OnboardingPage — Provisionamento e Renovação de Token (AUTH-001)',
       loading: false,
     }))
 
-    vi.mocked(apiFetch).mockResolvedValue(
-      new Response(JSON.stringify({ error: 'Invalid role' }), { status: 400 })
-    )
+    vi.mocked(apiFetch).mockRejectedValue(new Error('Invalid role'))
 
     render(<OnboardingPage />)
 

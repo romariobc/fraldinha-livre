@@ -8,7 +8,7 @@ import {
   filterOrdersByDateRange,
   generateReportTimeSeries,
 } from '../use-supplier-data'
-import type { DirectOrder } from '@/lib/supplier-mock'
+import type { DirectOrder } from '@/lib/domain/supplier'
 
 vi.mock('@/contexts/auth-context', () => ({
   useAuth: vi.fn(() => ({

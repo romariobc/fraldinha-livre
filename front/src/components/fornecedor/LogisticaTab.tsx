@@ -1,7 +1,7 @@
 'use client'
 
-import type { DispatchStatus, SupplierOffer, DirectOrder } from '@/lib/supplier-mock'
-import { timeAgo } from '@/lib/supplier-mock'
+import type { DispatchStatus, SupplierOffer, DirectOrder } from '@/lib/domain/supplier'
+import { timeAgo } from '@/lib/formatters'
 import { formatPrice } from '@/lib/utils'
 import { formatDeliveryType } from '@/lib/market-utils'
 import { useMarket } from '@/contexts/market-context'

@@ -100,7 +100,7 @@ export const adminProductStatusPatchHandler = async (c: AdminContext) => {
         requestId: sql<string>`${event.requestId}`.as('request_id'),
         createdAt: sql<string>`${event.createdAt}`.as('created_at'),
       }).from(products).where(eq(products.id, id))),
-      db.update(products).set({ active: request.active }).where(eq(products.id, id)).returning(),
+      db.update(products).set({ active: request.active, moderationBlocked: !request.active }).where(eq(products.id, id)).returning(),
     ])
     const updated = updatedRows[0]
     if (!updated) return respondError(c, 'PRODUCT_NOT_FOUND', 404, 'Produto não encontrado.')

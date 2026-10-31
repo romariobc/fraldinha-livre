@@ -34,6 +34,7 @@ Duas tentativas de build expuseram falha de `next/font/google` ao interpretar UR
 
 - Suíte frontend: 737 testes aprovados; contratos: 63. Harness: 46 testes aprovados (contexto, segurança de CI e runner E2E).
 - Suíte backend: 336 testes aprovados antes da separação final de moderação; 31 regressões de moderação/migração/atomicidade e 28 verificações finais de catálogo/migração aprovadas, após os ajustes finais. A matriz completa do candidato será conferida na PR.
+- Proteção adicional para legado: oferta com preço zero não aceita compra direta pelo ID, mesmo quando o cliente conhece esse ID. Preflight e transação verificam preço positivo; 14 regressões finais de catálogo aprovadas após esse ajuste. A primeira CI integral de MP-04 passou 12 verificações; a revisão final é revalidada no mesmo fluxo da PR.
 - Tipos dos três workspaces aprovados nas verificações locais. Lint: zero erros e dez avisos preexistentes. Build de produção em Docker aprovado com fontes locais; CI valida novamente o candidato compartilhado.
 - Navegador com contas QA existentes: cadastro original, duas ofertas com o mesmo slug, escolha exata, vitrine/paginação/filtros, vazio, mobile, edição de preço/estoque, desativação, histórico persistente e recuperação de erro. Moderação administrativa também aprovada na jornada final.
 - Autenticação e leitura de perfis usam Firebase real; operações comerciais e migrações usam exclusivamente o D1 local separado `docs/qa-artifacts/mp04-d1`. Nenhum usuário, perfil remoto, aprovação comercial remota ou pedido remoto foi criado/alterado.

@@ -140,6 +140,18 @@ describe('MP-04: catálogo, manutenção e histórico pelos handlers reais/D1', 
     expect(await env.DB.prepare('SELECT quantity FROM products WHERE id = ?').bind(p.id).first()).toMatchObject({ quantity: 1 })
   })
 
+  it('não permite comprar por ID uma oferta legada de preço zero, mesmo fora do catálogo público', async () => {
+    const p = await create()
+    await env.DB.prepare('UPDATE products SET price_cents = 0 WHERE id = ?').bind(p.id).run()
+    expect(await publicIds()).not.toContain(p.id)
+    const payload = purchase(p.id)
+    payload.price = 0
+    payload.items[0].unitPrice = 0
+    expect((await send('POST', '/orders', payload, 'buyer-mp04')).status).toBe(400)
+    expect(await env.DB.prepare('SELECT quantity FROM products WHERE id = ?').bind(p.id).first()).toMatchObject({ quantity: 8 })
+    expect(await env.DB.prepare('SELECT COUNT(*) AS n FROM order_items WHERE product_id = ?').bind(p.id).first()).toMatchObject({ n: 0 })
+  })
+
   it('preserva snapshots canônicos e referências após editar/remover; replay e cancelamento continuam íntegros', async () => {
     const p = await create()
     const payload = purchase(p.id)

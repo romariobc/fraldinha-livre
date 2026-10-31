@@ -59,7 +59,7 @@ export async function createOrderAtomically(db: Env['DB'], input: {
   // JSON table expansion keeps the number of bind parameters constant for larger baskets.
   const guard = `EXISTS (SELECT 1 FROM supplier_applications s WHERE s.uid = ? AND s.status = 'aprovado') AND NOT EXISTS (SELECT 1 FROM json_each(?) item
     LEFT JOIN products p ON p.id = json_extract(item.value, '$.productId')
-    WHERE p.id IS NULL OR p.active IS NOT 1 OR p.moderation_blocked IS NOT 0 OR p.supplier_id != ?
+    WHERE p.id IS NULL OR p.active IS NOT 1 OR p.moderation_blocked IS NOT 0 OR p.price_cents <= 0 OR p.supplier_id != ?
       OR p.price_cents != json_extract(item.value, '$.unitPrice')
       OR p.quantity < json_extract(item.value, '$.quantity'))`
   const insert = db.prepare(`INSERT INTO orders

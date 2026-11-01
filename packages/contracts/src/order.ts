@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AddressSchema } from './address'
+import { AddressSchema, CheckoutAddressSchema } from './address'
 import { PaymentMethodSchema, SimulatedPaymentOutcomeSchema } from './payment'
 
 export const OrderItemSchema = z.object({
@@ -33,6 +33,7 @@ export const OrderSchema = z.object({
   paymentMethod: PaymentMethodSchema.optional(),
   paymentTransactionId: z.string().optional(),
   paymentStatus: SimulatedPaymentOutcomeSchema.optional(),
+  paymentMode: z.literal('simulated').optional(),
 })
 export type Order = z.infer<typeof OrderSchema>
 
@@ -50,11 +51,12 @@ export const CreateOrderRequestSchema = z.object({
   price: z.number().int().nonnegative().optional(),
   supplierId: z.string().optional(),
   supplierName: z.string().optional(),
-  deliveryAddress: AddressSchema,
+  deliveryAddress: CheckoutAddressSchema,
   items: z.array(OrderItemSchema).min(1),
   paymentMethod: PaymentMethodSchema.optional(),
   paymentTransactionId: z.string().optional(),
   paymentStatus: SimulatedPaymentOutcomeSchema.optional(),
+  simulationOutcome: z.enum(['approved', 'declined']).optional(),
 })
 export type CreateOrderRequest = z.infer<typeof CreateOrderRequestSchema>
 

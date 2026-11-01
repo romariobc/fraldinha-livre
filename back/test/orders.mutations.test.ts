@@ -984,14 +984,16 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     expect(postRes.status).toBe(201)
     const created = await postRes.json() as any
     expect(created.paymentMethod).toBe('pix')
-    expect(created.paymentTransactionId).toBe('txn-sim-12345')
+    expect(created.paymentTransactionId).toBe('sim-' + created.id)
+    expect(created.paymentMode).toBe('simulated')
     expect(created.paymentStatus).toBe('approved')
 
     // Confirma via D1 direto
     const db = drizzle(env.DB)
     const dbOrder = await db.select().from(orders).where(eq(orders.id, created.id)).get()
     expect(dbOrder?.paymentMethod).toBe('pix')
-    expect(dbOrder?.paymentTransactionId).toBe('txn-sim-12345')
+    expect(dbOrder?.paymentTransactionId).toBe('sim-' + created.id)
+    expect(dbOrder?.paymentMode).toBe('simulated')
     expect(dbOrder?.paymentStatus).toBe('approved')
 
     // Confirma via GET /orders
@@ -1006,7 +1008,8 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     const found = list.find((o) => o.id === created.id)
     expect(found).toBeDefined()
     expect(found.paymentMethod).toBe('pix')
-    expect(found.paymentTransactionId).toBe('txn-sim-12345')
+    expect(found.paymentTransactionId).toBe('sim-' + created.id)
+    expect(found.paymentMode).toBe('simulated')
     expect(found.paymentStatus).toBe('approved')
   })
 })

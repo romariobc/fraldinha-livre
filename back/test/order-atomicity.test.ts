@@ -153,7 +153,7 @@ describe('MP-02: atomicidade em D1 pelos handlers reais', () => {
     const first = await send('POST', '/orders', payload, { key })
     const order = await first.json() as { id: string }
     // Reproduce an actual pre-canonicalization legacy row (client snapshot, no hash).
-    await env.DB.prepare('UPDATE orders SET request_fingerprint = NULL, product = ?, supplier_name = NULL WHERE id = ?')
+    await env.DB.prepare('UPDATE orders SET request_fingerprint = NULL, product = ?, supplier_name = NULL, payment_method = NULL, payment_transaction_id = NULL, payment_status = NULL, payment_mode = NULL WHERE id = ?')
       .bind(payload.product, order.id).run()
     await env.DB.prepare('UPDATE order_items SET product_name = ? WHERE order_id = ?')
       .bind(payload.items[0].productName, order.id).run()

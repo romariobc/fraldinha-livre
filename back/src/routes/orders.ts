@@ -40,6 +40,7 @@ async function loadOrderResponse(db: OrderDb, orderId: string) {
     price: order.price ?? undefined, supplierId: order.supplierId ?? undefined,
     supplierName: order.supplierName ?? undefined, paymentMethod: order.paymentMethod ?? undefined,
     paymentTransactionId: order.paymentTransactionId ?? undefined, paymentStatus: order.paymentStatus ?? undefined,
+    paymentMode: order.paymentMode ?? undefined,
   })
 }
 async function replayOrder(c: OrderContext, db: OrderDb, order: typeof orders.$inferSelect, fingerprint: string) {
@@ -130,6 +131,7 @@ export const ordersGetHandler = async (c: Context<{ Bindings: Env; Variables: Ap
           paymentMethod: (order.paymentMethod as any) ?? undefined,
           paymentTransactionId: order.paymentTransactionId ?? undefined,
           paymentStatus: (order.paymentStatus as any) ?? undefined,
+          paymentMode: order.paymentMode ?? undefined,
           items: items.map((item) => ({
             productId: item.productId,
             productName: item.productName,
@@ -167,6 +169,10 @@ export const ordersPostHandler = async (c: OrderContext) => {
     const fingerprint = await requestFingerprint(request)
     const existing = await db.select().from(orders).where(eq(orders.idempotencyKey, idempotencyKey)).get()
     if (existing) return replayOrder(c, db, existing, fingerprint)
+    if (request.paymentStatus === 'pending') return respondError(c, 'INVALID_REQUEST', 400, 'Simulação pendente indisponível nesta versão.')
+    if (request.simulationOutcome === 'declined' || request.paymentStatus === 'declined') {
+      return respondError(c, 'PAYMENT_DECLINED', 400, 'Simulação recusada. Nenhum pedido foi criado ou estoque reservado.')
+    }
     if (new Set(request.items.map((item) => item.productId)).size !== request.items.length) {
       return respondError(c, 'INVALID_REQUEST', 400, 'Produtos repetidos devem ser agrupados em um único item.')
     }
@@ -187,7 +193,7 @@ export const ordersPostHandler = async (c: OrderContext) => {
     const invalidCatalog = validateCatalog(productRows)
     if (invalidCatalog) return invalidCatalog
     const total = request.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0)
-    if (request.price !== total) return respondError(c, 'TOTAL_MISMATCH', 400, 'Total divergente da soma dos itens.')
+    if (!Number.isSafeInteger(total) || total <= 0 || request.price !== total) return respondError(c, 'TOTAL_MISMATCH', 400, 'Total divergente da soma dos itens.')
 
     if (!await isSupplierApproved(c.env.DB, request.supplierId)) return respondError(c, 'SUPPLIER_NOT_APPROVED', 409, 'Fornecedor indisponível para novas compras.')
 
@@ -197,6 +203,7 @@ export const ordersPostHandler = async (c: OrderContext) => {
       inserted = await createOrderAtomically(c.env.DB, {
         orderId, uid, idempotencyKey, fingerprint,
         request: { ...request,
+          quantity: request.items.reduce((sum, item) => sum + item.quantity, 0),
           supplierName: 'Fornecedor ' + request.supplierId,
           product: productRows.map(p => (p.name + ' ' + p.size).trim()).join(', '),
         },

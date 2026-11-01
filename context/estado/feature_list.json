@@ -678,14 +678,14 @@
       "evidencias_exigidas": [
         "Testes de CRUD/escopos/contratos e navegação entre páginas; jornada com fornecedores distintos e produto alterado/desativado após compra."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
+      "aprovacao_usuario": "entrega_aprovada_pelo_usuario",
       "notas": "Implementação e homologação locais concluídas em 31/10/2026; candidato versionado na branch codex/mp-04-catalogo. Relatório: docs/qa/MP-04-catalogo-ofertas.md. Migração 0014 aplicada somente em D1 local. CI completa registrada na PR. Sem merge/deploy/migração remota. MP-05 não autorizado."
     },
     {
       "id": "MP-05",
       "titulo": "Fechar checkout simulado e recuperação de falhas",
       "fase": 1,
-      "status": "todo",
+      "status": "done",
       "ordem": 5,
       "prioridade": "P0",
       "dependencias": [
@@ -707,8 +707,8 @@
       "evidencias_exigidas": [
         "E2E de um/múltiplos fornecedores, aprovação/recusa, clique duplo, timeout antes/depois do commit, recarga e sucesso parcial; asserções de pedidos e estoque no D1."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_para_iniciar",
-      "notas": "Planejado; implementação, validação e homologação ainda pendentes. Exige aprovação explícita do usuário para iniciar, além das dependências técnicas."
+      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
+      "notas": "Implementação e homologação locais concluídas em 01/11/2026. Branch codex/mp-05-checkout; relatório docs/qa/MP-05-checkout-recuperacao.md. Servidor gera metadados, tentativa por UID e chaves por fornecedor persistem; E2E/SQL local aprovados. Migração 0015 apenas local. CI final registrada na PR. MP-06 não autorizado."
     },
     {
       "id": "MP-06",
@@ -985,9 +985,9 @@
     ],
     "regra_execucao": "Uma etapa por item MP, em ordem numerica; concluir, validar, registrar e parar. Dependencias satisfeitas nao autorizam avancar. Exigir aprovacao explicita do usuario para iniciar a proxima etapa.",
     "controle_execucao": {
-      "etapa_concluida": "MP-04",
+      "etapa_concluida": "MP-05",
       "aprovacao_entrega": "aguardando_usuario",
-      "proxima_etapa": "MP-05",
+      "proxima_etapa": "MP-06",
       "autorizada_proxima_etapa": false,
       "preparacao_concluida": "CTX-01",
       "aprovacao_preparacao": "aprovada_pelo_usuario"

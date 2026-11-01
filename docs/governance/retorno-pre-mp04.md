@@ -20,3 +20,14 @@ O diretório separado permite inspecionar, testar e recuperar arquivos sem alter
 Arquivos versionáveis do projeto. Arquivos ignorados, credenciais, tokens, variáveis locais, dependências instaladas, imagens de container, capturas de QA e bancos locais/remotos não são enviados ao GitHub. Artefatos de QA permanecem locais, com resultados sintetizados nos relatórios versionados.
 
 Este é um retorno de código e documentação. Não restaura dados, identidades, configuração remota ou migrações aplicadas. Nenhuma publicação ou migração remota faz parte desta operação. Uma futura recuperação operacional exige o plano de backup/restauração da etapa correspondente e autorização específica.
+
+## Base anterior à MP-05 — 01/11/2026
+
+O usuário aprovou o início de MP-05 após MP-04. A base imediata desta etapa é `251cb25ec37678d8dcde10c27e97e207a33becea`, preservada no GitHub pela tag `checkpoint/mp04-2026-11-01`. Para inspecionar essa base sem alterar o trabalho atual:
+
+```powershell
+git fetch origin --tags
+git worktree add --detach ../fraldinha-retorno-mp04 checkpoint/mp04-2026-11-01
+```
+
+A tag anterior `checkpoint/pre-mp04-2026-10-31` permanece disponível para retornar ao estado anterior à MP-04. As tags não são movidas nem substituídas por esta etapa. A migração 0015 de MP-05 foi aplicada apenas no D1 local de QA separado; não houve mudança de dados remotos a desfazer.

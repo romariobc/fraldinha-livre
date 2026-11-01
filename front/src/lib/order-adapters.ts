@@ -71,5 +71,6 @@ export function contractOrderToAccountOrder(order: ContractOrder): Order {
     paymentMethod: order.paymentMethod,
     paymentTransactionId: order.paymentTransactionId,
     paymentStatus: order.paymentStatus,
+    paymentMode: order.paymentMode,
   }
 }

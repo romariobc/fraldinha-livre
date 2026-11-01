@@ -15,9 +15,12 @@ description: Conta e checkout do comprador: controllers, providers e modelos de 
 ## Controllers e componentes
 
 - PedidosTab: pedidos não encerrados; HistoricoTab: entregue/cancelado; PerfilTab: perfil/endereço; OrderCard: apresentação e ações permitidas.
-- Checkout page.tsx mantém orquestração, pagamento/fulfillment simulados e idempotência. Etapas visuais em components/checkout/: CheckoutAddressStep, CheckoutReviewStep, CheckoutPaymentStep e CheckoutConfirmationStep.
+- Checkout page.tsx coordena apresentação; use-checkout-session.ts restaura tentativa por UID e usa checkout-attempt.ts para grupos/chaves estáveis. Etapas visuais em components/checkout/. CheckoutConfirmationStep apresenta resultados por fornecedor, inclusive falhas e recuperação.
 - Execute node scripts/context.mjs packet checkout para navegar por etapa. Não carregar as quatro etapas para uma correção localizada de apresentação.
-- Endereço vem do perfil ou preenchimento explícito; pagamento é simulado, sem dados reais de cartão. Não alterar fluxo comercial nesta refatoração.
+- Endereço vem do perfil ou preenchimento explícito, validado por CheckoutAddressSchema. POST /orders decide aprovação/recusa simuladas e gera paymentMode/transactionId/status no servidor; pending não é opção de checkout. Sem dados reais de cartão.
+- Checkout usa HTTP obrigatório, independente do modo legado de OrdersProvider. recordConfirmedOrders atualiza cache sem forçar renovação da sessão. MockPaymentGateway/MockFulfillmentService não participam do checkout ativo.
+- CartProvider mantém API antiga useCart e API interna useCheckoutCart. cart-storage.ts grava envelope fl.cart.v2 com itens/recibos juntos; lê fl.cart.v1 para migração. Confirmação subtrai somente quantidades confirmadas, uma vez por recibo.
+- Tentativa fl.checkout.v1:<UID> conserva payload e chave por fornecedor antes da rede. Web Locks coordena abas. Nunca regenerar chave ou descartar resultado desconhecido automaticamente; métodos/endereço/itens ficam congelados até resolução.
 - Compra e cancelamento atravessam adapters/API; sucesso de mock não comprova operação publicada. Cotação/leilão permanecem fora da versão.
 
 ## Acoplamentos a conferir

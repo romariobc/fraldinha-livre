@@ -17,6 +17,7 @@ export const orders = sqliteTable('orders', {
   paymentMethod: text('payment_method'),
   paymentTransactionId: text('payment_transaction_id'),
   paymentStatus: text('payment_status'),
+  paymentMode: text('payment_mode', { enum: ['simulated'] }),
   requestFingerprint: text('request_fingerprint'),
   mutationId: text('mutation_id'),
 }, (table) => ({

@@ -90,7 +90,7 @@ export function CheckoutAddressStep({ useCustomAddress, setUseCustomAddress, isA
                     />
                     <input
                       type="text"
-                      placeholder="Bairro"
+                      placeholder="Bairro *"
                       value={customAddress.bairro}
                       onChange={(e) =>
                         setCustomAddress({ ...customAddress, bairro: e.target.value })

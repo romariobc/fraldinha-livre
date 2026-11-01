@@ -3,7 +3,7 @@ import { env } from 'cloudflare:workers'
 import { applyD1Migrations } from 'cloudflare:test'
 
 it('0014 preserva última decisão administrativa sem bloquear despublicação própria', async () => {
-  const before = env.TEST_MIGRATIONS.filter(m => !m.name.includes('0014'))
+  const before = env.TEST_MIGRATIONS.filter(m => parseInt(m.name, 10) < 14)
   const migration = env.TEST_MIGRATIONS.filter(m => m.name.includes('0014'))
   expect(migration).toHaveLength(1)
   await applyD1Migrations(env.DB, before)

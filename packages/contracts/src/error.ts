@@ -7,6 +7,7 @@ export const ApiErrorCodeSchema = z.enum([
   'PRICE_MISMATCH',
   'SUPPLIER_MISMATCH',
   'TOTAL_MISMATCH',
+  'PAYMENT_DECLINED',
 
   // Autenticação e Autorização (401 / 403 / 409)
   'UNAUTHORIZED',

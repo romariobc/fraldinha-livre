@@ -1,72 +1,46 @@
 import Link from 'next/link'
-import type { Order } from '@/lib/domain/account'
-import type { PaymentMethod } from '@/lib/ports/payment'
+import { canRestart, type CheckoutAttempt } from '@/lib/checkout-attempt'
+import { formatPrice } from '@/lib/utils'
+import { supplierLabel } from '@/lib/supplier-label'
 
 interface Props {
-createdOrders: Order[]
-completedPayment: { transactionId: string; method: PaymentMethod } | null
+  attempt: CheckoutAttempt
+  submitting: boolean
+  error: string | null
+  onRecover(): Promise<void>
+  onRestart(): Promise<void>
 }
-
-export function CheckoutConfirmationStep({ createdOrders, completedPayment }: Props) {
- return (
-          <div className="max-w-2xl mx-auto">
-            <div className="bg-white rounded-card shadow-card p-12 text-center">
-              <div className="w-16 h-16 mx-auto mb-6 bg-green-100 rounded-full flex items-center justify-center">
-                <svg
-                  className="w-8 h-8 text-green-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              </div>
-
-              <h1 className="font-display font-black text-2xl text-brand-text mb-4">
-                Pedido confirmado!
-              </h1>
-
-              <p className="text-sm text-brand-muted mb-2">
-                {createdOrders.length} pedido{createdOrders.length !== 1 ? 's' : ''} criado{createdOrders.length !== 1 ? 's' : ''} com sucesso.
-              </p>
-
-              {completedPayment && (
-                <div className="my-6 p-4 bg-slate-50 rounded-lg text-xs text-brand-text inline-block text-left border border-slate-200">
-                  <p className="font-bold text-brand-text mb-1">Comprovante de pagamento simulado</p>
-                  <p className="text-brand-muted">
-                    Método: <span className="font-medium text-brand-text">{completedPayment.method === 'pix' ? 'Pix' : 'Cartão de crédito'}</span>
-                  </p>
-                  <p className="text-brand-muted">
-                    Transação: <span className="font-mono text-brand-text">{completedPayment.transactionId}</span>
-                  </p>
-                  <p className="text-emerald-700 font-semibold mt-1">Status: Simulado e Aprovado</p>
-                </div>
-              )}
-
-              <p className="text-sm text-brand-muted mb-8">
-                Acompanhe seu pedido em Minha Conta.
-              </p>
-
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                <Link
-                  href="/minha-conta"
-                  className="inline-block py-3 px-6 rounded-full font-display font-bold text-sm transition-colors bg-primary-dark text-white hover:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-dark focus-visible:ring-offset-2"
-                >
-                  Ver meus pedidos
-                </Link>
-                <Link
-                  href="/catalogo"
-                  className="inline-block py-3 px-6 rounded-full font-display font-semibold text-sm transition-colors border-2 border-primary/30 text-primary-dark hover:bg-primary-light"
-                >
-                  Continuar comprando
-                </Link>
-              </div>
-            </div>
-          </div>
-        )
+const labels = { ready: 'Aguardando envio', unknown: 'Resultado desconhecido', confirmed: 'Pedido registrado', failed: 'Pedido não registrado', declined: 'Simulação recusada' }
+export function CheckoutConfirmationStep({ attempt, submitting, error, onRecover, onRestart }: Props) {
+  const complete = attempt.groups.every(group => group.status === 'confirmed')
+  return (
+    <div className="max-w-2xl mx-auto space-y-5">
+      <h1 className="font-display font-black text-2xl text-brand-text">{complete ? 'Pedidos registrados' : 'Resultado da tentativa'}</h1>
+      <p className="text-sm text-brand-muted">Compra, pagamento e entrega simulados, sem cobrança real. Cada fornecedor gera um pedido independente; uma falha não desfaz pedidos já registrados.</p>
+      <p className="text-sm">A recuperação mantém os itens, endereço e método desta tentativa. Somente quantidades confirmadas são retiradas da sacola.</p>
+      {error && <p role="alert" className="bg-red-50 text-red-800 p-4 rounded-lg">{error}</p>}
+      {attempt.groups.map(group => (
+        <section key={group.key} className="bg-white rounded-card shadow-card p-5 space-y-2" aria-label={supplierLabel(group.supplierId)}>
+          <h2 className="font-display font-bold break-all">{supplierLabel(group.supplierId)}</h2>
+          <p className="font-semibold" role="status">{labels[group.status]}</p>
+          <p>{formatPrice(group.request.price ?? 0)} · {group.request.items.length} item(ns)</p>
+          <ul className="text-sm text-brand-muted">{group.request.items.map(item => <li key={item.productId}>{item.productName} · {item.quantity} {item.unit}</li>)}</ul>
+          <p className="text-xs text-brand-muted">Endereço: {group.request.deliveryAddress.logradouro}, {group.request.deliveryAddress.numero} · {group.request.deliveryAddress.cidade}/{group.request.deliveryAddress.estado}</p>
+          {group.error && <p role="alert" className="text-sm text-red-800">{group.error}</p>}
+          {group.requestId && <p className="text-xs break-all">Referência de suporte: {group.requestId}</p>}
+          {group.order && <div className="text-xs space-y-1">
+            <p className="break-all">Pedido: {group.order.id}</p>
+            <p className="break-all">Simulação registrada pelo servidor: {group.order.paymentTransactionId}</p>
+            <p>Nenhum valor foi cobrado.</p>
+          </div>}
+        </section>
+      ))}
+      <div className="flex flex-wrap gap-3">
+        {(!complete || error) && <button type="button" disabled={submitting} onClick={onRecover} className="bg-primary-dark text-white rounded-full px-5 py-3 font-bold disabled:opacity-50">{submitting ? 'Recuperando...' : 'Recuperar tentativa'}</button>}
+        {canRestart(attempt) && <button type="button" disabled={submitting} onClick={onRestart} className="border border-primary-dark text-primary-dark rounded-full px-5 py-3 font-bold disabled:opacity-50">{complete ? 'Nova compra' : 'Revisar sacola para nova tentativa'}</button>}
+        <Link href="/minha-conta?tab=pedidos" className="text-primary-dark underline py-3">Ver meus pedidos</Link>
+      </div>
+      {!canRestart(attempt) && <p className="text-sm">Há resultado ainda desconhecido. Use Recuperar tentativa antes de iniciar outra compra.</p>}
+    </div>
+  )
 }

@@ -1,22 +1,23 @@
-# Estado atual — 2026-10-31
+# Estado atual — 2026-11-01
 
-## MP-04 — catálogo e manutenção de ofertas: entrega local concluída
+## MP-05 — checkout simulado e recuperação: entrega local concluída
 
-- Execução autorizada pelo usuário em 31/10; MP-03 e CTX-01 aprovados para avançar. Compra e pagamento permanecem simulados.
-- Checkpoint anterior publicado no GitHub: c12d4db; tag checkpoint/pre-mp04-2026-10-31; árvore recuperada por fetch em repositório separado e validada. [Como voltar](../../docs/governance/retorno-pre-mp04.md).
-- MP-04: cadastro original, edição de preço/estoque, desativação preservando histórico, identificação por fornecedor/oferta e moderação separada da publicação. [Relatório](../../docs/qa/MP-04-catalogo-ofertas.md).
-- Evidências locais: 737 testes front, 63 contratos, 46 harness; suíte back 336 antes da moderação final, seguida de 31 regressões e 28 verificações finais de catálogo/migração. Tipos aprovados; lint 0 erros/10 avisos. Navegador desktop/mobile e imagem Docker com fontes locais aprovados. CI completa do candidato fica registrada na PR.
-- Migração 0014 aplicada apenas no D1 local separado de QA. Nenhum merge, deploy, edição de perfil/identidade ou migração remota nesta entrega.
-- Branch da entrega: codex/mp-04-catalogo, baseada no checkpoint integral. PRs #22/#23/#24 preservadas como registros anteriores; não mesclar automaticamente branches sobrepostas.
-- MP-05: todo, não iniciado e sem autorização. Aguardar aprovação explícita da entrega antes de avançar.
+- MP-04 aprovado para avançar. MP-05 autorizado e executado em 01/11/2026. Compra, pagamento e entrega continuam simulados.
+- Base/ponto de retorno anterior: 251cb25, tag remota checkpoint/mp04-2026-11-01. Branch desta entrega: codex/mp-05-checkout. [Retorno de código](../../docs/governance/retorno-pre-mp04.md).
+- Servidor gera modo/status/transação simulados; recusa não cria pedido/reserva. Sem dados de cartão e sem pending no checkout.
+- Tentativa por UID e chaves fixas por fornecedor persistidas antes da rede; resultado parcial explícito; replay após timeout/recarga. Sacola v2 concilia quantidades confirmadas uma única vez. [Relatório MP-05](../../docs/qa/MP-05-checkout-recuperacao.md).
+- E2E autenticado local aprovado: aprovação/recusa, um/dois fornecedores, clique duplo, falha parcial, recarga, perdas antes/depois do commit e duas abas. SQL direto no D1 conferiu pedidos/eventos/estoque/modo. Capturas desktop/mobile inspecionadas.
+- Evidência local: 739 testes front e 354 back na suíte completa inicial; 31 regressões de checkout/conta/recuperação e dois testes de migração posteriores; 63 contratos e 46 harness. Tipos/lint/build verificados. CI completa do candidato registrada na PR.
+- Migração 0015 aplicada somente no D1 local separado mp05-d1. Nenhum merge/deploy/migração remota, nova identidade ou escrita de perfil remoto nesta entrega.
+- MP-06: todo, não iniciado, sem autorização. Aguardar aprovação explícita desta entrega.
 
-## Contexto seletivo e pendências
+## Contexto seletivo e limites
 
-- [Arquitetura vigente](../../docs/architecture/arquitetura-vigente.md), [roteiro](../README.md); usar node scripts/context.mjs status ID ou packet para o escopo necessário.
-- Homologação de produção, publicação e ativação continuam separadas. Antes de ativar MP-03, seguir o inventário e a reconciliação de fornecedores; antes da nova versão, planejar migração 0014 e backup operacional.
-- Identificação pública usa o ID real do fornecedor; não inventa razão social/reputação. Cadastro de nova identidade e recuperação real de senha ainda exigem homologação externa autorizada.
+- [Arquitetura](../../docs/architecture/arquitetura-vigente.md), [roteiro](../README.md); usar node scripts/context.mjs status ID ou packet checkout. Simulação nova usa HTTP, não MockPaymentGateway/MockFulfillmentService.
+- Recuperação no mesmo navegador exige armazenamento e Web Locks; não é sincronização entre dispositivos. Resultado desconhecido não libera chave nova. Recibo local não confere autoridade sobre pedidos.
+- Produção não homologada por este QA: antes de publicar, reconciliar fornecedores, preparar backup de dados e aplicar 0014/0015 no processo autorizado; backend compatível antes do frontend. Cadastro/recuperação real de identidade continuam com homologação externa pendente.
+- PRs anteriores #22–#25 preservadas; branches sobrepostas devem ser reconciliadas antes de merge.
 
 ## Histórico sob demanda
 
-- [Registro integral anterior](progresso-ate-2026-10-30.md), [histórico anterior](progresso-historico.md). Não carregar ambos na entrada normal.
-- CTX-01 e etapas anteriores preservados no Git e em docs/qa/. O checkpoint de código não restaura bancos ou configurações remotas.
+- [Registro integral anterior](progresso-ate-2026-10-30.md), [histórico anterior](progresso-historico.md); demais evidências em docs/qa/ e Git. Checkpoint de código não restaura dados/configuração remota.

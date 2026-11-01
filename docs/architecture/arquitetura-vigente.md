@@ -17,7 +17,7 @@ Este é um mapa curto de navegação. Não comprova deploy/migrações remotas n
 |---|---|---|
 | Catálogo público | front/src/app/(main)/catalogo/ | ProductsProvider → HttpProductRepository |
 | Comprador | front/src/app/(comprador)/minha-conta/ | OrdersProvider / AuthProvider |
-| Checkout | front/src/app/(comprador)/checkout/page.tsx | Orquestra providers e adapters de pagamento/fulfillment simulados; etapas visuais em components/checkout/ |
+| Checkout | front/src/app/(comprador)/checkout/page.tsx | use-checkout-session → checkout-attempt → HttpOrderRepository; decisão da simulação no servidor, resultados independentes por fornecedor |
 | Fornecedor | front/src/app/(fornecedor)/painel-fornecedor/ | MarketProvider para pedidos diretos; catálogo próprio usa HttpProductRepository |
 | Admin | front/src/app/admin/ | API para operação comercial; Firestore para listagem de perfis |
 
@@ -32,6 +32,14 @@ OrdersDataTable mantém estado e ações; orders-table/model.ts normaliza linhas
 - order-adapters.ts concentra conversões de pedidos para conta/painel.
 - account-mock.ts e supplier-mock.ts guardam fixtures; formatters.ts guarda helpers de exibição. Fixtures não conferem autenticação ou segurança.
 - lib/compat/tanstack-table.ts e lib/compat/recharts.tsx são implementações locais; não equivalem automaticamente às APIs completas dos pacotes homônimos. Imports por caminho explícito.
+
+## Recuperação de checkout
+
+- checkout-attempt.ts persiste payload/chaves por UID antes de POST /orders; serializa submissões com Web Locks, conserva resultado desconhecido e permite replay da mesma chave. Não afirma transação única da sacola.
+- cart-storage.ts usa fl.cart.v2 com itens e recibos na mesma gravação; migração de fl.cart.v1 preserva itens válidos. Confirmação desconta somente linhas compradas, idempotentemente.
+- apiFetch pode exigir UID esperado, conferido antes/depois de obter token; tentativa antiga não é enviada por outra identidade.
+- POST /orders gera metadados de simulação, recusa sem criar pedido, rejeita pending. Migração 0015 acrescenta payment_mode nullable, sem promover histórico antigo. Mock gateway e fulfillment não participam do checkout ativo.
+- recordConfirmedOrders atualiza projeção do comprador a partir da resposta HTTP, sem renovação de sessão ou escrita em perfil.
 
 ## Backend e invariantes
 

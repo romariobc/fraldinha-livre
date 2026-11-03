@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
-import type { MarketOrder, DirectOrder, DirectOrderStatus, SupplierOffer, DeliveryType, DispatchStatus } from '@/lib/supplier-mock'
+import type { MarketOrder, DirectOrder, DirectOrderStatus, SupplierOffer, DeliveryType, DispatchStatus } from '@/lib/domain/supplier'
 import { MOCK_MARKET_ORDERS, MOCK_DIRECT_ORDERS, MOCK_OFFERS } from '@/lib/supplier-mock'
 import { buildOfferSnapshot } from '@/lib/market-utils'
 import type { OrderRepository } from '@/lib/ports/order-repository'
@@ -24,8 +24,8 @@ interface MarketContextValue {
   handleEnviarOferta(orderId: string, price: number, deliveryType: DeliveryType, note?: string): Promise<void>
   handleDeclineMercado(orderId: string): void
   handleConfirmarDireto(orderId: string): Promise<void>
-  handleRecusarDireto(orderId: string): Promise<void>
-  handleAtualizarStatusDireto(orderId: string, status: OrderStatus): Promise<void>
+  handleRecusarDireto(orderId: string, reason: string): Promise<void>
+  handleAtualizarStatusDireto(orderId: string, status: OrderStatus, reason?: string): Promise<void>
   handleAtualizarDespacho(orderId: string, orderType: 'market' | 'direct', status: DispatchStatus): Promise<void>
   addDirectOrder(directOrder: DirectOrder): void
   cancelDirectOrder(orderId: string): void
@@ -160,20 +160,21 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
     )
   }
 
-  async function handleRecusarDireto(orderId: string) {
+  async function handleRecusarDireto(orderId: string, reason: string) {
     if (useBackend) {
       const repo: OrderRepository = new HttpOrderRepository()
-      await repo.updateStatus(orderId, 'cancelado')
+      await repo.updateStatus(orderId, 'cancelado', reason)
     }
     setDirectOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: 'cancelado' as const } : o))
     )
   }
 
-  async function handleAtualizarStatusDireto(orderId: string, status: OrderStatus) {
+  async function handleAtualizarStatusDireto(orderId: string, status: OrderStatus, reason?: string) {
     if (useBackend) {
       const repo: OrderRepository = new HttpOrderRepository()
-      await repo.updateStatus(orderId, status)
+      if (reason === undefined) await repo.updateStatus(orderId, status)
+      else await repo.updateStatus(orderId, status, reason)
     }
     setDirectOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: status as DirectOrderStatus } : o))

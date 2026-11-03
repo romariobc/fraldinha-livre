@@ -6,21 +6,43 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: cloudflare-production
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  check-ref:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Only main can publish production
+        env:
+          DEPLOY_REF: ${{ github.ref }}
+        run: test "$DEPLOY_REF" = refs/heads/main
+
+  validate:
+    needs: check-ref
+    uses: ./.github/workflows/validation.yml
+
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: Production
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version-file: .nvmrc
           cache: 'npm'
 
       - name: Install Dependencies (Root)

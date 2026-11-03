@@ -5,6 +5,8 @@ description: Contratos e integração real entre frontend, API e dados; consulta
 
 # Frontend ↔ backend
 
+Modelos de apresentação ficam em front/src/lib/domain/ e products.ts, derivados dos contratos; conversões em order-adapters.ts e product-adapters.ts. Fixtures não são fonte de tipos de runtime.
+
 A fonte compartilhada de tipos e schemas Zod é `packages/contracts/src/`. Confirme exports e consumidores antes de criar contratos duplicados.
 
 - Pedidos: `front/src/lib/ports/order-repository.ts`, adapters mock/http e `front/src/contexts/orders-context.tsx`.
@@ -18,3 +20,5 @@ Rotas já implementadas incluem GET/POST /orders, PATCH /orders/:id/cancel, GET 
 Mocks restantes, flags e adaptadores de pagamento/fulfillment têm funções específicas; a existência de um mock não significa ausência de backend. O checkout ainda tem pagamento simulado conforme estado atual.
 
 Ao mudar uma integração: verifique schema compartilhado, consumidores, erros tipados (use error.code, não inferência por mensagem), loading/erro e testes pertinentes. Siga risk-zone-protocol para contracts e infraestrutura compartilhada. Detalhes em `docs/architecture/integration-guide.md`.
+
+Checkout ativo: POST /orders recebe simulationOutcome approved/declined, gera paymentMode/transactionId/status no servidor e rejeita pending. Metadados legados do body não provam pagamento. Tentativa/chaves por UID/fornecedor são preservadas pelo cliente para replay; o backend mantém ownership e estoque transacionais.

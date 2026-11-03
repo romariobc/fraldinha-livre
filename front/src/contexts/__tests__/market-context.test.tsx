@@ -284,10 +284,10 @@ describe('MarketContext - directOrders loading (backend mode)', () => {
     await waitFor(() => expect(result.current.directOrdersLoading).toBe(false))
 
     await act(async () => {
-      await result.current.handleRecusarDireto('ord-fake-1')
+      await result.current.handleRecusarDireto('ord-fake-1', 'Produto indisponível')
     })
 
-    expect(updateStatusMock).toHaveBeenCalledWith('ord-fake-1', 'cancelado')
+    expect(updateStatusMock).toHaveBeenCalledWith('ord-fake-1', 'cancelado', 'Produto indisponível')
     expect(result.current.directOrders[0].status).toBe('cancelado')
   })
 

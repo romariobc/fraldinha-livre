@@ -1,4 +1,5 @@
-import type { Address } from '@/lib/account-mock'
+import type { OrderItem as ContractOrderItem } from '@contracts'
+import type { Address } from '@/lib/domain/account'
 import { Money } from './money'
 import { CartItem, cartSubtotal, groupBySupplier } from './cart'
 
@@ -6,20 +7,13 @@ import { CartItem, cartSubtotal, groupBySupplier } from './cart'
  * OrderItem represents a single product line in a materialized order.
  * D-018: The building block of a DomainOrder.
  */
-export interface OrderItem {
-  productId: string
-  productName: string
-  unitPrice: Money // in centavos
-  quantity: number // integer >= 1
-  unit: 'un' | 'cx' | 'kg'
-}
+export type OrderItem = ContractOrderItem
 
 /**
  * DomainOrder represents a purchase order for a single supplier (D-017).
- * This is a NEW type in the domain layer, separate from the account-mock Order type.
+ * This cart materialization is converted to account/supplier projections by order-adapters.ts.
  *
- * The convergence between DomainOrder (our contract) and the backend Order model
- * is handled in T1.5 (separate task). Here we define the target contract.
+ * Persisted HTTP order and line fields are defined in @contracts.
  */
 export interface DomainOrder {
   id: string

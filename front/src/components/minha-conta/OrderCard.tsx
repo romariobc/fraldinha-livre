@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Package2, MapPin, ChevronDown, ChevronUp } from 'lucide-react'
-import { Order, OrderStatus } from '@/lib/account-mock'
+import type { Order, OrderStatus } from '@/lib/domain/account'
 import { formatPrice } from '@/lib/utils'
 import { getOrderItems } from '@/lib/order-items'
 import { useOrders } from '@/contexts/orders-context'

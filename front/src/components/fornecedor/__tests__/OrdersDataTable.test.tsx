@@ -293,7 +293,10 @@ describe('OrdersDataTable Component', () => {
     const refuseBtn = screen.getByRole('button', { name: /recusar pedido/i })
     await user.click(refuseBtn)
 
-    expect(handleRefuse).toHaveBeenCalledWith('DIR-0031')
+    expect(handleRefuse).not.toHaveBeenCalled()
+    await user.type(screen.getByLabelText('Motivo do cancelamento'), 'Produto indisponível')
+    await user.click(screen.getByRole('button', { name: 'Confirmar cancelamento' }))
+    expect(handleRefuse).toHaveBeenCalledWith('DIR-0031', 'Produto indisponível')
     expect(toast.info).toHaveBeenCalledWith('Pedido #DIR-0031 recusado/cancelado.')
   })
 

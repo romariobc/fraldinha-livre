@@ -1,5 +1,13 @@
 # DER para agentes de codigo - Fraldinha Livre
 
+## Emenda MP-03 — 29/10/2026
+
+A migração local `0013_supplier_approval.sql` acrescenta `supplier_applications`: `uid` (PK), `status` (`pendente`, `aprovado`, `rejeitado`, `suspenso`), `reason` opcional, `version` inteiro e datas `created_at`/`updated_at`. O UID corresponde à identidade Auth, sem FK entre serviços. A migração não insere nem aprova fornecedores legados.
+
+Decisões versionadas são auditadas como `target_type=user`, `target_id=uid`, com estado anterior/novo e versão nos metadados; atualização e auditoria usam o mesmo D1.batch. Produto público/publicação e criação de pedido dependem do estado aprovado. Histórico e atendimento de pedidos anteriores não dependem dessa habilitação. Contratos em `packages/contracts/src/supplier.ts`; implementação em `back/src/routes/suppliers.ts` e guardas SQL das rotas de produtos/pedidos.
+
+O inventário remoto desta etapa confirmou ausência da tabela em produção. Consultar [inventário e ativação](../qa/MP-03-inventario-ativacao.md) antes de implantar; o modelo local abaixo não comprova aplicação remota.
+
 Este documento descreve o modelo implementado no codigo local, revisado em 2026-09-22, combinando Cloudflare D1, Firebase Auth, Firestore e contratos Zod. Nao comprova migrations aplicadas nem homologacao em producao. Consulte-o seletivamente em tarefas de dados; schemas, migrations, contratos e rotas sao as fontes de implementacao e devem ser reconferidos ao alterar o modelo.
 
 Fontes principais:

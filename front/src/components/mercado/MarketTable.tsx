@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import type { GeoScope, DeliveryType } from '@/lib/supplier-mock'
+import type { GeoScope, DeliveryType } from '@/lib/domain/supplier'
 import { MOCK_SUPPLIER } from '@/lib/supplier-mock'
 import { geoMatch } from '@/lib/market-utils'
 import { useMarket } from '@/contexts/market-context'

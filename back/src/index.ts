@@ -12,6 +12,8 @@ import { AppError, respondError } from './lib/errors'
 import type { ApiErrorResponse } from '../../packages/contracts/src/error'
 import type { Env, AppContext } from './env'
 
+import { supplierApplicationHandler, supplierApplicationsListHandler, supplierDecisionHandler } from './routes/suppliers'
+
 const app = new Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>()
 
 // Auth e por Bearer token (sem cookies). CORS aceita: localhost (dev), o
@@ -155,6 +157,8 @@ app.use('/auth/*', (c, next) => {
   )
   return authMiddleware(c, next)
 })
+app.get('/auth/supplier-application', supplierApplicationHandler)
+app.post('/auth/supplier-application', supplierApplicationHandler)
 app.post('/auth/claim', (c) => createAuthClaimHandler()(c))
 
 app.use('/admin/*', (c, next) => {
@@ -163,6 +167,8 @@ app.use('/admin/*', (c, next) => {
   )
   return authMiddleware(c, next)
 })
+app.get('/admin/suppliers', requireAnyRole(['admin']), supplierApplicationsListHandler)
+app.patch('/admin/suppliers/:uid', requireAnyRole(['admin']), supplierDecisionHandler)
 app.get('/admin/audit-logs', requireAnyRole(['admin']), adminAuditLogsGetHandler)
 app.patch('/admin/products/:id/status', requireAnyRole(['admin']), adminProductStatusPatchHandler)
 

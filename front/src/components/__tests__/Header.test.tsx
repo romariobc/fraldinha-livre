@@ -225,7 +225,7 @@ describe('Header', () => {
       expect(minhaContaLink).toHaveAttribute('href', '/painel-fornecedor')
     })
 
-    it('should show Painel Admin link in dropdown for admin role', async () => {
+    it('should show Painel Admin link and hide Minha conta in dropdown for admin role', async () => {
       mockUseAuth.mockReturnValue(authValue({
         user: { uid: 'admin-123', email: 'admin@fraldinhalivre.com.br', displayName: 'Admin User' },
         role: 'admin',
@@ -241,6 +241,7 @@ describe('Header', () => {
 
       const adminLink = screen.getByRole('menuitem', { name: /Painel Admin/i })
       expect(adminLink).toHaveAttribute('href', '/admin')
+      expect(screen.queryByRole('menuitem', { name: /Minha conta/i })).not.toBeInTheDocument()
     })
 
     it('should call signOutUser when clicking "Sair"', async () => {

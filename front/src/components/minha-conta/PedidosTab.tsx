@@ -1,7 +1,7 @@
 // src/components/minha-conta/PedidosTab.tsx
 import Link from 'next/link'
 import { ShoppingCart } from 'lucide-react'
-import { Order } from '@/lib/account-mock'
+import type { Order } from '@/lib/domain/account'
 import OrderCard from './OrderCard'
 
 interface PedidosTabProps {

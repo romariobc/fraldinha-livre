@@ -9,8 +9,6 @@ export default defineConfig({
       // Alias absoluto (o Vite nao resolve caminhos relativos em resolve.alias)
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       '@contracts': fileURLToPath(new URL('../packages/contracts/src', import.meta.url)),
-      '@tanstack/react-table': fileURLToPath(new URL('./src/lib/tanstack-table.ts', import.meta.url)),
-      'recharts': fileURLToPath(new URL('./src/lib/recharts.tsx', import.meta.url)),
     },
   },
   test: {

@@ -1,43 +1,29 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react'
-import { onAuthStateChanged } from 'firebase/auth'
+import { contractOrderToAccountOrder } from '@/lib/order-adapters'
+
+import { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef, ReactNode } from 'react'
+import { useLiveOrderQuery } from '@/hooks/use-live-order-query'
+import { onAuthStateChanged, type User } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
-import { Order, Address } from '@/lib/account-mock'
+import type { Order, Address } from '@/lib/domain/account'
 import type { CartItem } from '@/lib/domain/cart'
 import { buildOrdersFromCart } from '@/lib/domain/order'
 import type { OrderRepository } from '@/lib/ports/order-repository'
 import { MockOrderRepository } from '@/lib/adapters/mock-order-repository'
 import { HttpOrderRepository } from '@/lib/adapters/http-order-repository'
-import type { Order as ContractOrder, CreateOrderRequest } from '@contracts'
-import { diagnoseError, logFrontendDiagnostic, type DiagnosticResult } from '@/lib/frontend-diagnostics'
+import type { CreateOrderRequest, Order as ContractOrder } from '@contracts'
+import { diagnoseError, type DiagnosticResult } from '@/lib/frontend-diagnostics'
 
-function contractOrderToAccountMockOrder(order: ContractOrder): Order {
-  return {
-    id: order.id,
-    type: order.type,
-    product: order.product,
-    quantity: order.quantity,
-    unit: order.unit,
-    deliveryAddress: order.deliveryAddress,
-    status: order.status,
-    createdAt: order.createdAt,
-    price: order.price,
-    supplierId: order.supplierId,
-    supplierName: order.supplierName,
-    items: order.items,
-    paymentMethod: order.paymentMethod,
-    paymentTransactionId: order.paymentTransactionId,
-    paymentStatus: order.paymentStatus,
-  }
-}
+
 
 export interface OrdersContextType {
   orders: Order[]
   loading: boolean
   error: string | null
   errorDiagnostic?: DiagnosticResult | null
-  refreshOrders?: () => Promise<void>
+  refreshOrders?: (options?: { refreshSession?: boolean }) => Promise<void>
+  recordConfirmedOrders?: (confirmed: ContractOrder[]) => void
   createDirectOrder: (product: string, quantity: number, deliveryAddress: Address, price: number, supplierId?: string, supplierName?: string) => Order
   createOrdersFromCart: (
     items: CartItem[],
@@ -55,119 +41,46 @@ export interface OrdersContextType {
 const OrdersContext = createContext<OrdersContextType | undefined>(undefined)
 
 export function OrdersProvider({ children }: { children: ReactNode }) {
-  const [orders, setOrders] = useState<Order[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [errorDiagnostic, setErrorDiagnostic] = useState<DiagnosticResult | null>(null)
-
   const useBackend = process.env.NEXT_PUBLIC_USE_BACKEND === 'true'
-
-  const repo: OrderRepository = useMemo(() => {
-    if (useBackend) return new HttpOrderRepository()
-    return new MockOrderRepository({
-      now: () => new Date().toISOString(),
-      idFactory: () => crypto.randomUUID(),
-    })
-  }, [useBackend])
-
-  const [reloadTick, setReloadTick] = useState(0)
-
-  const refreshOrders = useCallback(async () => {
-    setReloadTick((prev) => prev + 1)
-  }, [])
-
+  const [session, setSession] = useState<{ user: User | null; ready: boolean }>({ user: null, ready: !useBackend })
   useEffect(() => {
-    let cancelled = false
-
-    const load = async () => {
-      if (cancelled) return
-      setLoading(true)
-      setError(null)
-      setErrorDiagnostic(null)
-
-      try {
-        // Se a rota atual é do painel do fornecedor, não dispara GET /orders (escopo de comprador)
-        if (typeof window !== 'undefined' && window.location.pathname.startsWith('/painel-fornecedor')) {
-          setOrders([])
-          setLoading(false)
-          return
-        }
-
-        // Se o usuário possui claim de fornecedor, não dispara GET /orders (escopo de comprador)
-        if (auth?.currentUser && typeof auth.currentUser.getIdTokenResult === 'function') {
-          const tokenResult = await auth.currentUser.getIdTokenResult(reloadTick > 0)
-          const claims = tokenResult?.claims
-          if (claims?.role === 'fornecedor' || claims?.fornecedor === true) {
-            setOrders([])
-            setLoading(false)
-            return
-          }
-        } else if (reloadTick > 0 && auth?.currentUser && typeof auth.currentUser.getIdToken === 'function') {
-          await auth.currentUser.getIdToken(true)
-        }
-
-        const result = await repo.list()
-        if (cancelled) return
-        setOrders(result.map(contractOrderToAccountMockOrder))
-      } catch (err) {
-        if (cancelled) return
-        const diag = diagnoseError(err, { operation: 'orders.load_list' })
-        logFrontendDiagnostic(diag, { operation: 'orders.load_list' })
-        setError(diag.message || 'Não foi possível carregar seus pedidos. Tente novamente.')
-        setErrorDiagnostic(diag)
-      } finally {
-        if (cancelled) return
-        setLoading(false)
-      }
+    if (!useBackend) return
+    return onAuthStateChanged(auth, user => setSession({ user, ready: true }))
+  }, [useBackend])
+  const uid = session.user?.uid
+  const repo: OrderRepository = useMemo(() => useBackend ? new HttpOrderRepository(uid) : new MockOrderRepository({
+    now: () => new Date().toISOString(), idFactory: () => crypto.randomUUID(),
+  }), [useBackend, uid])
+  const renewSession = useRef(false)
+  const load = useCallback(async () => {
+    if (useBackend) {
+      if (!session.user || window.location.pathname.startsWith('/painel-fornecedor') || window.location.pathname.startsWith('/admin')) return []
+      const force = renewSession.current
+      renewSession.current = false
+      if (typeof session.user.getIdTokenResult === 'function') {
+        const { claims } = await session.user.getIdTokenResult(force)
+        if (claims?.role === 'fornecedor' || claims?.fornecedor === true || claims?.role === 'admin' || claims?.admin === true) return []
+      } else if (force && typeof session.user.getIdToken === 'function') await session.user.getIdToken(true)
     }
-
-    if (!useBackend) {
-      // Modo mock: sem auth envolvida, carrega direto (comportamento original).
-      load()
-      return () => { cancelled = true }
-    }
-
-    // Modo backend: pedidos sao do usuario. Sem sessao Firebase resolvida nao
-    // ha ID Token, e list() sem token e um 401 garantido — entao o load espera
-    // o onAuthStateChanged: com usuario busca; sem usuario, lista vazia.
-    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
-      if (cancelled) return
-      if (fbUser) {
-        if (typeof fbUser.getIdTokenResult === 'function') {
-          fbUser
-            .getIdTokenResult()
-            .then((tokenResult) => {
-              if (cancelled) return
-              const claims = tokenResult?.claims
-              if (claims?.role === 'fornecedor' || claims?.fornecedor === true) {
-                setOrders([])
-                setError(null)
-                setErrorDiagnostic(null)
-                setLoading(false)
-                return
-              }
-              load()
-            })
-            .catch(() => {
-              if (cancelled) return
-              load()
-            })
-          return
-        }
-        load()
-      } else {
-        setOrders([])
-        setError(null)
-        setErrorDiagnostic(null)
-        setLoading(false)
-      }
-    })
-
-    return () => {
-      cancelled = true
-      unsubscribe()
-    }
-  }, [repo, useBackend, reloadTick])
+    return (await repo.list()).map(contractOrderToAccountOrder)
+  }, [repo, session.user, useBackend])
+  const query = useLiveOrderQuery<Order[]>(useBackend ? uid ? 'buyer:' + uid : null : 'mock-buyer', load, useBackend)
+  const { setData: setOrderData, refresh: refreshQuery } = query
+  const orders = query.data ?? []
+  const setOrders = useCallback((update: React.SetStateAction<Order[]>) => {
+    setOrderData(previous => typeof update === 'function' ? update(previous ?? []) : update)
+  }, [setOrderData])
+  const loading = !session.ready || query.loading
+  const errorDiagnostic = useMemo(() => query.error ? diagnoseError(query.error, { operation: 'orders.load_list' }) : null, [query.error])
+  const error = errorDiagnostic?.message ?? null
+  const refreshOrders = useCallback(async (options?: { refreshSession?: boolean }) => {
+    renewSession.current = options?.refreshSession ?? true
+    await refreshQuery()
+  }, [refreshQuery])
+  const recordConfirmedOrders = useCallback((confirmed: ContractOrder[]) => {
+    const mapped = confirmed.map(contractOrderToAccountOrder)
+    setOrders(previous => [...previous.filter(order => !mapped.some(saved => saved.id === order.id)), ...mapped])
+  }, [setOrders])
 
   // Codigo morto (sem chamador em producao, sobrou do flip S5b/D-023) - NAO MEXER, fora de escopo B8.
   const createDirectOrder = (
@@ -251,7 +164,7 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
       // DEC-A: uma chamada POST /orders por pedido resultante do split.
       const created = await repo.create(createRequest, orderKey)
-      newOrders.push(contractOrderToAccountMockOrder(created))
+      newOrders.push(contractOrderToAccountOrder(created))
     }
 
     setOrders((prev) => [...prev, ...newOrders])
@@ -260,12 +173,12 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
 
   const cancelOrder = async (orderId: string): Promise<void> => {
     const updated = await repo.cancel(orderId)
-    const mapped = contractOrderToAccountMockOrder(updated)
+    const mapped = contractOrderToAccountOrder(updated)
     setOrders((prev) => prev.map((o) => (o.id === orderId ? mapped : o)))
   }
 
   return (
-    <OrdersContext.Provider value={{ orders, loading, error, errorDiagnostic, refreshOrders, createDirectOrder, createOrdersFromCart, cancelOrder }}>
+    <OrdersContext.Provider value={{ orders, loading, error, errorDiagnostic, refreshOrders, recordConfirmedOrders, createDirectOrder, createOrdersFromCart, cancelOrder }}>
       {children}
     </OrdersContext.Provider>
   )

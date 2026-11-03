@@ -3,6 +3,7 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
+vi.mock('@/components/OrderTracking', () => ({ default: () => <div>Acompanhamento do pedido</div> }))
 import { OrdersDataTable, type SupplierOrderRow } from '../OrdersDataTable'
 import { contractOrderToDirectOrder } from '@/lib/order-adapters'
 import type { Order } from '@contracts'
@@ -293,7 +294,10 @@ describe('OrdersDataTable Component', () => {
     const refuseBtn = screen.getByRole('button', { name: /recusar pedido/i })
     await user.click(refuseBtn)
 
-    expect(handleRefuse).toHaveBeenCalledWith('DIR-0031')
+    expect(handleRefuse).not.toHaveBeenCalled()
+    await user.type(screen.getByLabelText('Motivo do cancelamento'), 'Produto indisponível')
+    await user.click(screen.getByRole('button', { name: 'Confirmar cancelamento' }))
+    expect(handleRefuse).toHaveBeenCalledWith('DIR-0031', 'Produto indisponível')
     expect(toast.info).toHaveBeenCalledWith('Pedido #DIR-0031 recusado/cancelado.')
   })
 
@@ -461,3 +465,11 @@ describe('OrdersDataTable Component', () => {
     expect(toast.success).toHaveBeenCalledWith('Pedido #DIR-0031 confirmado com sucesso!')
   })
 })
+
+ it('closes a selected detail when its orders disappear after an account change', async () => {
+   const view = render(<OrdersDataTable orders={MOCK_ROWS} />)
+   await userEvent.click(screen.getByTestId('order-id-' + MOCK_ROWS[0].id))
+   expect(await screen.findByRole('dialog')).toHaveTextContent(MOCK_ROWS[0].id)
+   view.rerender(<OrdersDataTable orders={[]} />)
+   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+ })

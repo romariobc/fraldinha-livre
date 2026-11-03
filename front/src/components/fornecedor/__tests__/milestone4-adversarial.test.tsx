@@ -13,11 +13,11 @@ import {
   generateReportTimeSeries,
   useSupplierReports,
 } from '@/hooks/use-supplier-data'
-import type { DirectOrder } from '@/lib/supplier-mock'
+import type { DirectOrder } from '@/lib/domain/supplier'
 
 // Mock Recharts ResponsiveContainer to render children reliably in JSDOM
-vi.mock('recharts', async () => {
-  const original = await vi.importActual<typeof import('recharts')>('recharts')
+vi.mock('@/lib/compat/recharts', async () => {
+  const original = await vi.importActual<typeof import('@/lib/compat/recharts')>('@/lib/compat/recharts')
   return {
     ...original,
     ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (

@@ -405,41 +405,19 @@ describe('MarketContext - directOrders loading (backend mode)', () => {
     expect(result.current.directOrdersError).toBeNull()
   })
 
-  it('modo backend: resposta antiga mais lenta não sobrescreve um retry mais recente', async () => {
-    let resolveOldFetch: (value: ContractOrder[]) => void
-    const oldPromise = new Promise<ContractOrder[]>((resolve) => {
-      resolveOldFetch = resolve
-    })
-
+  it('modo backend: refresh durante carga compartilha a consulta; nova consulta só após conclusão', async () => {
+    let resolveOldFetch!: (value: ContractOrder[]) => void
+    const oldPromise = new Promise<ContractOrder[]>(resolve => { resolveOldFetch = resolve })
     const newOrder: ContractOrder = { ...fakeContractOrder, id: 'ord-recente-2' }
-
-    const listForSupplierMock = vi
-      .fn()
-      .mockReturnValueOnce(oldPromise) // Primeira busca demorada
-      .mockResolvedValueOnce([newOrder]) // Retry imediato
-
-    mockedHttpOrderRepository.mockImplementation(
-      function() { return makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository }
-    )
-
+    const listForSupplierMock = vi.fn().mockReturnValueOnce(oldPromise).mockResolvedValueOnce([newOrder])
+    mockedHttpOrderRepository.mockImplementation(function() { return makeFakeRepo({ listForSupplier: listForSupplierMock }) as unknown as HttpOrderRepository })
     const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
-
-    // Dispara retry manual enquanto a primeira requisição ainda está pendente
-    await act(async () => {
-      await result.current.refetchDirectOrders()
-    })
-
-    // O estado deve refletir o resultado da requisição mais recente (retry)
-    expect(result.current.directOrders).toHaveLength(1)
-    expect(result.current.directOrders[0].id).toBe('ord-recente-2')
-
-    // Agora a requisição antiga resolve tardiamente
-    await act(async () => {
-      resolveOldFetch!([fakeContractOrder])
-    })
-
-    // O estado NÃO deve ser sobrescrito pela resposta antiga
-    expect(result.current.directOrders).toHaveLength(1)
+    act(() => { void result.current.refetchDirectOrders() })
+    expect(listForSupplierMock).toHaveBeenCalledTimes(1)
+    await act(async () => { resolveOldFetch([fakeContractOrder]) })
+    expect(result.current.directOrders[0].id).toBe('ord-fake-1')
+    await act(async () => { await result.current.refetchDirectOrders() })
+    expect(listForSupplierMock).toHaveBeenCalledTimes(2)
     expect(result.current.directOrders[0].id).toBe('ord-recente-2')
   })
 

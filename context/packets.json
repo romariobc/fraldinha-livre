@@ -71,5 +71,20 @@
       "back/src/routes/products.ts",
       "back/test/products.crud.test.ts"
     ]
+  },
+  "order-tracking": {
+    "description": "Consulta persistida de snapshot/eventos e atualização visível; selecione o consumidor por papel.",
+    "files": [
+      "packages/contracts/src/order.ts",
+      "back/src/routes/orders.ts",
+      "back/src/schema/order-events.ts",
+      "front/src/hooks/use-live-order-query.ts",
+      "front/src/components/OrderTracking.tsx",
+      "front/src/contexts/orders-context.tsx",
+      "front/src/contexts/market-context.tsx",
+      "front/src/components/admin/AdminOrdersTab.tsx",
+      "back/test/mp06-history.test.ts",
+      "front/src/hooks/__tests__/use-live-order-query.test.tsx"
+    ]
   }
 }

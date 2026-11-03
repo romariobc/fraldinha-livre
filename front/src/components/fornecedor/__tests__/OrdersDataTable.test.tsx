@@ -3,6 +3,7 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
+vi.mock('@/components/OrderTracking', () => ({ default: () => <div>Acompanhamento do pedido</div> }))
 import { OrdersDataTable, type SupplierOrderRow } from '../OrdersDataTable'
 import { contractOrderToDirectOrder } from '@/lib/order-adapters'
 import type { Order } from '@contracts'

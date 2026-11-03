@@ -22,3 +22,7 @@ Mocks restantes, flags e adaptadores de pagamento/fulfillment têm funções esp
 Ao mudar uma integração: verifique schema compartilhado, consumidores, erros tipados (use error.code, não inferência por mensagem), loading/erro e testes pertinentes. Siga risk-zone-protocol para contracts e infraestrutura compartilhada. Detalhes em `docs/architecture/integration-guide.md`.
 
 Checkout ativo: POST /orders recebe simulationOutcome approved/declined, gera paymentMode/transactionId/status no servidor e rejeita pending. Metadados legados do body não provam pagamento. Tentativa/chaves por UID/fornecedor são preservadas pelo cliente para replay; o backend mantém ownership e estoque transacionais.
+
+## Acompanhamento MP-06
+
+GET /orders/:id?scope=comprador|fornecedor|admin retorna OrderDetail: snapshot e eventos lidos no mesmo D1.batch, com historySource complete/partial/legacy. Não criar eventos retroativos. O vínculo explícito supplierId prevalece; somente legado sem vínculo mantém o fallback anterior por itens/produtos. OrderTracking é a apresentação compartilhada. use-live-order-query.ts atualiza ao montar, foco/visibilidade e a cada 30s visíveis, compartilha consulta em andamento e preserva dados em erro. Chaves incluem conta/escopo/pedido e descartam respostas após troca de conta. Pacote: node scripts/context.mjs packet order-tracking.

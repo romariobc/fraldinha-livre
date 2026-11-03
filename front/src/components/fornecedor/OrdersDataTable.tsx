@@ -266,7 +266,7 @@ export function OrdersDataTable({
       <OrderDetailsDialog
         isDetailOpen={isDetailOpen}
         setIsDetailOpen={setIsDetailOpen}
-        selectedOrder={selectedOrder}
+        selectedOrder={data.find(order => order.id === selectedOrder?.id) ?? selectedOrder}
         handleRefuseOrder={handleRefuseOrder}
         handleConfirmOrder={handleConfirmOrder}
         handleUpdateStatus={handleUpdateStatus}

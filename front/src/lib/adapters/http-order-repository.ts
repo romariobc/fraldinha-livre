@@ -7,14 +7,14 @@ import { OrderSchema, OrderListSchema } from '@contracts'
 export class HttpOrderRepository implements OrderRepository {
   constructor(private readonly expectedUserId?: string) {}
   async list(): Promise<Order[]> {
-    const res = await apiFetch('/orders')
+    const res = await (this.expectedUserId ? apiFetch('/orders', undefined, this.expectedUserId) : apiFetch('/orders'))
     const json = await res.json()
     return OrderListSchema.parse(json)
   }
 
   async listForSupplier(): Promise<Order[]> {
     try {
-      const res = await apiFetch('/orders?scope=fornecedor')
+      const res = await (this.expectedUserId ? apiFetch('/orders?scope=fornecedor', undefined, this.expectedUserId) : apiFetch('/orders?scope=fornecedor'))
       const json = await res.json()
       return OrderListSchema.parse(json)
     } catch (error) {

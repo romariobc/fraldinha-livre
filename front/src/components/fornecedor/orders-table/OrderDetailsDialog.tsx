@@ -1,3 +1,4 @@
+import OrderTracking from '@/components/OrderTracking'
 import { CheckCircle2, XCircle, Package, MapPin, User, ShoppingBag, Truck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -23,7 +24,7 @@ interface OrderDetailsProps {
 
 export function OrderDetailsDialog({ isDetailOpen, setIsDetailOpen, selectedOrder, handleRefuseOrder, handleConfirmOrder, handleUpdateStatus }: OrderDetailsProps) {
  return (<Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-lg sm:max-w-xl">
+        <DialogContent className="max-w-lg sm:max-w-xl max-h-[85vh] overflow-y-auto">
           {selectedOrder && (
             <>
               <DialogHeader>
@@ -138,6 +139,7 @@ export function OrderDetailsDialog({ isDetailOpen, setIsDetailOpen, selectedOrde
                 </div>
               </div>
 
+              <OrderTracking orderId={selectedOrder.id} scope="fornecedor" />
               <DialogFooter className="gap-2 sm:gap-0">
                 {selectedOrder.status === 'aguardando' && (
                   <>

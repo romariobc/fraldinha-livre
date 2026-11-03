@@ -28,3 +28,7 @@ OrdersDataTable.tsx controla estado/ações. Submódulos em components/fornecedo
 - Imports de tabela/gráficos em lib/compat/ são implementações locais, não pacotes completos. Ler o módulo antes de assumir APIs da biblioteca homônima.
 
 Escopo: components/fornecedor/ e rotas do fornecedor. Código compartilhado exige risk-zone-protocol; UI exige ui-system; contratos/API exigem api-contract. Não alterar primitivos, globals ou regras de outro domínio incidentalmente.
+
+## Acompanhamento MP-06
+
+GET /orders/:id?scope=comprador|fornecedor|admin retorna OrderDetail: snapshot e eventos lidos no mesmo D1.batch, com historySource complete/partial/legacy. Não criar eventos retroativos. O vínculo explícito supplierId prevalece; somente legado sem vínculo mantém o fallback anterior por itens/produtos. OrderTracking é a apresentação compartilhada. use-live-order-query.ts atualiza ao montar, foco/visibilidade e a cada 30s visíveis, compartilha consulta em andamento e preserva dados em erro. Chaves incluem conta/escopo/pedido e descartam respostas após troca de conta. Pacote: node scripts/context.mjs packet order-tracking.

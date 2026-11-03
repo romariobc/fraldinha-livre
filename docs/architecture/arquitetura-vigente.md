@@ -58,3 +58,9 @@ Compra/pagamento continuam simulados. Assistente/IA, leilão, push, gateway real
 ## Navegação e evidência
 
 Use node scripts/context.mjs packet e imports para escopo atual. CI em .github/workflows/validation.yml; testes front (Vitest/RTL), back (Vitest/D1 local), contratos e scripts. Homologação em navegador é evidência separada; mocks não comprovam integração real.
+
+## Acompanhamento persistido — MP-06
+
+A consulta GET /orders/:id?scope=... lê pedido, itens e order_events em um D1.batch. O contrato OrderDetail diferencia histórico completo, parcial e legado; IDs de ator e horários vêm dos eventos, sem inferir papéis ou fabricar eventos anteriores. Registros sem supplierId conservam o fallback legado por itens; quando existe snapshot do fornecedor, ele prevalece sobre o catálogo atual.
+
+A apresentação OrderTracking é compartilhada por comprador, fornecedor e admin. Listas e detalhes usam use-live-order-query.ts: abertura/foco, 30 segundos com documento visível, atualização manual, uma consulta em andamento por recurso e descarte de respostas de outra conta. Falha de atualização preserva dados e apresenta erro. A leitura é HTTP; os adaptadores simulados não comprovam persistência. Consulta seletiva: node scripts/context.mjs packet order-tracking. Não há nova migração nesta etapa.

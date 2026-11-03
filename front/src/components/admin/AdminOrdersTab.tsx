@@ -1,6 +1,10 @@
 'use client'
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import OrderTracking from '@/components/OrderTracking'
+import { useLiveOrderQuery } from '@/hooks/use-live-order-query'
+import { useAuth } from '@/contexts/auth-context'
+import { OrderListSchema } from '@contracts'
 import { apiFetch } from '@/lib/api-client'
 import type { Order, OrderStatus } from '@contracts'
 import { Search, RefreshCw, Filter, Eye, Copy, Check, Calendar, MapPin, CreditCard, Package } from 'lucide-react'
@@ -23,15 +27,23 @@ type CopiedTarget = {
 } | null
 
 export default function AdminOrdersTab() {
-  const [orders, setOrders] = useState<Order[] | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-  const [refreshKey, setRefreshKey] = useState(0)
-  const [error, setError] = useState<string | null>(null)
+  const { user } = useAuth()
+  const uid = user?.uid
+  const load = useCallback(async () => {
+    const res = await apiFetch('/orders?scope=admin', undefined, uid)
+    if (!res.ok) throw new Error('Falha na resposta')
+    return OrderListSchema.parse(await res.json())
+  }, [uid])
+  const query = useLiveOrderQuery(uid ? 'admin:' + uid : null, load)
+  const orders = query.data
+  const loading = query.loading
+  const refreshing = query.refreshing
+  const error = query.error ? 'Erro ao carregar pedidos.' : null
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('todos')
   const [currentPage, setCurrentPage] = useState(1)
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [selection, setSelectedOrder] = useState<Order | null>(null)
+  const selectedOrder = orders?.find(order => order.id === selection?.id) ?? selection
   const [copiedTarget, setCopiedTarget] = useState<CopiedTarget>(null)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -42,31 +54,6 @@ export default function AdminOrdersTab() {
       }
     }
   }, [])
-
-  useEffect(() => {
-    let cancelled = false
-    apiFetch('/orders?scope=admin')
-      .then(async (res) => {
-        if (cancelled) return
-        if (!res.ok) throw new Error('Falha na resposta')
-        const data = (await res.json()) as Order[]
-        setOrders(data)
-        setError(null)
-      })
-      .catch(() => {
-        if (cancelled) return
-        setError('Erro ao carregar pedidos.')
-      })
-      .finally(() => {
-        if (cancelled) return
-        setLoading(false)
-        setRefreshing(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [refreshKey])
 
   const filteredOrders = useMemo(() => {
     if (!orders) return []
@@ -152,7 +139,7 @@ export default function AdminOrdersTab() {
     }
   }
 
-  if (error) {
+  if (error && !orders) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <p className="text-red-600 font-medium mb-3">{error}</p>
@@ -160,9 +147,7 @@ export default function AdminOrdersTab() {
           variant="outline"
           size="sm"
           onClick={() => {
-            setLoading(true)
-            setError(null)
-            setRefreshKey((k) => k + 1)
+            void query.refresh()
           }}
         >
           Tentar novamente
@@ -227,8 +212,7 @@ export default function AdminOrdersTab() {
             variant="outline"
             size="sm"
             onClick={() => {
-              setRefreshing(true)
-              setRefreshKey((k) => k + 1)
+              void query.refresh()
             }}
             disabled={refreshing}
             className="h-8 px-2.5 text-xs flex items-center gap-1"
@@ -334,6 +318,7 @@ export default function AdminOrdersTab() {
         )}
       </div>
 
+      {error && <p role="alert" className="text-red-700">{error} Os últimos dados recebidos foram preservados.</p>}
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-2">
@@ -554,6 +539,7 @@ export default function AdminOrdersTab() {
                 </div>
               </div>
 
+              <OrderTracking orderId={selectedOrder.id} scope="admin" />
               <DialogFooter>
                 <Button type="button" variant="outline" size="sm" onClick={() => setSelectedOrder(null)}>
                   Fechar

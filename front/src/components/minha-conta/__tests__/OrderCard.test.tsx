@@ -3,6 +3,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
+vi.mock('@/components/OrderTracking', () => ({ default: () => <div>Acompanhamento do pedido</div> }))
 import OrderCard from '../OrderCard'
 import type { Order } from '@/lib/domain/account'
 

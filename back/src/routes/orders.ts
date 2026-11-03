@@ -1,7 +1,8 @@
 import { drizzle } from 'drizzle-orm/d1'
-import { eq, sql, inArray, and } from 'drizzle-orm'
+import { eq, sql, inArray, and, or, isNull } from 'drizzle-orm'
 import type { Context } from 'hono'
-import { OrderSchema, CreateOrderRequestSchema, UpdateOrderStatusRequestSchema } from '../../../packages/contracts/src/order'
+import { OrderSchema, OrderDetailSchema, CreateOrderRequestSchema, UpdateOrderStatusRequestSchema } from '../../../packages/contracts/src/order'
+import { orderEvents } from '../schema/order-events'
 import { orders, orderItems } from '../schema/orders'
 import { products } from '../schema/products'
 import { reports } from '../schema/reports'
@@ -52,6 +53,12 @@ async function replayOrder(c: OrderContext, db: OrderDb, order: typeof orders.$i
   return c.json(response, 200)
 }
 
+// Keep the pre-existing legacy ownership fallback only when no supplier snapshot exists.
+function supplierReadFilter(uid: string) {
+  return or(eq(orders.supplierId, uid), and(isNull(orders.supplierId), sql`${orders.id} IN
+    (SELECT oi.order_id FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE p.supplier_id = ${uid})`))
+}
+
 /**
  * GET /orders — retorna pedidos filtrados por uid do token.
  * Suporta ?scope=fornecedor para retornar pedidos dos produtos do fornecedor autenticado.
@@ -68,24 +75,14 @@ export const ordersGetHandler = async (c: Context<{ Bindings: Env; Variables: Ap
     const db = drizzle(c.env.DB)
     const scope = c.req.query('scope')
 
+    if (scope && !['comprador', 'fornecedor', 'admin'].includes(scope)) return respondError(c, 'INVALID_REQUEST', 400, 'Escopo inválido.')
     let userOrders
     if (scope === 'fornecedor') {
       if (!hasAnyRole(c, ['fornecedor'])) {
         return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
       }
-      // Busca order_items cujo product_id pertence a um produto do uid autenticado (fornecedor).
-      const matchingItems = await db
-        .select({ orderId: orderItems.orderId })
-        .from(orderItems)
-        .innerJoin(products, eq(orderItems.productId, products.id))
-        .where(eq(products.supplierId, uid))
-        .all()
-
-      const orderIds = [...new Set(matchingItems.map((row) => row.orderId))]
-      userOrders =
-        orderIds.length > 0
-          ? await db.select().from(orders).where(inArray(orders.id, orderIds)).all()
-          : []
+      // Ownership comes from the immutable order snapshot, not today's product owner.
+      userOrders = await db.select().from(orders).where(supplierReadFilter(uid)).all()
     } else if (scope === 'admin') {
       if (!hasAnyRole(c, ['admin'])) {
         return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
@@ -151,6 +148,35 @@ export const ordersGetHandler = async (c: Context<{ Bindings: Env; Variables: Ap
     // Se houver erro de validação Zod ou DB, deixa falhar (não esconder)
     throw error
   }
+}
+
+/** Detail and events share one D1 read transaction, including legacy snapshots. */
+export const ordersDetailHandler = async (c: OrderContext) => {
+  const uid = c.get('uid')
+  if (!uid) return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
+  const scope = c.req.query('scope') || 'comprador'
+  if (!['comprador', 'fornecedor', 'admin'].includes(scope)) return respondError(c, 'INVALID_REQUEST', 400, 'Escopo inválido.')
+  if (!hasAnyRole(c, [scope as 'comprador' | 'fornecedor' | 'admin'])) return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
+  const id = c.req.param('id')
+  if (!id) return respondError(c, 'ORDER_NOT_FOUND', 404, 'Pedido não encontrado.')
+  const db = drizzle(c.env.DB)
+  const [rows, items, events] = await db.batch([
+    db.select().from(orders).where(eq(orders.id, id)),
+    db.select().from(orderItems).where(eq(orderItems.orderId, id)),
+    db.select().from(orderEvents).where(eq(orderEvents.orderId, id)).orderBy(orderEvents.createdAt, sql`rowid`),
+  ])
+  const order = rows[0]
+  if (!order) return respondError(c, 'ORDER_NOT_FOUND', 404, 'Pedido não encontrado.')
+  const supplierAllowed = scope !== 'fornecedor' || order.supplierId === uid || (!order.supplierId && Boolean(await db.select({ id: orders.id }).from(orders).where(and(eq(orders.id, id), supplierReadFilter(uid))).get()))
+  if ((scope === 'comprador' && order.uid !== uid) || !supplierAllowed) {
+    return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
+  }
+  const snapshot = { ...order, items, deliveryAddress: JSON.parse(order.deliveryAddress),
+    price: order.price ?? undefined, supplierId: order.supplierId ?? undefined, supplierName: order.supplierName ?? undefined,
+    paymentMode: order.paymentMode ?? undefined, paymentStatus: order.paymentStatus ?? undefined,
+    paymentMethod: order.paymentMethod ?? undefined, paymentTransactionId: order.paymentTransactionId ?? undefined }
+  return c.json(OrderDetailSchema.parse({ order: snapshot, events,
+    historySource: !events.length ? 'legacy' : events[0].fromStatus === null ? 'complete' : 'partial' }))
 }
 
 import { isSupplierApproved } from '../lib/supplier-approval'

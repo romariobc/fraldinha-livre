@@ -3,6 +3,9 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { vi } from 'vitest'
 import AdminOrdersTab from '../AdminOrdersTab'
 
+vi.mock('@/contexts/auth-context', () => ({ useAuth: () => ({ user: { uid: 'admin-test' } }) }))
+vi.mock('@/components/OrderTracking', () => ({ default: () => <div>Acompanhamento do pedido</div> }))
+
 vi.mock('@/lib/api-client', () => ({ apiFetch: vi.fn() }))
 import { apiFetch } from '@/lib/api-client'
 
@@ -12,6 +15,7 @@ function jsonResponse(body: unknown, status = 200) {
 
 const mockOrders = [
   {
+    type: 'compra-direta',
     id: 'order-1',
     uid: 'uid-buyer-1',
     status: 'aguardando',
@@ -39,6 +43,8 @@ const mockOrders = [
     paymentTransactionId: 'tx-pix-123456',
   },
   {
+    type: 'compra-direta',
+    deliveryAddress: { logradouro: 'Rua QA', numero: '1', bairro: 'Centro', cidade: 'Fortaleza', estado: 'CE', cep: '60000-000' },
     id: 'order-2',
     uid: 'uid-buyer-2',
     status: 'entregue',
@@ -67,7 +73,7 @@ describe('AdminOrdersTab', () => {
     expect(screen.getByText('order-2')).toBeInTheDocument()
     expect(screen.getByText('Fralda Pampers M')).toBeInTheDocument()
     expect(screen.getByText('Fralda Huggies G')).toBeInTheDocument()
-    expect(apiFetch).toHaveBeenCalledWith('/orders?scope=admin')
+    expect(apiFetch).toHaveBeenCalledWith('/orders?scope=admin', undefined, 'admin-test')
   })
 
   it('filtra pedidos por busca de texto (produto ou ID)', async () => {
@@ -237,6 +243,8 @@ describe('AdminOrdersTab', () => {
 
   it('após clicar em atualizar, a segunda resposta contém o novo pedido e a tabela passa a exibi-lo', async () => {
     const newOrder = {
+      type: 'compra-direta',
+      deliveryAddress: mockOrders[0].deliveryAddress,
       id: 'order-3-novo',
       uid: 'uid-buyer-3',
       status: 'aguardando',

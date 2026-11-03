@@ -707,14 +707,14 @@
       "evidencias_exigidas": [
         "E2E de um/múltiplos fornecedores, aprovação/recusa, clique duplo, timeout antes/depois do commit, recarga e sucesso parcial; asserções de pedidos e estoque no D1."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
+      "aprovacao_usuario": "entrega_aprovada_pelo_usuario",
       "notas": "Implementação e homologação locais concluídas em 01/11/2026. Branch codex/mp-05-checkout; relatório docs/qa/MP-05-checkout-recuperacao.md. Servidor gera metadados, tentativa por UID e chaves por fornecedor persistem; E2E/SQL local aprovados. Migração 0015 apenas local. CI final registrada na PR. MP-06 não autorizado."
     },
     {
       "id": "MP-06",
       "titulo": "Registrar e acompanhar o ciclo do pedido",
       "fase": 1,
-      "status": "todo",
+      "status": "in_progress",
       "ordem": 6,
       "prioridade": "P0",
       "dependencias": [
@@ -735,8 +735,8 @@
       "evidencias_exigidas": [
         "Testes de histórico/escopos/atualização e falha de rede; jornada cruzada entre papéis, nova sessão e fixtures de pedidos legados."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_para_iniciar",
-      "notas": "Planejado; implementação, validação e homologação ainda pendentes. Exige aprovação explícita do usuário para iniciar, além das dependências técnicas."
+      "aprovacao_usuario": "execucao_autorizada",
+      "notas": "Autorizado pelo usuário ao solicitar avançar após MP-05. Implementação e validação da MP-06 em andamento; MP-07 não autorizado."
     },
     {
       "id": "MP-07",

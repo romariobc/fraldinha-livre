@@ -21,7 +21,7 @@ export default function OrderTracking({ orderId, scope }: { orderId: string; sco
   return <section aria-label="Acompanhamento do pedido" className="space-y-3 border-t pt-3 text-sm">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h4 className="font-display font-bold">Acompanhamento do pedido</h4>
-      <Button type="button" variant="outline" size="sm" disabled={!uid || query.loading || query.refreshing} onClick={() => void query.refresh()}>Atualizar acompanhamento</Button>
+      <Button type="button" variant="outline" size="sm" className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-primary-dark hover:bg-primary-light" disabled={!uid || query.loading || query.refreshing} onClick={() => void query.refresh()}>Atualizar acompanhamento</Button>
     </div>
     <p className="text-xs text-brand-muted">Atualiza ao abrir, ao retomar a página e a cada 30 segundos enquanto visível.</p>
     {query.loading && <p role="status">Carregando acompanhamento...</p>}

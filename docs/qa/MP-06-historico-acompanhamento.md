@@ -22,7 +22,7 @@ Base: 7ad88a9 (MP-05), preservada na tag remota checkpoint/mp05-2026-11-02. Bran
 | Abertura, foco, 30s visíveis e manual; sem sobreposição | front/src/hooks/__tests__/use-live-order-query.test.tsx | Verificada por execução com relógio controlado |
 | Falha de rede preserva dados; conta anterior não vaza | Testes do hook, OrderTracking e providers comprador/fornecedor | Verificada por execução |
 | Legado sem eventos ou apenas com mudanças posteriores | Fixtures D1 sem eventos/itens e teste visual legacy/partial | Verificada por execução; sem histórico inventado |
-| Jornada autenticada entre papéis e nova sessão | scripts/qa-mp06-browser.cjs | Em validação; resultado final registrado na PR |
+| Jornada autenticada entre papéis e nova sessão | scripts/qa-mp06-browser.cjs | Verificada por execução autenticada; cinco cenários aprovados |
 
 ## Validação desta execução
 
@@ -30,8 +30,16 @@ Base: 7ad88a9 (MP-05), preservada na tag remota checkpoint/mp05-2026-11-02. Bran
 - Backend focal: 13 testes de histórico e escopo fornecedor aprovados, com testTimeout=30000 e hookTimeout=60000 no ambiente local. Os quatro testes novos também passaram isoladamente com a configuração original.
 - A suíte backend completa local teve limites de tempo excedidos sob concorrência com os servidores de QA. A matriz original, sem ampliar limites no repositório, é obrigatória na CI final. Nenhuma configuração de testes foi relaxada no código versionado.
 - A primeira execução frontend por pipes não iniciou workers dentro do limite. Reexecução em terminal próprio passou; houve também correção de fixtures administrativas para o schema compartilhado e substituição da expectativa antiga de consultas sobrepostas pela regra aprovada da MP-06.
-- Lint completo sem erros; três avisos novos de dependências foram corrigidos e os módulos alterados passaram no lint focal. Permanecem dez avisos preexistentes. CI final, build de produção e commit exato ficam na PR.
+- Lint completo sem erros; três avisos novos de dependências foram corrigidos e os módulos alterados passaram no lint focal. Permanecem dez avisos preexistentes. CI final, build de produção e commit exato ficam na PR #27.
 - O primeiro servidor dev Turbopack não concluiu a compilação de login; reiniciado com --webpack, sem alterar configuração de produção. Fixture QA recebeu o campo obrigatório descricao. Falha inicial de JWKS recebeu 401; houve retry autenticado normal, sem bypass.
+
+## Jornada autenticada no navegador
+
+Executada contra localhost:3002 e 127.0.0.1:8791, com contas QA existentes e D1 separado. Cinco cenários passaram: intervalo real de 30 segundos; despacho pelo fornecedor e retorno do comprador ao foco; snapshots/eventos idênticos nos três escopos autenticados; falha de rede preservando dados com recuperação manual; novo contexto de navegador recuperando sessão pelo IndexedDB mantido apenas em memória e lendo o histórico do servidor. A largura de 375 px não apresentou transbordamento horizontal.
+
+Capturas mobile e admin foram inspecionadas. A revisão corrigiu largura do diálogo administrativo, quebra de fornecedor longo e apresentação do botão de atualização. Navegação no ambiente dev pode recarregar a página durante a primeira compilação de outra rota; o roteiro aquece as rotas antes da jornada e reabre o detalhe caso esse comportamento ocorra, sem alterar autenticação, dados ou resultado da API. A atualização de 30 segundos foi verificada sem clique/reload.
+
+Também foram acrescentadas regressões de preservação da lista em falha, atualização ao abrir, fechamento de seleção quando a conta perde os dados e descarte de erro tardio da conta anterior. A CI inicial confirmou os 359 testes backend na configuração original, tipos, contratos, lint e imagem de produção. A única falha frontend era a expectativa antiga de uma consulta total na tela: agora existem abertura e clique. A expectativa foi corrigida e a regressão focal passou; a matriz final do commit compartilhado é registrada na PR #27.
 
 ## Limites operacionais e retorno
 
@@ -39,6 +47,6 @@ Sem nova migração nesta etapa. O D1 local separado mp06-d1 recebeu as migraç�
 
 Não houve merge, deploy ou nova identidade. Antes de publicação, é necessário reconciliar as PRs anteriores, cumprir o processo de migração/backup e homologar o ambiente remoto. Os checkpoints preservam código e documentação, não dados remotos ou credenciais.
 
-Logs, imagens e estado D1 em docs/qa-artifacts/ são locais e ignorados pelo Git. O script reproduzível não contém credenciais nem grava sessão de autenticação em arquivo. O checkpoint anterior é checkpoint/mp05-2026-11-02 (7ad88a9); o checkpoint final será publicado somente após CI aprovada.
+Logs, imagens e estado D1 em docs/qa-artifacts/ são locais e ignorados pelo Git. O script reproduzível não contém credenciais nem grava sessão de autenticação em arquivo. O checkpoint anterior é checkpoint/mp05-2026-11-02 (7ad88a9); o checkpoint final checkpoint/mp06-2026-11-02 será publicado somente após CI aprovada.
 
 MP-07 não iniciado: depende de aprovação explícita do usuário após esta entrega.

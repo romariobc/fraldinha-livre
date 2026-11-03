@@ -1,6 +1,6 @@
 # Backlog vigente — Marketplace demonstrativo em produção
 
-**Revisão:** 1 de novembro de 2026.
+**Revisão:** 2 de novembro de 2026.
 
 **Base local:** `1322ac6`; árvore de trabalho limpa na entrada do MP-00.
 
@@ -40,7 +40,7 @@ Essas regras são o alvo aprovado. Não descrever aprovação de fornecedores, n
 5. Commit, push, publicação, migrações e alteração de segredos seguem o escopo autorizado; não são efeitos colaterais de QA ou de conclusão de etapa.
 6. Não delegar nem iniciar trabalho concorrente sem autorização. Não alterar o harness incidentalmente.
 
-**Ponto de controle atual (01/11/2026):** MP-04 aprovado; MP-05 entregue em implementação/homologação local, aguardando aprovação da entrega. Base preservada 251cb25, tag checkpoint/mp04-2026-11-01; branch codex/mp-05-checkout e CI final na PR. Migração 0015 apenas local, sem merge/deploy/migração remota. MP-06 não autorizado. Ver [relatório MP-05](qa/MP-05-checkout-recuperacao.md).
+**Ponto de controle atual (02/11/2026):** MP-05 aprovado; MP-06 entregue em implementação/homologação local, aguardando aprovação da entrega. Base preservada 7ad88a9, tag checkpoint/mp05-2026-11-02; branch codex/mp-06-order-tracking, PR #27 com CI final. Sem nova migração, merge ou deploy. MP-07 não autorizado. Ver [relatório MP-06](qa/MP-06-historico-acompanhamento.md).
 
 ### Preparação CTX-01, anterior à MP-04
 
@@ -57,8 +57,8 @@ P0 = fluxo obrigatório, integridade ou condição de liberação; P1 = conclus�
 | MP-02 | P0 | Garantir integridade de pedidos e estoque | MP-01 | done; entrega aprovada |
 | MP-03 | P0 | Concluir cadastro, acesso e aprovação de fornecedores | MP-02 | done; entrega aprovada |
 | MP-04 | P0 | Homologar catálogo e manutenção de ofertas | MP-03 | done; entrega aprovada |
-| MP-05 | P0 | Fechar checkout simulado e recuperação de falhas | MP-02, MP-04 | done; aguarda aprovação da entrega |
-| MP-06 | P0 | Registrar e acompanhar o ciclo do pedido | MP-05 | todo; início depende de aprovação |
+| MP-05 | P0 | Fechar checkout simulado e recuperação de falhas | MP-02, MP-04 | done; entrega aprovada |
+| MP-06 | P0 | Registrar e acompanhar o ciclo do pedido | MP-05 | done; aguarda aprovação da entrega |
 | MP-07 | P0 | Completar operação de venda e cancelamento nas interfaces | MP-06 | todo; início depende de aprovação |
 | MP-08 | P0 | Implementar ocorrências com resposta | MP-06 | todo; início depende de aprovação |
 | MP-09 | P0 | Entregar notificações internas persistidas | MP-03, MP-07, MP-08 | todo; início depende de aprovação |

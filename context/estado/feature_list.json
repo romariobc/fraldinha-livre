@@ -714,7 +714,7 @@
       "id": "MP-06",
       "titulo": "Registrar e acompanhar o ciclo do pedido",
       "fase": 1,
-      "status": "in_progress",
+      "status": "done",
       "ordem": 6,
       "prioridade": "P0",
       "dependencias": [
@@ -735,8 +735,8 @@
       "evidencias_exigidas": [
         "Testes de histórico/escopos/atualização e falha de rede; jornada cruzada entre papéis, nova sessão e fixtures de pedidos legados."
       ],
-      "aprovacao_usuario": "execucao_autorizada",
-      "notas": "Autorizado pelo usuário ao solicitar avançar após MP-05. Implementação e validação da MP-06 em andamento; MP-07 não autorizado."
+      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
+      "notas": "Implementação e homologação locais concluídas em 02/11/2026. Branch codex/mp-06-order-tracking, PR #27; relatório docs/qa/MP-06-historico-acompanhamento.md. Snapshot/eventos autorizados, atualização visível sem sobreposição, legado explícito e jornada autenticada/nova sessão aprovados. CI final registrada na PR. Sem nova migração/deploy. MP-07 não autorizado."
     },
     {
       "id": "MP-07",
@@ -985,9 +985,9 @@
     ],
     "regra_execucao": "Uma etapa por item MP, em ordem numerica; concluir, validar, registrar e parar. Dependencias satisfeitas nao autorizam avancar. Exigir aprovacao explicita do usuario para iniciar a proxima etapa.",
     "controle_execucao": {
-      "etapa_concluida": "MP-05",
+      "etapa_concluida": "MP-06",
       "aprovacao_entrega": "aguardando_usuario",
-      "proxima_etapa": "MP-06",
+      "proxima_etapa": "MP-07",
       "autorizada_proxima_etapa": false,
       "preparacao_concluida": "CTX-01",
       "aprovacao_preparacao": "aprovada_pelo_usuario"

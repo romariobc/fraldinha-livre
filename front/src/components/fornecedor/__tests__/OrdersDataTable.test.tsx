@@ -465,3 +465,11 @@ describe('OrdersDataTable Component', () => {
     expect(toast.success).toHaveBeenCalledWith('Pedido #DIR-0031 confirmado com sucesso!')
   })
 })
+
+ it('closes a selected detail when its orders disappear after an account change', async () => {
+   const view = render(<OrdersDataTable orders={MOCK_ROWS} />)
+   await userEvent.click(screen.getByTestId('order-id-' + MOCK_ROWS[0].id))
+   expect(await screen.findByRole('dialog')).toHaveTextContent(MOCK_ROWS[0].id)
+   view.rerender(<OrdersDataTable orders={[]} />)
+   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+ })

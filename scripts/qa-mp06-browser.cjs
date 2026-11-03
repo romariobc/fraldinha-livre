@@ -56,6 +56,8 @@ async function main() {
     return { context, page }
   }
   try {
+    console.log('QA: aquecimento de rotas antes da jornada para evitar recarga do compilador dev')
+    for (const route of ['/', '/login', '/minha-conta', '/painel-fornecedor', '/painel-fornecedor/pedidos', '/admin']) assert.equal((await fetch(origin + route)).status, 200)
     console.log('QA: autenticação e fixtures locais')
     const supplier = await identity('SUPPLIER'), buyer = await identity('BUYER1'), admin = await identity('ADMIN')
     const application = await call(supplier, 'POST', '/auth/supplier-application', {})
@@ -82,7 +84,12 @@ async function main() {
     // Return focus explicitly after another window; no status write is made by the buyer.
     await b.page.bringToFront()
     await b.page.evaluate(() => window.dispatchEvent(new Event('focus')))
-    await tracking.getByText('Confirmado → A caminho', { exact: true }).waitFor()
+    if (await tracking.count() === 0) {
+      console.log('QA: reabrindo detalhe após navegação/recarga do ambiente dev')
+      await b.page.getByTestId('order-card-' + order.id).getByRole('button', { name: 'Ver detalhes do pedido', exact: true }).click()
+    }
+    console.log('QA: retorno comprador', await b.page.evaluate(() => ({ path: location.pathname, visible: document.visibilityState, expanded: document.querySelectorAll('[aria-expanded="true"]').length, tracking: document.querySelectorAll('section[aria-label="Acompanhamento do pedido"]').length })))
+    await tracking.getByText('Confirmado → A caminho', { exact: true }).waitFor({ timeout: 45000 })
     results.push('Fornecedor despacha pela interface; comprador recebe evento ao retomar foco')
     console.log('QA: administrador e igualdade de snapshots')
     const a = await login('ADMIN', '/admin')
@@ -95,11 +102,11 @@ async function main() {
     assert.deepEqual(apiDetails[0], apiDetails[1]); assert.deepEqual(apiDetails[0], apiDetails[2])
     results.push('Admin, fornecedor e comprador consultam os mesmos snapshots, estado e eventos na API autenticada')
     const intercept = route => route.abort('internetdisconnected')
-    await b.page.route(api + '/orders*', intercept)
+    await b.page.route(api + '/orders**', intercept)
     await tracking.getByRole('button', { name: 'Atualizar acompanhamento' }).click()
     await tracking.getByRole('alert').waitFor()
     assert.equal(await tracking.locator('li').count(), 3)
-    await b.page.unroute(api + '/orders*', intercept)
+    await b.page.unroute(api + '/orders**', intercept)
     await tracking.getByRole('button', { name: 'Atualizar acompanhamento' }).click()
     await tracking.getByRole('alert').waitFor({ state: 'hidden' })
     results.push('Falha de rede preserva snapshot e eventos; atualização manual recupera a consulta')

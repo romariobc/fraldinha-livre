@@ -3,7 +3,8 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { vi } from 'vitest'
 import AdminOrdersTab from '../AdminOrdersTab'
 
-vi.mock('@/contexts/auth-context', () => ({ useAuth: () => ({ user: { uid: 'admin-test' } }) }))
+const adminIdentity = vi.hoisted(() => ({ uid: 'admin-test' }))
+vi.mock('@/contexts/auth-context', () => ({ useAuth: () => ({ user: { uid: adminIdentity.uid } }) }))
 vi.mock('@/components/OrderTracking', () => ({ default: () => <div>Acompanhamento do pedido</div> }))
 
 vi.mock('@/lib/api-client', () => ({ apiFetch: vi.fn() }))
@@ -64,6 +65,7 @@ const mockOrders = [
 describe('AdminOrdersTab', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    adminIdentity.uid = 'admin-test'
   })
 
   it('renderiza os pedidos retornados de GET /orders?scope=admin', async () => {
@@ -281,4 +283,16 @@ describe('AdminOrdersTab', () => {
     expect(screen.getByText('Fralda Babysec Nova')).toBeInTheDocument()
     expect(screen.getByText('order-1')).toBeInTheDocument()
   })
+  it('hides a selected snapshot immediately when the authenticated account changes', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(jsonResponse(mockOrders)).mockResolvedValue(jsonResponse([]))
+    const view = render(<AdminOrdersTab />)
+    await screen.findByText('order-1')
+    fireEvent.click(screen.getAllByRole('button', { name: /detalhes/i })[0])
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    adminIdentity.uid = 'other-admin'
+    view.rerender(<AdminOrdersTab />)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.queryByText('Fralda Pampers M')).not.toBeInTheDocument()
+  })
+
 })

@@ -60,4 +60,13 @@ describe('live order query', () => {
     const { result } = renderHook(() => useLiveOrderQuery(null, load))
     await settle(); expect(load).not.toHaveBeenCalled(); expect(result.current.data).toBeNull()
   })
+  it('ignores a late failure from the previous account after the new account succeeds', async () => {
+    const old = deferred<string[]>()
+    const loadOld = vi.fn(() => old.promise), loadNew = vi.fn().mockResolvedValue(['new-account'])
+    const { result, rerender } = renderHook(({ key, load }) => useLiveOrderQuery(key, load), { initialProps: { key: 'old', load: loadOld } })
+    rerender({ key: 'new', load: loadNew }); await settle()
+    old.reject(new Error('old-account-offline')); await settle()
+    expect(result.current.data).toEqual(['new-account']); expect(result.current.error).toBeNull()
+  })
+
 })

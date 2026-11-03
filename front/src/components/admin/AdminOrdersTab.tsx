@@ -43,7 +43,7 @@ export default function AdminOrdersTab() {
   const [statusFilter, setStatusFilter] = useState<string>('todos')
   const [currentPage, setCurrentPage] = useState(1)
   const [selection, setSelectedOrder] = useState<Order | null>(null)
-  const selectedOrder = orders?.find(order => order.id === selection?.id) ?? selection
+  const selectedOrder = orders?.find(order => order.id === selection?.id) ?? null
   const [copiedTarget, setCopiedTarget] = useState<CopiedTarget>(null)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -360,7 +360,7 @@ export default function AdminOrdersTab() {
           }
         }}
       >
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           {selectedOrder && (
             <>
               <DialogHeader>
@@ -410,7 +410,7 @@ export default function AdminOrdersTab() {
                   </div>
                   <div>
                     <div className="text-xs text-brand-muted">Fornecedor</div>
-                    <div className="font-medium text-brand-text mt-0.5">
+                    <div className="font-medium text-brand-text mt-0.5 break-all">
                       {selectedOrder.supplierName || '—'}
                       {selectedOrder.supplierId && (
                         <span className="block font-mono text-xs text-brand-muted">

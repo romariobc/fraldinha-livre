@@ -2,6 +2,7 @@
 
 import { render, screen } from '@testing-library/react'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
+vi.mock('@/contexts/auth-context', () => ({ useAuth: () => ({ user: { uid: 'test-user' }, role: 'comprador' }) }))
 import PedidosTab from '../PedidosTab'
 import type { Order } from '@/lib/domain/account'
 

@@ -1,24 +1,24 @@
-# Estado atual — 2026-11-02
+# Estado atual — 2026-11-04
 
-## MP-06 — Histórico e acompanhamento: entrega local concluída
+## MP-07 — Operações de venda e cancelamento: entrega local concluída
 
-- MP-05 aprovado para avançar; MP-06 autorizado pelo usuário. Compra, pagamento e entrega continuam demonstrativos.
-- Base e retorno anterior: 7ad88a9, tag remota checkpoint/mp05-2026-11-02. Branch codex/mp-06-order-tracking; [PR #27](https://github.com/romariobc/fraldinha-livre/pull/27). Commit/CI/checkpoint finais registrados na PR.
-- GET /orders/:id?scope=... entrega snapshot e eventos no mesmo D1.batch, com autorização por papel/vínculo. Fornecedor gravado no pedido prevalece; legado sem vínculo mantém o fallback anterior por itens.
-- Histórico distingue completo, parcial e legado sem eventos; não inventa autoria/horários. OrderTracking apresenta os mesmos dados nos três perfis. [Relatório MP-06](../../docs/qa/MP-06-historico-acompanhamento.md).
-- Listas/detalhes atualizam na abertura, foco/visibilidade, manualmente e a cada 30 segundos visíveis, sem sobreposição por recurso. Falha preserva dados; troca de conta oculta dados/seleção anterior e descarta respostas tardias.
-- Verificação local: 753 testes frontend completos antes dos últimos acréscimos; regressões finais focais aprovadas; 63 contratos e 46 harness. Histórico/escopos D1: 13 testes focais aprovados. CI inicial confirmou 359 backend com limites originais; CI final obrigatória do commit compartilhado registrada na PR.
-- Jornada autenticada local aprovada: polling real 30s, despacho pelo fornecedor, retorno ao foco, igualdade nos três papéis, falha de rede/recuperação e nova sessão. Capturas mobile/admin inspecionadas; 375px sem transbordamento. Limites e incidentes locais no relatório.
-- Sem nova migração, merge, deploy ou migração remota. D1 local separado mp06-d1 recebeu apenas migrações existentes até 0015. Sem nova identidade ou escrita de perfil remoto.
-- MP-07: todo, não iniciado; aguardar aprovação explícita desta entrega.
+- MP-06 aprovado para avançar; MP-07 autorizado em 04/11/2026. Compra, pagamento e entrega continuam simulados.
+- Base e retorno: 3463cfd, tag remota checkpoint/mp06-2026-11-02. Branch codex/mp-07-order-operations. Commit/CI/checkpoint finais registrados na PR desta entrega.
+- Ações combinam papel/vínculo/estado na interface, preservando decisão definitiva do backend. Fornecedor confirma/despacha/entrega; comprador cancela aguardando; fornecedor/admin cancelam antes do despacho com motivo. Terminais não reabrem.
+- Mutations vinculam UID esperado, serializam cliques e usam o snapshot devolvido pelo servidor. Falha/conflito reconcilia lista e detalhe com mensagem acionável. Linha do tempo atualiza após operação, aguardando leitura anterior se necessário.
+- [Relatório MP-07](../../docs/qa/MP-07-operacoes-venda-cancelamento.md): sete testes D1 novos aprovados; 101 testes focais finais e três testes de diálogo aprovados; tipos front/back e 46 testes do harness verificados. Matriz completa do commit compartilhado registrada na PR.
+- Jornada autenticada local aprovada: ciclo completo, clique duplo, três papéis, motivo obrigatório, estado terminal, estoque e 409 real por ação obsoleta. Lista/detalhe/linha do tempo reconciliados. Capturas desktop/mobile inspecionadas; 375px sem transbordamento.
+- Após despacho, orientação para ocorrência identifica o pedido e informa indisponibilidade de abertura/resposta nesta versão. Nenhuma ocorrência fictícia foi enviada; fluxo completo é MP-08.
+- Sem nova migração, merge, deploy ou alteração remota. D1 local separado mp07-d1 usa migrações existentes até 0015, sem binding AI e com notificações externas desativadas. Contas QA existentes, sem nova identidade ou escrita de perfil remoto.
+- MP-08: todo, não iniciado; aguardar aprovação explícita desta entrega.
 
 ## Contexto seletivo e limites
 
-- [Arquitetura](../../docs/architecture/arquitetura-vigente.md), [roteiro](../README.md); node scripts/context.mjs packet order-tracking seleciona os arquivos do acompanhamento. Contratos: packages/contracts/src/order.ts.
-- Polling não é tempo real nem garantia de disponibilidade de rede. Histórico persistido exige API/D1 compatíveis; mocks não comprovam persistência. Registros sem vínculo confiável de fornecedor exigem reconciliação administrativa antes da liberação.
-- Produção não homologada por este QA. Publicação exige reconciliar PRs sobrepostas, cumprir migrações/backup autorizados e validar o ambiente remoto; cadastro/recuperação de identidade mantêm homologação externa pendente.
-- Checkpoints preservam código/documentação; não restauram dados, configurações ou credenciais remotas. MP-06 não altera o schema da MP-05.
+- [Arquitetura](../../docs/architecture/arquitetura-vigente.md), [roteiro](../README.md); node scripts/context.mjs packet order-operations seleciona ações/conflitos; packet order-tracking seleciona leitura/histórico. Contratos HTTP não foram alterados nesta etapa.
+- Legado sem vínculo confiável de fornecedor mantém compatibilidade anterior e exige reconciliação administrativa antes da liberação. Mocks não comprovam operação remota; ocorrências/notificações completas seguem os MPs correspondentes.
+- Produção ainda requer homologação, reconciliação das PRs sobrepostas e procedimentos autorizados de backup/migração/publicação. Cadastro/recuperação de identidade mantêm homologação externa pendente.
+- Checkpoints recuperam código/documentação, não banco/configuração/credenciais. MP-07 não altera o schema da MP-06.
 
 ## Histórico sob demanda
 
-- [Estado da MP-05 preservado](progresso-ate-mp05-2026-11-02.md), [registro anterior](progresso-ate-2026-10-30.md), [histórico anterior](progresso-historico.md). PRs anteriores #22–#26 preservadas; nenhuma mesclada nesta etapa.
+- [Estado MP-06 preservado](progresso-ate-mp06-2026-11-04.md), [MP-05](progresso-ate-mp05-2026-11-02.md), [registro anterior](progresso-ate-2026-10-30.md). PRs anteriores #22–#27 preservadas, sem merge nesta etapa.

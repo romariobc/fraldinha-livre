@@ -22,7 +22,7 @@ export interface OrdersContextType {
   loading: boolean
   error: string | null
   errorDiagnostic?: DiagnosticResult | null
-  refreshOrders?: (options?: { refreshSession?: boolean }) => Promise<void>
+  refreshOrders?: (options?: { refreshSession?: boolean; afterPending?: boolean }) => Promise<void>
   recordConfirmedOrders?: (confirmed: ContractOrder[]) => void
   createDirectOrder: (product: string, quantity: number, deliveryAddress: Address, price: number, supplierId?: string, supplierName?: string) => Order
   createOrdersFromCart: (
@@ -73,9 +73,9 @@ export function OrdersProvider({ children }: { children: ReactNode }) {
   const loading = !session.ready || query.loading
   const errorDiagnostic = useMemo(() => query.error ? diagnoseError(query.error, { operation: 'orders.load_list' }) : null, [query.error])
   const error = errorDiagnostic?.message ?? null
-  const refreshOrders = useCallback(async (options?: { refreshSession?: boolean }) => {
+  const refreshOrders = useCallback(async (options?: { refreshSession?: boolean; afterPending?: boolean }) => {
     renewSession.current = options?.refreshSession ?? true
-    await refreshQuery()
+    await refreshQuery(options?.afterPending)
   }, [refreshQuery])
   const recordConfirmedOrders = useCallback((confirmed: ContractOrder[]) => {
     const mapped = confirmed.map(contractOrderToAccountOrder)

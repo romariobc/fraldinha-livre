@@ -1,3 +1,4 @@
+import OrderIssueGuidance from '@/components/OrderIssueGuidance'
 import OrderTracking from '@/components/OrderTracking'
 import { CheckCircle2, XCircle, Package, MapPin, User, ShoppingBag, Truck } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -14,16 +15,20 @@ import { formatPrice } from '@/lib/utils'
 import { type SupplierOrderRow, formatDate, getStatusBadge } from './model'
 
 interface OrderDetailsProps {
+ refreshVersion: number
+ errorMessage?: string | null
+ mayAct: boolean
+ pending: boolean
  isDetailOpen: boolean
  setIsDetailOpen(open: boolean): void
  selectedOrder: SupplierOrderRow | null
  handleRefuseOrder(id: string): void
- handleConfirmOrder(id: string): void
- handleUpdateStatus(id: string, status: 'confirmado' | 'a-caminho' | 'entregue' | 'cancelado'): void
+ handleConfirmOrder(id: string): Promise<boolean>
+ handleUpdateStatus(id: string, status: 'confirmado' | 'a-caminho' | 'entregue' | 'cancelado'): Promise<boolean>
 }
 
-export function OrderDetailsDialog({ isDetailOpen, setIsDetailOpen, selectedOrder, handleRefuseOrder, handleConfirmOrder, handleUpdateStatus }: OrderDetailsProps) {
- return (<Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+export function OrderDetailsDialog({ refreshVersion, errorMessage, mayAct, pending, isDetailOpen, setIsDetailOpen, selectedOrder, handleRefuseOrder, handleConfirmOrder, handleUpdateStatus }: OrderDetailsProps) {
+ return (<Dialog open={isDetailOpen} onOpenChange={(open) => { if (!pending) setIsDetailOpen(open) }}>
         <DialogContent className="max-w-lg sm:max-w-xl max-h-[85vh] overflow-y-auto">
           {selectedOrder && (
             <>
@@ -139,11 +144,14 @@ export function OrderDetailsDialog({ isDetailOpen, setIsDetailOpen, selectedOrde
                 </div>
               </div>
 
-              <OrderTracking orderId={selectedOrder.id} scope="fornecedor" />
+              <OrderTracking orderId={selectedOrder.id} scope="fornecedor" refreshVersion={selectedOrder.status + ":" + refreshVersion} />
+              {['a-caminho', 'entregue'].includes(selectedOrder.status) && <OrderIssueGuidance orderId={selectedOrder.id} />}
+              {errorMessage && <p role="alert" className="text-sm text-red-700">{errorMessage}</p>}
               <DialogFooter className="gap-2 sm:gap-0">
-                {selectedOrder.status === 'aguardando' && (
+                {mayAct && selectedOrder.status === 'aguardando' && (
                   <>
                     <Button
+                      disabled={pending}
                       variant="destructive"
                       size="sm"
                       onClick={() => {
@@ -156,12 +164,10 @@ export function OrderDetailsDialog({ isDetailOpen, setIsDetailOpen, selectedOrde
                       Recusar Pedido
                     </Button>
                     <Button
+                      disabled={pending}
                       variant="default"
                       size="sm"
-                      onClick={() => {
-                        handleConfirmOrder(selectedOrder.id)
-                        setIsDetailOpen(false)
-                      }}
+                      onClick={async () => { if (await handleConfirmOrder(selectedOrder.id)) setIsDetailOpen(false) }}
                       className="bg-emerald-600 hover:bg-emerald-700 text-white"
                     >
                       <CheckCircle2 className="size-4 mr-1.5" />
@@ -169,9 +175,10 @@ export function OrderDetailsDialog({ isDetailOpen, setIsDetailOpen, selectedOrde
                     </Button>
                   </>
                 )}
-                {selectedOrder.status === 'confirmado' && (
+                {mayAct && selectedOrder.status === 'confirmado' && (
                   <>
                     <Button
+                      disabled={pending}
                       variant="destructive"
                       size="sm"
                       onClick={() => {
@@ -184,12 +191,10 @@ export function OrderDetailsDialog({ isDetailOpen, setIsDetailOpen, selectedOrde
                       Cancelar Pedido
                     </Button>
                     <Button
+                      disabled={pending}
                       variant="default"
                       size="sm"
-                      onClick={() => {
-                        handleUpdateStatus(selectedOrder.id, 'a-caminho')
-                        setIsDetailOpen(false)
-                      }}
+                      onClick={async () => { if (await handleUpdateStatus(selectedOrder.id, 'a-caminho')) setIsDetailOpen(false) }}
                       className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
                       <Truck className="size-4 mr-1.5" />
@@ -197,27 +202,13 @@ export function OrderDetailsDialog({ isDetailOpen, setIsDetailOpen, selectedOrde
                     </Button>
                   </>
                 )}
-                {selectedOrder.status === 'a-caminho' && (
+                {mayAct && selectedOrder.status === 'a-caminho' && (
                   <>
                     <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => {
-                        handleRefuseOrder(selectedOrder.id)
-                        setIsDetailOpen(false)
-                      }}
-                      className="mr-auto"
-                    >
-                      <XCircle className="size-4 mr-1.5" />
-                      Cancelar Pedido
-                    </Button>
-                    <Button
+                      disabled={pending}
                       variant="default"
                       size="sm"
-                      onClick={() => {
-                        handleUpdateStatus(selectedOrder.id, 'entregue')
-                        setIsDetailOpen(false)
-                      }}
+                      onClick={async () => { if (await handleUpdateStatus(selectedOrder.id, 'entregue')) setIsDetailOpen(false) }}
                       className="bg-teal-600 hover:bg-teal-700 text-white"
                     >
                       <CheckCircle2 className="size-4 mr-1.5" />
@@ -228,6 +219,7 @@ export function OrderDetailsDialog({ isDetailOpen, setIsDetailOpen, selectedOrde
                 <Button
                   variant="outline"
                   size="sm"
+                  disabled={pending}
                   onClick={() => setIsDetailOpen(false)}
                 >
                   Fechar

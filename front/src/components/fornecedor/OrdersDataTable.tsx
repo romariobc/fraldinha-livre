@@ -11,6 +11,9 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@/lib/compat/tanstack-table'
+import { useOrderOperation } from '@/hooks/use-order-operation'
+import { useAuth } from '@/contexts/auth-context'
+import { allowedOrderTargets, canManageOrder } from '@/lib/order-actions'
 import { toast } from 'sonner'
 import { useMarket } from '@/contexts/market-context'
 import { OrderReportDialog } from './OrderReportDialog'
@@ -46,6 +49,11 @@ export function OrdersDataTable({
   onRefresh,
 }: OrdersDataTableProps) {
   const market = useMarket()
+  const { user, role } = useAuth()
+  const operation = useOrderOperation(user?.uid ?? null)
+  const actor = user ? { uid: user.uid, role } : null
+  const mayAct = (order: SupplierOrderRow) => canManageOrder(order, actor, 'fornecedor')
+  const refreshAfterOperation = async () => { if (onRefresh) await onRefresh(); else await market.refetchDirectOrders?.(true) }
 
   const loading = customLoading ?? market.directOrdersLoading
   const error = customError ?? market.directOrdersError
@@ -137,62 +145,35 @@ export function OrdersDataTable({
     return data.filter((o) => o.status === statusFilter)
   }, [data, statusFilter])
 
-  // Action handlers
-  const handleConfirmOrder = async (orderId: string) => {
-    try {
-      if (onConfirm) {
-        await onConfirm(orderId)
-      } else {
-        await market.handleConfirmarDireto(orderId)
-      }
-      toast.success(`Pedido #${orderId} confirmado com sucesso!`)
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder((prev) => (prev ? { ...prev, status: 'confirmado' } : null))
-      }
-    } catch {
-      toast.error('Erro ao confirmar pedido')
-    }
+  // The server is definitive; stale or failed actions always trigger reconciliation.
+  const isAllowed = (id: string, target: string) => {
+    const order = data.find(value => value.id === id)
+    return Boolean(order && mayAct(order) && allowedOrderTargets(order.status, 'fornecedor').includes(target as ContractOrder['status']))
   }
-
+  const handleConfirmOrder = async (orderId: string) => {
+    if (!isAllowed(orderId, 'confirmado')) return false
+    return operation.run(orderId, async () => {
+      if (onConfirm) await onConfirm(orderId); else await market.handleConfirmarDireto(orderId)
+    }, refreshAfterOperation, 'Pedido #' + orderId + ' confirmado com sucesso!')
+  }
   const handleRefuseOrder = (orderId: string) => {
+    if (!isAllowed(orderId, 'cancelado') || operation.pendingId) return
     setIsDetailOpen(false)
     setCancellingOrderId(orderId)
   }
-
   const confirmRefusal = async (orderId: string, reason: string) => {
-    try {
-      if (onRefuse) {
-        await onRefuse(orderId, reason)
-      } else {
-        await market.handleRecusarDireto(orderId, reason)
-      }
-      toast.info(`Pedido #${orderId} recusado/cancelado.`)
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder((prev) => (prev ? { ...prev, status: 'cancelado' } : null))
-      }
-    } catch {
-      toast.error('Erro ao recusar pedido')
-      throw new Error('Cancelamento não concluído')
-    }
+    if (!isAllowed(orderId, 'cancelado')) return false
+    return operation.run(orderId, async () => {
+      if (onRefuse) await onRefuse(orderId, reason); else await market.handleRecusarDireto(orderId, reason)
+    }, refreshAfterOperation, 'Pedido #' + orderId + ' recusado/cancelado.')
   }
-
-  const handleUpdateStatus = async (
-    orderId: string,
-    status: 'confirmado' | 'a-caminho' | 'entregue' | 'cancelado'
-  ) => {
-    try {
-      if (onUpdateStatus) {
-        await onUpdateStatus(orderId, status)
-      } else if (market.handleAtualizarStatusDireto) {
-        await market.handleAtualizarStatusDireto(orderId, status)
-      }
-      toast.success(`Pedido #${orderId} atualizado com sucesso!`)
-      if (selectedOrder?.id === orderId) {
-        setSelectedOrder((prev) => (prev ? { ...prev, status } : null))
-      }
-    } catch {
-      toast.error('Erro ao atualizar status do pedido')
-    }
+  const handleUpdateStatus = async (orderId: string, status: 'confirmado' | 'a-caminho' | 'entregue' | 'cancelado') => {
+    if (!isAllowed(orderId, status)) return false
+    return operation.run(orderId, async () => {
+      if (onUpdateStatus) await onUpdateStatus(orderId, status)
+      else if (market.handleAtualizarStatusDireto) await market.handleAtualizarStatusDireto(orderId, status)
+      else throw new Error('Operação indisponível')
+    }, refreshAfterOperation, 'Pedido #' + orderId + ' atualizado com sucesso!')
   }
 
   const handleCopyId = (orderId: string) => {
@@ -203,12 +184,7 @@ export function OrdersDataTable({
   }
 
   // Column definitions
-  const columns = React.useMemo(
-    () => createOrderColumns({ setSelectedOrder, setIsDetailOpen, setReportingOrder, setIsReportOpen, handleCopyId, handleConfirmOrder, handleRefuseOrder, handleUpdateStatus }),
-    // Preserve the existing memoization boundary during this structural extraction.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data]
-  )
+  const columns = createOrderColumns({ setSelectedOrder, setIsDetailOpen, setReportingOrder, setIsReportOpen, handleCopyId, handleConfirmOrder, handleRefuseOrder, handleUpdateStatus, pending: Boolean(operation.pendingId), mayAct })
 
   const table = useReactTable({
     data: filteredData,
@@ -244,6 +220,7 @@ export function OrdersDataTable({
 
   return (
     <>
+      {operation.error && <p role="alert" className="text-sm text-red-700">{operation.error}</p>}
       <OrdersTableView
         filteredData={filteredData}
         table={table}
@@ -267,12 +244,18 @@ export function OrdersDataTable({
         isDetailOpen={isDetailOpen && data.some(order => order.id === selectedOrder?.id)}
         setIsDetailOpen={setIsDetailOpen}
         selectedOrder={data.find(order => order.id === selectedOrder?.id) ?? null}
+        refreshVersion={operation.revision}
+        errorMessage={operation.error}
+        mayAct={Boolean(selectedOrder && mayAct(selectedOrder))}
+        pending={Boolean(operation.pendingId)}
         handleRefuseOrder={handleRefuseOrder}
         handleConfirmOrder={handleConfirmOrder}
         handleUpdateStatus={handleUpdateStatus}
       />
-      {cancellingOrderId && (
+      {cancellingOrderId && data.some(order => order.id === cancellingOrderId && mayAct(order) && allowedOrderTargets(order.status, 'fornecedor').includes('cancelado')) && (
         <OrderCancellationDialog
+          key={user?.uid}
+          errorMessage={operation.error}
           onClose={() => setCancellingOrderId(null)}
           onConfirm={(reason) => confirmRefusal(cancellingOrderId, reason)}
         />

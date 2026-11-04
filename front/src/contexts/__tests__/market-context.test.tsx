@@ -256,7 +256,7 @@ describe('MarketContext - directOrders loading (backend mode)', () => {
   })
 
   it('modo backend: handleConfirmarDireto chama repo.updateStatus com "confirmado"', async () => {
-    const updateStatusMock = vi.fn().mockResolvedValue(fakeContractOrder)
+    const updateStatusMock = vi.fn().mockImplementation(async (_id: string, status: ContractOrder['status']) => ({ ...fakeContractOrder, status }))
     const listForSupplierMock = vi.fn().mockResolvedValue([fakeContractOrder])
     mockedHttpOrderRepository.mockImplementation(
       function() { return makeFakeRepo({ listForSupplier: listForSupplierMock, updateStatus: updateStatusMock }) as unknown as HttpOrderRepository }
@@ -274,7 +274,7 @@ describe('MarketContext - directOrders loading (backend mode)', () => {
   })
 
   it('modo backend: handleRecusarDireto chama repo.updateStatus com "cancelado"', async () => {
-    const updateStatusMock = vi.fn().mockResolvedValue(fakeContractOrder)
+    const updateStatusMock = vi.fn().mockImplementation(async (_id: string, status: ContractOrder['status']) => ({ ...fakeContractOrder, status }))
     const listForSupplierMock = vi.fn().mockResolvedValue([fakeContractOrder])
     mockedHttpOrderRepository.mockImplementation(
       function() { return makeFakeRepo({ listForSupplier: listForSupplierMock, updateStatus: updateStatusMock }) as unknown as HttpOrderRepository }
@@ -292,7 +292,7 @@ describe('MarketContext - directOrders loading (backend mode)', () => {
   })
 
   it('modo backend: handleAtualizarStatusDireto chama repo.updateStatus com status desejado', async () => {
-    const updateStatusMock = vi.fn().mockResolvedValue(fakeContractOrder)
+    const updateStatusMock = vi.fn().mockImplementation(async (_id: string, status: ContractOrder['status']) => ({ ...fakeContractOrder, status }))
     const listForSupplierMock = vi.fn().mockResolvedValue([fakeContractOrder])
     mockedHttpOrderRepository.mockImplementation(
       function() { return makeFakeRepo({ listForSupplier: listForSupplierMock, updateStatus: updateStatusMock }) as unknown as HttpOrderRepository }
@@ -338,7 +338,7 @@ describe('MarketContext - directOrders loading (backend mode)', () => {
 
   it('modo backend: não emite toast no contexto (delega feedback para UI)', async () => {
     const { toast } = await import('sonner')
-    const updateStatusMock = vi.fn().mockResolvedValue(fakeContractOrder)
+    const updateStatusMock = vi.fn().mockImplementation(async (_id: string, status: ContractOrder['status']) => ({ ...fakeContractOrder, status }))
     const listForSupplierMock = vi.fn().mockResolvedValue([fakeContractOrder])
     mockedHttpOrderRepository.mockImplementation(
       function() { return makeFakeRepo({ listForSupplier: listForSupplierMock, updateStatus: updateStatusMock }) as unknown as HttpOrderRepository }
@@ -707,6 +707,15 @@ describe('MarketContext - directOrders loading (backend mode)', () => {
     expect(result.current.directOrders).toHaveLength(1)
     expect(result.current.directOrders[0].id).toBe('ord-sup-B-rapido')
   })
+  it('preserves an authoritative status already advanced in the response instead of rewinding it', async () => {
+    const updateStatus = vi.fn().mockResolvedValue({ ...fakeContractOrder, status: 'a-caminho' })
+    mockedHttpOrderRepository.mockImplementation(function () { return makeFakeRepo({ listForSupplier: vi.fn().mockResolvedValue([fakeContractOrder]), updateStatus }) as unknown as HttpOrderRepository })
+    const { result } = renderHook(() => useMarket(), { wrapper: AllProviders })
+    await waitFor(() => expect(result.current.directOrdersLoading).toBe(false))
+    await act(async () => { await result.current.handleConfirmarDireto(fakeContractOrder.id) })
+    expect(result.current.directOrders[0].status).toBe('a-caminho')
+  })
+
 })
 
 

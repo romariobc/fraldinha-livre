@@ -19,7 +19,7 @@ interface MarketContextValue {
   directOrdersLoading: boolean
   directOrdersError: string | null
   directOrdersDiagnostic?: DiagnosticResult | null
-  refetchDirectOrders(): Promise<void>
+  refetchDirectOrders(afterPending?: boolean): Promise<void>
   offers: SupplierOffer[]
   declinedIds: Set<string>
   handleEnviarOferta(orderId: string, price: number, deliveryType: DeliveryType, note?: string): Promise<void>
@@ -84,8 +84,10 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
 
   async function handleConfirmarDireto(orderId: string) {
     if (useBackend) {
-      const repo: OrderRepository = new HttpOrderRepository()
-      await repo.updateStatus(orderId, 'confirmado')
+      const repo: OrderRepository = new HttpOrderRepository(user?.uid)
+      const saved = await repo.updateStatus(orderId, 'confirmado')
+      setDirectOrders(previous => previous.map(order => order.id === orderId ? contractOrderToDirectOrder(saved) : order))
+      return
     }
     setDirectOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: 'confirmado' as const } : o))
@@ -94,8 +96,10 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
 
   async function handleRecusarDireto(orderId: string, reason: string) {
     if (useBackend) {
-      const repo: OrderRepository = new HttpOrderRepository()
-      await repo.updateStatus(orderId, 'cancelado', reason)
+      const repo: OrderRepository = new HttpOrderRepository(user?.uid)
+      const saved = await repo.updateStatus(orderId, 'cancelado', reason)
+      setDirectOrders(previous => previous.map(order => order.id === orderId ? contractOrderToDirectOrder(saved) : order))
+      return
     }
     setDirectOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: 'cancelado' as const } : o))
@@ -104,9 +108,10 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
 
   async function handleAtualizarStatusDireto(orderId: string, status: OrderStatus, reason?: string) {
     if (useBackend) {
-      const repo: OrderRepository = new HttpOrderRepository()
-      if (reason === undefined) await repo.updateStatus(orderId, status)
-      else await repo.updateStatus(orderId, status, reason)
+      const repo: OrderRepository = new HttpOrderRepository(user?.uid)
+      const saved = reason === undefined ? await repo.updateStatus(orderId, status) : await repo.updateStatus(orderId, status, reason)
+      setDirectOrders(previous => previous.map(order => order.id === orderId ? contractOrderToDirectOrder(saved) : order))
+      return
     }
     setDirectOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: status as DirectOrderStatus } : o))

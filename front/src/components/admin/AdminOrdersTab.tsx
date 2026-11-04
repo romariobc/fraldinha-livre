@@ -1,6 +1,11 @@
 'use client'
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import { HttpOrderRepository } from '@/lib/adapters/http-order-repository'
+import { useOrderOperation } from '@/hooks/use-order-operation'
+import { allowedOrderTargets, canManageOrder } from '@/lib/order-actions'
+import { OrderCancellationDialog } from '@/components/fornecedor/OrderCancellationDialog'
+import OrderIssueGuidance from '@/components/OrderIssueGuidance'
 import OrderTracking from '@/components/OrderTracking'
 import { useLiveOrderQuery } from '@/hooks/use-live-order-query'
 import { useAuth } from '@/contexts/auth-context'
@@ -27,8 +32,10 @@ type CopiedTarget = {
 } | null
 
 export default function AdminOrdersTab() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
   const uid = user?.uid
+  const operation = useOrderOperation(uid ?? null)
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
   const load = useCallback(async () => {
     const res = await apiFetch('/orders?scope=admin', undefined, uid)
     if (!res.ok) throw new Error('Falha na resposta')
@@ -44,6 +51,15 @@ export default function AdminOrdersTab() {
   const [currentPage, setCurrentPage] = useState(1)
   const [selection, setSelectedOrder] = useState<Order | null>(null)
   const selectedOrder = orders?.find(order => order.id === selection?.id) ?? null
+  const cancellation = orders?.find(order => order.id === cancellingId)
+  const canCancel = (order: Order) => canManageOrder(order, user ? { uid: user.uid, role } : null, 'admin') && allowedOrderTargets(order.status, 'admin').includes('cancelado')
+  const cancel = async (reason: string) => {
+    if (!cancellation || !canCancel(cancellation)) return false
+    return operation.run(cancellation.id, async () => {
+      const saved = await new HttpOrderRepository(uid).updateStatus(cancellation.id, 'cancelado', reason)
+      query.setData(previous => (previous ?? []).map(order => order.id === saved.id ? saved : order))
+    }, async () => { await query.refresh(true) }, 'Pedido cancelado com motivo registrado.')
+  }
   const [copiedTarget, setCopiedTarget] = useState<CopiedTarget>(null)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -319,6 +335,7 @@ export default function AdminOrdersTab() {
       </div>
 
       {error && <p role="alert" className="text-red-700">{error} Os últimos dados recebidos foram preservados.</p>}
+      {operation.error && <p role="alert" className="text-sm text-red-700">{operation.error}</p>}
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-2">
@@ -539,8 +556,10 @@ export default function AdminOrdersTab() {
                 </div>
               </div>
 
-              <OrderTracking orderId={selectedOrder.id} scope="admin" />
+              <OrderTracking orderId={selectedOrder.id} scope="admin" refreshVersion={selectedOrder.status + ":" + operation.revision} />
+              {['a-caminho', 'entregue'].includes(selectedOrder.status) && <OrderIssueGuidance orderId={selectedOrder.id} />}
               <DialogFooter>
+                {canCancel(selectedOrder) && <Button type="button" variant="destructive" disabled={Boolean(operation.pendingId)} onClick={() => { setCancellingId(selectedOrder.id); setSelectedOrder(null) }}>Cancelar pedido</Button>}
                 <Button type="button" variant="outline" size="sm" onClick={() => setSelectedOrder(null)}>
                   Fechar
                 </Button>
@@ -549,6 +568,7 @@ export default function AdminOrdersTab() {
           )}
         </DialogContent>
       </Dialog>
+      {cancellation && canCancel(cancellation) && <OrderCancellationDialog key={uid} errorMessage={operation.error} onClose={() => setCancellingId(null)} onConfirm={cancel} />}
     </div>
   )
 }

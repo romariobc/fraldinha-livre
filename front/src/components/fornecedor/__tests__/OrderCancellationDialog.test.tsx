@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { OrderCancellationDialog } from '../OrderCancellationDialog'
@@ -31,7 +31,8 @@ describe('OrderCancellationDialog', () => {
     const onConfirm = vi.fn(() => new Promise<void>((r) => { resolve = r }))
     render(<OrderCancellationDialog onConfirm={onConfirm} onClose={vi.fn()} />)
     await user.type(screen.getByLabelText('Motivo do cancelamento'), 'Sem estoque')
-    await user.click(screen.getByRole('button', { name: 'Confirmar cancelamento' }))
+    const button = screen.getByRole('button', { name: 'Confirmar cancelamento' })
+    fireEvent.click(button); fireEvent.click(button)
     expect(screen.getByRole('button', { name: 'Cancelando…' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Voltar' })).toBeDisabled()
     expect(onConfirm).toHaveBeenCalledOnce()

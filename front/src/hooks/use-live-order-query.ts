@@ -6,10 +6,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 export function useLiveOrderQuery<T>(key: string | null, load: () => Promise<T>, live = true) {
   const [state, setState] = useState<{ key: string | null; data: T | null; error: unknown; busy: boolean }>({ key: null, data: null, error: null, busy: false })
   const scope = useRef<{ key: string | null; valid: boolean; flight?: Promise<void> }>({ key: null, valid: false })
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async function refreshQuery(afterPending = false): Promise<void> {
     const owner = scope.current
     if (!key || owner.key !== key || !owner.valid) return
-    if (owner.flight) return owner.flight
+    if (owner.flight) {
+      await owner.flight
+      if (afterPending && owner.valid && scope.current === owner) return refreshQuery()
+      return
+    }
     const task = async () => {
       setState(previous => ({ key, data: previous.key === key ? previous.data : null, error: null, busy: true }))
       try {

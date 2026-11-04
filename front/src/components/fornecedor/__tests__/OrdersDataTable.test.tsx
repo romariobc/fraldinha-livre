@@ -3,6 +3,7 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
+vi.mock('@/contexts/auth-context', () => ({ useAuth: () => ({ user: { uid: 'supplier-test' }, role: 'fornecedor' }) }))
 vi.mock('@/components/OrderTracking', () => ({ default: () => <div>Acompanhamento do pedido</div> }))
 import { OrdersDataTable, type SupplierOrderRow } from '../OrdersDataTable'
 import { contractOrderToDirectOrder } from '@/lib/order-adapters'
@@ -298,7 +299,7 @@ describe('OrdersDataTable Component', () => {
     await user.type(screen.getByLabelText('Motivo do cancelamento'), 'Produto indisponível')
     await user.click(screen.getByRole('button', { name: 'Confirmar cancelamento' }))
     expect(handleRefuse).toHaveBeenCalledWith('DIR-0031', 'Produto indisponível')
-    expect(toast.info).toHaveBeenCalledWith('Pedido #DIR-0031 recusado/cancelado.')
+    expect(toast.success).toHaveBeenCalledWith('Pedido #DIR-0031 recusado/cancelado.')
   })
 
   it('changes page size via select', async () => {
@@ -473,3 +474,24 @@ describe('OrdersDataTable Component', () => {
    view.rerender(<OrdersDataTable orders={[]} />)
    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
  })
+
+it('offers delivery and issue guidance after dispatch, with no cancel action', async () => {
+  render(<OrdersDataTable orders={[{ ...MOCK_ROWS[0], status: 'a-caminho' }]} />)
+  await userEvent.click(screen.getByTestId('order-id-' + MOCK_ROWS[0].id))
+  expect(screen.queryByRole('button', { name: /cancelar pedido|recusar pedido/i })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Confirmar Entrega' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Problema com o pedido' })).toBeInTheDocument()
+})
+it('does not offer mutation controls for an explicitly foreign supplier snapshot', async () => {
+  render(<OrdersDataTable orders={[{ ...MOCK_ROWS[0], supplierId: 'other-supplier' }]} />)
+  await userEvent.click(screen.getByTestId('order-id-' + MOCK_ROWS[0].id))
+  expect(screen.queryByRole('button', { name: /confirmar pedido|recusar pedido/i })).not.toBeInTheDocument()
+})
+it('reconciles a conflicting action and presents an actionable message', async () => {
+  const refresh = vi.fn().mockResolvedValue(undefined)
+  render(<OrdersDataTable orders={MOCK_ROWS} onConfirm={vi.fn().mockRejectedValue({ code: 'ORDER_STATUS_NOT_ALLOWED' })} onRefresh={refresh} />)
+  await userEvent.click(screen.getByTestId('order-id-' + MOCK_ROWS[0].id))
+  await userEvent.click(screen.getByRole('button', { name: /confirmar pedido/i }))
+  await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1))
+  expect(await screen.findByRole('alert')).toHaveTextContent('estado atualizado')
+})

@@ -12,6 +12,7 @@ export function orderToDirectOrder(order: Order): DirectOrder | null {
 
   return {
     id: order.id,
+    supplierId: order.supplierId,
     product: order.product,
     quantity: order.quantity,
     unit: order.unit as 'un' | 'cx' | 'kg',
@@ -57,6 +58,7 @@ export function contractOrderToDirectOrder(order: ContractOrder): DirectOrder {
 export function contractOrderToAccountOrder(order: ContractOrder): Order {
   return {
     id: order.id,
+    uid: order.uid,
     type: order.type,
     product: order.product,
     quantity: order.quantity,

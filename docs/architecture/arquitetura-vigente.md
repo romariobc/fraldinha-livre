@@ -64,3 +64,9 @@ Use node scripts/context.mjs packet e imports para escopo atual. CI em .github/w
 A consulta GET /orders/:id?scope=... lê pedido, itens e order_events em um D1.batch. O contrato OrderDetail diferencia histórico completo, parcial e legado; IDs de ator e horários vêm dos eventos, sem inferir papéis ou fabricar eventos anteriores. Registros sem supplierId conservam o fallback legado por itens; quando existe snapshot do fornecedor, ele prevalece sobre o catálogo atual.
 
 A apresentação OrderTracking é compartilhada por comprador, fornecedor e admin. Listas e detalhes usam use-live-order-query.ts: abertura/foco, 30 segundos com documento visível, atualização manual, uma consulta em andamento por recurso e descarte de respostas de outra conta. Falha de atualização preserva dados e apresenta erro. A leitura é HTTP; os adaptadores simulados não comprovam persistência. Consulta seletiva: node scripts/context.mjs packet order-tracking. Não há nova migração nesta etapa.
+
+## Operações por papel — MP-07
+
+As telas consultam a política visual order-actions.ts e usam use-order-operation.ts para serializar envios e reconciliar após sucesso/falha. O backend existente continua a impor ownership, transições e efeitos de estoque/eventos no D1.batch. Projeções preservam o vínculo do DTO; mutações HTTP conferem UID esperado. A resposta real atualiza o painel fornecedor. OrderTracking recebe uma revisão após operação; refresh(true) aguarda leitura em andamento antes da leitura atual, preservando ausência de sobreposição.
+
+Fornecedor confirma/despacha/entrega; comprador cancela aguardando; fornecedor/admin cancelam antes do despacho com motivo. Estados terminais não reabrem. Orientação de ocorrência após despacho é explícita sobre indisponibilidade de submissão/resposta até MP-08. Não há nova migração ou alteração de autorização backend nesta etapa.

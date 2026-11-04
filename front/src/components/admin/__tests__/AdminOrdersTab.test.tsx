@@ -4,7 +4,7 @@ import { vi } from 'vitest'
 import AdminOrdersTab from '../AdminOrdersTab'
 
 const adminIdentity = vi.hoisted(() => ({ uid: 'admin-test' }))
-vi.mock('@/contexts/auth-context', () => ({ useAuth: () => ({ user: { uid: adminIdentity.uid } }) }))
+vi.mock('@/contexts/auth-context', () => ({ useAuth: () => ({ user: { uid: adminIdentity.uid }, role: 'admin' }) }))
 vi.mock('@/components/OrderTracking', () => ({ default: () => <div>Acompanhamento do pedido</div> }))
 
 vi.mock('@/lib/api-client', () => ({ apiFetch: vi.fn() }))
@@ -293,6 +293,18 @@ describe('AdminOrdersTab', () => {
     view.rerender(<AdminOrdersTab />)
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(screen.queryByText('Fralda Pampers M')).not.toBeInTheDocument()
+  })
+
+  it('requires a reason for administrative cancellation and reloads the persisted status', async () => {
+    vi.mocked(apiFetch).mockImplementation(async (path) => path.includes('/status') ? jsonResponse({ ...mockOrders[0], status: 'cancelado' }) : jsonResponse(mockOrders))
+    render(<AdminOrdersTab />)
+    await screen.findByText('order-1')
+    fireEvent.click(screen.getByRole('button', { name: 'Ver detalhes do pedido order-1' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar pedido' }))
+    expect(screen.getByRole('button', { name: 'Confirmar cancelamento' })).toBeDisabled()
+    fireEvent.change(screen.getByLabelText('Motivo do cancelamento'), { target: { value: 'Ajuste administrativo QA' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar cancelamento' }))
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/orders/order-1/status', { method: 'PATCH', body: JSON.stringify({ status:'cancelado', reason:'Ajuste administrativo QA' }) }, 'admin-test'))
   })
 
 })

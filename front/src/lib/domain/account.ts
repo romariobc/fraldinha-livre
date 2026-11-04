@@ -7,6 +7,7 @@ export type OrderStatus = ContractOrder['status']
 export interface AccountProfile { name: string; email: string; cpf: string; address: Address }
 export interface Offer { id: string; supplier: string; price: number; deliveryDays: number; rating: number }
 export interface AccountOrder extends Omit<ContractOrder, 'uid' | 'type' | 'items'> {
+  uid?: string
   type: OrderType
   offers?: Offer[]
   items?: OrderItem[]

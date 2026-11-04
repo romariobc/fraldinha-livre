@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { OrderDetailSchema } from '@contracts'
 import { apiFetch } from '@/lib/api-client'
 import { useAuth } from '@/contexts/auth-context'
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { formatPrice } from '@/lib/utils'
 
 const labels: Record<string, string> = { aguardando: 'Aguardando confirmação', confirmado: 'Confirmado', 'a-caminho': 'A caminho', entregue: 'Entregue', cancelado: 'Cancelado', aceito: 'Aceito', 'ofertas-recebidas': 'Ofertas recebidas' }
-export default function OrderTracking({ orderId, scope }: { orderId: string; scope: 'comprador' | 'fornecedor' | 'admin' }) {
+export default function OrderTracking({ orderId, scope, refreshVersion }: { orderId: string; scope: 'comprador' | 'fornecedor' | 'admin'; refreshVersion?: string }) {
   const { user } = useAuth()
   const uid = user?.uid
   const load = useCallback(async () => {
@@ -17,6 +17,13 @@ export default function OrderTracking({ orderId, scope }: { orderId: string; sco
     return OrderDetailSchema.parse(await response.json())
   }, [orderId, scope, uid])
   const query = useLiveOrderQuery(uid ? uid + ':' + scope + ':' + orderId : null, load)
+  const refreshDetail = query.refresh
+  const lastVersion = useRef({ orderId, uid, refreshVersion })
+  useEffect(() => {
+    const previous = lastVersion.current
+    lastVersion.current = { orderId, uid, refreshVersion }
+    if (previous.orderId === orderId && previous.uid === uid && previous.refreshVersion !== refreshVersion) void refreshDetail(true)
+  }, [orderId, uid, refreshVersion, refreshDetail])
   const detail = query.data
   return <section aria-label="Acompanhamento do pedido" className="space-y-3 border-t pt-3 text-sm">
     <div className="flex flex-wrap items-center justify-between gap-2">

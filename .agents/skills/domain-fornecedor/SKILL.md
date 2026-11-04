@@ -32,3 +32,7 @@ Escopo: components/fornecedor/ e rotas do fornecedor. Código compartilhado exig
 ## Acompanhamento MP-06
 
 GET /orders/:id?scope=comprador|fornecedor|admin retorna OrderDetail: snapshot e eventos lidos no mesmo D1.batch, com historySource complete/partial/legacy. Não criar eventos retroativos. O vínculo explícito supplierId prevalece; somente legado sem vínculo mantém o fallback anterior por itens/produtos. OrderTracking é a apresentação compartilhada. use-live-order-query.ts atualiza ao montar, foco/visibilidade e a cada 30s visíveis, compartilha consulta em andamento e preserva dados em erro. Chaves incluem conta/escopo/pedido e descartam respostas após troca de conta. Pacote: node scripts/context.mjs packet order-tracking.
+
+## Operações MP-07
+
+order-actions.ts define disponibilidade visual por papel/vínculo/estado; backend mantém decisão definitiva. use-order-operation.ts serializa envio, reconcilia após erro/sucesso e conserva feedback acionável. Mutations HTTP vinculam UID esperado; fornecedor usa o snapshot retornado. OrderTracking recebe refreshVersion após operação e usa refresh(true) para esperar leitura anterior antes de consultar o estado atual. Motivo fornecedor/admin é obrigatório; após despacho só entrega pelo fornecedor e orientação para ocorrência. Abertura/resposta de ocorrência pertence à MP-08, sem envio fictício. Pacote: node scripts/context.mjs packet order-operations.

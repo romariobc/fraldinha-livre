@@ -69,4 +69,16 @@ describe('live order query', () => {
     expect(result.current.data).toEqual(['new-account']); expect(result.current.error).toBeNull()
   })
 
+  it('after a mutation, waits for a prior read then requests the current state without overlapping', async () => {
+    const old = deferred<string[]>()
+    const load = vi.fn().mockResolvedValueOnce(['awaiting']).mockReturnValueOnce(old.promise).mockResolvedValueOnce(['cancelled'])
+    const { result } = renderHook(() => useLiveOrderQuery('account:a', load))
+    await settle()
+    let fresh!: Promise<void>
+    act(() => { void result.current.refresh(); fresh = result.current.refresh(true) })
+    expect(load).toHaveBeenCalledTimes(2)
+    await act(async () => { old.resolve(['awaiting']); await fresh })
+    expect(load).toHaveBeenCalledTimes(3); expect(result.current.data).toEqual(['cancelled'])
+  })
+
 })

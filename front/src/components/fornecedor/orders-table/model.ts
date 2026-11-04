@@ -2,6 +2,7 @@ import type { DirectOrder } from '@/lib/domain/supplier'
 import type { Order as ContractOrder } from '@contracts'
 
 export interface SupplierOrderRow {
+  supplierId?: string
   id: string
   product: string
   quantity: number
@@ -44,6 +45,7 @@ export function normalizeOrder(order: DirectOrder | ContractOrder | SupplierOrde
     const buyerLoc = [addr.bairro, addr.cidade, addr.estado].filter(Boolean).join(' - ') || `${addr.cidade}, ${addr.estado}`
     return {
       id: contractOrder.id,
+      supplierId: contractOrder.supplierId,
       product: contractOrder.product,
       quantity: contractOrder.quantity,
       unit: contractOrder.unit,
@@ -63,6 +65,7 @@ export function normalizeOrder(order: DirectOrder | ContractOrder | SupplierOrde
   const buyerLoc = [directOrder.buyerCity, directOrder.buyerState].filter(Boolean).join(', ') || 'São Paulo, SP'
   return {
     id: directOrder.id,
+    supplierId: directOrder.supplierId,
     product: directOrder.product,
     quantity: directOrder.quantity,
     unit: directOrder.unit,

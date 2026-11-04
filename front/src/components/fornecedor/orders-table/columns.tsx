@@ -26,6 +26,8 @@ import { formatPrice } from '@/lib/utils'
 import { type SupplierOrderRow, formatDate, getStatusBadge } from './model'
 
 interface ColumnActions {
+  pending: boolean
+  mayAct(order: SupplierOrderRow): boolean
   setSelectedOrder(order: SupplierOrderRow | null): void
   setIsDetailOpen(open: boolean): void
   setReportingOrder(order: SupplierOrderRow | null): void
@@ -36,7 +38,7 @@ interface ColumnActions {
   handleUpdateStatus(id: string, status: 'confirmado' | 'a-caminho' | 'entregue' | 'cancelado'): void
 }
 
-export function createOrderColumns({ setSelectedOrder, setIsDetailOpen, setReportingOrder, setIsReportOpen, handleCopyId, handleConfirmOrder, handleRefuseOrder, handleUpdateStatus }: ColumnActions): ColumnDef<SupplierOrderRow>[] {
+export function createOrderColumns({ setSelectedOrder, setIsDetailOpen, setReportingOrder, setIsReportOpen, handleCopyId, handleConfirmOrder, handleRefuseOrder, handleUpdateStatus, pending, mayAct }: ColumnActions): ColumnDef<SupplierOrderRow>[] {
   return [
       {
         accessorKey: 'id',
@@ -254,10 +256,11 @@ export function createOrderColumns({ setSelectedOrder, setIsDetailOpen, setRepor
                       <Copy className="size-4 mr-2" />
                       Copiar ID
                     </DropdownMenuItem>
-                    {order.status === 'aguardando' && (
+                    {mayAct(order) && order.status === 'aguardando' && (
                       <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
+                          disabled={pending}
                           onClick={() => handleConfirmOrder(order.id)}
                           className="cursor-pointer text-emerald-600 focus:text-emerald-700 font-medium"
                         >
@@ -265,6 +268,7 @@ export function createOrderColumns({ setSelectedOrder, setIsDetailOpen, setRepor
                           Confirmar Pedido
                         </DropdownMenuItem>
                         <DropdownMenuItem
+                          disabled={pending}
                           onClick={() => handleRefuseOrder(order.id)}
                           className="cursor-pointer text-red-600 focus:text-red-700 font-medium"
                         >
@@ -273,10 +277,11 @@ export function createOrderColumns({ setSelectedOrder, setIsDetailOpen, setRepor
                         </DropdownMenuItem>
                       </>
                     )}
-                    {order.status === 'confirmado' && (
+                    {mayAct(order) && order.status === 'confirmado' && (
                       <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
+                          disabled={pending}
                           onClick={() => handleUpdateStatus(order.id, 'a-caminho')}
                           className="cursor-pointer text-blue-600 focus:text-blue-700 font-medium"
                         >
@@ -284,6 +289,7 @@ export function createOrderColumns({ setSelectedOrder, setIsDetailOpen, setRepor
                           Despachar (A Caminho)
                         </DropdownMenuItem>
                         <DropdownMenuItem
+                          disabled={pending}
                           onClick={() => handleRefuseOrder(order.id)}
                           className="cursor-pointer text-red-600 focus:text-red-700 font-medium"
                         >
@@ -292,22 +298,16 @@ export function createOrderColumns({ setSelectedOrder, setIsDetailOpen, setRepor
                         </DropdownMenuItem>
                       </>
                     )}
-                    {order.status === 'a-caminho' && (
+                    {mayAct(order) && order.status === 'a-caminho' && (
                       <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
+                          disabled={pending}
                           onClick={() => handleUpdateStatus(order.id, 'entregue')}
                           className="cursor-pointer text-teal-600 focus:text-teal-700 font-medium"
                         >
                           <CheckCircle2 className="size-4 mr-2 text-teal-600" />
                           Marcar como Entregue
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleRefuseOrder(order.id)}
-                          className="cursor-pointer text-red-600 focus:text-red-700 font-medium"
-                        >
-                          <XCircle className="size-4 mr-2 text-red-600" />
-                          Cancelar
                         </DropdownMenuItem>
                       </>
                     )}

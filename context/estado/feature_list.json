@@ -735,14 +735,14 @@
       "evidencias_exigidas": [
         "Testes de histórico/escopos/atualização e falha de rede; jornada cruzada entre papéis, nova sessão e fixtures de pedidos legados."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
+      "aprovacao_usuario": "entrega_aprovada_pelo_usuario",
       "notas": "Implementação e homologação locais concluídas em 02/11/2026. Branch codex/mp-06-order-tracking, PR #27; relatório docs/qa/MP-06-historico-acompanhamento.md. Snapshot/eventos autorizados, atualização visível sem sobreposição, legado explícito e jornada autenticada/nova sessão aprovados. CI final registrada na PR. Sem nova migração/deploy. MP-07 não autorizado."
     },
     {
       "id": "MP-07",
       "titulo": "Completar operação de venda e cancelamento nas interfaces",
       "fase": 1,
-      "status": "todo",
+      "status": "done",
       "ordem": 7,
       "prioridade": "P0",
       "dependencias": [
@@ -763,8 +763,8 @@
       "evidencias_exigidas": [
         "Testes comportamentais e jornada completa por papel, cancelamento permitido/negado, estado terminal, concorrência e atualização após erro."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_para_iniciar",
-      "notas": "Planejado; implementação, validação e homologação ainda pendentes. Exige aprovação explícita do usuário para iniciar, além das dependências técnicas."
+      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
+      "notas": "Implementação e homologação locais concluídas em 04/11/2026. Branch codex/mp-07-order-operations; relatório docs/qa/MP-07-operacoes-venda-cancelamento.md. Ações por papel/estado, cancelamento com motivo, terminal, conflitos, atualização de detalhe e jornada autenticada aprovados. CI final registrada na PR. Sem nova migração/deploy. MP-08 não autorizado; abertura/resposta de ocorrência permanecem nessa próxima etapa."
     },
     {
       "id": "MP-08",
@@ -985,9 +985,9 @@
     ],
     "regra_execucao": "Uma etapa por item MP, em ordem numerica; concluir, validar, registrar e parar. Dependencias satisfeitas nao autorizam avancar. Exigir aprovacao explicita do usuario para iniciar a proxima etapa.",
     "controle_execucao": {
-      "etapa_concluida": "MP-06",
+      "etapa_concluida": "MP-07",
       "aprovacao_entrega": "aguardando_usuario",
-      "proxima_etapa": "MP-07",
+      "proxima_etapa": "MP-08",
       "autorizada_proxima_etapa": false,
       "preparacao_concluida": "CTX-01",
       "aprovacao_preparacao": "aprovada_pelo_usuario"

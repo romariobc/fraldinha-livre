@@ -86,5 +86,21 @@
       "back/test/mp06-history.test.ts",
       "front/src/hooks/__tests__/use-live-order-query.test.tsx"
     ]
+  },
+  "order-operations": {
+    "description": "Ações por papel/estado, persistência, conflito e atualização após operação.",
+    "files": [
+      "front/src/lib/order-actions.ts",
+      "front/src/hooks/use-order-operation.ts",
+      "front/src/components/minha-conta/OrderCard.tsx",
+      "front/src/components/fornecedor/OrdersDataTable.tsx",
+      "front/src/components/fornecedor/orders-table/OrderDetailsDialog.tsx",
+      "front/src/components/admin/AdminOrdersTab.tsx",
+      "front/src/components/fornecedor/OrderCancellationDialog.tsx",
+      "front/src/lib/adapters/http-order-repository.ts",
+      "back/src/routes/orders.ts",
+      "back/src/lib/order-atomicity.ts",
+      "back/test/mp07-operations.test.ts"
+    ]
   }
 }

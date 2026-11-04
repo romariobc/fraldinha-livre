@@ -1,14 +1,17 @@
 'use client'
 
+import { useOrderOperation } from '@/hooks/use-order-operation'
+import { useAuth } from '@/contexts/auth-context'
+import { canManageOrder } from '@/lib/order-actions'
+import OrderIssueGuidance from '@/components/OrderIssueGuidance'
+import OrderTracking from '@/components/OrderTracking'
 import { useState } from 'react'
 import { Package2, MapPin, ChevronDown, ChevronUp } from 'lucide-react'
-import { Order, OrderStatus } from '@/lib/account-mock'
+import type { Order, OrderStatus } from '@/lib/domain/account'
 import { formatPrice } from '@/lib/utils'
 import { getOrderItems } from '@/lib/order-items'
 import { useOrders } from '@/contexts/orders-context'
 import { useMarket } from '@/contexts/market-context'
-import { toast } from 'sonner'
-import { showErrorToast } from '@/lib/frontend-diagnostics'
 import {
   Dialog,
   DialogContent,
@@ -51,8 +54,10 @@ function formatDate(iso: string): string {
 export default function OrderCard({ order, mode }: OrderCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
-  const [isCanceling, setIsCanceling] = useState(false)
-  const { cancelOrder } = useOrders()
+  const { user, role } = useAuth()
+  const operation = useOrderOperation(user?.uid ?? null)
+  const isCanceling = Boolean(operation.pendingId)
+  const { cancelOrder, refreshOrders } = useOrders()
   const { cancelDirectOrder } = useMarket()
 
   const statusCfg = STATUS_CONFIG[order.status]
@@ -70,7 +75,7 @@ export default function OrderCard({ order, mode }: OrderCardProps) {
   const total = order.price ?? items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0)
 
   // Determinar se deve mostrar botão de cancelar
-  const canCancel = mode === 'pedidos' && order.status === 'aguardando' && order.type === 'compra-direta'
+  const canCancel = mode === 'pedidos' && order.status === 'aguardando' && order.type === 'compra-direta' && canManageOrder(order, user ? { uid: user.uid, role } : null, 'comprador')
 
   // Mensagem de restrição para outros status
   const restrictionMessage =
@@ -83,30 +88,19 @@ export default function OrderCard({ order, mode }: OrderCardProps) {
       : null
 
   async function handleConfirmCancel() {
-    setIsCanceling(true)
-    try {
-      // Cancelar pedido na lista de pedidos
+    if (!canCancel) return
+    const success = await operation.run(order.id, async () => {
       await cancelOrder(order.id)
-
-      // Se for sup-001, também cancelar na lista de fornecedor
-      if (order.supplierId === 'sup-001') {
-        cancelDirectOrder(order.id)
-      }
-
-      toast.success('Pedido cancelado')
-      setCancelDialogOpen(false)
-    } catch (err) {
-      showErrorToast(err, { operation: 'orders.cancel_order' })
-    } finally {
-      setIsCanceling(false)
-    }
+      if (process.env.NEXT_PUBLIC_USE_BACKEND !== 'true' && order.supplierId === 'sup-001') cancelDirectOrder(order.id)
+    }, async () => { await refreshOrders?.({ refreshSession: false, afterPending: true }) }, 'Pedido cancelado')
+    if (success) setCancelDialogOpen(false)
   }
 
   const panelId = `order-panel-${order.id}`
 
   return (
     <>
-      <div className="bg-white rounded-card shadow-card p-4 flex flex-col gap-3">
+      <div data-testid={`order-card-${order.id}`} className="bg-white rounded-card shadow-card p-4 flex flex-col gap-3">
         {/* Linha superior: ícone + produto + badge de tipo + chevron */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2.5 flex-1">
@@ -153,6 +147,7 @@ export default function OrderCard({ order, mode }: OrderCardProps) {
         {/* Painel expansível */}
         {expanded && (
           <div id={panelId} className="border-t pt-3 space-y-3">
+            {order.type === 'compra-direta' && <OrderTracking orderId={order.id} scope="comprador" refreshVersion={order.status + ":" + operation.revision} />}
             {/* Linhas de item */}
             <div className="space-y-2">
               <p className="text-xs font-semibold text-brand-text">Itens</p>
@@ -224,6 +219,7 @@ export default function OrderCard({ order, mode }: OrderCardProps) {
             {/* Cancelar botão (só em pedidos + aguardando + compra-direta) */}
             {canCancel && (
               <button
+                disabled={isCanceling}
                 onClick={() => setCancelDialogOpen(true)}
                 className="text-xs font-semibold text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 px-2 py-1 rounded transition-colors"
               >
@@ -233,6 +229,8 @@ export default function OrderCard({ order, mode }: OrderCardProps) {
           </div>
         </div>
 
+        {operation.error && <p role="alert" className="text-sm text-red-700">{operation.error}</p>}
+        {['a-caminho', 'entregue'].includes(order.status) && <OrderIssueGuidance orderId={order.id} />}
         {/* Mensagem de restrição */}
         {restrictionMessage && (
           <p className="text-xs text-brand-muted italic">{restrictionMessage}</p>
@@ -240,7 +238,7 @@ export default function OrderCard({ order, mode }: OrderCardProps) {
       </div>
 
       {/* Dialog de confirmação de cancelamento */}
-      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+      <Dialog open={cancelDialogOpen && canCancel} onOpenChange={(open) => { if (!isCanceling) setCancelDialogOpen(open) }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Cancelar pedido</DialogTitle>
@@ -248,6 +246,7 @@ export default function OrderCard({ order, mode }: OrderCardProps) {
               Tem certeza que deseja cancelar este pedido? Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
+          {operation.error && <p role="alert" className="text-sm text-red-700">{operation.error}</p>}
           <DialogFooter>
             <DialogClose render={<Button variant="outline">Voltar</Button>} />
             <Button

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Product, Badge } from '@/lib/products'
 import { LEILAO_ATIVO } from '@/lib/feature-flags'
 import { formatPrice } from '@/lib/utils'
-import { STORE_SUPPLIERS } from '@/lib/suppliers'
+import { supplierLabel } from '@/lib/supplier-label'
 import { useCart } from '@/contexts/cart-context'
 import { type CartItem } from '@/lib/domain/cart'
 import { toast } from 'sonner'
@@ -30,10 +30,7 @@ export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn
   const router = useRouter()
   const cart = useCart()
 
-  // Buscar fornecedor
-  const supplier = STORE_SUPPLIERS.find(s => s.id === product.supplierId)
-  const supplierName = supplier?.name || (product.supplierId.startsWith('sup-') ? 'Fornecedor desconhecido' : 'Distribuidora Parceira')
-  const supplierRating = supplier?.rating || (product.supplierId.startsWith('sup-') ? 0 : 5)
+  const supplierName = supplierLabel(product.supplierId)
 
   function handleAddToCart() {
     if (!isLoggedIn) {
@@ -127,9 +124,9 @@ export default function ProductCard({ product, onRequestOffer, onBuy, isLoggedIn
       <div className="p-3.5 sm:p-4 flex flex-col flex-1">
         {/* Fornecedor com rating */}
         <p className="text-[10px] text-brand-muted mb-3">
-          <span className="font-semibold">{supplierName}</span>
+          <span className="font-semibold break-all">{supplierName}</span>
           {' '}
-          <span className="text-accent">{'★'.repeat(supplierRating)}{'☆'.repeat(5 - supplierRating)}</span>
+          <Link href={`/catalogo/fornecedor/${encodeURIComponent(product.supplierId)}`} className="underline break-all">Ver loja</Link>
         </p>
 
         <div className="mt-auto">

@@ -3,6 +3,10 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { vi } from 'vitest'
 import AdminOrdersTab from '../AdminOrdersTab'
 
+const adminIdentity = vi.hoisted(() => ({ uid: 'admin-test' }))
+vi.mock('@/contexts/auth-context', () => ({ useAuth: () => ({ user: { uid: adminIdentity.uid }, role: 'admin' }) }))
+vi.mock('@/components/OrderTracking', () => ({ default: () => <div>Acompanhamento do pedido</div> }))
+
 vi.mock('@/lib/api-client', () => ({ apiFetch: vi.fn() }))
 import { apiFetch } from '@/lib/api-client'
 
@@ -12,6 +16,7 @@ function jsonResponse(body: unknown, status = 200) {
 
 const mockOrders = [
   {
+    type: 'compra-direta',
     id: 'order-1',
     uid: 'uid-buyer-1',
     status: 'aguardando',
@@ -39,6 +44,8 @@ const mockOrders = [
     paymentTransactionId: 'tx-pix-123456',
   },
   {
+    type: 'compra-direta',
+    deliveryAddress: { logradouro: 'Rua QA', numero: '1', bairro: 'Centro', cidade: 'Fortaleza', estado: 'CE', cep: '60000-000' },
     id: 'order-2',
     uid: 'uid-buyer-2',
     status: 'entregue',
@@ -58,6 +65,7 @@ const mockOrders = [
 describe('AdminOrdersTab', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    adminIdentity.uid = 'admin-test'
   })
 
   it('renderiza os pedidos retornados de GET /orders?scope=admin', async () => {
@@ -67,7 +75,7 @@ describe('AdminOrdersTab', () => {
     expect(screen.getByText('order-2')).toBeInTheDocument()
     expect(screen.getByText('Fralda Pampers M')).toBeInTheDocument()
     expect(screen.getByText('Fralda Huggies G')).toBeInTheDocument()
-    expect(apiFetch).toHaveBeenCalledWith('/orders?scope=admin')
+    expect(apiFetch).toHaveBeenCalledWith('/orders?scope=admin', undefined, 'admin-test')
   })
 
   it('filtra pedidos por busca de texto (produto ou ID)', async () => {
@@ -237,6 +245,8 @@ describe('AdminOrdersTab', () => {
 
   it('após clicar em atualizar, a segunda resposta contém o novo pedido e a tabela passa a exibi-lo', async () => {
     const newOrder = {
+      type: 'compra-direta',
+      deliveryAddress: mockOrders[0].deliveryAddress,
       id: 'order-3-novo',
       uid: 'uid-buyer-3',
       status: 'aguardando',
@@ -273,4 +283,28 @@ describe('AdminOrdersTab', () => {
     expect(screen.getByText('Fralda Babysec Nova')).toBeInTheDocument()
     expect(screen.getByText('order-1')).toBeInTheDocument()
   })
+  it('hides a selected snapshot immediately when the authenticated account changes', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(jsonResponse(mockOrders)).mockResolvedValue(jsonResponse([]))
+    const view = render(<AdminOrdersTab />)
+    await screen.findByText('order-1')
+    fireEvent.click(screen.getAllByRole('button', { name: /detalhes/i })[0])
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    adminIdentity.uid = 'other-admin'
+    view.rerender(<AdminOrdersTab />)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.queryByText('Fralda Pampers M')).not.toBeInTheDocument()
+  })
+
+  it('requires a reason for administrative cancellation and reloads the persisted status', async () => {
+    vi.mocked(apiFetch).mockImplementation(async (path) => path.includes('/status') ? jsonResponse({ ...mockOrders[0], status: 'cancelado' }) : jsonResponse(mockOrders))
+    render(<AdminOrdersTab />)
+    await screen.findByText('order-1')
+    fireEvent.click(screen.getByRole('button', { name: 'Ver detalhes do pedido order-1' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar pedido' }))
+    expect(screen.getByRole('button', { name: 'Confirmar cancelamento' })).toBeDisabled()
+    fireEvent.change(screen.getByLabelText('Motivo do cancelamento'), { target: { value: 'Ajuste administrativo QA' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar cancelamento' }))
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledWith('/orders/order-1/status', { method: 'PATCH', body: JSON.stringify({ status:'cancelado', reason:'Ajuste administrativo QA' }) }, 'admin-test'))
+  })
+
 })

@@ -5,7 +5,7 @@ import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname, useSearchParams, useParams } from 'next/navigation'
 import { filterProducts, Product, ProductFilters } from '@/lib/products'
-import { STORE_SUPPLIERS } from '@/lib/suppliers'
+import { supplierLabel } from '@/lib/supplier-label'
 import { useAuth } from '@/contexts/auth-context'
 import { useCart } from '@/contexts/cart-context'
 import { useProducts } from '@/contexts/products-context'
@@ -107,8 +107,7 @@ export function CatalogoView() {
     }
 
     // Add to cart and navigate to checkout
-    const supplier = STORE_SUPPLIERS.find((s) => s.id === product.supplierId)
-    const supplierName = supplier?.name || (user?.uid === product.supplierId ? (user.displayName || user.email?.split('@')[0] || 'Fornecedor Parceiro') : 'Fornecedor desconhecido')
+    const supplierName = supplierLabel(product.supplierId)
 
     addItem({
       productId: product.id,
@@ -123,10 +122,7 @@ export function CatalogoView() {
     router.push('/checkout')
   }
 
-  const supplierName = filters.supplierId 
-    ? STORE_SUPPLIERS.find(s => s.id === filters.supplierId)?.name || 
-      (user?.uid === filters.supplierId ? (user.displayName || user.email?.split('@')[0] || 'Fornecedor Parceiro') : 'Fornecedor Parceiro')
-    : null
+  const supplierName = filters.supplierId ? supplierLabel(filters.supplierId) : null
 
   return (
     <>
@@ -139,7 +135,7 @@ export function CatalogoView() {
               <p className="text-[11px] font-bold uppercase tracking-[2px] text-primary-dark mb-1">
                 {supplierName ? 'Loja Exclusiva' : 'Fraldinha Livre'}
               </p>
-              <h1 className="font-display font-black text-brand-text"
+              <h1 className="font-display font-black text-brand-text break-all"
                   style={{ fontSize: 'clamp(22px, 3vw, 36px)' }}>
                 {supplierName ? `Catálogo: ${supplierName}` : 'Catálogo de Produtos'}
               </h1>

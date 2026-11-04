@@ -28,6 +28,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { AddProductDialog } from '@/components/fornecedor/AddProductDialog'
+import { CreateOfferDialog } from '@/components/fornecedor/CreateOfferDialog'
 import { EditPriceDialog } from '@/components/fornecedor/EditPriceDialog'
 import { useAuth } from '@/contexts/auth-context'
 import type { ProductRepository } from '@/lib/ports/product-repository'
@@ -50,6 +51,7 @@ export default function CatalogoPage() {
 
   // Modals state
   const [isAddModalOpen, setIsAddModalOpen] = React.useState(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false)
   const [productToDelete, setProductToDelete] = React.useState<Product | null>(null)
   const [isDeleting, setIsDeleting] = React.useState(false)
   const [productToEditPrice, setProductToEditPrice] = React.useState<Product | null>(null)
@@ -170,7 +172,7 @@ export default function CatalogoPage() {
     setIsDeleting(true)
     try {
       await repo.remove(productToDelete.id)
-      setProducts((prev) => prev.filter((p) => p.id !== productToDelete.id))
+      setProducts((prev) => prev.map((p) => p.id === productToDelete.id ? { ...p, active: false } : p))
       toast.success(`"${productToDelete.name}" removido do seu catálogo.`)
       setProductToDelete(null)
     } catch (err) {
@@ -203,6 +205,8 @@ export default function CatalogoPage() {
           </p>
         </div>
 
+        <div className="flex flex-wrap gap-2">
+        <Button onClick={() => setIsCreateModalOpen(true)}>Cadastrar nova oferta</Button>
         <Button
           onClick={() => setIsAddModalOpen(true)}
           className="bg-primary hover:bg-primary-dark text-white font-semibold flex items-center gap-2 shadow-xs shrink-0"
@@ -211,6 +215,7 @@ export default function CatalogoPage() {
           <Plus className="size-4" />
           Adicionar Produto ao Meu Catálogo
         </Button>
+        </div>
       </div>
 
       {/* KPI Highlights Bar */}
@@ -428,7 +433,7 @@ export default function CatalogoPage() {
                               : 'bg-slate-100 text-slate-600'
                           }`}
                         >
-                          {product.active ? 'Ativo' : 'Despublicado'}
+                          {product.moderationBlocked ? 'Bloqueado pela administração' : product.active ? 'Ativo' : 'Despublicado'}
                         </Badge>
                       </div>
 
@@ -501,6 +506,7 @@ export default function CatalogoPage() {
                           variant={product.active ? 'outline' : 'default'}
                           size="xs"
                           onClick={() => handleToggleActive(product)}
+                          disabled={Boolean(product.moderationBlocked)}
                           className={`flex-1 text-xs font-semibold ${
                             product.active
                               ? 'hover:bg-slate-100 text-slate-700'
@@ -543,6 +549,8 @@ export default function CatalogoPage() {
       </Card>
 
       {/* Add Product Modal (Master Catalog Linker) */}
+      <CreateOfferDialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}
+        repo={repo} onSuccess={handleProductAdded} />
       <AddProductDialog
         open={isAddModalOpen}
         onOpenChange={setIsAddModalOpen}
@@ -575,7 +583,7 @@ export default function CatalogoPage() {
             <DialogDescription className="text-xs text-muted-foreground mt-1">
               Tem certeza que deseja remover{' '}
               <strong className="text-foreground">{productToDelete?.name}</strong> do seu catálogo?
-              Ele deixará de ser ofertado no marketplace para sua distribuidora.
+              Ele será desativado, preservando o histórico de pedidos. Você poderá publicá-lo novamente.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">

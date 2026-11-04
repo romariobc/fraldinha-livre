@@ -60,12 +60,12 @@ vi.mock('@/contexts/products-context', () => ({
 }))
 
 describe('SupplierDashboardOverviewPage', () => {
-  it('renders welcome banner with supplier name and verified status badge', () => {
+  it('renders welcome banner without asserting commercial approval', () => {
     render(<SupplierDashboardOverviewPage />)
 
     expect(screen.getByText(/Olá, Distribuidora São Paulo!/i)).toBeInTheDocument()
     expect(screen.getByText(/Painel da Distribuidora B2B/i)).toBeInTheDocument()
-    expect(screen.getByText(/Verificado/i)).toBeInTheDocument()
+    expect(screen.queryByText(/Verificado/i)).not.toBeInTheDocument()
   })
 
   it('renders all 4 responsive metric cards', () => {

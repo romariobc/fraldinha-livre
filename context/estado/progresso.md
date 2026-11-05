@@ -1,12 +1,12 @@
 # Estado atual — 2026-11-05
 
-## Reconciliação MP-01–MP-08 em preparação
+## Reconciliação MP-01–MP-08 preparada para revisão
 
 - Branch `codex/reconcile-mp01-mp08`, worktree isolado, entrada MP-08 `4236d3e`; `origin/main` `d5b64c9` é ancestral, com nove commits acumulados antes desta sessão. Sem reaplicar PRs antigas ou importar alterações preexistentes do worktree CTX-01.
 - [Matriz e evidências da reconciliação](../../docs/qa/reconciliacao-mp01-mp08.md): MP-04–07 são ancestrais; MP-01–03 foram consolidados no checkpoint `c12d4db`, com conteúdo preservado/evoluído. PRs #22–#29 abertas em rascunho.
 - Proposta de produção: somente disparo manual com confirmação obrigatória (padrão false), main e validação do mesmo SHA antes de migração/deploy. Ainda sem efeito na main. Production remoto sem proteção de environment; nenhuma configuração remota alterada.
-- Validação em andamento; resultados locais/CI finais serão registrados antes do encerramento. QA comercial somente em API/D1 locais separados, sem binding AI e notificações externas.
-- Checkpoints de entrada: `checkpoint/pre-reconcile-main-2026-11-05` → `d5b64c9`; `checkpoint/pre-reconcile-mp08-2026-11-05` → `4236d3e`. Tags recuperam código/documentação, não banco/configuração/credenciais.
+- [PR #30](https://github.com/romariobc/fraldinha-livre/pull/30) em rascunho. Harness com build aprovado: 1.266 testes, tipos, lint sem erros/oito avisos. Catálogo, sete grupos de checkout, quatro de operações e quatro de ocorrências passaram em navegador; migrações até 0016 em D1 novo. QA comercial local, sem AI/notificações externas; servidores encerrados. CI final/SHA/checkpoint devem ser conferidos na PR antes do merge.
+- Checkpoints de entrada: `checkpoint/pre-reconcile-main-2026-11-05` → `d5b64c9`; `checkpoint/pre-reconcile-mp08-2026-11-05` → `4236d3e`. Resultado: `checkpoint/reconcile-mp01-mp08-2026-11-05`, publicar/conferir somente após CI da ponta. Tags recuperam código/documentação, não banco/configuração/credenciais.
 
 ## Aprovações e limites preservados
 

@@ -2,7 +2,7 @@
 
 **Revisão:** 5 de novembro de 2026.
 
-**Reconciliação:** integração MP-01–MP-08 em preparação em branch separada; [matriz e validação](qa/reconciliacao-mp01-mp08.md). Não altera aprovações da tabela, não autoriza MP-09, merge ou publicação.
+**Reconciliação:** integração MP-01–MP-08 preparada em branch separada, PR #30 em rascunho; [matriz e validação](qa/reconciliacao-mp01-mp08.md). Não altera aprovações da tabela, não autoriza MP-09, merge ou publicação.
 
 **Base local:** `1322ac6`; árvore de trabalho limpa na entrada do MP-00.
 

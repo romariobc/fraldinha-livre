@@ -266,10 +266,17 @@ describe('CreateOrderRequestSchema', () => {
 })
 
 describe('UpdateOrderStatusRequestSchema', () => {
+  it('exige motivo válido e normalizado para cancelamento', () => {
+    for (const reason of [undefined, '', '   ', 'abcd', 'x'.repeat(501)]) {
+      expect(UpdateOrderStatusRequestSchema.safeParse({ status: 'cancelado', reason }).success).toBe(false)
+    }
+    expect(UpdateOrderStatusRequestSchema.parse({ status: 'cancelado', reason: '  Sem estoque  ' }).reason).toBe('Sem estoque')
+  })
+
   it('aceita status válidos de ciclo de vida de pedido', () => {
     const validStatuses = ['aguardando', 'confirmado', 'a-caminho', 'entregue', 'cancelado'] as const
     for (const status of validStatuses) {
-      const result = UpdateOrderStatusRequestSchema.safeParse({ status })
+      const result = UpdateOrderStatusRequestSchema.safeParse({ status, ...(status === 'cancelado' ? { reason: 'Produto indisponível' } : {}) })
       expect(result.success).toBe(true)
       if (result.success) {
         expect(result.data.status).toBe(status)

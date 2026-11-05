@@ -8,7 +8,8 @@ import { useMarket } from '@/contexts/market-context'
 import { formatPrice } from '@/lib/utils'
 
 export default function PedidosPage() {
-  const { directOrders } = useMarket()
+  const { directOrders, refetchDirectOrders } = useMarket()
+  React.useEffect(() => { void refetchDirectOrders?.() }, [refetchDirectOrders])
 
   // Quick summary counts
   const summary = React.useMemo(() => {

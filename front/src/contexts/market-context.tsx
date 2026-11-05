@@ -1,8 +1,9 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
+import { createContext, useContext, useState, useMemo, useCallback } from 'react'
+import { useLiveOrderQuery } from '@/hooks/use-live-order-query'
 import { toast } from 'sonner'
-import type { MarketOrder, DirectOrder, DirectOrderStatus, SupplierOffer, DeliveryType, DispatchStatus } from '@/lib/supplier-mock'
+import type { MarketOrder, DirectOrder, DirectOrderStatus, SupplierOffer, DeliveryType, DispatchStatus } from '@/lib/domain/supplier'
 import { MOCK_MARKET_ORDERS, MOCK_DIRECT_ORDERS, MOCK_OFFERS } from '@/lib/supplier-mock'
 import { buildOfferSnapshot } from '@/lib/market-utils'
 import type { OrderRepository } from '@/lib/ports/order-repository'
@@ -10,7 +11,7 @@ import { HttpOrderRepository } from '@/lib/adapters/http-order-repository'
 import { contractOrderToDirectOrder } from '@/lib/order-adapters'
 import { useAuth } from '@/contexts/auth-context'
 import type { OrderStatus } from '@contracts'
-import { diagnoseError, logFrontendDiagnostic, type DiagnosticResult } from '@/lib/frontend-diagnostics'
+import { diagnoseError, type DiagnosticResult } from '@/lib/frontend-diagnostics'
 
 interface MarketContextValue {
   marketOrders: MarketOrder[]
@@ -18,14 +19,14 @@ interface MarketContextValue {
   directOrdersLoading: boolean
   directOrdersError: string | null
   directOrdersDiagnostic?: DiagnosticResult | null
-  refetchDirectOrders(): Promise<void>
+  refetchDirectOrders(afterPending?: boolean): Promise<void>
   offers: SupplierOffer[]
   declinedIds: Set<string>
   handleEnviarOferta(orderId: string, price: number, deliveryType: DeliveryType, note?: string): Promise<void>
   handleDeclineMercado(orderId: string): void
   handleConfirmarDireto(orderId: string): Promise<void>
-  handleRecusarDireto(orderId: string): Promise<void>
-  handleAtualizarStatusDireto(orderId: string, status: OrderStatus): Promise<void>
+  handleRecusarDireto(orderId: string, reason: string): Promise<void>
+  handleAtualizarStatusDireto(orderId: string, status: OrderStatus, reason?: string): Promise<void>
   handleAtualizarDespacho(orderId: string, orderType: 'market' | 'direct', status: DispatchStatus): Promise<void>
   addDirectOrder(directOrder: DirectOrder): void
   cancelDirectOrder(orderId: string): void
@@ -43,93 +44,24 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
   const { user, role, loading: authLoading } = useAuth()
   const [marketOrders, setMarketOrders] = useState<MarketOrder[]>(MOCK_MARKET_ORDERS)
   const useBackend = process.env.NEXT_PUBLIC_USE_BACKEND === 'true'
-  const [directOrders, setDirectOrders] = useState<DirectOrder[]>(
-    useBackend ? [] : MOCK_DIRECT_ORDERS
-  )
-  const [directOrdersLoading, setDirectOrdersLoading] = useState(useBackend)
-  const [directOrdersError, setDirectOrdersError] = useState<string | null>(null)
-  const [directOrdersDiagnostic, setDirectOrdersDiagnostic] = useState<DiagnosticResult | null>(null)
-  const [directOrdersDataOwnerUid, setDirectOrdersDataOwnerUid] = useState<string | null>(null)
-  const [directOrdersQueryOwnerUid, setDirectOrdersQueryOwnerUid] = useState<string | null>(null)
+  const loadOrders = useCallback(async () => {
+    const repo = new HttpOrderRepository(user?.uid)
+    return (await repo.listForSupplier()).map(contractOrderToDirectOrder)
+  }, [user?.uid])
+  const eligible = !authLoading && user && role === 'fornecedor'
+  const query = useLiveOrderQuery<DirectOrder[]>(useBackend && eligible ? 'supplier:' + user.uid : null, loadOrders)
+  const { setData: setOrderData, refresh: refreshQuery } = query
+  const [mockOrders, setMockOrders] = useState<DirectOrder[]>(MOCK_DIRECT_ORDERS)
+  const directOrders = useBackend ? query.data ?? [] : mockOrders
+  const setDirectOrders = useCallback((update: React.SetStateAction<DirectOrder[]>) => {
+    if (!useBackend) setMockOrders(update)
+    else setOrderData(previous => typeof update === 'function' ? update(previous ?? []) : update)
+  }, [useBackend, setOrderData])
+  const directOrdersDiagnostic = useMemo(() => query.error ? diagnoseError(query.error) : null, [query.error])
+  const directOrdersError = query.error ? 'Não foi possível carregar os pedidos diretos. Tente novamente.' : null
+  const refetchDirectOrders = refreshQuery
   const [offers, setOffers] = useState<SupplierOffer[]>(MOCK_OFFERS)
   const [declinedIds, setDeclinedIds] = useState<Set<string>>(new Set())
-
-  // Ref sequencial para controle estrito de concorrência e descarte de respostas tardias
-  const activeFetchIdRef = useRef(0)
-
-  const refetchDirectOrders = useCallback(async () => {
-    if (!useBackend) return
-    if (authLoading) return
-    if (!user || role !== 'fornecedor') return
-
-    const fetchId = ++activeFetchIdRef.current
-    const currentUid = user.uid
-    setDirectOrdersLoading(true)
-    setDirectOrdersError(null)
-    setDirectOrdersDiagnostic(null)
-
-    const repo: OrderRepository = new HttpOrderRepository()
-    try {
-      const result = await repo.listForSupplier()
-      if (fetchId !== activeFetchIdRef.current) return
-      setDirectOrders(result.map(contractOrderToDirectOrder))
-      setDirectOrdersDataOwnerUid(currentUid)
-      setDirectOrdersQueryOwnerUid(currentUid)
-    } catch (err) {
-      if (fetchId !== activeFetchIdRef.current) return
-      console.error('Erro ao carregar pedidos diretos:', err)
-      const diag = diagnoseError(err)
-      logFrontendDiagnostic(diag, { operation: 'listForSupplier' })
-      setDirectOrdersError('Não foi possível carregar os pedidos diretos. Tente novamente.')
-      setDirectOrdersDiagnostic(diag)
-      setDirectOrdersQueryOwnerUid(currentUid)
-    } finally {
-      if (fetchId === activeFetchIdRef.current) {
-        setDirectOrdersLoading(false)
-      }
-    }
-  }, [useBackend, authLoading, user, role])
-
-  useEffect(() => {
-    if (!useBackend) return
-    if (authLoading) return
-    if (!user || role !== 'fornecedor') return
-
-    const fetchId = ++activeFetchIdRef.current
-    const currentUid = user.uid
-
-    const repo: OrderRepository = new HttpOrderRepository()
-
-    repo
-      .listForSupplier()
-      .then((result) => {
-        if (fetchId !== activeFetchIdRef.current) return
-        setDirectOrders(result.map(contractOrderToDirectOrder))
-        setDirectOrdersDataOwnerUid(currentUid)
-        setDirectOrdersQueryOwnerUid(currentUid)
-        setDirectOrdersError(null)
-        setDirectOrdersDiagnostic(null)
-      })
-      .catch((err) => {
-        if (fetchId !== activeFetchIdRef.current) return
-        console.error('Erro ao carregar pedidos diretos:', err)
-        const diag = diagnoseError(err)
-        logFrontendDiagnostic(diag, { operation: 'listForSupplier' })
-        setDirectOrdersError('Não foi possível carregar os pedidos diretos. Tente novamente.')
-        setDirectOrdersDiagnostic(diag)
-        setDirectOrdersQueryOwnerUid(currentUid)
-      })
-      .finally(() => {
-        if (fetchId === activeFetchIdRef.current) {
-          setDirectOrdersLoading(false)
-        }
-      })
-
-    const fetchIdRef = activeFetchIdRef
-    return () => {
-      fetchIdRef.current++
-    }
-  }, [useBackend, authLoading, user, role])
 
   async function handleEnviarOferta(orderId: string, price: number, deliveryType: DeliveryType, note?: string) {
     const order = marketOrders.find((o) => o.id === orderId)!
@@ -152,28 +84,34 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
 
   async function handleConfirmarDireto(orderId: string) {
     if (useBackend) {
-      const repo: OrderRepository = new HttpOrderRepository()
-      await repo.updateStatus(orderId, 'confirmado')
+      const repo: OrderRepository = new HttpOrderRepository(user?.uid)
+      const saved = await repo.updateStatus(orderId, 'confirmado')
+      setDirectOrders(previous => previous.map(order => order.id === orderId ? contractOrderToDirectOrder(saved) : order))
+      return
     }
     setDirectOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: 'confirmado' as const } : o))
     )
   }
 
-  async function handleRecusarDireto(orderId: string) {
+  async function handleRecusarDireto(orderId: string, reason: string) {
     if (useBackend) {
-      const repo: OrderRepository = new HttpOrderRepository()
-      await repo.updateStatus(orderId, 'cancelado')
+      const repo: OrderRepository = new HttpOrderRepository(user?.uid)
+      const saved = await repo.updateStatus(orderId, 'cancelado', reason)
+      setDirectOrders(previous => previous.map(order => order.id === orderId ? contractOrderToDirectOrder(saved) : order))
+      return
     }
     setDirectOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: 'cancelado' as const } : o))
     )
   }
 
-  async function handleAtualizarStatusDireto(orderId: string, status: OrderStatus) {
+  async function handleAtualizarStatusDireto(orderId: string, status: OrderStatus, reason?: string) {
     if (useBackend) {
-      const repo: OrderRepository = new HttpOrderRepository()
-      await repo.updateStatus(orderId, status)
+      const repo: OrderRepository = new HttpOrderRepository(user?.uid)
+      const saved = reason === undefined ? await repo.updateStatus(orderId, status) : await repo.updateStatus(orderId, status, reason)
+      setDirectOrders(previous => previous.map(order => order.id === orderId ? contractOrderToDirectOrder(saved) : order))
+      return
     }
     setDirectOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status: status as DirectOrderStatus } : o))
@@ -194,10 +132,6 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
   }
 
   function addDirectOrder(directOrder: DirectOrder) {
-    if (user) {
-      setDirectOrdersDataOwnerUid(user.uid)
-      setDirectOrdersQueryOwnerUid(user.uid)
-    }
     setDirectOrders((prev) => [directOrder, ...prev])
   }
 
@@ -205,38 +139,14 @@ export function MarketProvider({ children }: { children: React.ReactNode }) {
     setDirectOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'cancelado' as const } : o))
   }
 
-  // Deriva loading, dados e erros expostos em vez de setState no corpo do effect (react-hooks/set-state-in-effect):
-  // separando a propriedade dos dados (directOrdersDataOwnerUid) da propriedade do estado de consulta/erro (directOrdersQueryOwnerUid).
-  const isEligibleSupplier = Boolean(user && role === 'fornecedor')
-  const hasDataForCurrentAccount = Boolean(user && directOrdersDataOwnerUid === user.uid)
-  const hasQueryForCurrentAccount = Boolean(user && directOrdersQueryOwnerUid === user.uid)
-
-  const directOrdersExposed =
-    useBackend && (!isEligibleSupplier || !hasDataForCurrentAccount)
-      ? []
-      : directOrders
-
-  const directOrdersErrorExposed =
-    useBackend && (!isEligibleSupplier || !hasQueryForCurrentAccount)
-      ? null
-      : directOrdersError
-
-  const directOrdersDiagnosticExposed =
-    useBackend && (!isEligibleSupplier || !hasQueryForCurrentAccount)
-      ? null
-      : directOrdersDiagnostic
-
-  const directOrdersLoadingExposed =
-    useBackend && (authLoading || (isEligibleSupplier && (directOrdersLoading || !hasQueryForCurrentAccount)))
-
   return (
     <MarketContext.Provider
       value={{
         marketOrders,
-        directOrders: directOrdersExposed,
-        directOrdersLoading: directOrdersLoadingExposed,
-        directOrdersError: directOrdersErrorExposed,
-        directOrdersDiagnostic: directOrdersDiagnosticExposed,
+        directOrders,
+        directOrdersLoading: useBackend && (authLoading || query.loading),
+        directOrdersError,
+        directOrdersDiagnostic,
         refetchDirectOrders,
         offers,
         declinedIds,

@@ -5,15 +5,19 @@ import type { Order, CreateOrderRequest, OrderStatus } from '@contracts'
 import { OrderSchema, OrderListSchema } from '@contracts'
 
 export class HttpOrderRepository implements OrderRepository {
+  constructor(private readonly expectedUserId?: string) {}
+  private mutate(path: string, init: RequestInit) {
+    return this.expectedUserId ? apiFetch(path, init, this.expectedUserId) : apiFetch(path, init)
+  }
   async list(): Promise<Order[]> {
-    const res = await apiFetch('/orders')
+    const res = await (this.expectedUserId ? apiFetch('/orders', undefined, this.expectedUserId) : apiFetch('/orders'))
     const json = await res.json()
     return OrderListSchema.parse(json)
   }
 
   async listForSupplier(): Promise<Order[]> {
     try {
-      const res = await apiFetch('/orders?scope=fornecedor')
+      const res = await (this.expectedUserId ? apiFetch('/orders?scope=fornecedor', undefined, this.expectedUserId) : apiFetch('/orders?scope=fornecedor'))
       const json = await res.json()
       return OrderListSchema.parse(json)
     } catch (error) {
@@ -33,7 +37,7 @@ export class HttpOrderRepository implements OrderRepository {
           'Idempotency-Key': key,
         },
         body: JSON.stringify(req),
-      })
+      }, this.expectedUserId)
       const json = await res.json()
       return OrderSchema.parse(json)
     } catch (error) {
@@ -49,7 +53,7 @@ export class HttpOrderRepository implements OrderRepository {
 
   async cancel(orderId: string): Promise<Order> {
     try {
-      const res = await apiFetch(`/orders/${orderId}/cancel`, { method: 'PATCH' })
+      const res = await this.mutate(`/orders/${encodeURIComponent(orderId)}/cancel`, { method: 'PATCH' })
       const json = await res.json()
       return OrderSchema.parse(json)
     } catch (error) {
@@ -64,11 +68,11 @@ export class HttpOrderRepository implements OrderRepository {
     }
   }
 
-  async updateStatus(orderId: string, status: OrderStatus): Promise<Order> {
+  async updateStatus(orderId: string, status: OrderStatus, reason?: string): Promise<Order> {
     try {
-      const res = await apiFetch(`/orders/${orderId}/status`, {
+      const res = await this.mutate(`/orders/${encodeURIComponent(orderId)}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, reason }),
       })
       const json = await res.json()
       return OrderSchema.parse(json)

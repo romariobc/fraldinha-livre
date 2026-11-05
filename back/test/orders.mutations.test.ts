@@ -1,3 +1,4 @@
+import { approveFixtures, seedSuppliers } from './approve-fixtures'
 import { describe, it, expect, beforeAll } from 'vitest'
 import { Hono } from 'hono'
 import { env } from 'cloudflare:workers'
@@ -13,6 +14,7 @@ import type { Order } from '../../packages/contracts/src/order'
 describe('POST /orders + PATCH /orders/:id/cancel', () => {
   beforeAll(async () => {
     await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
+    await approveFixtures(env.DB, ...seedSuppliers, 'uid-fornecedor-teste', 'uid-outro-fornecedor', 'uid-fornecedor-a', 'uid-fornecedor-b', 'supplier-a')
   })
 
   /**
@@ -683,10 +685,12 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
       .bind(orderId, addressJson)
       .run()
 
-    // Adiciona um item para ter estrutura completa
+    // Snapshot legado: estoque já reservado antes da nova migração, sem evento de criação inventado.
+    await env.DB.prepare(`INSERT INTO products (id, name, price_cents, supplier_id, quantity, active)
+      VALUES ('prod-cancel-success', 'Fralda Test', 1000, 'sup-001', 0, 1)`).run()
     await env.DB.prepare(`
       INSERT INTO order_items (order_id, product_id, product_name, unit_price, quantity, unit)
-      VALUES (?, 'prod-test', 'Fralda Test', 1000, 100, 'cx')
+      VALUES (?, 'prod-cancel-success', 'Fralda Test', 1000, 100, 'cx')
     `)
       .bind(orderId)
       .run()
@@ -706,6 +710,10 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
 
     expect(body.status).toBe('cancelado')
     expect(body.id).toBe(orderId)
+    const stock = await env.DB.prepare("SELECT quantity FROM products WHERE id = 'prod-cancel-success'").first<{ quantity: number }>()
+    expect(stock!.quantity).toBe(100)
+    const history = await env.DB.prepare('SELECT count(*) AS n FROM order_events WHERE order_id = ?').bind(orderId).first<{ n: number }>()
+    expect(history!.n).toBe(1) // Only cancellation: no fabricated legacy creation event.
   })
 
   it('PATCH /orders/:id/cancel de id inexistente → 404', async () => {
@@ -976,14 +984,16 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     expect(postRes.status).toBe(201)
     const created = await postRes.json() as any
     expect(created.paymentMethod).toBe('pix')
-    expect(created.paymentTransactionId).toBe('txn-sim-12345')
+    expect(created.paymentTransactionId).toBe('sim-' + created.id)
+    expect(created.paymentMode).toBe('simulated')
     expect(created.paymentStatus).toBe('approved')
 
     // Confirma via D1 direto
     const db = drizzle(env.DB)
     const dbOrder = await db.select().from(orders).where(eq(orders.id, created.id)).get()
     expect(dbOrder?.paymentMethod).toBe('pix')
-    expect(dbOrder?.paymentTransactionId).toBe('txn-sim-12345')
+    expect(dbOrder?.paymentTransactionId).toBe('sim-' + created.id)
+    expect(dbOrder?.paymentMode).toBe('simulated')
     expect(dbOrder?.paymentStatus).toBe('approved')
 
     // Confirma via GET /orders
@@ -998,7 +1008,8 @@ describe('POST /orders + PATCH /orders/:id/cancel', () => {
     const found = list.find((o) => o.id === created.id)
     expect(found).toBeDefined()
     expect(found.paymentMethod).toBe('pix')
-    expect(found.paymentTransactionId).toBe('txn-sim-12345')
+    expect(found.paymentTransactionId).toBe('sim-' + created.id)
+    expect(found.paymentMode).toBe('simulated')
     expect(found.paymentStatus).toBe('approved')
   })
 })

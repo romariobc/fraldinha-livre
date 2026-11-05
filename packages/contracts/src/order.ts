@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AddressSchema } from './address'
+import { AddressSchema, CheckoutAddressSchema } from './address'
 import { PaymentMethodSchema, SimulatedPaymentOutcomeSchema } from './payment'
 
 export const OrderItemSchema = z.object({
@@ -33,12 +33,29 @@ export const OrderSchema = z.object({
   paymentMethod: PaymentMethodSchema.optional(),
   paymentTransactionId: z.string().optional(),
   paymentStatus: SimulatedPaymentOutcomeSchema.optional(),
+  paymentMode: z.literal('simulated').optional(),
 })
 export type Order = z.infer<typeof OrderSchema>
 
 // Schema de lista — construido aqui (mesma instancia de zod do pacote) para que consumidores
 // (ex.: front/) nunca precisem importar 'zod' diretamente so para compor z.array(OrderSchema).
 export const OrderListSchema = z.array(OrderSchema)
+
+export const OrderEventSchema = z.object({
+  id: z.string(),
+  fromStatus: OrderStatusSchema.nullable(),
+  toStatus: OrderStatusSchema,
+  actorId: z.string(),
+  reason: z.string().nullable(),
+  createdAt: z.string(),
+})
+export type OrderEvent = z.infer<typeof OrderEventSchema>
+export const OrderDetailSchema = z.object({
+  order: OrderSchema,
+  events: z.array(OrderEventSchema),
+  historySource: z.enum(['complete', 'partial', 'legacy']),
+})
+export type OrderDetail = z.infer<typeof OrderDetailSchema>
 
 // Body do POST /orders — o cliente NAO envia id/uid/createdAt/status (servidor define, RN-03).
 // Zod ignora chaves desconhecidas por padrao (nao-strict): se o body vier com id/uid/status,
@@ -50,17 +67,23 @@ export const CreateOrderRequestSchema = z.object({
   price: z.number().int().nonnegative().optional(),
   supplierId: z.string().optional(),
   supplierName: z.string().optional(),
-  deliveryAddress: AddressSchema,
+  deliveryAddress: CheckoutAddressSchema,
   items: z.array(OrderItemSchema).min(1),
   paymentMethod: PaymentMethodSchema.optional(),
   paymentTransactionId: z.string().optional(),
   paymentStatus: SimulatedPaymentOutcomeSchema.optional(),
+  simulationOutcome: z.enum(['approved', 'declined']).optional(),
 })
 export type CreateOrderRequest = z.infer<typeof CreateOrderRequestSchema>
 
 // Body do PATCH /orders/:id/status — atualizacao de status pelo fornecedor ou admin
 export const UpdateOrderStatusRequestSchema = z.object({
   status: OrderStatusSchema,
+  reason: z.string().trim().min(5).max(500).optional(),
+}).superRefine((value, ctx) => {
+  if (value.status === 'cancelado' && !value.reason) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['reason'], message: 'Informe o motivo do cancelamento (5 a 500 caracteres).' })
+  }
 })
 export type UpdateOrderStatusRequest = z.infer<typeof UpdateOrderStatusRequestSchema>
 

@@ -2,6 +2,7 @@
 
 import { render, screen } from '@testing-library/react'
 import { vi } from 'vitest'
+vi.mock('@/contexts/auth-context', () => ({ useAuth: () => ({ user: { uid: 'test-user' }, role: 'fornecedor' }) }))
 import PedidosPage from '../page'
 
 vi.mock('@/contexts/market-context', () => ({

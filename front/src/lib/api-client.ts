@@ -70,8 +70,11 @@ function generateRequestId(): string {
   return `req-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
 }
 
-export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const token = await auth.currentUser?.getIdToken()
+export async function apiFetch(path: string, init: RequestInit = {}, expectedUserId?: string): Promise<Response> {
+  const user = auth.currentUser
+  if (expectedUserId && user?.uid !== expectedUserId) throw new ApiError({ code: 'UNAUTHORIZED', status: 401, message: 'Sua sessão mudou. Entre na conta da tentativa para recuperá-la.', requestId: 'session-changed' })
+  const token = await user?.getIdToken()
+  if (expectedUserId && auth.currentUser?.uid !== expectedUserId) throw new ApiError({ code: 'UNAUTHORIZED', status: 401, message: 'Sua sessão mudou. Entre na conta da tentativa para recuperá-la.', requestId: 'session-changed' })
   const headers = new Headers(init.headers)
   if (!headers.has('X-Request-Id')) {
     headers.set('X-Request-Id', generateRequestId())

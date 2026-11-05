@@ -3,7 +3,7 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { STORE_SUPPLIERS } from '@/lib/suppliers'
+import { supplierLabel } from '@/lib/supplier-label'
 import { formatPrice } from '@/lib/utils'
 import { useCart } from '@/contexts/cart-context'
 import { useAuth } from '@/contexts/auth-context'
@@ -56,13 +56,11 @@ function ProductPageContent() {
   const { user } = useAuth()
   const { products, loading, error } = useProducts()
 
-  // Resolução unívoca de produto (multi-fornecedor com mesmo slug):
-  // 1. Se candidateId fornecido, busca prioritariamente por ID (garante produto e fornecedor exatos)
-  // 2. Se não encontrou por ID ou ID não fornecido, busca por slug (compatibilidade retroativa)
-  let product = candidateId ? products.find((p) => p.id === candidateId) : undefined
-  if (!product) {
-    product = products.find((p) => p.slug === slug)
-  }
+  // An explicit offer ID must never silently select another supplier.
+  const matchingOffers = products.filter(p => p.slug === slug)
+  const product = candidateId
+    ? matchingOffers.find(p => p.id === candidateId)
+    : matchingOffers.length === 1 ? matchingOffers[0] : undefined
 
   if (loading) {
     return <ProductPageSkeleton />
@@ -94,6 +92,24 @@ function ProductPageContent() {
             </Link>
           </div>
         </div>
+      </div>
+    )
+  }
+
+  if (!candidateId && matchingOffers.length > 1) {
+    return (
+      <div className="container-fl py-16">
+        <h1 className="font-display font-black text-2xl mb-4">Selecione uma oferta</h1>
+        <p className="mb-4">Este produto tem ofertas de fornecedores diferentes.</p>
+        <ul className="space-y-3">
+          {matchingOffers.map(offer => (
+            <li key={offer.id}>
+              <Link className="text-primary-dark underline break-all" href={`/produto/${offer.slug}?p=${offer.id}`}>
+                {supplierLabel(offer.supplierId)} · {formatPrice(offer.priceInCents)}
+              </Link>
+            </li>
+          ))}
+        </ul>
       </div>
     )
   }
@@ -130,10 +146,7 @@ function ProductPageContent() {
   // Type guard: product é garantidamente definido após o early return
   const definiteProduct = product
 
-  // Supplier info
-  const supplier = STORE_SUPPLIERS.find(s => s.id === definiteProduct.supplierId)
-  const supplierName = supplier?.name || (definiteProduct.supplierId === user?.uid ? (user?.displayName || 'Minha Distribuidora') : 'Distribuidora Parceira')
-  const supplierRating = supplier?.rating || 5
+  const supplierName = supplierLabel(definiteProduct.supplierId)
 
   const isLoggedIn = user !== null
 
@@ -239,11 +252,9 @@ function ProductPageContent() {
 
           {/* Supplier & Rating */}
           <p className="text-xs text-brand-muted mb-6">
-            <span className="font-semibold">{supplierName}</span>
+            <span className="font-semibold break-all">{supplierName}</span>
             {' '}
-            <span className="text-accent">
-              {'★'.repeat(supplierRating)}{'☆'.repeat(5 - supplierRating)}
-            </span>
+<Link className="underline" href={`/catalogo/fornecedor/${encodeURIComponent(definiteProduct.supplierId)}`}>Ver loja</Link>
           </p>
 
           {/* Price */}
@@ -355,15 +366,14 @@ function ProductPageContent() {
               </h3>
               <div className="space-y-2">
                 {otherOffers.map((offer) => {
-                  const offerSupplier = STORE_SUPPLIERS.find((s) => s.id === offer.supplierId)
-                  const offerSupplierName = offerSupplier?.name || 'Distribuidora Parceira'
+                  const offerSupplierName = supplierLabel(offer.supplierId)
                   return (
                     <div
                       key={offer.id}
                       className="flex items-center justify-between text-xs py-2 border-b border-primary/10 last:border-0"
                     >
                       <div>
-                        <span className="font-semibold text-brand-text">{offerSupplierName}</span>
+                        <span className="font-semibold text-brand-text break-all">{offerSupplierName}</span>
                         <span className="text-primary-dark font-bold ml-2">
                           {formatPrice(offer.priceInCents)}
                         </span>

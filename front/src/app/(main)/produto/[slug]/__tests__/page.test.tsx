@@ -113,13 +113,14 @@ describe('ProductPage', () => {
       expect(screen.getAllByText('Pampers').length).toBeGreaterThan(0)
     })
 
-    it('should display supplier name and rating', () => {
+    it('should display exact supplier identity without invented rating', () => {
       render(<ProductPage />)
 
       // Supplier name
-      expect(screen.getByText('Distribuidora Sul')).toBeInTheDocument()
+      expect(screen.getByText('Fornecedor sup-001')).toBeInTheDocument()
       // Rating: 4 stars
-      expect(screen.getByText('★★★★☆')).toBeInTheDocument()
+      expect(screen.queryByText('★★★★☆')).not.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Ver loja' })).toHaveAttribute('href', '/catalogo/fornecedor/sup-001')
     })
 
     it('should render all attribute specifications', () => {
@@ -225,7 +226,7 @@ describe('ProductPage', () => {
         productId: 'p1',
         productName: 'Supersec Pants P',
         supplierId: 'sup-001',
-        supplierName: 'Distribuidora Sul',
+        supplierName: 'Fornecedor sup-001',
         unitPrice: 1800,
         quantity: 2,
         unit: 'un',
@@ -384,7 +385,7 @@ describe('ProductPage', () => {
         productId: 'p1',
         productName: 'Supersec Pants P',
         supplierId: 'sup-001',
-        supplierName: 'Distribuidora Sul',
+        supplierName: 'Fornecedor sup-001',
         unitPrice: 1800,
         quantity: 1,
         unit: 'un',
@@ -529,6 +530,20 @@ describe('ProductPage', () => {
 
       render(<ProductPage />)
       expect(screen.getByText(/R\$ 29,90/)).toBeInTheDocument()
+    })
+
+    it('never replaces an explicit unavailable offer with another supplier', () => {
+      mockSearchParams = new URLSearchParams('p=removed-offer')
+      render(<ProductPage />)
+      expect(screen.getByText('Produto não encontrado')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Comprar agora' })).not.toBeInTheDocument()
+    })
+
+    it('asks for an offer when a legacy slug has multiple suppliers', () => {
+      mockSearchParams = new URLSearchParams()
+      render(<ProductPage />)
+      expect(screen.getByText('Selecione uma oferta')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /Fornecedor fornecedor-real-uid-xyz/ })).toHaveAttribute('href', '/produto/amoravel-basic-hiper-xg?p=prod-novo-fornecedor-2')
     })
 
     it('exibe seção de outras ofertas quando múltiplos fornecedores vendem o mesmo slug', () => {

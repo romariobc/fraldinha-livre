@@ -46,6 +46,18 @@ describe('LoginPage', () => {
   const mockPush = vi.fn()
   const mockGet = vi.fn().mockReturnValue(null)
 
+  it('retoma onboarding quando existe claim de comprador mas falta perfil', async () => {
+    vi.mocked(useAuth).mockReturnValue(createMockAuth({ user: { uid: 'qa', email: null, displayName: null }, role: 'comprador', profile: null }))
+    render(<LoginPage />)
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/onboarding'))
+  })
+
+  it('admin com claim válida e sem perfil segue para administração', async () => {
+    vi.mocked(useAuth).mockReturnValue(createMockAuth({ user: { uid: 'qa-admin', email: null, displayName: null }, role: 'admin', profile: null, isAdmin: true }))
+    render(<LoginPage />)
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/admin'))
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(useRouter).mockReturnValue({
@@ -169,7 +181,7 @@ describe('LoginPage', () => {
     vi.mocked(useAuth).mockReturnValue(
       createMockAuth({
         user: { uid: 'u123', email: 'sup@teste.com', displayName: 'Fornecedor' },
-        role: 'fornecedor',
+        role: 'fornecedor', profile: { role: 'fornecedor', name: 'Teste', email: 'teste@example.com' },
       })
     )
 
@@ -185,7 +197,7 @@ describe('LoginPage', () => {
     vi.mocked(useAuth).mockReturnValue(
       createMockAuth({
         user: { uid: 'u123', email: 'buyer@teste.com', displayName: 'Comprador' },
-        role: 'comprador',
+        role: 'comprador', profile: { role: 'comprador', name: 'Teste', email: 'teste@example.com' },
       })
     )
 
@@ -201,7 +213,7 @@ describe('LoginPage', () => {
     vi.mocked(useAuth).mockReturnValue(
       createMockAuth({
         user: { uid: 'u123', email: 'buyer@teste.com', displayName: 'Comprador' },
-        role: 'comprador',
+        role: 'comprador', profile: { role: 'comprador', name: 'Teste', email: 'teste@example.com' },
       })
     )
 

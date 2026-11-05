@@ -3,6 +3,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { vi } from 'vitest'
 import AdminUsersTab from '../AdminUsersTab'
 
+vi.mock('../AdminSupplierApprovals', () => ({ default: () => <div /> }))
+
 vi.mock('@/lib/firebase', () => ({ auth: {}, db: {}, googleProvider: {} }))
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn(),

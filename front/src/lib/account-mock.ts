@@ -1,59 +1,5 @@
-import type { OrderItem } from '@/lib/domain/order'
-
-export type OrderType = 'cotacao' | 'compra-direta'
-
-export type OrderStatus =
-  | 'aguardando'
-  | 'ofertas-recebidas'
-  | 'aceito'
-  | 'confirmado'
-  | 'a-caminho'
-  | 'entregue'
-  | 'cancelado'
-
-export interface Address {
-  logradouro: string
-  numero: string
-  complemento?: string
-  bairro: string
-  cidade: string
-  estado: string
-  cep: string
-}
-
-export interface MockUser {
-  name: string
-  email: string
-  cpf: string
-  address: Address
-}
-
-export interface Offer {
-  id: string
-  supplier: string
-  price: number       // em centavos
-  deliveryDays: number
-  rating: number      // 1–5
-}
-
-export interface Order {
-  id: string
-  type: OrderType
-  product: string
-  quantity: number
-  unit: 'un' | 'cx' | 'kg'
-  deliveryAddress: Address
-  status: OrderStatus
-  createdAt: string   // ISO 8601
-  price?: number      // em centavos — compra-direta ou oferta aceita
-  supplierId?: string // para compra-direta e oferta aceita
-  supplierName?: string // para compra-direta e oferta aceita
-  offers?: Offer[]    // presente apenas em cotacao
-  items?: OrderItem[] // D-018: linhas do pedido (canonico). Opcional na transicao; getOrderItems faz o fallback.
-  paymentMethod?: 'pix' | 'card'
-  paymentTransactionId?: string
-  paymentStatus?: 'approved' | 'declined' | 'pending'
-}
+// Demonstration fixtures only. Screen models live in lib/domain/account.ts.
+import type { Address, AccountProfile, Order } from './domain/account'
 
 const SP_ADDRESS: Address = {
   logradouro: 'Av. Paulista',
@@ -65,7 +11,7 @@ const SP_ADDRESS: Address = {
   cep: '01310-100',
 }
 
-export const MOCK_USER: MockUser = {
+export const MOCK_USER: AccountProfile = {
   name: 'Ana Lima',
   email: 'ana.lima@email.com',
   cpf: '123.456.789-00',

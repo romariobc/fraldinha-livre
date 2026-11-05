@@ -1,7 +1,8 @@
+import { occurrencesGetHandler, occurrencesPostHandler, occurrencesReplyHandler } from './routes/occurrences'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { createAuthMiddleware, verifyFirebaseIdToken, requireAnyRole } from './middleware/auth'
-import { ordersGetHandler, ordersPostHandler, ordersCancelHandler, ordersReportHandler, ordersStatusPatchHandler } from './routes/orders'
+import { ordersGetHandler, ordersDetailHandler, ordersPostHandler, ordersCancelHandler, ordersReportHandler, ordersStatusPatchHandler } from './routes/orders'
 import { productsGetHandler, productsPostHandler, productsPutHandler, productsDeleteHandler } from './routes/products'
 import { createChatHandler } from './routes/chat'
 import { createAuthClaimHandler } from './routes/auth'
@@ -11,6 +12,8 @@ import { resolveRequestId, logger } from './lib/logger'
 import { AppError, respondError } from './lib/errors'
 import type { ApiErrorResponse } from '../../packages/contracts/src/error'
 import type { Env, AppContext } from './env'
+
+import { supplierApplicationHandler, supplierApplicationsListHandler, supplierDecisionHandler } from './routes/suppliers'
 
 const app = new Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>()
 
@@ -135,10 +138,14 @@ app.use('/orders/*', (c, next) => {
 })
 
 app.get('/orders', ordersGetHandler)
+app.get('/orders/:id', ordersDetailHandler)
 app.post('/orders', requireAnyRole(['comprador']), ordersPostHandler)
 app.patch('/orders/:id/cancel', requireAnyRole(['comprador']), ordersCancelHandler)
 app.patch('/orders/:id/status', requireAnyRole(['fornecedor', 'admin']), ordersStatusPatchHandler)
 app.post('/orders/:id/report', requireAnyRole(['fornecedor']), ordersReportHandler)
+app.get('/orders/:id/occurrences', occurrencesGetHandler)
+app.post('/orders/:id/occurrences', occurrencesPostHandler)
+app.post('/orders/:id/occurrences/:reportId/messages', occurrencesReplyHandler)
 
 app.use('/chat/*', (c, next) => {
   const authMiddleware = createAuthMiddleware((token) =>
@@ -155,6 +162,8 @@ app.use('/auth/*', (c, next) => {
   )
   return authMiddleware(c, next)
 })
+app.get('/auth/supplier-application', supplierApplicationHandler)
+app.post('/auth/supplier-application', supplierApplicationHandler)
 app.post('/auth/claim', (c) => createAuthClaimHandler()(c))
 
 app.use('/admin/*', (c, next) => {
@@ -163,6 +172,8 @@ app.use('/admin/*', (c, next) => {
   )
   return authMiddleware(c, next)
 })
+app.get('/admin/suppliers', requireAnyRole(['admin']), supplierApplicationsListHandler)
+app.patch('/admin/suppliers/:uid', requireAnyRole(['admin']), supplierDecisionHandler)
 app.get('/admin/audit-logs', requireAnyRole(['admin']), adminAuditLogsGetHandler)
 app.patch('/admin/products/:id/status', requireAnyRole(['admin']), adminProductStatusPatchHandler)
 

@@ -84,7 +84,7 @@ export function runOrderRepositoryContract(
       expect(cancelled.id).toBe(created.id)
     })
 
-    it('cancel() de um pedido que não está mais "aguardando" lança erro', async () => {
+    it('cancel() repetido devolve o mesmo pedido cancelado', async () => {
       const repo = makeRepo()
       const request = createMinimalOrder()
 
@@ -92,10 +92,16 @@ export function runOrderRepositoryContract(
       const created = await repo.create(request)
       await repo.cancel(created.id)
 
-      // Try to cancel again (cancelado, not aguardando anymore) — should throw
-      await expect(repo.cancel(created.id)).rejects.toThrow(
-        OrderCancelNotAllowedError
-      )
+      const repeated = await repo.cancel(created.id)
+      expect(repeated.id).toBe(created.id)
+      expect(repeated.status).toBe('cancelado')
+    })
+
+    it('cancel() não cancela pedido confirmado', async () => {
+      const repo = makeRepo()
+      const created = await repo.create(createMinimalOrder())
+      await repo.updateStatus(created.id, 'confirmado')
+      await expect(repo.cancel(created.id)).rejects.toThrow(OrderCancelNotAllowedError)
     })
   })
 }

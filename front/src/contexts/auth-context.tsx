@@ -94,7 +94,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Erro ao concluir login via redirect:', error);
     });
 
+    let revision = 0;
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      const currentRevision = ++revision;
+      // A new identity must not be routed using the previous session's role/profile.
+      setLoading(true);
       if (fbUser) {
         // Usuario logado: carregar claims e perfil completo
         setUser({
@@ -124,10 +128,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('Erro ao obter Custom Claims do token:', err);
         }
 
+        if (currentRevision !== revision) return;
         setClaims(tokenClaims);
 
         try {
           const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
+          if (currentRevision !== revision) return;
           if (userDoc.exists()) {
             const data = userDoc.data() as UserProfile;
             setProfile(data);
@@ -140,15 +146,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               (data.role === 'comprador' || data.role === 'fornecedor') &&
               !migratedUsersCache.has(fbUser.uid)
             ) {
-              migratedUsersCache.add(fbUser.uid);
               try {
                 const res = await apiFetch('/auth/claim', {
                   method: 'POST',
                   body: JSON.stringify({ role: data.role }),
                 });
+                if (currentRevision !== revision) return;
+                if (res.ok) migratedUsersCache.add(fbUser.uid);
                 if (res.ok && typeof fbUser.getIdTokenResult === 'function') {
                   // Força renovação do token e atualiza estado local de claims/role
                   const tokenResult = await fbUser.getIdTokenResult(true);
+                  if (currentRevision !== revision) return;
                   const freshClaims = (tokenResult.claims as Record<string, unknown>) || null;
                   tokenClaims = freshClaims;
                   setClaims(freshClaims);
@@ -157,6 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   }
                 }
               } catch (err) {
+                if (currentRevision !== revision) return;
                 console.warn('[auth-context] Falha na auto-migração de Custom Claim:', err);
               }
             }
@@ -179,6 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setRole(tokenRole || null);
           }
         } catch (error) {
+          if (currentRevision !== revision) return;
           console.error('Erro ao carregar perfil do Firestore:', error);
           setProfile(null);
           setRole(tokenRole || null);
@@ -193,7 +203,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => { revision++; unsubscribe(); };
   }, []);
 
   const signInGoogle = async () => {
@@ -273,8 +283,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshClaims = async () => {
     if (auth.currentUser) {
-      if (typeof auth.currentUser.getIdTokenResult === 'function') {
-        const tokenResult = await auth.currentUser.getIdTokenResult(true);
+      const currentUser = auth.currentUser;
+      const snapshot = await getDoc(doc(db, 'users', currentUser.uid));
+      if (auth.currentUser?.uid !== currentUser.uid) return;
+      setProfile(snapshot.exists() ? snapshot.data() as UserProfile : null);
+      if (typeof currentUser.getIdTokenResult === 'function') {
+        const tokenResult = await currentUser.getIdTokenResult(true);
+        if (auth.currentUser?.uid !== currentUser.uid) return;
         const tokenClaims = (tokenResult.claims as Record<string, unknown>) || null;
         let tokenRole: UserRole | null = null;
         if (tokenClaims) {
@@ -290,8 +305,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (tokenRole) {
           setRole(tokenRole);
         }
-      } else if (typeof auth.currentUser.getIdToken === 'function') {
-        await auth.currentUser.getIdToken(true);
+      } else if (typeof currentUser.getIdToken === 'function') {
+        await currentUser.getIdToken(true);
       }
     }
   };

@@ -33,7 +33,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
   const pages = getPageNumbers(currentPage, totalPages)
 
   return (
-    <nav className="flex items-center justify-center gap-1.5 mt-10" aria-label="Paginação">
+    <nav className="flex flex-wrap items-center justify-center gap-1.5 mt-10" aria-label="Paginação">
       {/* Anterior */}
       <button
         onClick={() => onPageChange(currentPage - 1)}

@@ -1,505 +1,144 @@
-/// <reference types="vitest/globals" />
-
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CartProvider } from '@/contexts/cart-context'
-import { AuthProvider } from '@/contexts/auth-context'
-import { OrdersProvider } from '@/contexts/orders-context'
-import { MarketProvider } from '@/contexts/market-context'
-import { ProductsProvider } from '@/contexts/products-context'
-import type { CartItem } from '@/lib/domain/cart'
-import { type ReactNode } from 'react'
-import CheckoutPage from '../page'
-import CompradorRouteGroupLayout from '../../layout'
-import { vi } from 'vitest'
-
-// Mock firebase
-vi.mock('@/lib/firebase', () => ({
-  auth: {},
-  db: {},
-  googleProvider: {},
-}))
-
-// Mock firebase/auth
-vi.mock('firebase/auth', () => ({
-  onAuthStateChanged: vi.fn((auth, callback) => {
-    callback(null)
-    return vi.fn()
-  }),
-  signInWithPopup: vi.fn(),
-  signInWithRedirect: vi.fn(),
-  getRedirectResult: vi.fn().mockResolvedValue(null),
-  signOut: vi.fn(),
-}))
-
-// Mock firebase/firestore
-vi.mock('firebase/firestore', () => ({
-  doc: vi.fn(),
-  getDoc: vi.fn(),
-  updateDoc: vi.fn(),
-}))
-
-// Mock next/navigation (useRouter usado pela guarda de login — D-024)
-let mockPush = vi.fn()
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
-  usePathname: vi.fn(),
-  useSearchParams: vi.fn(() => ({ get: () => null })),
-}))
-
-// Mock do auth-context: por padrao logado (a guarda D-024 exige login para o checkout).
-// AuthProvider vira passthrough; useAuth e controlado por teste via vi.mocked.
-vi.mock('@/contexts/auth-context', () => ({
-  useAuth: vi.fn(),
-  AuthProvider: ({ children }: { children: ReactNode }) => children,
-}))
-
+import RoleProtectedRoute from '@/components/auth/RoleProtectedRoute'
 import { useAuth } from '@/contexts/auth-context'
+import { ApiError } from '@/lib/api-client'
+import { attemptKey, buildAttempt, saveAttempt } from '@/lib/checkout-attempt'
+import { readCart } from '@/lib/cart-storage'
+import type { CreateOrderRequest } from '@contracts'
+import CheckoutPage from '../page'
 
-function authValue(overrides: Partial<ReturnType<typeof useAuth>> = {}): ReturnType<typeof useAuth> {
-  return {
-    user: { uid: 'u1', email: 'ana@example.com', displayName: 'Ana Lima' },
-    profile: { role: 'comprador', name: 'Ana Lima', email: 'ana@example.com',
-      address: { logradouro: 'Av. Paulista', numero: '1374', complemento: 'Apto 52', bairro: 'Bela Vista', cidade: 'São Paulo', estado: 'SP', cep: '01310-100' } },
-    role: 'comprador',
-    claims: { role: 'comprador' },
-    isAdmin: false,
-    loading: false,
-    signInGoogle: vi.fn(),
-    signInEmail: vi.fn(),
-    signUpEmail: vi.fn(),
-    signOutUser: vi.fn(),
-    updateProfile: vi.fn().mockResolvedValue(undefined),
-    ...overrides,
-  }
+const mocks = vi.hoisted(() => ({ create: vi.fn(), refresh: vi.fn(), push: vi.fn(), replace: vi.fn(), updateProfile: vi.fn() }))
+vi.mock('@/lib/firebase', () => ({ auth: { currentUser: null } }))
+vi.mock('@/contexts/auth-context', () => ({ useAuth: vi.fn() }))
+vi.mock('@/contexts/orders-context', () => ({ useOrders: () => ({ refreshOrders: mocks.refresh }) }))
+vi.mock('@/contexts/products-context', () => ({ useProducts: () => ({ products: [], loading: false }) }))
+vi.mock('@/lib/adapters/http-order-repository', () => ({ HttpOrderRepository: class { create = mocks.create } }))
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push, replace: mocks.replace }), useSearchParams: () => new URLSearchParams() }))
+const address = { logradouro: 'Rua QA', numero: '1', bairro: 'Centro', cidade: 'Fortaleza', estado: 'CE', cep: '60000-000' }
+const a = { productId: 'a', productName: 'Oferta A', supplierId: 'supplier-a', supplierName: 'Fornecedor A', quantity: 2, unitPrice: 100, unit: 'un' as const }
+const b = { ...a, productId: 'b', supplierId: 'supplier-b', productName: 'Oferta B' }
+const receipt = (req: CreateOrderRequest, key: string) => ({ ...req, uid: 'buyer-a', id: 'order-' + key, type: 'compra-direta',
+  status: 'aguardando', createdAt: '2026-11-01T00:00:00Z', paymentMode: 'simulated', paymentStatus: 'approved', paymentTransactionId: 'sim-' + key })
+function renderCheckout(items = [a, b]) {
+  if (!localStorage.getItem('fl.cart.v2')) localStorage.setItem('fl.cart.v1', JSON.stringify(items))
+  return render(<CartProvider><RoleProtectedRoute allowedRoles={['comprador']}><CheckoutPage /></RoleProtectedRoute></CartProvider>)
 }
-
-// Helper to render page inside providers
-function renderCheckout(items: CartItem[]) {
-  // Pre-seed localStorage before rendering
-  if (items.length > 0) {
-    window.localStorage.setItem('fl.cart.v1', JSON.stringify(items))
-  }
-
-  return render(
-    <ProductsProvider>
-      <CartProvider>
-        <AuthProvider>
-          <OrdersProvider>
-            <MarketProvider>
-              <CompradorRouteGroupLayout>
-                <CheckoutPage />
-              </CompradorRouteGroupLayout>
-            </MarketProvider>
-          </OrdersProvider>
-        </AuthProvider>
-      </CartProvider>
-    </ProductsProvider>
-  )
+async function paymentStep() {
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Continuar' }))
+  expect(screen.getByText(/Oferta A/)).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Continuar' }))
+  return user
 }
-
-// Mock items for testing (2 suppliers)
-const mockItem1: CartItem = {
-  productId: 'prod-1',
-  productName: 'Fralda Premium',
-  supplierId: 'supplier-1',
-  supplierName: 'Fornecedor A',
-  unitPrice: 5000,
-  quantity: 2,
-  unit: 'cx',
-}
-
-const mockItem2: CartItem = {
-  productId: 'prod-2',
-  productName: 'Fralda Conforto',
-  supplierId: 'supplier-2',
-  supplierName: 'Fornecedor B',
-  unitPrice: 3500,
-  quantity: 1,
-  unit: 'cx',
-}
-
-describe('CheckoutPage', () => {
+describe('Checkout integrado com tentativa durável', () => {
   beforeEach(() => {
-    window.localStorage.clear()
-    vi.clearAllMocks()
-    mockPush = vi.fn()
-    vi.mocked(useAuth).mockReturnValue(authValue())
-  })
-
-  describe('Guarda de login (D-024)', () => {
-    it('redireciona para /login quando deslogado', () => {
-      vi.mocked(useAuth).mockReturnValue(authValue({ user: null }))
-      renderCheckout([mockItem1])
-
-      expect(mockPush).toHaveBeenCalledWith('/login')
-      // Nao renderiza os passos do checkout
-      expect(screen.queryByText('Endereço de entrega')).not.toBeInTheDocument()
-    })
-
-    it('mostra "Carregando..." enquanto o auth resolve', () => {
-      vi.mocked(useAuth).mockReturnValue(authValue({ user: null, loading: true }))
-      renderCheckout([mockItem1])
-
-      expect(screen.getByText('Carregando...')).toBeInTheDocument()
-      expect(mockPush).not.toHaveBeenCalled()
+    localStorage.clear(); vi.clearAllMocks()
+    Object.defineProperty(navigator, 'locks', { configurable: true, value: { request: async (_name: string, work: () => Promise<unknown>) => work() } })
+    vi.mocked(useAuth).mockReturnValue({ user: { uid: 'buyer-a' }, profile: { address }, role: 'comprador', loading: false,
+      updateProfile: mocks.updateProfile } as unknown as ReturnType<typeof useAuth>)
+    mocks.create.mockImplementation(async (req: CreateOrderRequest, key: string) => {
+      if (req.simulationOutcome === 'declined') throw new ApiError({ code: 'PAYMENT_DECLINED', status: 400, message: 'Recusado pelo simulador.', requestId: 'qa' })
+      return receipt(req, key)
     })
   })
-
-  describe('Empty cart', () => {
-    it('should display empty state when cart is empty', () => {
-      renderCheckout([])
-
-      expect(screen.getByText('Sua sacola está vazia')).toBeInTheDocument()
-      expect(screen.getByText('Comece a comprar para preencher sua sacola')).toBeInTheDocument()
-    })
-
-    it('should display link to catalogo in empty state', () => {
-      renderCheckout([])
-
-      const link = screen.getByRole('link', { name: /Explorar catálogo/i })
-      expect(link).toHaveAttribute('href', '/catalogo')
-    })
+  it('mantém a guarda de login e não envia sem comprador', async () => {
+    vi.mocked(useAuth).mockReturnValue({ user: null, role: null, loading: false } as ReturnType<typeof useAuth>)
+    renderCheckout()
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/login'))
+    expect(mocks.create).not.toHaveBeenCalled()
   })
-
-  describe('Passo: Endereco', () => {
-    it('não inventa endereço quando o perfil não possui endereço cadastrado', () => {
-      vi.mocked(useAuth).mockReturnValue(authValue({ profile: null }))
-      renderCheckout([mockItem1])
-      expect(screen.queryByText(/Av. Paulista/)).not.toBeInTheDocument()
-      expect(screen.getByText(/Seu cadastro não tem um endereço completo/)).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /Continuar/i })).toBeDisabled()
-    })
-
-    it('should render endereco step with cart items', () => {
-      renderCheckout([mockItem1, mockItem2])
-
-      expect(screen.getByText('Endereço de entrega')).toBeInTheDocument()
-      expect(screen.getByText('Usar endereço do cadastro')).toBeInTheDocument()
-      expect(screen.getByText('Outro endereço')).toBeInTheDocument()
-    })
-
-    it('should display default address when using cadastro', () => {
-      renderCheckout([mockItem1])
-
-      // Endereço do perfil autenticado, sem fallback de demonstração.
-      expect(screen.getByText(/Av. Paulista/)).toBeInTheDocument()
-      expect(screen.getByText(/São Paulo/)).toBeInTheDocument()
-    })
-
-    it('should keep continue button disabled while custom address is invalid', async () => {
-      renderCheckout([mockItem1])
-      const user = userEvent.setup()
-
-      // Select custom address option
-      const customRadio = screen.getAllByRole('radio')[1]
-      await user.click(customRadio)
-
-      // Continue button should be disabled (custom address has empty fields)
-      const continueButton = screen.getByRole('button', { name: /Continuar/i })
-      expect(continueButton).toBeDisabled()
-    })
-
-    it('should enable continue button when using default address', async () => {
-      renderCheckout([mockItem1])
-
-      // Default address is already valid (using cadastro)
-      const continueButton = screen.getByRole('button', { name: /Continuar/i })
-      expect(continueButton).not.toBeDisabled()
-    })
-
-    it('should enable continue button when custom address is valid', async () => {
-      renderCheckout([mockItem1])
-      const user = userEvent.setup()
-
-      // Select custom address
-      const customRadio = screen.getAllByRole('radio')[1]
-      await user.click(customRadio)
-
-      // Fill required fields
-      const inputs = screen.getAllByPlaceholderText(/\*/i)
-      await user.type(inputs[0], 'Rua A')
-      await user.type(inputs[1], '123')
-      await user.type(inputs[2], '12345-678')
-      await user.type(inputs[3], 'São Paulo')
-      await user.type(inputs[4], 'SP')
-
-      // Continue button should be enabled
-      const continueButton = screen.getByRole('button', { name: /Continuar/i })
-      expect(continueButton).not.toBeDisabled()
-    })
-
-    it('should navigate to revisao when continue is clicked', async () => {
-      renderCheckout([mockItem1])
-      const user = userEvent.setup()
-
-      const continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-
-      expect(screen.getByText('Revisão do pedido')).toBeInTheDocument()
-    })
+  it('endereço incompleto bloqueia revisão; nenhum endereço fictício é usado', async () => {
+    vi.mocked(useAuth).mockReturnValue({ user: { uid: 'buyer-a' }, profile: null, role: 'comprador', loading: false } as ReturnType<typeof useAuth>)
+    renderCheckout()
+    expect(await screen.findByRole('button', { name: 'Continuar' })).toBeDisabled()
+    expect(mocks.create).not.toHaveBeenCalled()
   })
-
-  describe('Passo: Revisao', () => {
-    it('should display items grouped by supplier', async () => {
-      renderCheckout([mockItem1, mockItem2])
-      const user = userEvent.setup()
-
-      // Navigate to revisao
-      const continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-
-      expect(screen.getByText('Revisão do pedido')).toBeInTheDocument()
-      expect(screen.getByText('Fornecedor A')).toBeInTheDocument()
-      expect(screen.getByText('Fornecedor B')).toBeInTheDocument()
-    })
-
-    it('should display items with quantities and totals', async () => {
-      renderCheckout([mockItem1, mockItem2])
-      const user = userEvent.setup()
-
-      // Navigate to revisao
-      const continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-
-      expect(screen.getByText(/Fralda Premium × 2/)).toBeInTheDocument()
-      expect(screen.getByText(/Fralda Conforto × 1/)).toBeInTheDocument()
-    })
-
-    it('should display total amount', async () => {
-      renderCheckout([mockItem1, mockItem2])
-      const user = userEvent.setup()
-
-      // Navigate to revisao
-      const continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-
-      // Total: (5000 * 2) + (3500 * 1) = 10000 + 3500 = 13500 (R$ 135,00)
-      expect(screen.getByText('R$ 135,00')).toBeInTheDocument()
-    })
-
-    it('should display delivery address', async () => {
-      renderCheckout([mockItem1])
-      const user = userEvent.setup()
-
-      // Navigate to revisao
-      const continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-
-      expect(screen.getByText(/Av. Paulista/)).toBeInTheDocument()
-      expect(screen.getByText(/São Paulo/)).toBeInTheDocument()
-    })
-
-    it('should navigate back to endereco when back button is clicked', async () => {
-      renderCheckout([mockItem1])
-      const user = userEvent.setup()
-
-      // Navigate to revisao
-      const continueButton1 = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton1)
-
-      expect(screen.getByText('Revisão do pedido')).toBeInTheDocument()
-
-      // Click back
-      const backButton = screen.getByRole('button', { name: /Voltar/i })
-      await user.click(backButton)
-
-      expect(screen.getByText('Endereço de entrega')).toBeInTheDocument()
-    })
-
-    it('should navigate to pagamento when continue is clicked', async () => {
-      renderCheckout([mockItem1])
-      const user = userEvent.setup()
-
-      // Navigate to revisao
-      let continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-
-      // Click continue to go to pagamento
-      continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-
-      expect(screen.getByText('Forma de pagamento')).toBeInTheDocument()
-    })
+  it('endereço alternativo exige bairro e CEP válido', async () => {
+    renderCheckout(); const user = userEvent.setup()
+    await user.click(await screen.findByText('Outro endereço'))
+    for (const [placeholder, value] of [['Logradouro *', 'Rua Nova'], ['Número *', '2'], ['Cidade *', 'Fortaleza'], ['UF (ex: SP) *', 'CE'], ['CEP *', '60000-000']]) {
+      await user.type(screen.getByPlaceholderText(placeholder), value)
+    }
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeDisabled()
+    await user.type(screen.getByPlaceholderText('Bairro *'), 'Centro')
+    expect(screen.getByRole('button', { name: 'Continuar' })).toBeEnabled()
   })
-
-  describe('Passo: Pagamento (STUB)', () => {
-    it('should display payment method selection', async () => {
-      renderCheckout([mockItem1])
-      const user = userEvent.setup()
-
-      // Navigate to pagamento
-      let continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-      continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-
-      expect(screen.getByText('Forma de pagamento')).toBeInTheDocument()
-      expect(screen.getByText('Pix')).toBeInTheDocument()
-      expect(screen.getByText('Cartão de crédito')).toBeInTheDocument()
-    })
-
-    it('should display simulated payment warning', async () => {
-      renderCheckout([mockItem1])
-      const user = userEvent.setup()
-
-      // Navigate to pagamento
-      let continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-      continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-
-      expect(screen.getByText(/Pagamento simulado/)).toBeInTheDocument()
-      expect(screen.getByText(/nenhuma cobrança real/)).toBeInTheDocument()
-    })
-
-    it('should navigate to confirmacao when pagar is clicked', async () => {
-      renderCheckout([mockItem1])
-      const user = userEvent.setup()
-
-      // Navigate to pagamento
-      let continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-      continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-
-      // Click pagar
-      const pagarButton = screen.getByRole('button', { name: /Pagar/i })
-      await user.click(pagarButton)
-
-      expect(screen.getByText('Pedido confirmado!')).toBeInTheDocument()
-    })
-
-    it('should select pix by default', async () => {
-      renderCheckout([mockItem1])
-      const user = userEvent.setup()
-
-      // Navigate to pagamento
-      let continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-      continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-
-      const pixRadio = screen.getByDisplayValue('pix') as HTMLInputElement
-      expect(pixRadio.checked).toBe(true)
-    })
-
-    it('quando a simulação é recusada, exibe mensagem de recusa, não cria pedido e mantém a sacola', async () => {
-      renderCheckout([mockItem1])
-      const user = userEvent.setup()
-
-      // Navegar para pagamento
-      let continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-      continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-
-      // Seleciona opção de recusar simulação
-      const declinedRadio = screen.getByRole('radio', { name: /Recusar simulação/i })
-      await user.click(declinedRadio)
-
-      // Clica em pagar
-      const pagarButton = screen.getByRole('button', { name: /Pagar/i })
-      await user.click(pagarButton)
-
-      // Deve exibir mensagem de erro na tela
-      expect(await screen.findByText('Pagamento simulado recusado')).toBeInTheDocument()
-      expect(screen.queryByText('Pedido confirmado!')).not.toBeInTheDocument()
-
-      // A sacola NÃO deve ser limpa
-      const stored = window.localStorage.getItem('fl.cart.v1')
-      expect(stored).not.toBe('[]')
-    })
+  it('aprova em servidor, confirma por fornecedor e concilia sem gravar perfil remoto', async () => {
+    renderCheckout(); const user = await paymentStep()
+    expect(screen.queryByLabelText(/número.*cartão/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/pending|pendente/i)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Confirmar compra simulada' }))
+    await screen.findByText('Pedidos registrados')
+    expect(mocks.create).toHaveBeenCalledTimes(2)
+    expect(readCart(localStorage).items).toEqual([])
+    expect(readCart(localStorage).receipts).toHaveLength(2)
+    expect(mocks.updateProfile).not.toHaveBeenCalled()
+    expect(screen.getAllByText('Nenhum valor foi cobrado.')).toHaveLength(2)
   })
-
-  describe('Passo: Confirmacao', () => {
-    it('exibe comprovante com id de transação e método de pagamento simulado', async () => {
-      renderCheckout([mockItem1])
-      const user = userEvent.setup()
-
-      // Navega e conclui pagamento
-      let continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-      continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-      const pagarButton = screen.getByRole('button', { name: /Pagar/i })
-      await user.click(pagarButton)
-
-      expect(screen.getByText('Pedido confirmado!')).toBeInTheDocument()
-      expect(screen.getByText('Comprovante de pagamento simulado')).toBeInTheDocument()
-      expect(screen.getByText(/Simulado e Aprovado/i)).toBeInTheDocument()
-    })
-
-    it('should display success message', async () => {
-      renderCheckout([mockItem1])
-      const user = userEvent.setup()
-
-      // Navigate through all steps
-      let continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-      continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-      const pagarButton = screen.getByRole('button', { name: /Pagar/i })
-      await user.click(pagarButton)
-
-      expect(screen.getByText('Pedido confirmado!')).toBeInTheDocument()
-      expect(screen.getByText(/Acompanhe seu pedido/)).toBeInTheDocument()
-    })
-
-    it('should display link to minha-conta', async () => {
-      renderCheckout([mockItem1])
-      const user = userEvent.setup()
-
-      // Navigate through all steps
-      let continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-      continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-      const pagarButton = screen.getByRole('button', { name: /Pagar/i })
-      await user.click(pagarButton)
-
-      expect(screen.getByText('Pedido confirmado!')).toBeInTheDocument()
-      const link = screen.getByRole('link', { name: /Ver meus pedidos/i })
-      expect(link).toHaveAttribute('href', '/minha-conta')
-    })
-
-    it('should clear cart after clicking pagar (S5b)', async () => {
-      // This test verifies that the cart IS cleared when reaching confirmacao
-      renderCheckout([mockItem1])
-      const user = userEvent.setup()
-
-      // Navigate through all steps
-      let continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-      continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-      const pagarButton = screen.getByRole('button', { name: /Pagar/i })
-      await user.click(pagarButton)
-
-      // Verify we're at confirmacao
-      expect(screen.getByText('Pedido confirmado!')).toBeInTheDocument()
-
-      // Verify that cart was cleared
-      // Check localStorage to ensure it is empty
-      await waitFor(() => {
-        const stored = window.localStorage.getItem('fl.cart.v1')
-        expect(stored).toBe('[]')
-      })
-    })
+  it('clique duplo no mesmo evento não duplica os envios', async () => {
+    renderCheckout(); await paymentStep()
+    const button = screen.getByRole('button', { name: 'Confirmar compra simulada' })
+    fireEvent.click(button); fireEvent.click(button)
+    await screen.findByText('Pedidos registrados')
+    expect(mocks.create).toHaveBeenCalledTimes(2)
   })
-
-  describe('Multiple suppliers', () => {
-    it('should display each supplier as separate section', async () => {
-      renderCheckout([mockItem1, mockItem2])
-      const user = userEvent.setup()
-
-      // Navigate to revisao
-      const continueButton = screen.getByRole('button', { name: /Continuar/i })
-      await user.click(continueButton)
-
-      // Both suppliers should be visible
-      expect(screen.getByText('Fornecedor A')).toBeInTheDocument()
-      expect(screen.getByText('Fornecedor B')).toBeInTheDocument()
+  it('recusa preserva sacola e permite nova tentativa explícita', async () => {
+    renderCheckout(); const user = await paymentStep()
+    await user.click(screen.getByText('Recusar simulação'))
+    await user.click(screen.getByRole('button', { name: 'Confirmar compra simulada' }))
+    await waitFor(() => expect(screen.getAllByText('Simulação recusada')).toHaveLength(2))
+    expect(readCart(localStorage).items).toEqual([a, b])
+    await user.click(screen.getByRole('button', { name: 'Revisar sacola para nova tentativa' }))
+    expect(localStorage.getItem(attemptKey('buyer-a'))).toBeNull()
+    expect(mocks.push).toHaveBeenCalledWith('/sacola')
+  })
+  it('mostra sucesso parcial, preserva pendência e recupera com as mesmas chaves após remontar', async () => {
+    let fail = true
+    mocks.create.mockImplementation(async (req: CreateOrderRequest, key: string) => {
+      if (req.supplierId === 'supplier-b' && fail) { fail = false; throw new Error('timeout') }
+      return receipt(req, key)
     })
+    const view = renderCheckout(); const user = await paymentStep()
+    await user.click(screen.getByRole('button', { name: 'Confirmar compra simulada' }))
+    await screen.findByText('Resultado desconhecido')
+    await waitFor(() => expect(mocks.refresh).toHaveBeenCalledWith({ refreshSession: false }))
+    expect(within(screen.getByRole('region', { name: 'Fornecedor supplier-a' })).getByText('Pedido registrado')).toBeInTheDocument()
+    expect(readCart(localStorage).items).toEqual([b])
+    const key = mocks.create.mock.calls[1][1]
+    view.unmount(); renderCheckout([])
+    await user.click(await screen.findByRole('button', { name: 'Recuperar tentativa' }))
+    await screen.findByText('Pedidos registrados')
+    expect(mocks.create.mock.calls[2][1]).toBe(key)
+    expect(mocks.create).toHaveBeenCalledTimes(3)
+    expect(readCart(localStorage).items).toEqual([])
+  })
+  it('recuperação aparece mesmo com sacola vazia', async () => {
+    const attempt = buildAttempt({ userId: 'buyer-a', items: [a], address, method: 'pix', outcome: 'approved' })
+    attempt.groups[0].status = 'unknown'; saveAttempt(localStorage, attempt)
+    renderCheckout([])
+    expect(await screen.findByRole('button', { name: 'Recuperar tentativa' })).toBeEnabled()
+    expect(screen.queryByText('Sua sacola está vazia')).not.toBeInTheDocument()
+  })
+  it('sem proteção de concorrência não envia compra nova', async () => {
+    Object.defineProperty(navigator, 'locks', { configurable: true, value: undefined })
+    renderCheckout(); const user = await paymentStep()
+    await user.click(screen.getByRole('button', { name: 'Confirmar compra simulada' }))
+    await screen.findByRole('alert')
+    expect(mocks.create).not.toHaveBeenCalled()
+  })
+  it('troca de conta com armazenamento corrompido não exibe a tentativa da conta anterior', async () => {
+    const attempt = buildAttempt({ userId: 'buyer-a', items: [a], address, method: 'pix', outcome: 'approved' })
+    saveAttempt(localStorage, attempt)
+    const view = renderCheckout()
+    await screen.findByRole('button', { name: 'Recuperar tentativa' })
+    localStorage.setItem(attemptKey('buyer-b'), 'invalid-json')
+    vi.mocked(useAuth).mockReturnValue({ user: { uid: 'buyer-b' }, profile: { address }, role: 'comprador', loading: false } as unknown as ReturnType<typeof useAuth>)
+    view.rerender(<CartProvider><RoleProtectedRoute allowedRoles={['comprador']}><CheckoutPage /></RoleProtectedRoute></CartProvider>)
+    await screen.findByRole('alert')
+    expect(screen.queryByRole('button', { name: 'Recuperar tentativa' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Fornecedor supplier-a' })).not.toBeInTheDocument()
   })
 })

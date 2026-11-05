@@ -1,4 +1,4 @@
-import type { Order } from '@/lib/account-mock'
+import type { Order } from '@/lib/domain/account'
 import type { OrderItem } from '@/lib/domain/order'
 
 /**

@@ -173,7 +173,7 @@ describe('CadastroPage', () => {
     vi.mocked(useAuth).mockReturnValue(
       createMockAuth({
         user: { uid: 'u123', email: 'sup@teste.com', displayName: 'Fornecedor' },
-        role: 'fornecedor',
+        role: 'fornecedor', profile: { role: 'fornecedor', name: 'Teste', email: 'teste@example.com' },
       })
     )
 
@@ -189,7 +189,7 @@ describe('CadastroPage', () => {
     vi.mocked(useAuth).mockReturnValue(
       createMockAuth({
         user: { uid: 'u123', email: 'buyer@teste.com', displayName: 'Comprador' },
-        role: 'comprador',
+        role: 'comprador', profile: { role: 'comprador', name: 'Teste', email: 'teste@example.com' },
       })
     )
 
@@ -205,7 +205,7 @@ describe('CadastroPage', () => {
     vi.mocked(useAuth).mockReturnValue(
       createMockAuth({
         user: { uid: 'u123', email: 'buyer@teste.com', displayName: 'Comprador' },
-        role: 'comprador',
+        role: 'comprador', profile: { role: 'comprador', name: 'Teste', email: 'teste@example.com' },
       })
     )
 

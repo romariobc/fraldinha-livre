@@ -7,10 +7,13 @@ export const ApiErrorCodeSchema = z.enum([
   'PRICE_MISMATCH',
   'SUPPLIER_MISMATCH',
   'TOTAL_MISMATCH',
+  'PAYMENT_DECLINED',
 
   // Autenticação e Autorização (401 / 403 / 409)
   'UNAUTHORIZED',
   'FORBIDDEN',
+  'SUPPLIER_NOT_APPROVED',
+  'SUPPLIER_STATE_CONFLICT',
   'AUTHORIZATION_STATE_CONFLICT',
   'ROLE_CHANGE_NOT_ALLOWED',
 
@@ -24,6 +27,7 @@ export const ApiErrorCodeSchema = z.enum([
   'ORDER_NOT_AWAITING',
   'ORDER_STATUS_NOT_ALLOWED',
   'IDEMPOTENCY_CONFLICT',
+  'OCCURRENCE_CONFLICT',
 
   // Provedores Externos e Servidor (500 / 502)
   'AUTH_PROVIDER_NOT_CONFIGURED',

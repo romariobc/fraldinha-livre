@@ -1,145 +1,93 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useMemo, useRef, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback, ReactNode } from 'react'
 import type { CartItem } from '@/lib/domain/cart'
 import { cartSubtotal, groupBySupplier } from '@/lib/domain/cart'
-import type { Money } from '@/lib/domain/money'
-
-const CART_STORAGE_KEY = 'fl.cart.v1'
+import { CART_KEY, emptyCart, readCart, writeCart, acknowledgeCart, validCartItems, type CartSnapshot } from '@/lib/cart-storage'
 
 interface CartContextValue {
   items: CartItem[]
   itemCount: number
-  subtotal: Money
+  subtotal: number
   bySupplier: Map<string, CartItem[]>
   addItem(item: CartItem): void
   removeItem(productId: string, supplierId: string): void
   updateQty(productId: string, supplierId: string, quantity: number): void
   clear(): void
 }
-
-const CartContext = createContext<CartContextValue | undefined>(undefined)
+interface CheckoutCartValue extends CartContextValue {
+  ready: boolean
+  storageError: string | null
+  acknowledgePurchase(receipt: string, lines: { productId: string; supplierId: string; quantity: number }[]): void
+}
+const CartContext = createContext<CheckoutCartValue | undefined>(undefined)
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  // Inicia SEMPRE vazio para casar com o HTML do servidor (SSR): evita mismatch
-  // de hidratacao. Os itens do localStorage entram depois do mount, via effect.
-  const [items, setItems] = useState<CartItem[]>([])
-
-  // Pula a primeira execucao do effect de persistencia — senao ele gravaria []
-  // por cima do localStorage ANTES da hidratacao rodar (perda de dados).
-  const skipFirstPersist = useRef(true)
-
-  // Hidrata do localStorage uma vez, apos o mount (client-only).
-  // O setState aqui e o caso legitimo de hidratacao de estado externo pos-mount:
-  // iniciar [] no SSR e so entao aplicar o localStorage evita mismatch de hidratacao.
+  const [snapshot, setSnapshot] = useState<CartSnapshot>(emptyCart)
+  const current = useRef(snapshot)
+  const [ready, setReady] = useState(false)
+  const [storageError, setStorageError] = useState<string | null>(null)
+  const publish = useCallback((next: CartSnapshot) => { current.current = next; setSnapshot(next) }, [])
   useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(CART_STORAGE_KEY)
-      if (stored) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- hidratacao SSR-safe de estado externo (localStorage)
-        setItems(JSON.parse(stored) as CartItem[])
-      }
-    } catch (error) {
-      // Falha silenciosa: localStorage indisponivel ou JSON corrompido
-      console.error('Failed to hydrate cart from localStorage:', error)
+    const hydrate = () => {
+      try { publish(readCart(window.localStorage)); setStorageError(null) }
+      catch { setStorageError('Não foi possível ler sua sacola salva. Confira o armazenamento do navegador.') }
+      setReady(true)
     }
-  }, [])
-
-  // Persiste no localStorage a cada mudanca de items (menos na primeira passada).
-  useEffect(() => {
-    if (skipFirstPersist.current) {
-      skipFirstPersist.current = false
-      return
+    hydrate()
+    const changed = (event: StorageEvent) => { if (!event.key || event.key === CART_KEY || event.key === 'fl.cart.v1') hydrate() }
+    window.addEventListener('storage', changed)
+    return () => window.removeEventListener('storage', changed)
+  }, [publish])
+  const commit = useCallback((change: (previous: CartSnapshot) => CartSnapshot, required = false) => {
+    let previous = current.current
+    try { previous = readCart(window.localStorage) } catch { if (required) throw new Error('Não foi possível recuperar a sacola salva.') }
+    const next = change(previous)
+    try { writeCart(window.localStorage, next); setStorageError(null) }
+    catch {
+      setStorageError('Não foi possível salvar sua sacola. A compra precisa de armazenamento disponível para recuperação.')
+      if (required) throw new Error('Não foi possível salvar a confirmação na sacola. Recupere esta mesma tentativa.')
     }
-    try {
-      window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items))
-    } catch (error) {
-      // Falha silenciosa: localStorage indisponivel ou cheio
-      console.error('Failed to persist cart to localStorage:', error)
-    }
-  }, [items])
-
-  const itemCount = useMemo(() => {
-    return items.reduce((sum, item) => sum + item.quantity, 0)
-  }, [items])
-
-  const subtotal = useMemo(() => {
-    return cartSubtotal(items)
-  }, [items])
-
-  const bySupplier = useMemo(() => {
-    return groupBySupplier(items)
-  }, [items])
-
-  const addItem = (newItem: CartItem) => {
-    setItems((prevItems) => {
-      // Check if item with same productId and supplierId already exists
-      const existingIndex = prevItems.findIndex(
-        (item) => item.productId === newItem.productId && item.supplierId === newItem.supplierId
-      )
-
-      if (existingIndex !== -1) {
-        // Merge: sum quantities
-        const existing = prevItems[existingIndex]
-        const updated = { ...existing, quantity: existing.quantity + newItem.quantity }
-        return [...prevItems.slice(0, existingIndex), updated, ...prevItems.slice(existingIndex + 1)]
-      }
-
-      // New item: add it
-      return [...prevItems, newItem]
+    publish(next)
+  }, [publish])
+  const addItem = useCallback((item: CartItem) => {
+    if (!validCartItems([item])) return
+    commit(previous => {
+      const found = previous.items.find(line => line.productId === item.productId && line.supplierId === item.supplierId)
+      const items = found ? previous.items.map(line => line === found ? { ...line, quantity: line.quantity + item.quantity } : line) : [...previous.items, item]
+      return validCartItems(items) ? { ...previous, items } : previous
     })
-  }
-
-  const removeItem = (productId: string, supplierId: string) => {
-    setItems((prevItems) =>
-      prevItems.filter((item) => !(item.productId === productId && item.supplierId === supplierId))
-    )
-  }
-
-  const updateQty = (productId: string, supplierId: string, quantity: number) => {
-    // Guard: quantity must be integer >= 1
-    if (!Number.isInteger(quantity)) {
-      // Non-integer: ignore silently
-      return
-    }
-
-    if (quantity <= 0) {
-      // Remove item if quantity <= 0
-      removeItem(productId, supplierId)
-      return
-    }
-
-    setItems((prevItems) =>
-      prevItems.map((item) =>
-        item.productId === productId && item.supplierId === supplierId
-          ? { ...item, quantity }
-          : item
-      )
-    )
-  }
-
-  const clear = () => {
-    setItems([])
-  }
-
-  const value: CartContextValue = {
-    items,
-    itemCount,
-    subtotal,
-    bySupplier,
-    addItem,
-    removeItem,
-    updateQty,
-    clear,
-  }
-
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>
+  }, [commit])
+  const removeItem = useCallback((productId: string, supplierId: string) => commit(previous => ({ ...previous,
+    items: previous.items.filter(line => line.productId !== productId || line.supplierId !== supplierId),
+  })), [commit])
+  const updateQty = useCallback((productId: string, supplierId: string, quantity: number) => {
+    if (!Number.isSafeInteger(quantity)) return
+    commit(previous => {
+      const items = previous.items.map(item => item.productId === productId && item.supplierId === supplierId ? { ...item, quantity } : item)
+        .filter(item => item.quantity > 0)
+      return validCartItems(items) ? { ...previous, items } : previous
+    })
+  }, [commit])
+  const clear = useCallback(() => commit(previous => ({ ...previous, items: [] })), [commit])
+  const acknowledgePurchase = useCallback((receipt: string, lines: { productId: string; supplierId: string; quantity: number }[]) => {
+    commit(previous => acknowledgeCart(previous, receipt, lines), true)
+  }, [commit])
+  const { items } = snapshot
+  const subtotal = useMemo(() => cartSubtotal(items), [items])
+  const bySupplier = useMemo(() => groupBySupplier(items), [items])
+  const itemCount = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items])
+  return <CartContext.Provider value={{ items, itemCount, subtotal, bySupplier, addItem, removeItem, updateQty, clear,
+    ready, storageError, acknowledgePurchase }}>{children}</CartContext.Provider>
 }
-
-export function useCart() {
+// Keep the original API for catalog/header consumers.
+export function useCart(): CartContextValue {
   const context = useContext(CartContext)
-  if (!context) {
-    throw new Error('useCart deve ser usado dentro de CartProvider')
-  }
+  if (!context) throw new Error('useCart deve ser usado dentro de CartProvider')
+  return context
+}
+export function useCheckoutCart(): CheckoutCartValue {
+  const context = useContext(CartContext)
+  if (!context) throw new Error('useCheckoutCart deve ser usado dentro de CartProvider')
   return context
 }

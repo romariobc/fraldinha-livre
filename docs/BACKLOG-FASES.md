@@ -1,6 +1,8 @@
 # Backlog vigente — Marketplace demonstrativo em produção
 
-**Revisão:** 4 de novembro de 2026.
+**Revisão:** 5 de novembro de 2026.
+
+**Reconciliação:** integração MP-01–MP-08 em preparação em branch separada; [matriz e validação](qa/reconciliacao-mp01-mp08.md). Não altera aprovações da tabela, não autoriza MP-09, merge ou publicação.
 
 **Base local:** `1322ac6`; árvore de trabalho limpa na entrada do MP-00.
 
@@ -44,7 +46,7 @@ Essas regras são o alvo aprovado. Não descrever aprovação de fornecedores, n
 
 ### Preparação CTX-01, anterior à MP-04
 
-Os cinco pontos de custo de contexto foram tratados em uma entrega estrutural separada: decomposição de tabela/checkout, tipos fora de fixtures, compatibilidade local explícita, contexto seletivo e guias/mapa de imports atuais. Critérios e resultados em [CTX-01](qa/CTX-01-contexto-ia.md). Esta preparação não conclui funcionalidades do marketplace nem autoriza MP-04. O resultado final de validação consta no estado atual.
+Os cinco pontos de custo de contexto foram tratados em uma entrega estrutural separada: decomposição de tabela/checkout, tipos fora de fixtures, compatibilidade local explícita, contexto seletivo e guias/mapa de imports atuais. Critérios e resultados em [CTX-01](qa/CTX-01-contexto-ia.md). Este é o registro da preparação anterior ao MP-04; as aprovações vigentes constam na tabela abaixo. O resultado final de validação consta no estado atual.
 
 ## Ordem do backlog
 

@@ -1,22 +1,20 @@
-# Estado atual — 2026-11-04
+# Estado atual — 2026-11-05
 
-## MP-08 — Ocorrências com resposta: entrega local concluída
+## Reconciliação MP-01–MP-08 em preparação
 
-- MP-07 aprovado para avançar pela instrução iniciar MP-08. Branch codex/mp-08-order-issues; base a0984bf, retorno checkpoint/mp07-2026-11-04.
-- Comprador/fornecedor vinculados abrem; partes/admin consultam, respondem e resolvem com texto, ator e horário. Resolvida não reabre; sem efeitos automáticos no pedido/estoque.
-- Migração aditiva local 0016 preserva reports anteriores, acrescenta estado/versão/autoria e report_messages. Endpoint fornecedor /report compatível. Nenhuma migração remota aplicada.
-- [Relatório MP-08](../../docs/qa/MP-08-ocorrencias-com-resposta.md): nove testes D1 novos e 54 testes finais MP-08/RBAC passaram; sete testes finais de conversa passaram. Front amplo 778 antes do cenário adicional, contratos 65, harness 46 e tipos passaram. Lint sem erros (oito avisos em arquivos não alterados). Matriz final do commit compartilhado registrada na PR.
-- Jornada autenticada local aprovada: comprador abre com clique duplo único, fornecedor responde, admin resolve; comprador lê após recarga. Pedido/eventos/estoque preservados; nova resposta após resolução recebe 409. Desktop/mobile 375px inspecionados, sem transbordamento; foco/Escape verificados. QA comercial restrito a API/D1 locais separados, sem binding AI e notificações externas desativadas.
-- Recuperação de envio incerto vale no componente montado; após fechar/recarregar, consultar a conversa antes de novo envio. Nova abertura em pedido legado sem supplier_id depende de reconciliação; reports anteriores seguem acessíveis pelo snapshot preservado.
-- Sem merge/deploy/alteração de identidade. Compra/pagamento/entrega permanecem simulados. MP-09 não autorizado.
+- Branch `codex/reconcile-mp01-mp08`, worktree isolado, entrada MP-08 `4236d3e`; `origin/main` `d5b64c9` é ancestral, com nove commits acumulados antes desta sessão. Sem reaplicar PRs antigas ou importar alterações preexistentes do worktree CTX-01.
+- [Matriz e evidências da reconciliação](../../docs/qa/reconciliacao-mp01-mp08.md): MP-04–07 são ancestrais; MP-01–03 foram consolidados no checkpoint `c12d4db`, com conteúdo preservado/evoluído. PRs #22–#29 abertas em rascunho.
+- Proposta de produção: somente disparo manual com confirmação obrigatória (padrão false), main e validação do mesmo SHA antes de migração/deploy. Ainda sem efeito na main. Production remoto sem proteção de environment; nenhuma configuração remota alterada.
+- Validação em andamento; resultados locais/CI finais serão registrados antes do encerramento. QA comercial somente em API/D1 locais separados, sem binding AI e notificações externas.
+- Checkpoints de entrada: `checkpoint/pre-reconcile-main-2026-11-05` → `d5b64c9`; `checkpoint/pre-reconcile-mp08-2026-11-05` → `4236d3e`. Tags recuperam código/documentação, não banco/configuração/credenciais.
 
-## Contexto seletivo e limites
+## Aprovações e limites preservados
 
-- Próxima etapa proposta: MP-09 — notificações internas persistidas, somente após aprovação explícita.
-- Pacote order-occurrences; [arquitetura](../../docs/architecture/arquitetura-vigente.md), [backlog](../../docs/BACKLOG-FASES.md).
-- Pedidos sem fornecedor persistido exigem reconciliação para novas aberturas; reports antigos mantêm acesso pelo fornecedor registrado. Cadastro/recuperação de identidade, PRs sobrepostas e operação de produção seguem pendentes das etapas próprias.
-- Checkpoints recuperam código/documentação, não banco/configuração/credenciais.
+- MP-00–07 aprovados. MP-08 tecnicamente entregue, aguardando aprovação humana; migração 0016 somente validada localmente. A reconciliação não aprova MP-08 nem autoriza MP-09.
+- Compra/pagamento/entrega simulados. Ocorrências persistidas sem alterar pedido/estoque; recuperação de envio incerto limitada ao componente montado. Pedidos sem fornecedor persistido exigem reconciliação para novas ocorrências; reports antigos preservam acesso por snapshot.
+- Cadastro/recuperação de identidade, operação/backup/legado e publicação/homologação pendentes das etapas próprias. Preparação/CI não comprovam operação em produção.
+- Parada antes de merge, fechamento de PRs antigas, exclusão de branches ou alteração de publicação/proteção remota. Deploy/migração remota não autorizados.
 
-## Histórico sob demanda
+## Contexto seletivo
 
-- [Estado MP-07 preservado](progresso-ate-mp07-2026-11-04.md), [MP-06](progresso-ate-mp06-2026-11-04.md).
+[Arquitetura](../../docs/architecture/arquitetura-vigente.md), [backlog](../../docs/BACKLOG-FASES.md), pacote `order-occurrences`. [Estado MP-08 preservado integralmente](progresso-ate-mp08-2026-11-05.md), [MP-07](progresso-ate-mp07-2026-11-04.md), [MP-06](progresso-ate-mp06-2026-11-04.md).

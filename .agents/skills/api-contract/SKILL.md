@@ -29,7 +29,7 @@ GET /orders/:id?scope=comprador|fornecedor|admin retorna OrderDetail: snapshot e
 
 ## Operações MP-07
 
-order-actions.ts define disponibilidade visual por papel/vínculo/estado; backend mantém decisão definitiva. use-order-operation.ts serializa envio, reconcilia após erro/sucesso e conserva feedback acionável. Mutations HTTP vinculam UID esperado; fornecedor usa o snapshot retornado. OrderTracking recebe refreshVersion após operação e usa refresh(true) para esperar leitura anterior antes de consultar o estado atual. Motivo fornecedor/admin é obrigatório; após despacho só entrega pelo fornecedor e orientação para ocorrência. Abertura/resposta de ocorrência pertence à MP-08, sem envio fictício. Pacote: node scripts/context.mjs packet order-operations.
+order-actions.ts define disponibilidade visual por papel/vínculo/estado; backend mantém decisão definitiva. use-order-operation.ts serializa envio, reconcilia após erro/sucesso e conserva feedback acionável. Mutations HTTP vinculam UID esperado; fornecedor usa o snapshot retornado. OrderTracking recebe refreshVersion após operação e usa refresh(true) para esperar leitura anterior antes de consultar o estado atual. Motivo fornecedor/admin é obrigatório; após despacho só entrega pelo fornecedor e atendimento por ocorrência. A orientação provisória de MP-07 foi substituída pela abertura/resposta persistida de MP-08 descrita abaixo. Pacote: node scripts/context.mjs packet order-operations.
 
 ## Ocorrências MP-08
 

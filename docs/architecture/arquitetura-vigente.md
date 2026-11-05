@@ -1,4 +1,4 @@
-# Arquitetura vigente no código local — 2026-10-31
+# Arquitetura vigente no código local — 2026-11-05
 
 Este é um mapa curto de navegação. Não comprova deploy/migrações remotas nem substitui decisões aprovadas. Registros detalhados em docs/governance/decisoes.md; contrato da versão em docs/BACKLOG-FASES.md.
 
@@ -53,7 +53,7 @@ OrdersDataTable mantém estado e ações; orders-table/model.ts normaliza linhas
 
 ## Limites da versão
 
-Compra/pagamento continuam simulados. Assistente/IA, leilão, push, gateway real e integrações externas são posteriores. Respostas de ocorrências e notificações internas completas seguem os MPs correspondentes. Nada nesta refatoração autoriza MP-04, merge, deploy ou alteração remota.
+Compra/pagamento/entrega continuam simulados. Assistente/IA, leilão, push, gateway real e integrações externas são posteriores. Respostas de ocorrências estão implementadas no MP-08, ainda aguardando aprovação humana; notificações internas completas pertencem ao MP-09, não autorizado. A reconciliação não autoriza merge, deploy ou alteração de configuração remota. [Registro da reconciliação](../qa/reconciliacao-mp01-mp08.md).
 
 ## Navegação e evidência
 
@@ -69,7 +69,7 @@ A apresentação OrderTracking é compartilhada por comprador, fornecedor e admi
 
 As telas consultam a política visual order-actions.ts e usam use-order-operation.ts para serializar envios e reconciliar após sucesso/falha. O backend existente continua a impor ownership, transições e efeitos de estoque/eventos no D1.batch. Projeções preservam o vínculo do DTO; mutações HTTP conferem UID esperado. A resposta real atualiza o painel fornecedor. OrderTracking recebe uma revisão após operação; refresh(true) aguarda leitura em andamento antes da leitura atual, preservando ausência de sobreposição.
 
-Fornecedor confirma/despacha/entrega; comprador cancela aguardando; fornecedor/admin cancelam antes do despacho com motivo. Estados terminais não reabrem. Orientação de ocorrência após despacho é explícita sobre indisponibilidade de submissão/resposta até MP-08. Não há nova migração ou alteração de autorização backend nesta etapa.
+Fornecedor confirma/despacha/entrega; comprador cancela aguardando; fornecedor/admin cancelam antes do despacho com motivo. Estados terminais não reabrem. A orientação provisória do marco MP-07 foi substituída pela conversa persistida do MP-08 descrita abaixo. MP-07 não acrescentou migração ou alteração de autorização backend.
 
 ## Ocorrências persistidas — MP-08
 

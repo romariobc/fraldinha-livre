@@ -1,4 +1,5 @@
 import { occurrencesGetHandler, occurrencesPostHandler, occurrencesReplyHandler } from './routes/occurrences'
+import { notificationsGetHandler, notificationReadHandler, notificationDestinationHandler } from './routes/notifications'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { createAuthMiddleware, verifyFirebaseIdToken, requireAnyRole } from './middleware/auth'
@@ -101,6 +102,12 @@ app.notFound((c) => {
 })
 
 app.get('/health', (c) => c.json({ ok: true }))
+
+app.use('/notifications/*', (c, next) => createAuthMiddleware(token => verifyFirebaseIdToken(token, c.env.FIREBASE_PROJECT_ID))(c, next))
+app.use('/notifications/*', requireAnyRole(['comprador', 'fornecedor', 'admin']))
+app.get('/notifications', notificationsGetHandler)
+app.patch('/notifications/:notificationId/read', notificationReadHandler)
+app.get('/notifications/:notificationId/destination', notificationDestinationHandler)
 
 // Middleware para /products: GET sem scope=fornecedor nem scope=admin eh publico; qualquer outro metodo
 // (POST) ou GET com scope=fornecedor ou scope=admin exige auth.

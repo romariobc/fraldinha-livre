@@ -11,6 +11,11 @@ const record = { id: 'report', orderId: 'order', status: 'aberta', version: 0, l
 beforeEach(() => { identity.user = { uid: 'buyer' }; identity.role = 'comprador'; vi.mocked(apiFetch).mockReset().mockResolvedValue(response([record])) })
 const select = async () => fireEvent.click(await screen.findByRole('button', { name: 'Ocorrência 1 · Aberta' }))
 describe('MP-08: conversa compartilhada', () => {
+  it('opens the exact occurrence selected by an authorized notification destination', async () => {
+    render(<OrderOccurrences orderId="order" initialReportId="report" />)
+    expect(await screen.findByText('Problema original')).toBeInTheDocument()
+    expect(screen.getByLabelText('Sua resposta')).toBeInTheDocument()
+  })
   it('abre com UID esperado, valida recibo e protege clique repetido', async () => {
     let finish!: (value: Response) => void
     vi.mocked(apiFetch).mockImplementation(async (_path, init) => init?.method === 'POST' ? new Promise(resolve => { finish = resolve }) : response([record]))

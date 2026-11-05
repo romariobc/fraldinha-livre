@@ -9,6 +9,7 @@ import { Menu, X, ShoppingBag, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/auth-context'
 import { useCart } from '@/contexts/cart-context'
+import NotificationLink from '@/components/NotificationLink'
 
 const NAV_LINKS = [
   { href: '/',             label: 'Início' },
@@ -116,6 +117,7 @@ export default function Header() {
 
           {/* Desktop actions */}
           <div className="hidden lg:flex items-center gap-3">
+            <NotificationLink />
             <Link
               href="/sacola"
               aria-label="Sacola"
@@ -197,6 +199,7 @@ export default function Header() {
 
           {/* Mobile: carrinho + hamburger */}
           <div className="lg:hidden flex items-center gap-1">
+            <NotificationLink />
             <Link
               href="/sacola"
               aria-label="Sacola"

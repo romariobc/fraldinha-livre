@@ -117,5 +117,17 @@
       "front/src/components/__tests__/OrderOccurrences.test.tsx",
       "scripts/qa-mp08-browser.cjs"
     ]
+  },
+  "internal-notifications": {
+    "description": "Avisos internos persistidos e isolados por conta, derivados de eventos na mesma transação; leitura e destino autorizados.",
+    "files": [
+      "packages/contracts/src/notification.ts",
+      "back/migrations/0017_internal_notifications.sql",
+      "back/src/lib/internal-notifications.ts",
+      "back/src/routes/notifications.ts",
+      "front/src/components/NotificationCenter.tsx",
+      "front/src/components/NotificationLink.tsx",
+      "docs/qa/MP-09-notificacoes-internas.md"
+    ]
   }
 }

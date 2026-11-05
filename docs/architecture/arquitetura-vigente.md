@@ -53,7 +53,7 @@ OrdersDataTable mantém estado e ações; orders-table/model.ts normaliza linhas
 
 ## Limites da versão
 
-Compra/pagamento/entrega continuam simulados. Assistente/IA, leilão, push, gateway real e integrações externas são posteriores. Respostas de ocorrências estão implementadas no MP-08, ainda aguardando aprovação humana; notificações internas completas pertencem ao MP-09, não autorizado. A reconciliação não autoriza merge, deploy ou alteração de configuração remota. [Registro da reconciliação](../qa/reconciliacao-mp01-mp08.md).
+Compra/pagamento/entrega continuam simulados. Assistente/IA, leilão, push, gateway real e integrações externas são posteriores. MP-08 foi aprovado pelo usuário para avançar; MP-09 está tecnicamente concluído localmente, com avisos internos persistidos, aguardando aprovação humana. MP-10 continua não autorizado. A reconciliação não autoriza merge, deploy ou alteração de configuração remota. [Registro da reconciliação](../qa/reconciliacao-mp01-mp08.md).
 
 ## Navegação e evidência
 
@@ -80,3 +80,11 @@ GET/POST /orders/:id/occurrences e POST /orders/:id/occurrences/:reportId/messag
 Sem supplier_id no pedido, somente um snapshot de report anterior concede acesso ao fornecedor daquele report. Novas aberturas aguardam reconciliação do vínculo; não se atribui o fornecedor pelo proprietário atual do produto. Pedido/estoque/eventos comerciais não são alterados. O endpoint fornecedor POST /orders/:id/report permanece compatível com {message}, retornando {success,reportId}; consumidores novos enviam requestId para replay.
 
 OrderOccurrences é compartilhado nas telas de comprador/fornecedor/admin; valida leitura e recibos contra os contratos, vincula UID e isola dados/rascunhos por conta/pedido. Atualiza ao abrir/foco/manualmente/30s visíveis; falha mantém o histórico, conflito exige revisão e envio incerto conserva a mesma solicitação no componente montado. Essa recuperação não promete durabilidade após recarga/fechamento ou entre dispositivos. Notificações internas são MP-09, sem promessa de caixa de avisos nesta etapa. Compra/pagamento/entrega continuam simulados.
+
+## Avisos internos persistidos — MP-09
+
+Migração 0017 cria notifications com fonte/ID/destinatário únicos, referência ao pedido/report, detalhe e created_at/read_at. Projeções em internal-notifications.ts são acrescentadas ao mesmo D1.batch de order_events, decisão/auditoria e report_messages; falha de aviso reverte a transação, replay não duplica nem reseta leitura. NOTIFICATIONS_ENABLED continua governando somente o canal externo preexistente. Não há caixa retroativa automática nem inferência de fornecedor pelo catálogo atual.
+
+GET /notifications lista a caixa do token por cursor de ID (30 por página, máximo 50), com contagem global de não lidos; PATCH /notifications/:notificationId/read confirma leitura idempotente; GET /notifications/:notificationId/destination revalida propriedade do aviso e acesso atual ao recurso. Contrato notification.ts. Admin não recebe acesso à caixa de terceiros. Novo pedido vai ao fornecedor, estados ao comprador, cancelamento à contraparte; decisão ao fornecedor; resposta de ocorrência à outra parte. Ação administrativa de cancelamento/resolução avisa ambas, excluído o próprio ator.
+
+Central /avisos para os três papéis, com entrada nos cabeçalhos público/fornecedor/admin e contagem de não lidos na página. NotificationCenter vincula UID/papel, pagina, atualiza em abertura/foco/30s visíveis e preserva dados em falha. Leitura é explícita; resposta perdida é recuperada por refresh/retry. Destinos são tipados, sem URL externa; OrderOccurrences aceita initialReportId para abrir a conversa exata. Consulte pacote internal-notifications e relatório MP-09. Sem email/push, merge, publicação ou migração remota.

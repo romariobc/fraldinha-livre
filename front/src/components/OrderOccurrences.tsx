@@ -12,17 +12,17 @@ import { Label } from '@/components/ui/label'
 const labels = { aberta: 'Aberta', em_atendimento: 'Em atendimento', resolvida: 'Resolvida' }
 
 /** A remount per account/order clears private drafts and suppresses late results. */
-export default function OrderOccurrences({ orderId }: { orderId: string }) {
+export default function OrderOccurrences({ orderId, initialReportId }: { orderId: string; initialReportId?: string }) {
   const { user, role } = useAuth()
   if (!user?.uid) return <p role="alert">Entre na sua conta para consultar ocorrências.</p>
-  return <OccurrencePanel key={user.uid + ':' + orderId} uid={user.uid} orderId={orderId} canOpen={role === 'comprador' || role === 'fornecedor'} />
+  return <OccurrencePanel key={user.uid + ':' + orderId + ':' + (initialReportId ?? '')} uid={user.uid} orderId={orderId} initialReportId={initialReportId} canOpen={role === 'comprador' || role === 'fornecedor'} />
 }
 
-function OccurrencePanel({ uid, orderId, canOpen }: { uid: string; orderId: string; canOpen: boolean }) {
+function OccurrencePanel({ uid, orderId, canOpen, initialReportId }: { uid: string; orderId: string; canOpen: boolean; initialReportId?: string }) {
   const base = '/orders/' + encodeURIComponent(orderId) + '/occurrences'
   const load = useCallback(async () => OccurrencesSchema.parse(await (await apiFetch(base, undefined, uid)).json()), [base, uid])
   const query = useLiveOrderQuery(uid + ':' + orderId + ':occurrences', load)
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string | null>(initialReportId ?? null)
   const [message, setMessage] = useState('')
   const [pending, setPending] = useState(false)
   const [feedback, setFeedback] = useState<{ error: boolean; text: string } | null>(null)

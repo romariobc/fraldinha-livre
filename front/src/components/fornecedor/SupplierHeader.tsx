@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useAuth } from "@/contexts/auth-context"
+import NotificationLink from '@/components/NotificationLink'
 
 const ROUTE_TITLES: Record<string, { title: string; subtitle: string }> = {
   "/painel-fornecedor": {
@@ -113,6 +114,7 @@ export function SupplierHeader() {
 
       {/* Direita: Badge Distribuidora + Link Loja + User Avatar & Menu */}
       <div className="flex items-center gap-2 sm:gap-3">
+        <NotificationLink />
         <div className="hidden md:flex items-center gap-2">
           <Badge
             variant="outline"

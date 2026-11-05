@@ -791,14 +791,14 @@
       "evidencias_exigidas": [
         "Testes de autorização/ownership, mensagens, resolução e compatibilidade dos reports existentes; jornada entre comprador, fornecedor e admin."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
-      "notas": "Implementação e jornada autenticada locais concluídas em 04/11/2026. Branch codex/mp-08-order-issues, base a0984bf/checkpoint MP-07; relatório docs/qa/MP-08-ocorrencias-com-resposta.md. Abertura/respostas/resolução, ownership, concorrência/replay, rollback transacional e legado validados. Migração 0016 somente em D1 local separado. CI e checkpoint finais registrados na PR. Sem merge/deploy/migração remota. MP-09 não autorizado."
+      "aprovacao_usuario": "entrega_aprovada_pelo_usuario",
+      "notas": "Implementação e jornada autenticada locais concluídas em 04/11/2026. Branch codex/mp-08-order-issues, base a0984bf/checkpoint MP-07; relatório docs/qa/MP-08-ocorrencias-com-resposta.md. Abertura/respostas/resolução, ownership, concorrência/replay, rollback transacional e legado validados. Migração 0016 somente em D1 local separado. CI e checkpoint finais registrados na PR. Sem merge/deploy/migração remota. MP-09 não autorizado. Em 05/11/2026, usuário autorizou seguir para o próximo item após esclarecimento MP-08/MP-09; entrega aprovada para avançar, sem merge/deploy."
     },
     {
       "id": "MP-09",
       "titulo": "Entregar notificações internas persistidas",
       "fase": 1,
-      "status": "todo",
+      "status": "done",
       "ordem": 9,
       "prioridade": "P0",
       "dependencias": [
@@ -819,8 +819,8 @@
       "evidencias_exigidas": [
         "Testes de destinatário, isolamento, deduplicação, leitura, retry e destino do link; jornada de cada evento com nova sessão."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_para_iniciar",
-      "notas": "Planejado; implementação, validação e homologação ainda pendentes. Exige aprovação explícita do usuário para iniciar, além das dependências técnicas."
+      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
+      "notas": "Entrega local concluída em 05/11/2026 após autorização explícita para avançar do MP-08. Base reconciliada c58c77e; branch codex/mp-09-internal-notifications; relatório docs/qa/MP-09-notificacoes-internas.md. Avisos transacionais/deduplicados, leitura idempotente e links reautorizados; 1.303 testes, tipos/lint/build e jornada autenticada de todos os eventos com novas sessões aprovados. Migração 0017 somente em D1 local novo; sem merge/deploy/migração remota. CI/SHA/checkpoint final registrados na PR; entrega aguarda aprovação humana. MP-10 não autorizado."
     },
     {
       "id": "MP-10",
@@ -985,9 +985,9 @@
     ],
     "regra_execucao": "Uma etapa por item MP, em ordem numerica; concluir, validar, registrar e parar. Dependencias satisfeitas nao autorizam avancar. Exigir aprovacao explicita do usuario para iniciar a proxima etapa.",
     "controle_execucao": {
-      "etapa_concluida": "MP-08",
+      "etapa_concluida": "MP-09",
       "aprovacao_entrega": "aguardando_usuario",
-      "proxima_etapa": "MP-09",
+      "proxima_etapa": "MP-10",
       "autorizada_proxima_etapa": false,
       "preparacao_concluida": "CTX-01",
       "aprovacao_preparacao": "aprovada_pelo_usuario"

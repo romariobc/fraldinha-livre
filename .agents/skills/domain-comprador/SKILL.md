@@ -40,3 +40,7 @@ order-actions.ts define disponibilidade visual por papel/vínculo/estado; backen
 ## Ocorrências MP-08
 
 OrderOccurrences compartilha abertura/conversa/resolução persistidas nos detalhes de pedidos, em todos os estados. Usa occurrence.ts, UID esperado e leitura isolada por conta/pedido. Resolvida é somente leitura; ocorrência não cancela nem repõe estoque. OrderIssueGuidance agora abre o fluxo real; OrderReportDialog legado usa a mesma conversa, sem prometer aviso na caixa de notificações. Consulte pacote order-occurrences e api-contract para permissão, legado e versão/replay. Notificações internas continuam MP-09.
+
+## Avisos MP-09
+
+/avisos usa NotificationCenter e API real, sem fixtures de mensagens. NotificationLink aparece nos cabeçalhos; contagem de não lidos na central. UID/papel isolam dados e ações, paginação é por ID e leitura explícita é idempotente. Destinos revalidam acesso: OrderTracking ou OrderOccurrences(initialReportId) para conversa exata; cadastro somente na rota fixa do fornecedor. Habilitação comercial não bloqueia leitura de avisos/pedidos anteriores. Consultar pacote internal-notifications.

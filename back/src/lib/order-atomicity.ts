@@ -1,5 +1,6 @@
 import type { CreateOrderRequest } from '../../../packages/contracts/src/order'
 import type { Env } from '../env'
+import { orderNotificationStatement } from './internal-notifications'
 
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical)
@@ -83,7 +84,8 @@ export async function createOrderAtomically(db: Env['DB'], input: {
     orderId, mutationId, fromStatus: null, toStatus: 'aguardando', actorId: input.uid,
     requestId: input.requestId, reason: null, stockEffect: 'decrement', createdAt: input.createdAt,
   }))
-  // D1 batch is one transaction: an item/stock/event failure rolls back all preceding statements.
+  statements.push(orderNotificationStatement(db, mutationId))
+  // D1 batch is one transaction: items, stock, event and internal notices commit together.
   const results = await db.batch(statements)
   return results[0].meta.changes === 1
 }
@@ -118,6 +120,7 @@ export async function transitionOrderAtomically(db: Env['DB'], input: {
     actorId: input.actorId, requestId: input.requestId, reason: input.reason ?? null,
     stockEffect: cancelling ? 'restore' : 'none', createdAt: new Date().toISOString(),
   }))
+  statements.push(orderNotificationStatement(db, mutationId))
   const results = await db.batch(statements)
   return results[0].meta.changes === 1
 }

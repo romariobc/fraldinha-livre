@@ -4,6 +4,7 @@ import { SupplierApplicationSchema, SupplierDecisionSchema } from '../../../pack
 import { hasAnyRole } from '../middleware/auth'
 import { respondError, respondZodError } from '../lib/errors'
 import type { Env, AppContext } from '../env'
+import { supplierNotificationStatement } from '../lib/internal-notifications'
 
 type Ctx = Context<{ Bindings: Env; Variables: AppContext['Variables'] }>
 type Row = { uid: string; status: string; reason: string | null; version: number; created_at: string; updated_at: string }
@@ -58,6 +59,7 @@ export const supplierDecisionHandler = async (c: Ctx) => {
         .bind(auditId, c.get('uid'), 'supplier.' + request.status, request.reason, request.status, c.get('requestId') ?? auditId, now, uid, request.expectedVersion),
       c.env.DB.prepare('UPDATE supplier_applications SET status = ?, reason = ?, version = version + 1, updated_at = ? WHERE uid = ? AND version = ?')
         .bind(request.status, request.reason, now, uid, request.expectedVersion),
+      supplierNotificationStatement(c.env.DB, auditId),
     ])
     if (result[1].meta.changes !== 1) return respondError(c, 'SUPPLIER_STATE_CONFLICT', 409, 'Estado alterado. Atualize a lista.')
     return c.json({ application: serialize((await find(c, uid))!) })

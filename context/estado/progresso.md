@@ -1,20 +1,17 @@
 # Estado atual — 2026-11-05
 
-## Reconciliação MP-01–MP-08 preparada para revisão
+## MP-09 — Notificações internas: entrega local concluída
 
-- Branch `codex/reconcile-mp01-mp08`, worktree isolado, entrada MP-08 `4236d3e`; `origin/main` `d5b64c9` é ancestral, com nove commits acumulados antes desta sessão. Sem reaplicar PRs antigas ou importar alterações preexistentes do worktree CTX-01.
-- [Matriz e evidências da reconciliação](../../docs/qa/reconciliacao-mp01-mp08.md): MP-04–07 são ancestrais; MP-01–03 foram consolidados no checkpoint `c12d4db`, com conteúdo preservado/evoluído. PRs #22–#29 abertas em rascunho.
-- Proposta de produção: somente disparo manual com confirmação obrigatória (padrão false), main e validação do mesmo SHA antes de migração/deploy. Ainda sem efeito na main. Production remoto sem proteção de environment; nenhuma configuração remota alterada.
-- [PR #30](https://github.com/romariobc/fraldinha-livre/pull/30) em rascunho. Harness com build aprovado: 1.266 testes, tipos, lint sem erros/oito avisos. Catálogo, sete grupos de checkout, quatro de operações e quatro de ocorrências passaram em navegador; migrações até 0016 em D1 novo. QA comercial local, sem AI/notificações externas; servidores encerrados. CI final/SHA/checkpoint devem ser conferidos na PR antes do merge.
-- Checkpoints de entrada: `checkpoint/pre-reconcile-main-2026-11-05` → `d5b64c9`; `checkpoint/pre-reconcile-mp08-2026-11-05` → `4236d3e`. Resultado: `checkpoint/reconcile-mp01-mp08-2026-11-05`, publicar/conferir somente após CI da ponta. Tags recuperam código/documentação, não banco/configuração/credenciais.
+- MP-08 aprovado para avançar pela instrução do usuário “siga para o próximo item”, autorizando somente MP-09. MP-09 aguarda aprovação humana; MP-10 não autorizado. Merge, deploy e migração remota permanecem separados.
+- Branch `codex/mp-09-internal-notifications`; base reconciliada `c58c77e`, retorno `checkpoint/pre-mp09-2026-11-05`. Publicação manual confirmada preservada; reconciliação #30 ainda não integrada.
+- [Relatório MP-09](../../docs/qa/MP-09-notificacoes-internas.md): /avisos, consulta/leitura/destino autenticados; avisos derivados de eventos na mesma transação, deduplicados por fonte/destinatário. Migração aditiva 0017 aplicada somente a D1 local novo. Sem caixa retroativa inventada, fanout admin, e-mail ou push.
+- Fornecedor recebe novo pedido, comprador recebe estados, cancelamento avisa contraparte (admin avisa ambas); decisões de cadastro avisam fornecedor, respostas em ocorrência avisam outra parte (admin avisa ambas). Snapshot preservado; não remapear legado por proprietário atual do produto.
+- Lista paginada, leitura idempotente e destinos reautorizados; UID esperado e descarte após troca de conta/papel; refresh ao abrir/foco/manualmente/30s visíveis. Falha visual não desfaz operação registrada.
+- Harness com build aprovado: 791 front + 392 back + 73 contratos + 47 harness = 1.303 testes; tipos/lint aprovados, oito avisos existentes. Focais: 55 integração backend e 19 componentes. Jornada autenticada final aprovada em cinco grupos: todos os eventos com novas sessões, perda de resposta após leitura, falha de rede, conta alheia/admin negados e 375/1024px sem overflow. Servidores encerrados.
+- CI e SHA final devem ser conferidos na PR desta etapa. `checkpoint/mp09-2026-11-05` reservado à ponta aprovada na CI; publicar/conferir depois, sem mover tags anteriores. Tags recuperam código/documentação, não banco/configuração/credenciais.
 
-## Aprovações e limites preservados
+## Limites e contexto seletivo
 
-- MP-00–07 aprovados. MP-08 tecnicamente entregue, aguardando aprovação humana; migração 0016 somente validada localmente. A reconciliação não aprova MP-08 nem autoriza MP-09.
-- Compra/pagamento/entrega simulados. Ocorrências persistidas sem alterar pedido/estoque; recuperação de envio incerto limitada ao componente montado. Pedidos sem fornecedor persistido exigem reconciliação para novas ocorrências; reports antigos preservam acesso por snapshot.
-- Cadastro/recuperação de identidade, operação/backup/legado e publicação/homologação pendentes das etapas próprias. Preparação/CI não comprovam operação em produção.
-- Parada antes de merge, fechamento de PRs antigas, exclusão de branches ou alteração de publicação/proteção remota. Deploy/migração remota não autorizados.
-
-## Contexto seletivo
-
-[Arquitetura](../../docs/architecture/arquitetura-vigente.md), [backlog](../../docs/BACKLOG-FASES.md), pacote `order-occurrences`. [Estado MP-08 preservado integralmente](progresso-ate-mp08-2026-11-05.md), [MP-07](progresso-ate-mp07-2026-11-04.md), [MP-06](progresso-ate-mp06-2026-11-04.md).
+- Compra/pagamento/entrega simulados. Cadastro novo/recuperação de senha, legado sem vínculo confiável, backup/restore e homologação operacional seguem pendentes das etapas próprias. Nenhuma publicação, migração remota, alteração de identidade ou fechamento de PRs anteriores.
+- [Estado da reconciliação preservado](progresso-ate-reconciliacao-2026-11-05.md), [MP-08](progresso-ate-mp08-2026-11-05.md). Avisos começam com os eventos da versão compatível; não há backfill retroativo automático.
+- Pacote `internal-notifications`; [arquitetura](../../docs/architecture/arquitetura-vigente.md), [backlog](../../docs/BACKLOG-FASES.md).

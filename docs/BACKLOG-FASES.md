@@ -2,7 +2,7 @@
 
 **Revisão:** 5 de novembro de 2026.
 
-**Reconciliação:** integração MP-01–MP-08 preparada em branch separada, PR #30 em rascunho; [matriz e validação](qa/reconciliacao-mp01-mp08.md). Não altera aprovações da tabela, não autoriza MP-09, merge ou publicação.
+**Reconciliação:** integração MP-01–MP-08 preparada em branch separada, PR #30 em rascunho; [matriz e validação](qa/reconciliacao-mp01-mp08.md). Em 05/11, usuário aprovou avançar após MP-08 e autorizou MP-09; merge/publicação permanecem separados.
 
 **Base local:** `1322ac6`; árvore de trabalho limpa na entrada do MP-00.
 
@@ -62,8 +62,8 @@ P0 = fluxo obrigatório, integridade ou condição de liberação; P1 = conclus�
 | MP-05 | P0 | Fechar checkout simulado e recuperação de falhas | MP-02, MP-04 | done; entrega aprovada |
 | MP-06 | P0 | Registrar e acompanhar o ciclo do pedido | MP-05 | done; entrega aprovada |
 | MP-07 | P0 | Completar operação de venda e cancelamento nas interfaces | MP-06 | done; entrega aprovada |
-| MP-08 | P0 | Implementar ocorrências com resposta | MP-06 | done; aguarda aprovação da entrega |
-| MP-09 | P0 | Entregar notificações internas persistidas | MP-03, MP-07, MP-08 | todo; início depende de aprovação |
+| MP-08 | P0 | Implementar ocorrências com resposta | MP-06 | done; entrega aprovada para avançar |
+| MP-09 | P0 | Entregar notificações internas persistidas | MP-03, MP-07, MP-08 | done; aguarda aprovação da entrega |
 | MP-10 | P1 | Concluir supervisão e relatórios confiáveis | MP-07, MP-08 | todo; início depende de aprovação |
 | MP-11 | P0 | Preparar operação, recuperação e configuração de produção | MP-01, MP-10 | todo; início depende de aprovação |
 | MP-12 | P0 | Homologar e liberar a versão completa | MP-00, MP-01, MP-02, MP-03, MP-04, MP-05, MP-06, MP-07, MP-08, MP-09, MP-10, MP-11 | todo; início depende de aprovação |

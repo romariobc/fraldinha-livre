@@ -12,7 +12,7 @@ import {
   Tooltip,
   Legend,
   Area,
-} from 'recharts'
+} from '@/lib/compat/recharts'
 import { CheckCircle2, XCircle, TrendingUp, BarChart2, Layers } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'

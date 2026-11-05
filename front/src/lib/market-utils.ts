@@ -1,4 +1,4 @@
-import type { MarketOrder, MockSupplier, GeoScope, DeliveryType, SupplierOffer } from './supplier-mock'
+import type { MarketOrder, SupplierProfile, GeoScope, DeliveryType, SupplierOffer } from '@/lib/domain/supplier'
 
 export function parsePriceToCents(raw: string): number | null {
   const value = parseFloat(raw.trim().replace(',', '.'))
@@ -6,7 +6,7 @@ export function parsePriceToCents(raw: string): number | null {
   return Math.round(value * 100)
 }
 
-export function geoMatch(order: MarketOrder, supplier: MockSupplier, scope: GeoScope): boolean {
+export function geoMatch(order: MarketOrder, supplier: SupplierProfile, scope: GeoScope): boolean {
   switch (scope.type) {
     case 'neighborhood':
       return order.buyerNeighborhood === supplier.neighborhood

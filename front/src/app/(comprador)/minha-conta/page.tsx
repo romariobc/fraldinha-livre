@@ -1,7 +1,7 @@
 // src/app/(main)/minha-conta/page.tsx
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { AlertCircle, RotateCw } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -18,6 +18,8 @@ function MinhaContaContent() {
   const searchParams = useSearchParams()
   const { user } = useAuth()
   const { orders, loading: ordersLoading, error: ordersError, errorDiagnostic, refreshOrders } = useOrders()
+
+  useEffect(() => { void refreshOrders?.({ refreshSession: false }) }, [refreshOrders])
 
   // Hooks SEMPRE devem ser chamados na mesma ordem, antes de qualquer early return
   const [activeTab, setActiveTab] = useState<TabKey>(() => {
@@ -105,13 +107,18 @@ function MinhaContaContent() {
               </TabsList>
             </div>
 
+            <div className="flex flex-wrap items-center gap-3 pt-5">
+              <button type="button" disabled={ordersLoading} onClick={() => void refreshOrders?.({ refreshSession: false })} className="text-sm font-semibold text-primary-dark disabled:opacity-50">Atualizar pedidos</button>
+              <span className="text-xs text-brand-muted">Atualização automática a cada 30 segundos com a página visível.</span>
+              {ordersError && orders.length > 0 && <p role="alert" className="text-sm text-red-700">{ordersError} Os últimos pedidos recebidos foram preservados.</p>}
+            </div>
             <div className="pt-6">
               <TabsContent value="pedidos">
                 {ordersLoading ? (
                   <div className="text-center py-12 text-brand-muted">
                     <p className="font-semibold text-sm">Carregando pedidos...</p>
                   </div>
-                ) : ordersError ? (
+                ) : ordersError && orders.length === 0 ? (
                   <div className="bg-white rounded-2xl p-6 sm:p-8 border border-red-200 shadow-card text-center max-w-lg mx-auto">
                     <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-4">
                       <AlertCircle size={24} />
@@ -162,7 +169,7 @@ function MinhaContaContent() {
                   <div className="text-center py-12 text-brand-muted">
                     <p className="font-semibold text-sm">Carregando pedidos...</p>
                   </div>
-                ) : ordersError ? (
+                ) : ordersError && orders.length === 0 ? (
                   <div className="bg-white rounded-2xl p-6 sm:p-8 border border-red-200 shadow-card text-center max-w-lg mx-auto">
                     <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-4">
                       <AlertCircle size={24} />

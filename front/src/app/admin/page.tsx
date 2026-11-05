@@ -8,6 +8,7 @@ import AdminUsersTab from '@/components/admin/AdminUsersTab'
 import AdminOrdersTab from '@/components/admin/AdminOrdersTab'
 import AdminProductsTab from '@/components/admin/AdminProductsTab'
 import AdminAuditTab from '@/components/admin/AdminAuditTab'
+import NotificationLink from '@/components/NotificationLink'
 
 import { ShieldCheck, Users, ShoppingBag, Package, Shield } from 'lucide-react'
 
@@ -31,6 +32,7 @@ export default function AdminPage() {
 
   return (
     <div className="container-fl py-8">
+      <div className="mb-4 flex justify-end"><NotificationLink /></div>
       {/* Top Header / Hero */}
       <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>

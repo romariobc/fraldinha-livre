@@ -5,7 +5,7 @@ export interface OrderRepository {
   listForSupplier(): Promise<Order[]>
   create(req: CreateOrderRequest, idempotencyKey?: string): Promise<Order>
   cancel(orderId: string): Promise<Order>
-  updateStatus(orderId: string, status: OrderStatus): Promise<Order>
+  updateStatus(orderId: string, status: OrderStatus, reason?: string): Promise<Order>
 }
 
 export interface DomainErrorOptions {

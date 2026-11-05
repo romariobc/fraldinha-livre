@@ -9,6 +9,7 @@ import { Menu, X, ShoppingBag, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/auth-context'
 import { useCart } from '@/contexts/cart-context'
+import NotificationLink from '@/components/NotificationLink'
 
 const NAV_LINKS = [
   { href: '/',             label: 'Início' },
@@ -25,11 +26,11 @@ export default function Header() {
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
-  const { user, role, signOutUser } = useAuth()
+  const { user, role, isAdmin: authIsAdmin, signOutUser } = useAuth()
   const { itemCount, clear } = useCart()
 
   const accountHref = role === 'fornecedor' ? '/painel-fornecedor' : '/minha-conta'
-  const isAdmin = role === 'admin'
+  const isAdmin = Boolean(authIsAdmin || role === 'admin')
 
   // Fecha dropdown ao clicar fora
   useEffect(() => {
@@ -116,6 +117,7 @@ export default function Header() {
 
           {/* Desktop actions */}
           <div className="hidden lg:flex items-center gap-3">
+            <NotificationLink />
             <Link
               href="/sacola"
               aria-label="Sacola"
@@ -147,14 +149,16 @@ export default function Header() {
                     role="menu"
                     className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-primary/10 py-1 z-50"
                   >
-                    <Link
-                      href={accountHref}
-                      role="menuitem"
-                      className="block px-4 py-2 text-sm text-brand-muted hover:text-primary-dark hover:bg-primary-light transition-colors"
-                      onClick={() => setDropdownOpen(false)}
-                    >
-                      Minha conta
-                    </Link>
+                    {!isAdmin && (
+                      <Link
+                        href={accountHref}
+                        role="menuitem"
+                        className="block px-4 py-2 text-sm text-brand-muted hover:text-primary-dark hover:bg-primary-light transition-colors"
+                        onClick={() => setDropdownOpen(false)}
+                      >
+                        Minha conta
+                      </Link>
+                    )}
                     {isAdmin && (
                       <Link
                         href="/admin"
@@ -195,6 +199,7 @@ export default function Header() {
 
           {/* Mobile: carrinho + hamburger */}
           <div className="lg:hidden flex items-center gap-1">
+            <NotificationLink />
             <Link
               href="/sacola"
               aria-label="Sacola"
@@ -239,13 +244,15 @@ export default function Header() {
           </div>
           {user && (
             <div className="flex flex-col gap-0.5 pt-2 mt-2 border-t border-primary/10">
-              <Link
-                href={accountHref}
-                className="px-4 py-3 rounded-xl text-sm font-semibold text-brand-muted hover:text-primary-dark hover:bg-primary-light transition-colors"
-                onClick={() => setMenuOpen(false)}
-              >
-                Minha conta
-              </Link>
+              {!isAdmin && (
+                <Link
+                  href={accountHref}
+                  className="px-4 py-3 rounded-xl text-sm font-semibold text-brand-muted hover:text-primary-dark hover:bg-primary-light transition-colors"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Minha conta
+                </Link>
+              )}
               {isAdmin && (
                 <Link
                   href="/admin"

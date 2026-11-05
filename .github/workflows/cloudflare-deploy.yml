@@ -1,10 +1,13 @@
 name: Deploy to Cloudflare
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: Apply production D1 migrations and deploy backend and frontend
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -15,6 +18,7 @@ concurrency:
 
 jobs:
   check-ref:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

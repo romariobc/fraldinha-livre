@@ -84,9 +84,21 @@ test('all PRs to main use the shared validation without secret-bearing or mutabl
   assert.doesNotMatch(read('.github/workflows/validation.yml'), /secrets\.|wrangler.*deploy|d1 migrations/)
 })
 
-test('production cannot reach migrations/deploy until validation of the same revision succeeds', () => {
+test('production is manual and explicitly confirmed before validation or publication', () => {
   const prod = workflow('cloudflare-deploy')
-  assert.deepEqual(prod.on.push.branches, ['main'])
+  assert.deepEqual(Object.keys(prod.on), ['workflow_dispatch'])
+  assert.deepEqual(prod.on.workflow_dispatch.inputs.confirm, {
+    description: 'Apply production D1 migrations and deploy backend and frontend',
+    type: 'boolean',
+    required: true,
+    default: false,
+  })
+  assert.equal(prod.jobs['check-ref'].if, "${{ github.event_name == 'workflow_dispatch' && inputs.confirm }}")
+  assert.deepEqual(Object.keys(prod.jobs), ['check-ref', 'validate', 'deploy'])
+})
+
+test('production cannot reach migrations/deploy until main and validation of the same revision succeed', () => {
+  const prod = workflow('cloudflare-deploy')
   assert.deepEqual(prod.jobs.validate.needs, 'check-ref')
   assert.equal(prod.jobs.validate.uses, './.github/workflows/validation.yml')
   assert.equal(prod.jobs.validate.if, undefined)

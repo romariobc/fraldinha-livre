@@ -557,7 +557,7 @@ export default function AdminOrdersTab() {
               </div>
 
               <OrderTracking orderId={selectedOrder.id} scope="admin" refreshVersion={selectedOrder.status + ":" + operation.revision} />
-              {['a-caminho', 'entregue'].includes(selectedOrder.status) && <OrderIssueGuidance orderId={selectedOrder.id} />}
+              <OrderIssueGuidance orderId={selectedOrder.id} />
               <DialogFooter>
                 {canCancel(selectedOrder) && <Button type="button" variant="destructive" disabled={Boolean(operation.pendingId)} onClick={() => { setCancellingId(selectedOrder.id); setSelectedOrder(null) }}>Cancelar pedido</Button>}
                 <Button type="button" variant="outline" size="sm" onClick={() => setSelectedOrder(null)}>

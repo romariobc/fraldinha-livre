@@ -5,7 +5,6 @@ import { OrderSchema, OrderDetailSchema, CreateOrderRequestSchema, UpdateOrderSt
 import { orderEvents } from '../schema/order-events'
 import { orders, orderItems } from '../schema/orders'
 import { products } from '../schema/products'
-import { reports } from '../schema/reports'
 import type { Env, AppContext } from '../env'
 import { ZodError } from 'zod'
 import { notifySupplierOfNewOrder, sendViaResend } from '../lib/notifications'
@@ -13,22 +12,6 @@ import { hasAnyRole } from '../middleware/auth'
 import { logger } from '../lib/logger'
 import { respondError, respondZodError } from '../lib/errors'
 import { createOrderAtomically, transitionOrderAtomically, requestFingerprint } from '../lib/order-atomicity'
-
-/**
- * Gera um UUID v4 usando a API de crypto disponível (Workers/Node).
- */
-function generateUUID(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(16))
-  // Modifica os bytes para serem v4
-  bytes[6] = (bytes[6] & 0x0f) | 0x40
-  bytes[8] = (bytes[8] & 0x3f) | 0x80
-  // Converte para string hexadecimal
-  const hex = Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('')
-  // Formata como UUID: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-  return `${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}`
-}
 
 type OrderContext = Context<{ Bindings: Env; Variables: AppContext['Variables'] }>
 type OrderDb = ReturnType<typeof drizzle>
@@ -287,59 +270,8 @@ export const ordersCancelHandler = async (c: OrderContext) => {
   return c.json(await loadOrderResponse(db, orderId), 200)
 }
 
-/**
- * POST /orders/:id/report — Fornecedor reporta um problema/mensagem para o comprador.
- */
-export const ordersReportHandler = async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>) => {
-  const uid = c.get('uid')
-  if (!uid) {
-    return respondError(c, 'UNAUTHORIZED', 401, 'Não autenticado.')
-  }
-  if (!hasAnyRole(c, ['fornecedor'])) {
-    return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
-  }
-
-  const orderId = c.req.param('id')
-    if (!orderId) return respondError(c, 'ORDER_NOT_FOUND', 404, 'Pedido não encontrado.')
-
-  try {
-    const body = await c.req.json()
-    if (!body.message || typeof body.message !== 'string') {
-      return respondError(c, 'INVALID_REQUEST', 400, 'Campo message é obrigatório.')
-    }
-
-    const db = drizzle(c.env.DB)
-    const ordersList = await db.select().from(orders).where(sql`${orders.id} = ${orderId}`).all()
-
-    if (ordersList.length === 0) {
-      return respondError(c, 'ORDER_NOT_FOUND', 404, 'Pedido não encontrado.')
-    }
-
-    const order = ordersList[0]
-
-    // Apenas o fornecedor do pedido pode reportar para o cliente
-    if (order.supplierId !== uid) {
-      return respondError(c, 'FORBIDDEN', 403, 'Acesso negado: apenas o fornecedor deste pedido pode reportar.')
-    }
-
-    const reportId = generateUUID()
-    const createdAt = new Date().toISOString()
-
-    await db.insert(reports).values({
-      id: reportId,
-      orderId: order.id,
-      supplierId: uid,
-      clientId: order.uid, // O uid da order é o comprador
-      message: body.message,
-      read: false,
-      createdAt,
-    })
-
-    return c.json({ success: true, reportId })
-  } catch (error) {
-    throw error
-  }
-}
+// Backward-compatible endpoint; old report IDs/text/read flags remain intact.
+export { occurrencesPostHandler as ordersReportHandler } from './occurrences'
 
 export const ordersStatusPatchHandler = async (c: OrderContext) => {
   const uid = c.get('uid')

@@ -763,14 +763,14 @@
       "evidencias_exigidas": [
         "Testes comportamentais e jornada completa por papel, cancelamento permitido/negado, estado terminal, concorrência e atualização após erro."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
-      "notas": "Implementação e homologação locais concluídas em 04/11/2026. Branch codex/mp-07-order-operations; relatório docs/qa/MP-07-operacoes-venda-cancelamento.md. Ações por papel/estado, cancelamento com motivo, terminal, conflitos, atualização de detalhe e jornada autenticada aprovados. CI final registrada na PR. Sem nova migração/deploy. MP-08 não autorizado; abertura/resposta de ocorrência permanecem nessa próxima etapa."
+      "aprovacao_usuario": "entrega_aprovada_pelo_usuario",
+      "notas": "Implementação e homologação locais concluídas em 04/11/2026. Branch codex/mp-07-order-operations; relatório docs/qa/MP-07-operacoes-venda-cancelamento.md. Ações por papel/estado, cancelamento com motivo, terminal, conflitos, atualização de detalhe e jornada autenticada aprovados. CI final registrada na PR. Sem nova migração/deploy. MP-08 não autorizado; abertura/resposta de ocorrência permanecem nessa próxima etapa. Aprovada para avançar em 04/11/2026 pela instrução iniciar MP-08; o impedimento anterior é histórico."
     },
     {
       "id": "MP-08",
       "titulo": "Implementar ocorrências com resposta",
       "fase": 1,
-      "status": "todo",
+      "status": "done",
       "ordem": 8,
       "prioridade": "P0",
       "dependencias": [
@@ -791,8 +791,8 @@
       "evidencias_exigidas": [
         "Testes de autorização/ownership, mensagens, resolução e compatibilidade dos reports existentes; jornada entre comprador, fornecedor e admin."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_para_iniciar",
-      "notas": "Planejado; implementação, validação e homologação ainda pendentes. Exige aprovação explícita do usuário para iniciar, além das dependências técnicas."
+      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
+      "notas": "Implementação e jornada autenticada locais concluídas em 04/11/2026. Branch codex/mp-08-order-issues, base a0984bf/checkpoint MP-07; relatório docs/qa/MP-08-ocorrencias-com-resposta.md. Abertura/respostas/resolução, ownership, concorrência/replay, rollback transacional e legado validados. Migração 0016 somente em D1 local separado. CI e checkpoint finais registrados na PR. Sem merge/deploy/migração remota. MP-09 não autorizado."
     },
     {
       "id": "MP-09",
@@ -985,9 +985,9 @@
     ],
     "regra_execucao": "Uma etapa por item MP, em ordem numerica; concluir, validar, registrar e parar. Dependencias satisfeitas nao autorizam avancar. Exigir aprovacao explicita do usuario para iniciar a proxima etapa.",
     "controle_execucao": {
-      "etapa_concluida": "MP-07",
+      "etapa_concluida": "MP-08",
       "aprovacao_entrega": "aguardando_usuario",
-      "proxima_etapa": "MP-08",
+      "proxima_etapa": "MP-09",
       "autorizada_proxima_etapa": false,
       "preparacao_concluida": "CTX-01",
       "aprovacao_preparacao": "aprovada_pelo_usuario"

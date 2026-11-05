@@ -102,5 +102,20 @@
       "back/src/lib/order-atomicity.ts",
       "back/test/mp07-operations.test.ts"
     ]
+  },
+  "order-occurrences": {
+    "description": "Abertura, conversa, resolução e adaptação dos reports antigos; MP-08.",
+    "files": [
+      "packages/contracts/src/occurrence.ts",
+      "back/migrations/0016_order_occurrences.sql",
+      "back/src/schema/reports.ts",
+      "back/src/routes/occurrences.ts",
+      "front/src/components/OrderOccurrences.tsx",
+      "front/src/components/OrderIssueGuidance.tsx",
+      "front/src/components/fornecedor/OrderReportDialog.tsx",
+      "back/test/mp08-occurrences.test.ts",
+      "front/src/components/__tests__/OrderOccurrences.test.tsx",
+      "scripts/qa-mp08-browser.cjs"
+    ]
   }
 }

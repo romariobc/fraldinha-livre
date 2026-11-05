@@ -145,7 +145,7 @@ export function OrderDetailsDialog({ refreshVersion, errorMessage, mayAct, pendi
               </div>
 
               <OrderTracking orderId={selectedOrder.id} scope="fornecedor" refreshVersion={selectedOrder.status + ":" + refreshVersion} />
-              {['a-caminho', 'entregue'].includes(selectedOrder.status) && <OrderIssueGuidance orderId={selectedOrder.id} />}
+              <OrderIssueGuidance orderId={selectedOrder.id} />
               {errorMessage && <p role="alert" className="text-sm text-red-700">{errorMessage}</p>}
               <DialogFooter className="gap-2 sm:gap-0">
                 {mayAct && selectedOrder.status === 'aguardando' && (

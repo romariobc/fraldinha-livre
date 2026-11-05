@@ -27,6 +27,7 @@ export const ApiErrorCodeSchema = z.enum([
   'ORDER_NOT_AWAITING',
   'ORDER_STATUS_NOT_ALLOWED',
   'IDEMPOTENCY_CONFLICT',
+  'OCCURRENCE_CONFLICT',
 
   // Provedores Externos e Servidor (500 / 502)
   'AUTH_PROVIDER_NOT_CONFIGURED',

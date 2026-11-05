@@ -245,3 +245,9 @@ O chat do comprador e stateless no backend: as mensagens sao enviadas na requisi
 Pagamentos ainda nao aparecem como entidade persistida. O checkout usa contratos/adaptadores, mas nao ha tabela `payments` no esquema atual.
 
 Dados de fornecedores exibidos em algumas telas podem vir de mocks ou do perfil Firestore, dependendo do fluxo. Para regra persistente, considere `users/{uid}` como fonte de perfil e `products.supplier_id` como relacao de catalogo.
+
+## Emenda MP-08 — ocorrências (código local)
+
+A migração aditiva 0016_order_occurrences.sql mantém reports.id/order_id/supplier_id/client_id/message/read/created_at e acrescenta status, version, opened_by, opened_role, resolved_by, resolved_at e mutation_id. status inicia aberta; opened_by/role nulos identificam a origem legada do texto inicial pelo fornecedor conhecido. Não se infere atendimento/resolução a partir de read.
+
+report_messages tem id (PK/replay), report_id (FK reports.id), actor_id, actor_role, message, created_at e resolution; índice por report_id/created_at. A primeira mensagem permanece em reports.message e é projetada junto às respostas pela API. Ator e horário da resolução acompanham a resposta final no mesmo D1.batch. Não há nova entidade de identidade nem efeitos automáticos sobre pedido/itens/estoque. Consultar contrato occurrence.ts e relatório MP-08 para autorização, migração local e limites; esta descrição não comprova aplicação remota.

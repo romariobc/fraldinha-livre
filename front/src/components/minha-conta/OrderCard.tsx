@@ -230,7 +230,7 @@ export default function OrderCard({ order, mode }: OrderCardProps) {
         </div>
 
         {operation.error && <p role="alert" className="text-sm text-red-700">{operation.error}</p>}
-        {['a-caminho', 'entregue'].includes(order.status) && <OrderIssueGuidance orderId={order.id} />}
+        <OrderIssueGuidance orderId={order.id} />
         {/* Mensagem de restrição */}
         {restrictionMessage && (
           <p className="text-xs text-brand-muted italic">{restrictionMessage}</p>

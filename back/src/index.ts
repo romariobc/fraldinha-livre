@@ -1,3 +1,4 @@
+import { occurrencesGetHandler, occurrencesPostHandler, occurrencesReplyHandler } from './routes/occurrences'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { createAuthMiddleware, verifyFirebaseIdToken, requireAnyRole } from './middleware/auth'
@@ -142,6 +143,9 @@ app.post('/orders', requireAnyRole(['comprador']), ordersPostHandler)
 app.patch('/orders/:id/cancel', requireAnyRole(['comprador']), ordersCancelHandler)
 app.patch('/orders/:id/status', requireAnyRole(['fornecedor', 'admin']), ordersStatusPatchHandler)
 app.post('/orders/:id/report', requireAnyRole(['fornecedor']), ordersReportHandler)
+app.get('/orders/:id/occurrences', occurrencesGetHandler)
+app.post('/orders/:id/occurrences', occurrencesPostHandler)
+app.post('/orders/:id/occurrences/:reportId/messages', occurrencesReplyHandler)
 
 app.use('/chat/*', (c, next) => {
   const authMiddleware = createAuthMiddleware((token) =>

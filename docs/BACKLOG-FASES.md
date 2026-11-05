@@ -40,7 +40,7 @@ Essas regras são o alvo aprovado. Não descrever aprovação de fornecedores, n
 5. Commit, push, publicação, migrações e alteração de segredos seguem o escopo autorizado; não são efeitos colaterais de QA ou de conclusão de etapa.
 6. Não delegar nem iniciar trabalho concorrente sem autorização. Não alterar o harness incidentalmente.
 
-**Ponto de controle atual (04/11/2026):** MP-06 aprovado; MP-07 entregue em implementação/homologação local, aguardando aprovação da entrega. Base preservada 3463cfd, tag checkpoint/mp06-2026-11-02; branch codex/mp-07-order-operations e CI final na PR. Sem nova migração, merge ou deploy. MP-08 não autorizado; abertura/resposta de ocorrências permanece nessa etapa. Ver [relatório MP-07](qa/MP-07-operacoes-venda-cancelamento.md).
+**Ponto de controle atual (04/11/2026):** MP-07 aprovado para avançar; MP-08 entregue em implementação/jornada autenticada local e aguardando aprovação. Base a0984bf, retorno checkpoint/mp07-2026-11-04; branch codex/mp-08-order-issues, CI/checkpoint finais na PR. Migração aditiva 0016 apenas no D1 local separado; sem merge, migração remota ou deploy. MP-09 não autorizado. Ver [relatório MP-08](qa/MP-08-ocorrencias-com-resposta.md).
 
 ### Preparação CTX-01, anterior à MP-04
 
@@ -59,8 +59,8 @@ P0 = fluxo obrigatório, integridade ou condição de liberação; P1 = conclus�
 | MP-04 | P0 | Homologar catálogo e manutenção de ofertas | MP-03 | done; entrega aprovada |
 | MP-05 | P0 | Fechar checkout simulado e recuperação de falhas | MP-02, MP-04 | done; entrega aprovada |
 | MP-06 | P0 | Registrar e acompanhar o ciclo do pedido | MP-05 | done; entrega aprovada |
-| MP-07 | P0 | Completar operação de venda e cancelamento nas interfaces | MP-06 | done; aguarda aprovação da entrega |
-| MP-08 | P0 | Implementar ocorrências com resposta | MP-06 | todo; início depende de aprovação |
+| MP-07 | P0 | Completar operação de venda e cancelamento nas interfaces | MP-06 | done; entrega aprovada |
+| MP-08 | P0 | Implementar ocorrências com resposta | MP-06 | done; aguarda aprovação da entrega |
 | MP-09 | P0 | Entregar notificações internas persistidas | MP-03, MP-07, MP-08 | todo; início depende de aprovação |
 | MP-10 | P1 | Concluir supervisão e relatórios confiáveis | MP-07, MP-08 | todo; início depende de aprovação |
 | MP-11 | P0 | Preparar operação, recuperação e configuração de produção | MP-01, MP-10 | todo; início depende de aprovação |

@@ -36,3 +36,7 @@ GET /orders/:id?scope=comprador|fornecedor|admin retorna OrderDetail: snapshot e
 ## Operações MP-07
 
 order-actions.ts define disponibilidade visual por papel/vínculo/estado; backend mantém decisão definitiva. use-order-operation.ts serializa envio, reconcilia após erro/sucesso e conserva feedback acionável. Mutations HTTP vinculam UID esperado; fornecedor usa o snapshot retornado. OrderTracking recebe refreshVersion após operação e usa refresh(true) para esperar leitura anterior antes de consultar o estado atual. Motivo fornecedor/admin é obrigatório; após despacho só entrega pelo fornecedor e orientação para ocorrência. Abertura/resposta de ocorrência pertence à MP-08, sem envio fictício. Pacote: node scripts/context.mjs packet order-operations.
+
+## Ocorrências MP-08
+
+OrderOccurrences compartilha abertura/conversa/resolução persistidas nos detalhes de pedidos, em todos os estados. Usa occurrence.ts, UID esperado e leitura isolada por conta/pedido. Resolvida é somente leitura; ocorrência não cancela nem repõe estoque. OrderIssueGuidance agora abre o fluxo real; OrderReportDialog legado usa a mesma conversa, sem prometer aviso na caixa de notificações. Consulte pacote order-occurrences e api-contract para permissão, legado e versão/replay. Notificações internas continuam MP-09.

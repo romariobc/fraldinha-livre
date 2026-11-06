@@ -1,13 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { AdminAuditLogsResponse } from '@contracts'
-import { apiFetch } from '@/lib/api-client'
+import { apiFetch as fetchApi } from '@/lib/api-client'
 import { copySupportCode, showErrorToast } from '@/lib/frontend-diagnostics'
 import { RefreshCw, Filter, Check, Copy } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-export default function AdminAuditTab() {
+export default function AdminAuditTab({ expectedUid }: { expectedUid?: string } = {}) {
+  const apiFetch = useCallback((path: string, init?: RequestInit) => expectedUid ? fetchApi(path, init, expectedUid) : init ? fetchApi(path, init) : fetchApi(path), [expectedUid])
   const [data, setData] = useState<AdminAuditLogsResponse | null>(null)
   const [targetType, setTargetType] = useState('')
   const [page, setPage] = useState(1)
@@ -48,7 +49,7 @@ export default function AdminAuditTab() {
     return () => {
       cancelled = true
     }
-  }, [targetType, page, refreshKey])
+  }, [targetType, page, refreshKey, apiFetch])
 
   const handleCopy = async (requestId: string) => {
     await copySupportCode(requestId)
@@ -148,7 +149,7 @@ export default function AdminAuditTab() {
             {data.logs.map((log) => (
               <tr key={log.id} className="hover:bg-slate-50/60 transition-colors align-top text-xs">
                 <td className="py-2.5 px-3 whitespace-nowrap text-brand-muted">
-                  {new Date(log.createdAt).toLocaleString('pt-BR')}
+                  {new Date(log.createdAt).toLocaleString('pt-BR', { timeZone: 'America/Fortaleza' })}
                 </td>
                 <td className="py-2.5 px-3 font-mono text-xs text-brand-muted">
                   <span title={log.actorId}>{log.actorId.slice(0, 10)}...</span>
@@ -163,6 +164,7 @@ export default function AdminAuditTab() {
                 </td>
                 <td className="py-2.5 px-3 max-w-xs text-brand-text break-words">
                   {log.reason}
+                  {log.metadata && <details><summary>Referências da intervenção</summary><pre className="whitespace-pre-wrap break-all">{JSON.stringify(log.metadata, null, 2)}</pre></details>}
                 </td>
                 <td className="py-2.5 px-3 text-right whitespace-nowrap">
                   <Button

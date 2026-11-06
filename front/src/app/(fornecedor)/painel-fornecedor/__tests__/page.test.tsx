@@ -1,119 +1,27 @@
-/// <reference types="vitest/globals" />
-
 import { render, screen } from '@testing-library/react'
-import { vi } from 'vitest'
+import { vi, describe, it, expect } from 'vitest'
 import SupplierDashboardOverviewPage from '../page'
-
-vi.mock('@/contexts/auth-context', () => ({
-  useAuth: vi.fn(() => ({
-    user: {
-      displayName: 'Distribuidora São Paulo',
-      email: 'contato@distribuidorasp.com.br',
-    },
-    role: 'fornecedor',
-    loading: false,
-  })),
-}))
-
-vi.mock('@/contexts/market-context', () => ({
-  useMarket: vi.fn(() => ({
-    directOrders: [
-      {
-        id: 'DIR-0031',
-        product: 'Pampers Supersec G',
-        quantity: 48,
-        unit: 'un',
-        price: 31200,
-        buyerCity: 'São Paulo',
-        buyerState: 'SP',
-        createdAt: '2026-08-15T10:00:00Z',
-        status: 'aguardando',
-      },
-      {
-        id: 'DIR-0025',
-        product: 'Babysec Premium G',
-        quantity: 24,
-        unit: 'un',
-        price: 18400,
-        buyerCity: 'Campinas',
-        buyerState: 'SP',
-        createdAt: '2026-08-14T09:00:00Z',
-        status: 'confirmado',
-      },
-    ],
-    directOrdersLoading: false,
-    directOrdersError: null,
-    marketOrders: [],
-    offers: [],
-  })),
-}))
-
-vi.mock('@/contexts/products-context', () => ({
-  useProducts: vi.fn(() => ({
-    products: [
-      { id: 'p1', name: 'Pampers Supersec G' },
-      { id: 'p2', name: 'Babysec Premium G' },
-    ],
-    loading: false,
-    error: null,
-  })),
-}))
-
-describe('SupplierDashboardOverviewPage', () => {
-  it('renders welcome banner with supplier name and verified status badge', () => {
+vi.mock('@/contexts/auth-context',()=>({useAuth:()=>({user:{uid:'supplier-qa',displayName:'Distribuidora São Paulo'},role:'fornecedor'})}))
+vi.mock('@/components/OrderReportPanel',()=>({default:({scope}:{scope:string})=><div>Relatório persistido {scope}</div>}))
+describe('SupplierDashboardOverviewPage',()=>{
+  it('greets the authenticated profile without asserting commercial verification',()=>{
     render(<SupplierDashboardOverviewPage />)
-
-    expect(screen.getByText(/Olá, Distribuidora São Paulo!/i)).toBeInTheDocument()
-    expect(screen.getByText(/Painel da Distribuidora B2B/i)).toBeInTheDocument()
-    expect(screen.getByText(/Verificado/i)).toBeInTheDocument()
+    expect(screen.getByRole('heading',{name:'Olá, Distribuidora São Paulo!'})).toBeInTheDocument()
+    expect(screen.queryByText('Distribuidora Verificada')).not.toBeInTheDocument()
   })
-
-  it('renders all 4 responsive metric cards', () => {
+  it('uses persisted reporting instead of estimated revenue and synthetic curves',()=>{
     render(<SupplierDashboardOverviewPage />)
-
-    expect(screen.getByTestId('metric-card-receita')).toBeInTheDocument()
-    expect(screen.getByTestId('metric-card-ticket')).toBeInTheDocument()
-    expect(screen.getByTestId('metric-card-entregas')).toBeInTheDocument()
-    expect(screen.getByTestId('metric-card-cancelados')).toBeInTheDocument()
-
-    expect(screen.getByText('Receita Total')).toBeInTheDocument()
-    expect(screen.getByText('Ticket Médio')).toBeInTheDocument()
-    expect(screen.getByText('Entregas Concluídas')).toBeInTheDocument()
-    expect(screen.getByText('Pedidos Cancelados')).toBeInTheDocument()
+    expect(screen.getByText('Relatório persistido fornecedor')).toBeInTheDocument()
+    expect(screen.queryByText('Faturamento Total')).not.toBeInTheDocument()
   })
-
-  it('renders recent orders preview table with items and status', () => {
+  it('states simulation limitations next to the operational entry point',()=>{
     render(<SupplierDashboardOverviewPage />)
-
-    expect(screen.getByText('Pedidos Recentes')).toBeInTheDocument()
-    expect(screen.getByText('#DIR-0031')).toBeInTheDocument()
-    expect(screen.getByText('Pampers Supersec G')).toBeInTheDocument()
-    expect(screen.getByText('R$ 312,00')).toBeInTheDocument()
-    expect(screen.getByText('Aguardando')).toBeInTheDocument()
-
-    expect(screen.getByText('#DIR-0025')).toBeInTheDocument()
-    expect(screen.getByText('Babysec Premium G')).toBeInTheDocument()
-    expect(screen.getByText('R$ 184,00')).toBeInTheDocument()
-    expect(screen.getByText('Confirmado')).toBeInTheDocument()
+    expect(screen.getByText(/Compra, pagamento e entrega continuam simulados/)).toBeInTheDocument()
   })
-
-  it('renders operational action shortcuts linking to respective subroutes', () => {
+  it('links to actual supplier catalog, orders and reporting',()=>{
     render(<SupplierDashboardOverviewPage />)
-
-    expect(screen.getByText('Atalhos Rápidos')).toBeInTheDocument()
-
-    const pedidosLinks = screen.getAllByRole('link', { name: /pedidos/i })
-    expect(pedidosLinks.length).toBeGreaterThan(0)
-    expect(pedidosLinks.some(l => l.getAttribute('href') === '/painel-fornecedor/pedidos')).toBe(true)
-
-    const catalogoLinks = screen.getAllByRole('link', { name: /catálogo/i })
-    expect(catalogoLinks.length).toBeGreaterThan(0)
-    expect(catalogoLinks.some(l => l.getAttribute('href') === '/painel-fornecedor/catalogo')).toBe(true)
-
-    const relatoriosLink = screen.getByRole('link', { name: /relatórios & desempenho/i })
-    expect(relatoriosLink.getAttribute('href')).toBe('/painel-fornecedor/relatorios')
-
-    const configLink = screen.getByRole('link', { name: /configurações da loja/i })
-    expect(configLink.getAttribute('href')).toBe('/painel-fornecedor/configuracoes')
+    expect(screen.getByRole('link',{name:'Gerenciar catálogo'})).toHaveAttribute('href','/painel-fornecedor/catalogo')
+    expect(screen.getByRole('link',{name:'Acompanhar pedidos'})).toHaveAttribute('href','/painel-fornecedor/pedidos')
+    expect(screen.getByRole('link',{name:'Relatórios'})).toHaveAttribute('href','/painel-fornecedor/relatorios')
   })
 })

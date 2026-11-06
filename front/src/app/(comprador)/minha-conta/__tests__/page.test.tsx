@@ -7,7 +7,7 @@ import { useOrders } from '@/contexts/orders-context'
 import { CartProvider } from '@/contexts/cart-context'
 import { MarketProvider } from '@/contexts/market-context'
 import { useRouter, useSearchParams } from 'next/navigation'
-import type { Order } from '@/lib/account-mock'
+import type { Order } from '@/lib/domain/account'
 
 vi.mock('@/contexts/auth-context', () => ({
   useAuth: vi.fn(),
@@ -244,10 +244,11 @@ describe('MinhaContaPage', () => {
     expect(screen.getByText('Você não tem permissão para realizar esta ação.')).toBeInTheDocument()
     expect(screen.getByText('req-403-test-trace')).toBeInTheDocument()
 
+    expect(mockRefresh).toHaveBeenNthCalledWith(1, { refreshSession: false })
     // Retry action
     const retryBtn = screen.getByRole('button', { name: /Tentar novamente/i })
     fireEvent.click(retryBtn)
-    expect(mockRefresh).toHaveBeenCalledOnce()
+    expect(mockRefresh).toHaveBeenCalledTimes(2)
 
     // Perfil tab can be clicked and navigated to without error
     const perfilTab = screen.getByRole('tab', { name: /Perfil/i })
@@ -291,4 +292,15 @@ describe('MinhaContaPage', () => {
       expect(screen.getByText('Cartões de Crédito Salvos')).toBeInTheDocument()
     })
   })
+  it('preserves loaded orders and manual refresh when the next update fails', () => {
+    const refresh = vi.fn()
+    vi.mocked(useAuth).mockReturnValue(createMockAuth())
+    vi.mocked(useOrders).mockReturnValue({ orders: [mockOrder], loading: false, error: 'Falha de rede', refreshOrders: refresh, createDirectOrder: vi.fn(), createOrdersFromCart: vi.fn(), cancelOrder: vi.fn() })
+    render(<MarketProvider><CartProvider><CompradorRouteGroupLayout><MinhaContaPage /></CompradorRouteGroupLayout></CartProvider></MarketProvider>)
+    expect(screen.getByRole('alert')).toHaveTextContent('preservados')
+    expect(screen.getByTestId('order-card-' + mockOrder.id)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Atualizar pedidos' }))
+    expect(refresh).toHaveBeenLastCalledWith({ refreshSession: false })
+  })
+
 })

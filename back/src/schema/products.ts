@@ -17,6 +17,7 @@ export const products = sqliteTable('products', {
   badge: text('badge'),
   supplierEmail: text('supplier_email'),
   active: integer('active', { mode: 'boolean' }).notNull().default(true),
+  moderationBlocked: integer('moderation_blocked', { mode: 'boolean' }).notNull().default(false),
   imageUrl: text('image_url'),
 }, (table) => ({
   quantityCheck: check('products_quantity_check', sql`${table.quantity} >= 0`),

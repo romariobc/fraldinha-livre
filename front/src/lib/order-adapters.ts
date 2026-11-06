@@ -1,8 +1,8 @@
 // src/lib/order-adapters.ts
 // Adaptador puro: converte Order (compra-direta) para DirectOrder
 
-import { Order } from '@/lib/account-mock'
-import { DirectOrder, type DirectOrderStatus } from '@/lib/supplier-mock'
+import type { Order } from '@/lib/domain/account'
+import type { DirectOrder, DirectOrderStatus } from '@/lib/domain/supplier'
 import type { Order as ContractOrder } from '@contracts'
 
 export function orderToDirectOrder(order: Order): DirectOrder | null {
@@ -12,6 +12,7 @@ export function orderToDirectOrder(order: Order): DirectOrder | null {
 
   return {
     id: order.id,
+    supplierId: order.supplierId,
     product: order.product,
     quantity: order.quantity,
     unit: order.unit as 'un' | 'cx' | 'kg',
@@ -50,5 +51,28 @@ export function contractOrderToDirectOrder(order: ContractOrder): DirectOrder {
     buyerState: order.deliveryAddress.estado,
     createdAt: order.createdAt,
     status,
+  }
+}
+
+
+export function contractOrderToAccountOrder(order: ContractOrder): Order {
+  return {
+    id: order.id,
+    uid: order.uid,
+    type: order.type,
+    product: order.product,
+    quantity: order.quantity,
+    unit: order.unit,
+    deliveryAddress: order.deliveryAddress,
+    status: order.status,
+    createdAt: order.createdAt,
+    price: order.price,
+    supplierId: order.supplierId,
+    supplierName: order.supplierName,
+    items: order.items,
+    paymentMethod: order.paymentMethod,
+    paymentTransactionId: order.paymentTransactionId,
+    paymentStatus: order.paymentStatus,
+    paymentMode: order.paymentMode,
   }
 }

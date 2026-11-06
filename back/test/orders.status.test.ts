@@ -168,7 +168,7 @@ describe('PATCH /orders/:id/status', () => {
         Authorization: 'Bearer token-fornecedor-a',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ status: 'cancelado' }),
+      body: JSON.stringify({ status: 'cancelado', reason: 'Cancelamento de teste' }),
     })
     const res4 = await app.fetch(req4, env)
     expect(res4.status).toBe(409)
@@ -203,7 +203,7 @@ describe('PATCH /orders/:id/status', () => {
         Authorization: 'Bearer token-fornecedor-a',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ status: 'cancelado' }),
+      body: JSON.stringify({ status: 'cancelado', reason: 'Produto indisponível' }),
     })
     const res = await app.fetch(req, env)
     expect(res.status).toBe(200)
@@ -215,7 +215,7 @@ describe('PATCH /orders/:id/status', () => {
     expect(product.quantity).toBe(65)
   })
 
-  it('Admin pode atualizar status de qualquer pedido', async () => {
+  it('Admin não confirma em nome do fornecedor', async () => {
     const app = createTestApp()
 
     // Pedido criado pelo fornecedor A
@@ -241,8 +241,7 @@ describe('PATCH /orders/:id/status', () => {
       body: JSON.stringify({ status: 'confirmado' }),
     })
     const res = await app.fetch(req, env)
-    expect(res.status).toBe(200)
-    const order = (await res.json()) as Order
-    expect(order.status).toBe('confirmado')
+    expect(res.status).toBe(403)
+    expect(await env.DB.prepare("SELECT status FROM orders WHERE id='order-admin-update'").first()).toEqual({ status: 'aguardando' })
   })
 })

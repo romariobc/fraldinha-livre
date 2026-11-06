@@ -15,7 +15,7 @@ interface UserRow extends UserProfile {
 
 const PAGE_SIZE = 10
 
-export default function AdminUsersTab() {
+export default function AdminUsersTab({ expectedUid }: { expectedUid?: string } = {}) {
   const [users, setUsers] = useState<UserRow[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -180,7 +180,7 @@ export default function AdminUsersTab() {
 
   return (
     <div className="space-y-4" data-testid="admin-users-tab">
-      <AdminSupplierApprovals />
+      <AdminSupplierApprovals expectedUid={expectedUid} />
       {/* Top Controls: Search, Filter, Refresh */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="flex flex-1 items-center gap-2 max-w-md">

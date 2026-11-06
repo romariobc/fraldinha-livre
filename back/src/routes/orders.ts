@@ -279,6 +279,8 @@ export const ordersStatusPatchHandler = async (c: OrderContext) => {
   if (!hasAnyRole(c, ['fornecedor', 'admin'])) return respondError(c, 'FORBIDDEN', 403, 'Acesso negado.')
   try {
     const request = UpdateOrderStatusRequestSchema.parse(await c.req.json().catch(() => null))
+    const adminActor = hasAnyRole(c, ['admin'])
+    if (adminActor && request.status !== 'cancelado') return respondError(c, 'FORBIDDEN', 403, 'A administração cancela antes do despacho; confirmação e entrega pertencem ao fornecedor.')
     const orderId = c.req.param('id')
     if (!orderId) return respondError(c, 'ORDER_NOT_FOUND', 404, 'Pedido não encontrado.')
     const db = drizzle(c.env.DB)
@@ -302,6 +304,7 @@ export const ordersStatusPatchHandler = async (c: OrderContext) => {
     const changed = await transitionOrderAtomically(c.env.DB, {
       orderId, expectedStatus: current.status, expectedMutationId: current.mutationId,
       targetStatus: request.status, actorId: uid, requestId: c.get('requestId') ?? null, reason: request.reason,
+      adminActor,
     })
     if (!changed) {
       const fresh = await db.select().from(orders).where(eq(orders.id, orderId)).get()

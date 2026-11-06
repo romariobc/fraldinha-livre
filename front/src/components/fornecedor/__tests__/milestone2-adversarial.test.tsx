@@ -8,6 +8,8 @@ import SupplierDashboardOverviewPage from '@/app/(fornecedor)/painel-fornecedor/
 import { DollarSign, Package } from 'lucide-react'
 import type { DirectOrder } from '@/lib/domain/supplier'
 
+vi.mock('@/components/OrderReportPanel',()=>({default:({scope}:{scope:string})=><div>Relatório persistido {scope}</div>}))
+
 // Mock contexts for hook & page testing
 let mockDirectOrders: DirectOrder[] = []
 
@@ -326,52 +328,18 @@ describe('Milestone 2 Adversarial Stress Testing', () => {
     })
   })
 
-  describe('SupplierDashboardOverviewPage Viewport & Responsive Layout Tests', () => {
-    it('renders empty recent orders state when no orders exist', () => {
-      mockDirectOrders = []
+  describe('SupplierDashboardOverviewPage', () => {
+    it('identifies the account and states simulation limits', () => {
       render(<SupplierDashboardOverviewPage />)
-
-      expect(screen.getByText('Nenhum pedido recente')).toBeInTheDocument()
-      expect(
-        screen.getByText(
-          'Novos pedidos enviados por compradores aparecerão aqui em tempo real.'
-        )
-      ).toBeInTheDocument()
+      expect(screen.getByRole('heading',{name:'Olá, Distribuidora Alpha!'})).toBeInTheDocument()
+      expect(screen.getByText(/Compra, pagamento e entrega continuam simulados/)).toBeInTheDocument()
     })
-
-    it('renders full dashboard structure with all subroute links and responsive cards', () => {
-      mockDirectOrders = [
-        {
-          id: 'ORD-A1',
-          product: 'Fralda Huggies Supreme Care G',
-          quantity: 10,
-          unit: 'un',
-          price: 25000,
-          buyerCity: 'Ribeirão Preto',
-          buyerState: 'SP',
-          createdAt: '2026-08-15T14:00:00Z',
-          status: 'confirmado',
-        },
-      ]
-
-      const { container } = render(<SupplierDashboardOverviewPage />)
-
-      // Check responsive grid wrappers
-      const kpiGrid = container.querySelector('.grid-cols-1.sm\\:grid-cols-2.xl\\:grid-cols-4')
-      expect(kpiGrid).toBeInTheDocument()
-
-      const mainGrid = container.querySelector('.grid-cols-1.xl\\:grid-cols-3')
-      expect(mainGrid).toBeInTheDocument()
-
-      // Check all 4 KPI cards
-      expect(screen.getByTestId('metric-card-receita')).toBeInTheDocument()
-      expect(screen.getByTestId('metric-card-ticket')).toBeInTheDocument()
-      expect(screen.getByTestId('metric-card-entregas')).toBeInTheDocument()
-      expect(screen.getByTestId('metric-card-cancelados')).toBeInTheDocument()
-
-      // Check support channel card
-      expect(screen.getByText('Canal da Distribuidora')).toBeInTheDocument()
-      expect(screen.getByText('Falar com Gerente de Contas')).toBeInTheDocument()
+    it('uses persisted reporting and real operational links without a fictitious account manager', () => {
+      render(<SupplierDashboardOverviewPage />)
+      expect(screen.getByText('Relatório persistido fornecedor')).toBeInTheDocument()
+      expect(screen.getByRole('link',{name:'Gerenciar catálogo'})).toHaveAttribute('href','/painel-fornecedor/catalogo')
+      expect(screen.getByRole('link',{name:'Acompanhar pedidos'})).toHaveAttribute('href','/painel-fornecedor/pedidos')
+      expect(screen.queryByText('Falar com Gerente de Contas')).not.toBeInTheDocument()
     })
   })
 })

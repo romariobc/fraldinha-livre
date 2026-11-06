@@ -819,14 +819,14 @@
       "evidencias_exigidas": [
         "Testes de destinatário, isolamento, deduplicação, leitura, retry e destino do link; jornada de cada evento com nova sessão."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
-      "notas": "Entrega local concluída em 05/11/2026 após autorização explícita para avançar do MP-08. Base reconciliada c58c77e; branch codex/mp-09-internal-notifications; relatório docs/qa/MP-09-notificacoes-internas.md. Avisos transacionais/deduplicados, leitura idempotente e links reautorizados; 1.303 testes, tipos/lint/build e jornada autenticada de todos os eventos com novas sessões aprovados. Migração 0017 somente em D1 local novo; sem merge/deploy/migração remota. CI/SHA/checkpoint final registrados na PR; entrega aguarda aprovação humana. MP-10 não autorizado."
+      "aprovacao_usuario": "entrega_aprovada_pelo_usuario",
+      "notas": "Entrega local concluída em 05/11/2026 após autorização explícita para avançar do MP-08. Base reconciliada c58c77e; branch codex/mp-09-internal-notifications; relatório docs/qa/MP-09-notificacoes-internas.md. Avisos transacionais/deduplicados, leitura idempotente e links reautorizados; 1.303 testes, tipos/lint/build e jornada autenticada de todos os eventos com novas sessões aprovados. Migração 0017 somente em D1 local novo; sem merge/deploy/migração remota. CI/SHA/checkpoint final registrados na PR; entrega aprovada pelo usuário em 06/11/2026: aprovado prossiga para o MP-10."
     },
     {
       "id": "MP-10",
       "titulo": "Concluir supervisão e relatórios confiáveis",
       "fase": 1,
-      "status": "todo",
+      "status": "done",
       "ordem": 10,
       "prioridade": "P1",
       "dependencias": [
@@ -847,8 +847,8 @@
       "evidencias_exigidas": [
         "Testes de filtros/páginas/CSV/limites de período e ações administrativas; conciliação de indicadores com fixtures persistidas e jornada no navegador."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_para_iniciar",
-      "notas": "Planejado; implementação, validação e homologação ainda pendentes. Exige aprovação explícita do usuário para iniciar, além das dependências técnicas."
+      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
+      "notas": "Autorizado em 06/11/2026: aprovado prossiga para o MP-10. Entrega local concluída na base c3dd849, branch codex/mp-10-admin-supervision. Supervisão/relatórios persistidos, calendário Fortaleza/BRL/CSV único, auditoria transacional de cancelamentos/respostas/resoluções; 1.319 testes, tipos/lint/build e cinco grupos de jornada autenticada aprovados. Ajuste de largura móvel validado; Miniflare direto contornou falha interna do proxy do Wrangler, sem alterar dependências. Relatório docs/qa/MP-10-supervisao-relatorios.md; CI/SHA/checkpoint final registrados na PR. Sem merge, deploy ou migração remota; MP-11 não autorizado."
     },
     {
       "id": "MP-11",
@@ -985,9 +985,9 @@
     ],
     "regra_execucao": "Uma etapa por item MP, em ordem numerica; concluir, validar, registrar e parar. Dependencias satisfeitas nao autorizam avancar. Exigir aprovacao explicita do usuario para iniciar a proxima etapa.",
     "controle_execucao": {
-      "etapa_concluida": "MP-09",
+      "etapa_concluida": "MP-10",
       "aprovacao_entrega": "aguardando_usuario",
-      "proxima_etapa": "MP-10",
+      "proxima_etapa": "MP-11",
       "autorizada_proxima_etapa": false,
       "preparacao_concluida": "CTX-01",
       "aprovacao_preparacao": "aprovada_pelo_usuario"

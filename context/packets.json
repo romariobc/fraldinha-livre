@@ -129,5 +129,21 @@
       "front/src/components/NotificationLink.tsx",
       "docs/qa/MP-09-notificacoes-internas.md"
     ]
+  },
+  "admin-supervision": {
+    "description": "MP-10: supervisão administrativa auditada e relatórios de pedidos persistidos com calendário Fortaleza, BRL e CSV da mesma consulta.",
+    "files": [
+      "packages/contracts/src/report.ts",
+      "back/src/routes/reports.ts",
+      "back/src/lib/admin-operation-audit.ts",
+      "front/src/components/OrderReportPanel.tsx",
+      "front/src/components/admin/AdminOccurrencesTab.tsx",
+      "front/src/lib/order-report-csv.ts",
+      "back/test/mp10-supervision.test.ts",
+      "front/src/components/__tests__/OrderReportPanel.test.tsx",
+      "docs/qa/MP-10-supervisao-relatorios.md",
+      "scripts/qa-mp10-browser.cjs",
+      "scripts/qa-mp10-local-api.cjs"
+    ]
   }
 }

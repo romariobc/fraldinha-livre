@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/auth-context'
 import { useMarket } from '@/contexts/market-context'
 import { useProducts } from '@/contexts/products-context'
 import type { DirectOrder, MarketOrder, SupplierOffer } from '@/lib/domain/supplier'
-import { MOCK_SUPPLIER } from '@/lib/supplier-mock'
 import { formatPrice } from '@/lib/utils'
 import type { DateRange } from '@/components/ui/calendar'
 import type { ReportDataPoint } from '@/components/fornecedor/ReportsChart'
@@ -18,16 +17,16 @@ export interface MetricSparklinePoint {
 export interface SupplierMetrics {
   totalRevenueCents: number
   totalRevenueFormatted: string
-  revenueChangePercent: number
+  revenueChangePercent: number | null
   averageTicketCents: number
   averageTicketFormatted: string
-  ticketChangePercent: number
+  ticketChangePercent: number | null
   totalDeliveries: number
-  deliveriesChangePercent: number
+  deliveriesChangePercent: number | null
   deliverySuccessRate: number
   totalCancellations: number
   cancellationRate: number
-  cancellationsChangePercent: number
+  cancellationsChangePercent: number | null
   totalOrdersCount: number
   pendingOrdersCount: number
   confirmedOrdersCount: number
@@ -86,7 +85,7 @@ export interface SupplierReportSummary {
   totalOrdersCount: number
   deliverySuccessRate: number
   cancellationRate: number
-  averageDispatchTimeDays: number
+  averageDispatchTimeDays: number | null
   chartData: ReportDataPoint[]
   statusBreakdown: StatusBreakdownItem[]
   categoryBreakdown: CategoryBreakdownItem[]
@@ -96,15 +95,7 @@ export interface SupplierReportSummary {
 export interface SupplierDataResult {
   supplier: {
     name: string
-    cnpj: string
     email: string
-    phone: string
-    rating: number
-    verified: boolean
-    memberSince: string
-    neighborhood: string
-    city: string
-    state: string
   }
   metrics: SupplierMetrics
   recentOrders: RecentOrderItem[]
@@ -302,7 +293,7 @@ export function generateReportTimeSeries(orders: DirectOrder[] = [], range?: Dat
 }
 
 /**
- * Hook to calculate supplier reporting metrics for a specific date range.
+ * @deprecated Legacy projection retained for compatibility. Active reporting uses /reports/orders.
  */
 export function useSupplierReports(dateRange?: DateRange): {
   summary: SupplierReportSummary
@@ -342,7 +333,7 @@ export function useSupplierReports(dateRange?: DateRange): {
       ? Number(((totalCancellations / totalOrdersCount) * 100).toFixed(1))
       : 0
 
-    const averageDispatchTimeDays = 1.3 // Average SLA in days
+    const averageDispatchTimeDays = null // No persisted dispatch duration available.
 
     const chartData = generateReportTimeSeries(filteredOrders, dateRange)
 
@@ -370,62 +361,9 @@ export function useSupplierReports(dateRange?: DateRange): {
       },
     ]
 
-    const categoryBreakdown: CategoryBreakdownItem[] = [
-      {
-        category: 'fraldas-descartaveis',
-        name: 'Fraldas Infantis (G / XG / XXG)',
-        quantity: Math.round(totalDeliveries * 0.62) || (totalDeliveries > 0 ? 1 : 0),
-        revenueCents: Math.round(totalRevenueCents * 0.62),
-        revenueFormatted: formatPrice(Math.round(totalRevenueCents * 0.62)),
-        percentage: 62.0,
-      },
-      {
-        category: 'fraldas-recem-nascido',
-        name: 'Fraldas Primeiros Meses (RN / P / M)',
-        quantity: Math.round(totalDeliveries * 0.24) || (totalDeliveries > 0 ? 1 : 0),
-        revenueCents: Math.round(totalRevenueCents * 0.24),
-        revenueFormatted: formatPrice(Math.round(totalRevenueCents * 0.24)),
-        percentage: 24.0,
-      },
-      {
-        category: 'higiene-lencos',
-        name: 'Lenços Umedecidos & Toalhas',
-        quantity: Math.round(totalDeliveries * 0.10) || (totalDeliveries > 0 ? 1 : 0),
-        revenueCents: Math.round(totalRevenueCents * 0.10),
-        revenueFormatted: formatPrice(Math.round(totalRevenueCents * 0.10)),
-        percentage: 10.0,
-      },
-      {
-        category: 'acessorios-cremes',
-        name: 'Pomadas & Acessórios',
-        quantity: Math.round(totalDeliveries * 0.04) || (totalDeliveries > 0 ? 1 : 0),
-        revenueCents: Math.round(totalRevenueCents * 0.04),
-        revenueFormatted: formatPrice(Math.round(totalRevenueCents * 0.04)),
-        percentage: 4.0,
-      },
-    ]
-
-    const reason1 = Math.round(totalCancellations * 0.60)
-    const reason2 = Math.round(totalCancellations * 0.25)
-    const reason3 = Math.max(0, totalCancellations - reason1 - reason2)
-
-    const cancellationReasons: CancellationReasonItem[] = [
-      {
-        reason: 'Solicitado pelo comprador (desistência / erro de tamanho)',
-        count: reason1,
-        percentage: 60.0,
-      },
-      {
-        reason: 'Ruptura temporária de estoque na distribuidora',
-        count: reason2,
-        percentage: 25.0,
-      },
-      {
-        reason: 'Endereço ou dados de faturamento incompletos',
-        count: reason3,
-        percentage: 15.0,
-      },
-    ]
+    // Category and cancellation-reason histories are not persisted in this legacy projection.
+    const categoryBreakdown: CategoryBreakdownItem[] = []
+    const cancellationReasons: CancellationReasonItem[] = []
 
     return {
       totalRevenueCents,
@@ -454,7 +392,7 @@ export function useSupplierReports(dateRange?: DateRange): {
 }
 
 /**
- * Hook to calculate genuine supplier metrics, trends, sparkline datasets,
+ * Legacy compatibility projection. Production reporting uses OrderReportPanel and the persisted report API;
  * and recent activity from real orders and catalog state.
  */
 export function useSupplierData(): SupplierDataResult {
@@ -470,16 +408,9 @@ export function useSupplierData(): SupplierDataResult {
 
   const supplier = useMemo(() => {
     return {
-      name: user?.displayName || MOCK_SUPPLIER.name,
-      cnpj: MOCK_SUPPLIER.cnpj,
-      email: user?.email || MOCK_SUPPLIER.email,
-      phone: MOCK_SUPPLIER.phone,
-      rating: MOCK_SUPPLIER.rating || 4.8,
-      verified: true,
-      memberSince: MOCK_SUPPLIER.memberSince,
-      neighborhood: MOCK_SUPPLIER.neighborhood,
-      city: 'São Paulo',
-      state: 'SP',
+      name: user?.displayName || 'Fornecedor',
+      email: user?.email || '',
+
     }
   }, [user])
 
@@ -513,46 +444,15 @@ export function useSupplierData(): SupplierDataResult {
       ? Number((((totalOrdersCount - totalCancellations) / totalOrdersCount) * 100).toFixed(1))
       : 100
 
-    // Trend percentage estimates
-    const revenueChangePercent = 8.4
-    const ticketChangePercent = 4.2
-    const deliveriesChangePercent = 12.0
-    const cancellationsChangePercent = -1.5
-
-    // Build genuine sparkline time-series curves
-    const baseDays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
-    
-    // Revenue sparkline curve
-    const revStep = totalRevenueCents > 0 ? totalRevenueCents / 100 : 48920
-    const revenueSparkline: MetricSparklinePoint[] = baseDays.map((day, i) => {
-      const multipliers = [0.65, 0.78, 0.72, 0.90, 0.85, 1.05, 1.15]
-      const val = Math.round(revStep * (multipliers[i] || 1) / 7)
-      return { date: day, value: val }
-    })
-
-    // Ticket sparkline curve
-    const ticketStep = averageTicketCents > 0 ? averageTicketCents / 100 : 385.20
-    const ticketSparkline: MetricSparklinePoint[] = baseDays.map((day, i) => {
-      const multipliers = [0.92, 0.95, 0.88, 1.02, 0.98, 1.06, 1.04]
-      const val = Number((ticketStep * (multipliers[i] || 1)).toFixed(2))
-      return { date: day, value: val }
-    })
-
-    // Deliveries sparkline curve
-    const delStep = totalDeliveries > 0 ? totalDeliveries : 18
-    const deliveriesSparkline: MetricSparklinePoint[] = baseDays.map((day, i) => {
-      const multipliers = [0.5, 0.7, 0.8, 1.1, 1.0, 1.3, 1.4]
-      const val = Math.max(1, Math.round(delStep * (multipliers[i] || 1) / 5))
-      return { date: day, value: val }
-    })
-
-    // Cancellations sparkline curve
-    const cancStep = totalCancellations > 0 ? totalCancellations : 2
-    const cancellationsSparkline: MetricSparklinePoint[] = baseDays.map((day, i) => {
-      const multipliers = [1.2, 0.8, 1.0, 0.5, 0.7, 0.4, 0.3]
-      const val = Math.max(0, Math.round(cancStep * (multipliers[i] || 1) / 3))
-      return { date: day, value: val }
-    })
+    // No persisted comparison period: never present estimates as observed metrics.
+    const revenueChangePercent = null
+    const ticketChangePercent = null
+    const deliveriesChangePercent = null
+    const cancellationsChangePercent = null
+    const revenueSparkline: MetricSparklinePoint[] = []
+    const ticketSparkline: MetricSparklinePoint[] = []
+    const deliveriesSparkline: MetricSparklinePoint[] = []
+    const cancellationsSparkline: MetricSparklinePoint[] = []
 
     return {
       totalRevenueCents,

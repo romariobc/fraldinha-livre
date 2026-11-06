@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { SupplierApplicationListSchema, type SupplierApplication } from '@contracts'
-import { apiFetch } from '@/lib/api-client'
+import { apiFetch as fetchApi } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 
-export default function AdminSupplierApprovals() {
+export default function AdminSupplierApprovals({ expectedUid }: { expectedUid?: string } = {}) {
+  const apiFetch = useCallback((path: string, init?: RequestInit) => expectedUid ? fetchApi(path, init, expectedUid) : init ? fetchApi(path, init) : fetchApi(path), [expectedUid])
   const [rows, setRows] = useState<SupplierApplication[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
   const [selected, setSelected] = useState<SupplierApplication | null>(null)
@@ -24,7 +25,7 @@ export default function AdminSupplierApprovals() {
       setCursor(data.nextCursor)
     } catch (err) { setError(err instanceof Error ? err.message : 'Falha ao consultar solicitações.') }
     finally { setBusy(false) }
-  }, [])
+  }, [apiFetch])
   // HTTP resolves asynchronously; no state is changed before the first await.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { void load() }, [load])

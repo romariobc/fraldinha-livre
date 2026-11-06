@@ -1,5 +1,6 @@
 import { occurrencesGetHandler, occurrencesPostHandler, occurrencesReplyHandler } from './routes/occurrences'
 import { notificationsGetHandler, notificationReadHandler, notificationDestinationHandler } from './routes/notifications'
+import { createOrderReportHandler, adminOccurrencesListHandler } from './routes/reports'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { createAuthMiddleware, verifyFirebaseIdToken, requireAnyRole } from './middleware/auth'
@@ -103,6 +104,10 @@ app.notFound((c) => {
 
 app.get('/health', (c) => c.json({ ok: true }))
 
+app.use('/reports/*', (c, next) => createAuthMiddleware(token => verifyFirebaseIdToken(token, c.env.FIREBASE_PROJECT_ID))(c, next))
+app.use('/reports/*', requireAnyRole(['fornecedor']))
+app.get('/reports/orders', createOrderReportHandler('fornecedor'))
+
 app.use('/notifications/*', (c, next) => createAuthMiddleware(token => verifyFirebaseIdToken(token, c.env.FIREBASE_PROJECT_ID))(c, next))
 app.use('/notifications/*', requireAnyRole(['comprador', 'fornecedor', 'admin']))
 app.get('/notifications', notificationsGetHandler)
@@ -182,6 +187,8 @@ app.use('/admin/*', (c, next) => {
 app.get('/admin/suppliers', requireAnyRole(['admin']), supplierApplicationsListHandler)
 app.patch('/admin/suppliers/:uid', requireAnyRole(['admin']), supplierDecisionHandler)
 app.get('/admin/audit-logs', requireAnyRole(['admin']), adminAuditLogsGetHandler)
+app.get('/admin/reports/orders', requireAnyRole(['admin']), createOrderReportHandler('admin'))
+app.get('/admin/occurrences', requireAnyRole(['admin']), adminOccurrencesListHandler)
 app.patch('/admin/products/:id/status', requireAnyRole(['admin']), adminProductStatusPatchHandler)
 
 export default app

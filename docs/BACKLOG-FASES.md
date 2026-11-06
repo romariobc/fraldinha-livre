@@ -1,8 +1,8 @@
 # Backlog vigente — Marketplace demonstrativo em produção
 
-**Revisão:** 5 de novembro de 2026.
+**Revisão:** 6 de novembro de 2026.
 
-**Reconciliação:** integração MP-01–MP-08 preparada em branch separada, PR #30 em rascunho; [matriz e validação](qa/reconciliacao-mp01-mp08.md). Em 05/11, usuário aprovou avançar após MP-08 e autorizou MP-09; merge/publicação permanecem separados.
+**Reconciliação:** integração MP-01–MP-08 preparada em branch separada, PR #30 em rascunho; [matriz e validação](qa/reconciliacao-mp01-mp08.md). Em 06/11, usuário aprovou MP-09 e autorizou MP-10, agora entregue localmente e aguardando aprovação; merge/publicação permanecem separados.
 
 **Base local:** `1322ac6`; árvore de trabalho limpa na entrada do MP-00.
 
@@ -42,7 +42,7 @@ Essas regras são o alvo aprovado. Não descrever aprovação de fornecedores, n
 5. Commit, push, publicação, migrações e alteração de segredos seguem o escopo autorizado; não são efeitos colaterais de QA ou de conclusão de etapa.
 6. Não delegar nem iniciar trabalho concorrente sem autorização. Não alterar o harness incidentalmente.
 
-**Ponto de controle atual (04/11/2026):** MP-07 aprovado para avançar; MP-08 entregue em implementação/jornada autenticada local e aguardando aprovação. Base a0984bf, retorno checkpoint/mp07-2026-11-04; branch codex/mp-08-order-issues, CI/checkpoint finais na PR. Migração aditiva 0016 apenas no D1 local separado; sem merge, migração remota ou deploy. MP-09 não autorizado. Ver [relatório MP-08](qa/MP-08-ocorrencias-com-resposta.md).
+**Ponto de controle atual (06/11/2026):** MP-09 aprovado; MP-10 concluído tecnicamente e aguardando aprovação humana. Base c3dd849, branch codex/mp-10-admin-supervision, retorno checkpoint/pre-mp10-2026-11-06. Relatórios e auditoria transacional validados com 1.319 testes, tipos/lint/build e jornada autenticada local. Sem nova migração e sem merge/migração remota/deploy. MP-11 não autorizado. Ver [relatório MP-10](qa/MP-10-supervisao-relatorios.md).
 
 ### Preparação CTX-01, anterior à MP-04
 
@@ -63,8 +63,8 @@ P0 = fluxo obrigatório, integridade ou condição de liberação; P1 = conclus�
 | MP-06 | P0 | Registrar e acompanhar o ciclo do pedido | MP-05 | done; entrega aprovada |
 | MP-07 | P0 | Completar operação de venda e cancelamento nas interfaces | MP-06 | done; entrega aprovada |
 | MP-08 | P0 | Implementar ocorrências com resposta | MP-06 | done; entrega aprovada para avançar |
-| MP-09 | P0 | Entregar notificações internas persistidas | MP-03, MP-07, MP-08 | done; aguarda aprovação da entrega |
-| MP-10 | P1 | Concluir supervisão e relatórios confiáveis | MP-07, MP-08 | todo; início depende de aprovação |
+| MP-09 | P0 | Entregar notificações internas persistidas | MP-03, MP-07, MP-08 | done; entrega aprovada |
+| MP-10 | P1 | Concluir supervisão e relatórios confiáveis | MP-07, MP-08 | done; aguarda aprovação da entrega |
 | MP-11 | P0 | Preparar operação, recuperação e configuração de produção | MP-01, MP-10 | todo; início depende de aprovação |
 | MP-12 | P0 | Homologar e liberar a versão completa | MP-00, MP-01, MP-02, MP-03, MP-04, MP-05, MP-06, MP-07, MP-08, MP-09, MP-10, MP-11 | todo; início depende de aprovação |
 
@@ -225,6 +225,8 @@ P0 = fluxo obrigatório, integridade ou condição de liberação; P1 = conclus�
 - Exibir valor de pedidos simulados separado de recebimento financeiro; busca, paginação, estados vazios/erro e exportação refletem os dados consultados.
 
 **Evidência exigida:** Testes de filtros/páginas/CSV/limites de período e ações administrativas; conciliação de indicadores com fixtures persistidas e jornada no navegador.
+
+**Entrega local MP-10:** [evidências e limites](qa/MP-10-supervisao-relatorios.md). Sem ativação remota.
 
 ### MP-11 — Preparar operação, recuperação e configuração de produção
 

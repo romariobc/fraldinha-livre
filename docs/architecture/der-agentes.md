@@ -255,3 +255,8 @@ report_messages tem id (PK/replay), report_id (FK reports.id), actor_id, actor_r
 ## MP-09 — Avisos internos
 
 Migração 0017 (código local; não comprova aplicação remota): notifications guarda id INTEGER autoincremental, source_type/source_id, recipient_uid, kind, order_id/report_id opcionais, detail, created_at e read_at opcional. UNIQUE(source_type, source_id, recipient_uid), índice por conta/id e índice parcial de não lidos. As referências de fonte/recurso são lógicas, não foreign keys novas: order_events, auditoria de decisão e report_messages geram o aviso na mesma transação. Não copiar destinatário de request nem transferir por produto. Read_at é monotônico/idempotente; links revalidam autorização no momento da abertura. Nenhum registro histórico é fabricado pela migração.
+
+
+### MP-10 — projeções administrativas sem nova migração
+
+Relatórios usam orders.supplier_id, created_at, status, price e payment_mode persistidos; não dependem de join com propriedade atual de products. Ocorrências administrativas usam reports com listagem paginada. Intervenções usam audit_logs existente: target_type=order e target_id=orders.id; order.cancelled referencia eventId em metadata, occurrence.replied/resolved referencia reportId e messageId. São gravações na mesma transação da fonte; não há backfill de auditorias antigas. Mensagens integrais continuam em report_messages. Recebimento financeiro não é deduzido do pagamento simulado. Consulte [contratos e semântica](arquitetura-vigente.md#supervisão-e-relatórios-persistidos--mp-10).

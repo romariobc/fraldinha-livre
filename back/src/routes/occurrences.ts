@@ -5,6 +5,7 @@ import type { Env, AppContext } from '../env'
 import { getUserRole } from '../middleware/auth'
 import { AppError, sendAppError, respondZodError } from '../lib/errors'
 import { occurrenceNotificationStatement } from '../lib/internal-notifications'
+import { adminOccurrenceAuditStatement } from '../lib/admin-operation-audit'
 
 type Ctx = Context<{ Bindings: Env; Variables: AppContext['Variables'] }>
 type Report = { id: string; order_id: string; supplier_id: string; client_id: string; message: string; created_at: string; status: Occurrence['status']; version: number; opened_by: string | null; opened_role: 'comprador' | 'fornecedor' | null; resolved_by: string | null; resolved_at: string | null }
@@ -102,6 +103,7 @@ export const occurrencesReplyHandler = handle(async (c: Ctx) => {
         c.env.DB.prepare('INSERT INTO report_messages (id, report_id, actor_id, actor_role, message, created_at, resolution) SELECT ?, id, ?, ?, ?, ?, ? FROM reports WHERE id = ? AND mutation_id = ?')
           .bind(body.requestId, uid, role, body.message, now, resolution ? 1 : 0, reportId, body.requestId),
         occurrenceNotificationStatement(c.env.DB, body.requestId),
+        ...(role === 'admin' ? [adminOccurrenceAuditStatement(c.env.DB, body.requestId, body.message.slice(0, 500), c.get('requestId') ?? body.requestId)] : []),
       ])
     } catch (error) {
       const winner = await c.env.DB.prepare('SELECT * FROM report_messages WHERE id = ?').bind(body.requestId).first<Message>()

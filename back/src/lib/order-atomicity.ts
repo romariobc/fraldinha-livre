@@ -1,6 +1,7 @@
 import type { CreateOrderRequest } from '../../../packages/contracts/src/order'
 import type { Env } from '../env'
 import { orderNotificationStatement } from './internal-notifications'
+import { adminOrderAuditStatement } from './admin-operation-audit'
 
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical)
@@ -98,6 +99,7 @@ export async function transitionOrderAtomically(db: Env['DB'], input: {
   actorId: string
   requestId: string | null
   reason?: string
+  adminActor?: boolean
 }): Promise<boolean> {
   const mutationId = crypto.randomUUID()
   const cancelling = input.targetStatus === 'cancelado'
@@ -120,6 +122,7 @@ export async function transitionOrderAtomically(db: Env['DB'], input: {
     actorId: input.actorId, requestId: input.requestId, reason: input.reason ?? null,
     stockEffect: cancelling ? 'restore' : 'none', createdAt: new Date().toISOString(),
   }))
+  if (input.adminActor) statements.push(adminOrderAuditStatement(db, mutationId))
   statements.push(orderNotificationStatement(db, mutationId))
   const results = await db.batch(statements)
   return results[0].meta.changes === 1

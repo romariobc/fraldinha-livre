@@ -37,7 +37,8 @@ vi.mock('sonner', () => ({
   },
 }))
 
-import { toast } from 'sonner'
+import { apiFetch } from '@/lib/api-client'
+vi.mock('@/lib/api-client',()=>({apiFetch:vi.fn()}))
 
 const ADVERSARIAL_ORDERS: DirectOrder[] = [
   {
@@ -285,48 +286,27 @@ describe('Milestone 4 Adversarial & Behavioral Test Suite', () => {
     })
   })
 
-  describe('RelatoriosPage Full Integration & CSV Export', () => {
-    it('renders all page sections and KPI cards with accurate mock calculations', () => {
+  describe('Persisted reporting integration', () => {
+    const empty = { timezone:'America/Fortaleza', currency:'BRL', snapshotAt:'2026-11-06T12:00:00.000Z', filters:{from:'2026-11-01',to:'2026-11-06',q:'',status:null,supplierId:'sup-1'}, rows:[], summary:{total:0,delivered:0,cancelled:0,simulatedValueCents:0,legacyValueCents:0,financialReceivedCents:null,unknownPriceCount:0,invalidDateCount:0},daily:[] }
+    it('shows observed empty state and explicitly unapplied financial receipts', async () => {
+      vi.mocked(apiFetch).mockResolvedValue({json:async()=>empty} as Response)
       render(<RelatoriosPage />)
-
-      expect(screen.getByText('Relatórios de Desempenho')).toBeInTheDocument()
-      expect(screen.getByTestId('metric-card-success-rate')).toBeInTheDocument()
-      expect(screen.getByTestId('metric-card-total-deliveries')).toBeInTheDocument()
-      expect(screen.getByTestId('metric-card-total-cancellations')).toBeInTheDocument()
-      expect(screen.getByTestId('metric-card-revenue')).toBeInTheDocument()
-      expect(screen.getByTestId('main-reports-chart')).toBeInTheDocument()
-      expect(screen.getByTestId('breakdown-sections')).toBeInTheDocument()
+      expect(await screen.findByText('Nenhum pedido para os filtros aplicados.')).toBeInTheDocument()
+      expect(screen.getByText('Não apurado — sem cobrança real')).toBeInTheDocument()
     })
-
-    it('triggers CSV download with proper headers and data content', () => {
-      const createObjectURLMock = vi.fn(() => 'blob:http://localhost/mock-csv-report')
-      const revokeObjectURLMock = vi.fn()
-      window.URL.createObjectURL = createObjectURLMock
-      window.URL.revokeObjectURL = revokeObjectURLMock
-
+    it('blocks export while no persisted snapshot is available', async () => {
+      vi.mocked(apiFetch).mockRejectedValue(new Error('offline'))
       render(<RelatoriosPage />)
-
-      const exportBtn = screen.getByTestId('export-csv-btn')
-      fireEvent.click(exportBtn)
-
-      expect(createObjectURLMock).toHaveBeenCalled()
-      expect(revokeObjectURLMock).toHaveBeenCalled()
-      expect(toast.success).toHaveBeenCalledWith('Relatório CSV exportado com sucesso!')
+      expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível consultar')
+      expect(screen.getByRole('button',{name:'Exportar consulta CSV'})).toBeDisabled()
     })
-
-    it('handles CSV download failure gracefully', () => {
-      window.URL.createObjectURL = vi.fn(() => {
-        throw new Error('Blob creation failed')
-      })
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
+    it('handles CSV generation failure without claiming success', async () => {
+      vi.mocked(apiFetch).mockResolvedValue({json:async()=>empty} as Response)
+      window.URL.createObjectURL=vi.fn(()=>{throw new Error('Blob creation failed')})
       render(<RelatoriosPage />)
-
-      const exportBtn = screen.getByTestId('export-csv-btn')
-      fireEvent.click(exportBtn)
-
-      expect(toast.error).toHaveBeenCalledWith('Não foi possível gerar a exportação do relatório.')
-      consoleSpy.mockRestore()
+      await screen.findByText('Nenhum pedido para os filtros aplicados.')
+      fireEvent.click(screen.getByRole('button',{name:'Exportar consulta CSV'}))
+      expect(screen.getByRole('status')).toHaveTextContent('Não foi possível gerar o CSV.')
     })
   })
 

@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation"
 import {
   Store,
   ExternalLink,
-  ShieldCheck,
   LogOut,
   User,
   ChevronRight,
@@ -32,7 +31,7 @@ import NotificationLink from '@/components/NotificationLink'
 const ROUTE_TITLES: Record<string, { title: string; subtitle: string }> = {
   "/painel-fornecedor": {
     title: "Visão Geral",
-    subtitle: "Acompanhamento em tempo real de métricas, vendas e status de entrega",
+    subtitle: "Pedidos persistidos, valores simulados e situação atual",
   },
   "/painel-fornecedor/pedidos": {
     title: "Gestão de Pedidos",
@@ -44,7 +43,7 @@ const ROUTE_TITLES: Record<string, { title: string; subtitle: string }> = {
   },
   "/painel-fornecedor/relatorios": {
     title: "Relatórios & Desempenho",
-    subtitle: "Análise comparativa de entregas, cancelamentos e faturamento por período",
+    subtitle: "Pedidos criados no período, situação atual e valores simulados em BRL",
   },
   "/painel-fornecedor/configuracoes": {
     title: "Configurações da Loja",
@@ -120,8 +119,8 @@ export function SupplierHeader() {
             variant="outline"
             className="h-7 px-2.5 rounded-full border-primary/30 bg-primary-light/50 text-primary-dark text-xs font-semibold gap-1.5"
           >
-            <ShieldCheck className="size-3.5 text-primary-dark" />
-            Distribuidora Verificada
+            <Store className="size-3.5 text-primary-dark" />
+            Área do fornecedor
           </Badge>
 
           <Button

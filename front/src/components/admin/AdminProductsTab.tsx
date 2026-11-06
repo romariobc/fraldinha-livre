@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
-import { apiFetch } from '@/lib/api-client'
+import { useCallback, useEffect, useState, useMemo } from 'react'
+import { apiFetch as fetchApi } from '@/lib/api-client'
 import type { Product } from '@contracts'
 import { Search, RefreshCw, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,8 @@ import { showErrorToast } from '@/lib/frontend-diagnostics'
 
 const PAGE_SIZE = 10
 
-export default function AdminProductsTab() {
+export default function AdminProductsTab({ expectedUid }: { expectedUid?: string } = {}) {
+  const apiFetch = useCallback((path: string, init?: RequestInit) => expectedUid ? fetchApi(path, init, expectedUid) : init ? fetchApi(path, init) : fetchApi(path), [expectedUid])
   const [products, setProducts] = useState<Product[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -49,7 +50,7 @@ export default function AdminProductsTab() {
     return () => {
       cancelled = true
     }
-  }, [refreshKey])
+  }, [refreshKey, apiFetch])
 
   const filteredProducts = useMemo(() => {
     if (!products) return []

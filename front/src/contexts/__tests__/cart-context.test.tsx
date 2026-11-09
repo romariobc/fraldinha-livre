@@ -261,9 +261,9 @@ describe('CartContext', () => {
         result.current.addItem(mockItem2)
       })
 
-      const stored = window.localStorage.getItem('fl.cart.v1')
+      const stored = window.localStorage.getItem('fl.cart.v2')
       expect(stored).toBeDefined()
-      const parsed = JSON.parse(stored!)
+      const parsed = JSON.parse(stored!).items
       expect(parsed).toHaveLength(2)
       expect(parsed[0].productId).toBe('prod-1')
       expect(parsed[1].productId).toBe('prod-2')
@@ -304,24 +304,24 @@ describe('CartContext', () => {
         result.current.addItem(mockItem1)
       })
 
-      let stored = window.localStorage.getItem('fl.cart.v1')
-      let parsed = JSON.parse(stored!)
+      let stored = window.localStorage.getItem('fl.cart.v2')
+      let parsed = JSON.parse(stored!).items
       expect(parsed).toHaveLength(1)
 
       act(() => {
         result.current.updateQty('prod-1', 'supplier-1', 5)
       })
 
-      stored = window.localStorage.getItem('fl.cart.v1')
-      parsed = JSON.parse(stored!)
+      stored = window.localStorage.getItem('fl.cart.v2')
+      parsed = JSON.parse(stored!).items
       expect(parsed[0].quantity).toBe(5)
 
       act(() => {
         result.current.removeItem('prod-1', 'supplier-1')
       })
 
-      stored = window.localStorage.getItem('fl.cart.v1')
-      parsed = JSON.parse(stored!)
+      stored = window.localStorage.getItem('fl.cart.v2')
+      parsed = JSON.parse(stored!).items
       expect(parsed).toHaveLength(0)
     })
   })

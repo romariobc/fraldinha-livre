@@ -81,6 +81,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Cache em memória para evitar chamadas duplicadas de migração na mesma sessão
 const migratedUsersCache = new Set<string>();
 
+function hasAdminClaim(claims: Record<string, unknown> | null): boolean {
+  return (claims?.admin === true || claims?.role === 'admin')
+    && claims?.comprador !== true
+    && claims?.fornecedor !== true
+    && claims?.role !== 'comprador'
+    && claims?.role !== 'fornecedor';
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -94,7 +102,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Erro ao concluir login via redirect:', error);
     });
 
+    let revision = 0;
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      const currentRevision = ++revision;
+      // A new identity must not be routed using the previous session's role/profile.
+      setLoading(true);
       if (fbUser) {
         // Usuario logado: carregar claims e perfil completo
         setUser({
@@ -111,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const tokenResult = await fbUser.getIdTokenResult();
             tokenClaims = (tokenResult.claims as Record<string, unknown>) || null;
             if (tokenClaims) {
-              if (tokenClaims.role === 'admin' || tokenClaims.admin === true) {
+              if (hasAdminClaim(tokenClaims)) {
                 tokenRole = 'admin';
               } else if (tokenClaims.role === 'fornecedor' || tokenClaims.fornecedor === true) {
                 tokenRole = 'fornecedor';
@@ -124,10 +136,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('Erro ao obter Custom Claims do token:', err);
         }
 
+        if (currentRevision !== revision) return;
         setClaims(tokenClaims);
 
         try {
           const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
+          if (currentRevision !== revision) return;
           if (userDoc.exists()) {
             const data = userDoc.data() as UserProfile;
             setProfile(data);
@@ -140,15 +154,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               (data.role === 'comprador' || data.role === 'fornecedor') &&
               !migratedUsersCache.has(fbUser.uid)
             ) {
-              migratedUsersCache.add(fbUser.uid);
               try {
                 const res = await apiFetch('/auth/claim', {
                   method: 'POST',
                   body: JSON.stringify({ role: data.role }),
                 });
+                if (currentRevision !== revision) return;
+                if (res.ok) migratedUsersCache.add(fbUser.uid);
                 if (res.ok && typeof fbUser.getIdTokenResult === 'function') {
                   // Força renovação do token e atualiza estado local de claims/role
                   const tokenResult = await fbUser.getIdTokenResult(true);
+                  if (currentRevision !== revision) return;
                   const freshClaims = (tokenResult.claims as Record<string, unknown>) || null;
                   tokenClaims = freshClaims;
                   setClaims(freshClaims);
@@ -157,28 +173,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   }
                 }
               } catch (err) {
+                if (currentRevision !== revision) return;
                 console.warn('[auth-context] Falha na auto-migração de Custom Claim:', err);
               }
             }
 
             // Fallback de role do Firestore é restrito exclusivamente a papéis legítimos não-administrativos
             // ('comprador' | 'fornecedor'). Jamais atribui autoridade de 'admin' a partir de data.role do Firestore.
-            const isVerifiedAdmin = Boolean(
-              tokenRole === 'admin' ||
-              tokenClaims?.admin === true ||
-              tokenClaims?.role === 'admin' ||
-              (process.env.NEXT_PUBLIC_ADMIN_UID && fbUser.uid === process.env.NEXT_PUBLIC_ADMIN_UID)
-            );
-
             const fallbackRole: UserRole | null =
               data.role === 'comprador' || data.role === 'fornecedor' ? data.role : null;
 
-            setRole(tokenRole || (isVerifiedAdmin ? 'admin' : fallbackRole));
+            setRole(tokenRole || fallbackRole);
           } else {
             setProfile(null);
             setRole(tokenRole || null);
           }
         } catch (error) {
+          if (currentRevision !== revision) return;
           console.error('Erro ao carregar perfil do Firestore:', error);
           setProfile(null);
           setRole(tokenRole || null);
@@ -193,7 +204,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => { revision++; unsubscribe(); };
   }, []);
 
   const signInGoogle = async () => {
@@ -273,12 +284,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshClaims = async () => {
     if (auth.currentUser) {
-      if (typeof auth.currentUser.getIdTokenResult === 'function') {
-        const tokenResult = await auth.currentUser.getIdTokenResult(true);
+      const currentUser = auth.currentUser;
+      const snapshot = await getDoc(doc(db, 'users', currentUser.uid));
+      if (auth.currentUser?.uid !== currentUser.uid) return;
+      setProfile(snapshot.exists() ? snapshot.data() as UserProfile : null);
+      if (typeof currentUser.getIdTokenResult === 'function') {
+        const tokenResult = await currentUser.getIdTokenResult(true);
+        if (auth.currentUser?.uid !== currentUser.uid) return;
         const tokenClaims = (tokenResult.claims as Record<string, unknown>) || null;
         let tokenRole: UserRole | null = null;
         if (tokenClaims) {
-          if (tokenClaims.role === 'admin' || tokenClaims.admin === true) {
+          if (hasAdminClaim(tokenClaims)) {
             tokenRole = 'admin';
           } else if (tokenClaims.role === 'fornecedor' || tokenClaims.fornecedor === true) {
             tokenRole = 'fornecedor';
@@ -290,19 +306,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (tokenRole) {
           setRole(tokenRole);
         }
-      } else if (typeof auth.currentUser.getIdToken === 'function') {
-        await auth.currentUser.getIdToken(true);
+      } else if (typeof currentUser.getIdToken === 'function') {
+        await currentUser.getIdToken(true);
       }
     }
   };
 
-  // Apenas Custom Claims verificadas no token (ou o fallback temporário explícito NEXT_PUBLIC_ADMIN_UID)
-  // conferem autoridade de admin na interface. Nunca confiar exclusivamente em profile.role ou role vinda do Firestore.
-  const isClaimAdmin = Boolean(claims?.admin === true || claims?.role === 'admin');
-  const isLegacyAdminFallback = Boolean(
-    process.env.NEXT_PUBLIC_ADMIN_UID && user?.uid === process.env.NEXT_PUBLIC_ADMIN_UID
-  );
-  const isAdmin = isClaimAdmin || isLegacyAdminFallback;
+  const isAdmin = hasAdminClaim(claims);
 
   const value: AuthContextType = {
     user,

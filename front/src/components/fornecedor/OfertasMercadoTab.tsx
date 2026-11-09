@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import type { OfferStatus } from '@/lib/supplier-mock'
-import { timeAgo } from '@/lib/supplier-mock'
+import type { OfferStatus } from '@/lib/domain/supplier'
+import { timeAgo } from '@/lib/formatters'
 import { formatPrice } from '@/lib/utils'
 import { formatDeliveryType } from '@/lib/market-utils'
 import { useMarket } from '@/contexts/market-context'

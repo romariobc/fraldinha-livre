@@ -103,7 +103,7 @@ describe('FornecedorCatalogoPage Route', () => {
     render(<FornecedorCatalogoPage />)
 
     expect(screen.getByText('Loja Exclusiva')).toBeInTheDocument()
-    expect(screen.getByText('Catálogo: Distribuidora Sul')).toBeInTheDocument()
+    expect(screen.getByText('Catálogo: Fornecedor sup-001')).toBeInTheDocument()
     expect(screen.getAllByText('Supersec Pants').length).toBeGreaterThan(0)
   })
 

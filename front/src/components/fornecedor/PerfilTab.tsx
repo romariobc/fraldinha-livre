@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { useAuth, type UserProfile } from '@/contexts/auth-context'
 import { isValidCNPJ } from '@/lib/utils'
-import { maskCnpj } from '@/lib/supplier-mock'
+import { maskCnpj } from '@/lib/formatters'
 
 function formatCEP(cep: string): string {
   const digits = cep.replace(/\D/g, '')

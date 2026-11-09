@@ -36,7 +36,7 @@ function CadastroPageSkeleton() {
 function CadastroPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { signUpEmail, signInGoogle, user, role, loading } = useAuth()
+  const { signUpEmail, signInGoogle, user, profile, role, loading } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [nome, setNome] = useState('')
   const [email, setEmail] = useState('')
@@ -47,15 +47,17 @@ function CadastroPageContent() {
   // usuario que ja tinha conta e caiu aqui por engano.
   useEffect(() => {
     if (loading || !user) return
-    if (role === null) {
+    if (role === null || (profile === null && role !== 'admin')) {
       router.push('/onboarding')
+    } else if (role === 'admin') {
+      router.push('/admin')
     } else if (role === 'fornecedor') {
       router.push('/painel-fornecedor')
     } else {
       const redirect = searchParams.get('redirect')
       router.push(safeRedirect(redirect))
     }
-  }, [loading, user, role, router, searchParams])
+  }, [loading, user, profile, role, router, searchParams])
 
   async function handleGoogleSignIn() {
     if (isLoading || loading) return

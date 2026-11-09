@@ -3,8 +3,10 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
+vi.mock('@/components/OrderTracking', () => ({ default: () => <div>Acompanhamento do pedido</div> }))
+vi.mock('@/contexts/auth-context', () => ({ useAuth: () => ({ user: { uid: 'test-user' }, role: 'comprador' }) }))
 import OrderCard from '../OrderCard'
-import type { Order } from '@/lib/account-mock'
+import type { Order } from '@/lib/domain/account'
 
 // Mock sonner
 vi.mock('sonner', () => ({

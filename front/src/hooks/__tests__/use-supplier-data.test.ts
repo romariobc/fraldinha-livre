@@ -8,7 +8,7 @@ import {
   filterOrdersByDateRange,
   generateReportTimeSeries,
 } from '../use-supplier-data'
-import type { DirectOrder } from '@/lib/supplier-mock'
+import type { DirectOrder } from '@/lib/domain/supplier'
 
 vi.mock('@/contexts/auth-context', () => ({
   useAuth: vi.fn(() => ({
@@ -138,13 +138,13 @@ describe('useSupplierData and Reports Hooks', () => {
       expect(result.current.recentOrders[2].statusVariant).toBe('destructive')
     })
 
-    it('generates complete sparkline datasets', () => {
+    it('does not invent sparkline datasets without persisted observations', () => {
       const { result } = renderHook(() => useSupplierData())
 
-      expect(result.current.metrics.sparklines.revenue).toHaveLength(7)
-      expect(result.current.metrics.sparklines.averageTicket).toHaveLength(7)
-      expect(result.current.metrics.sparklines.deliveries).toHaveLength(7)
-      expect(result.current.metrics.sparklines.cancellations).toHaveLength(7)
+      expect(result.current.metrics.sparklines.revenue).toHaveLength(0)
+      expect(result.current.metrics.sparklines.averageTicket).toHaveLength(0)
+      expect(result.current.metrics.sparklines.deliveries).toHaveLength(0)
+      expect(result.current.metrics.sparklines.cancellations).toHaveLength(0)
     })
   })
 
@@ -202,8 +202,8 @@ describe('useSupplierData and Reports Hooks', () => {
       expect(result.current.summary).toBeDefined()
       expect(result.current.summary.chartData.length).toBeGreaterThan(0)
       expect(result.current.summary.statusBreakdown.length).toBe(3)
-      expect(result.current.summary.categoryBreakdown.length).toBe(4)
-      expect(result.current.summary.cancellationReasons.length).toBe(3)
+      expect(result.current.summary.categoryBreakdown.length).toBe(0)
+      expect(result.current.summary.cancellationReasons.length).toBe(0)
       expect(result.current.loading).toBe(false)
       expect(result.current.error).toBeNull()
     })

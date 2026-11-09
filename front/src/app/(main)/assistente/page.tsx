@@ -1,32 +1,13 @@
-'use client'
-
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuth } from '@/contexts/auth-context'
-import ChatUI from '@/components/assistente/ChatUI'
+import Link from 'next/link'
 
 export default function AssistentePage() {
-  const router = useRouter()
-  const { user, loading } = useAuth()
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login?redirect=/assistente')
-    }
-  }, [user, loading, router])
-
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>
-  }
-
-  if (!user) {
-    return null
-  }
-
   return (
-    <div className="container-fl mx-auto px-4 py-8">
-      <h1 className="font-display text-2xl font-bold text-brand-text mb-4">Assistente de compra</h1>
-      <ChatUI />
-    </div>
+    <section className="container-fl py-8">
+      <h1 className="font-display text-2xl font-bold text-brand-text">Assistente de compra</h1>
+      <p className="mt-3">O assistente está indisponível nesta versão.</p>
+      <Link href="/catalogo" className="mt-4 inline-block font-semibold underline">
+        Abrir catálogo
+      </Link>
+    </section>
   )
 }

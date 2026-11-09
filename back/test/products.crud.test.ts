@@ -1,3 +1,4 @@
+import { approveFixtures, seedSuppliers } from './approve-fixtures'
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { Hono } from 'hono'
 import { drizzle } from 'drizzle-orm/d1'
@@ -15,6 +16,7 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
 
   beforeAll(async () => {
     await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
+    await approveFixtures(env.DB, ...seedSuppliers, 'uid-fornecedor-teste', 'uid-outro-fornecedor', 'uid-fornecedor-a', 'uid-fornecedor-b', 'supplier-a')
 
     const db = drizzle(env.DB)
     existingProductId = `crud-test-produto-1-${Date.now()}`
@@ -427,7 +429,7 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
     expect(body.error.code).toBe('FORBIDDEN')
   })
 
-  it('DELETE /products/:id do próprio produto → 204 sem corpo, nao aparece mais em nenhuma consulta', async () => {
+  it('DELETE /products/:id desativa e preserva produto no catálogo do dono', async () => {
     const testApp = createTestApp()
 
     // Criar um novo produto para deletar
@@ -478,7 +480,8 @@ describe('POST/PUT/DELETE /products — CRUD com autorizacao por dono', () => {
     const getScopeResponse = await testApp.fetch(getScopeRequest, env)
     const scopeProducts = (await getScopeResponse.json()) as unknown[]
     const idsScope = scopeProducts.map((p: unknown) => (p as Record<string, unknown>).id)
-    expect(idsScope).not.toContain(productIdToDelete)
+    expect(idsScope).toContain(productIdToDelete)
+    expect(scopeProducts.find((p: any) => p.id === productIdToDelete)).toMatchObject({ active: false })
   })
 
   // ===== Casos de falta de token =====

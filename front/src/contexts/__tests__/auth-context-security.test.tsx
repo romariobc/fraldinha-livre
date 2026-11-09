@@ -1,6 +1,6 @@
 /// <reference types="vitest/globals" />
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { AuthProvider, useAuth } from '../auth-context'
 
@@ -53,6 +53,30 @@ function TestConsumer() {
 
 describe('AuthContext — Segurança e Isolamento de Autoridade Administrativa', () => {
   const originalEnv = process.env.NEXT_PUBLIC_ADMIN_UID
+
+  it('uma resposta tardia de perfil não substitui a identidade atual', async () => {
+    let notify!: (user: unknown) => Promise<void>
+    mockOnAuthStateChanged.mockImplementation((_auth, callback) => { notify = callback; return vi.fn() })
+    let releaseOld!: (value: unknown) => void
+    const oldProfile = new Promise(resolve => { releaseOld = resolve })
+    mockGetDoc.mockImplementation(ref => ref.path === 'users/old-session' ? oldProfile : Promise.resolve({
+      exists: () => true, data: () => ({ role: 'comprador', name: 'Atual' }),
+    }))
+    render(<AuthProvider><TestConsumer /></AuthProvider>)
+    let pending!: Promise<void>
+    await act(async () => {
+      pending = notify({ uid: 'old-session', email: 'old@example.com', getIdTokenResult: async () => ({ claims: { role: 'fornecedor' } }) })
+      await Promise.resolve()
+    })
+    await act(async () => { await notify({ uid: 'new-session', email: 'new@example.com', getIdTokenResult: async () => ({ claims: { role: 'comprador' } }) }) })
+    await act(async () => {
+      releaseOld({ exists: () => true, data: () => ({ role: 'fornecedor', name: 'Anterior' }) })
+      await pending
+    })
+    expect(screen.getByTestId('user-uid')).toHaveTextContent('new-session')
+    expect(screen.getByTestId('user-role')).toHaveTextContent('comprador')
+    expect(screen.getByTestId('profile-role')).toHaveTextContent('comprador')
+  })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -176,7 +200,7 @@ describe('AuthContext — Segurança e Isolamento de Autoridade Administrativa',
     expect(screen.getByTestId('user-role')).toHaveTextContent('admin')
   })
 
-  it('FALLBACK TEMPORÁRIO: Usuário com UID correspondente ao NEXT_PUBLIC_ADMIN_UID é aceito', async () => {
+  it('UID legado e perfil administrativo não conferem privilégio', async () => {
     const mockLegacyUser = {
       uid: 'LEGACY_ADMIN_UID_123',
       email: 'romariobc@gmail.com',
@@ -208,8 +232,8 @@ describe('AuthContext — Segurança e Isolamento de Autoridade Administrativa',
       expect(screen.getByTestId('user-uid')).toHaveTextContent('LEGACY_ADMIN_UID_123')
     })
 
-    expect(screen.getByTestId('is-admin')).toHaveTextContent('true')
-    expect(screen.getByTestId('user-role')).toHaveTextContent('admin')
+    expect(screen.getByTestId('is-admin')).toHaveTextContent('false')
+    expect(screen.getByTestId('user-role')).toHaveTextContent('no-role')
   })
 
   it('COMPATIBILIDADE: Usuário comprador com role legítimo no Firestore recebe role comprador', async () => {

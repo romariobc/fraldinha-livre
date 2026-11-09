@@ -1,3 +1,4 @@
+import { approveFixtures, seedSuppliers } from './approve-fixtures'
 import { describe, it, expect, beforeAll } from 'vitest'
 import { Hono } from 'hono'
 import { env } from 'cloudflare:workers'
@@ -17,6 +18,7 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
 
   beforeAll(async () => {
     await applyD1Migrations(env.DB, env.TEST_MIGRATIONS)
+    await approveFixtures(env.DB, ...seedSuppliers, 'uid-fornecedor-teste', 'uid-outro-fornecedor', 'uid-fornecedor-a', 'uid-fornecedor-b', 'supplier-a')
 
     const db = drizzle(env.DB)
     prodFornecedorAId = `prod-adv-fornecedor-a-${Date.now()}`
@@ -113,7 +115,7 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
         return { uid: 'uid-admin-role', role: 'admin' }
       }
       if (token === 'token-admin-legacy') {
-        return { uid: env.ADMIN_UID }
+        return { uid: 'qa-legacy-admin' }
       }
       if (token === 'token-claims-contraditorios') {
         return { uid: 'uid-contraditorio', claims: { comprador: true, fornecedor: true, role: 'comprador' } }
@@ -465,15 +467,16 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
     expect(prodRes.status).toBe(200)
   })
 
-  it('16. Admin legado com ADMIN_UID acessa escopos administrativos → 200', async () => {
+  it('16. Admin legado com ADMIN_UID sem claim recebe 403 no escopo administrativo', async () => {
     const app = createTestApp()
+    const legacyBindings = { ...env, ADMIN_UID: 'qa-legacy-admin' }
     const prodRes = await app.fetch(
       new Request('http://localhost/products?scope=admin', {
         headers: { Authorization: 'Bearer token-admin-legacy' },
       }),
-      env,
+      legacyBindings,
     )
-    expect(prodRes.status).toBe(200)
+    expect(prodRes.status).toBe(403)
   })
 
   // -------------------------------------------------------------
@@ -1162,14 +1165,14 @@ describe('RBAC Adversarial & Comprehensive Access Matrix Suite', () => {
     )
     expect(getFornecedorProducts.status).toBe(403)
 
-    // Confirma que admin scope FUNCIONA (regressão de #16)
+    // Confirma que o UID também não concede acesso administrativo
     const getAdminProducts = await app.fetch(
       new Request('http://localhost/products?scope=admin', {
         headers: { Authorization: 'Bearer token-admin-legacy' },
       }),
       env,
     )
-    expect(getAdminProducts.status).toBe(200)
+    expect(getAdminProducts.status).toBe(403)
   })
 
   it('43. Comprador tentando GET /products?scope=admin e GET /orders?scope=admin → 403', async () => {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { GeoScope } from '@/lib/supplier-mock'
+import type { GeoScope } from '@/lib/domain/supplier'
 
 interface GeoScopeSelectorProps {
   value: GeoScope

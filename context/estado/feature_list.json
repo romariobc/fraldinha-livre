@@ -847,14 +847,14 @@
       "evidencias_exigidas": [
         "Testes de filtros/páginas/CSV/limites de período e ações administrativas; conciliação de indicadores com fixtures persistidas e jornada no navegador."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
-      "notas": "Autorizado em 06/11/2026: aprovado prossiga para o MP-10. Entrega local concluída na base c3dd849, branch codex/mp-10-admin-supervision. Supervisão/relatórios persistidos, calendário Fortaleza/BRL/CSV único, auditoria transacional de cancelamentos/respostas/resoluções; 1.319 testes, tipos/lint/build e cinco grupos de jornada autenticada aprovados. Ajuste de largura móvel validado; Miniflare direto contornou falha interna do proxy do Wrangler, sem alterar dependências. Relatório docs/qa/MP-10-supervisao-relatorios.md; CI/SHA/checkpoint final registrados na PR. Sem merge, deploy ou migração remota; MP-11 não autorizado."
+      "aprovacao_usuario": "entrega_aprovada_pelo_usuario",
+      "notas": "Autorizado em 06/11/2026: aprovado prossiga para o MP-10. Entrega local concluída na base c3dd849, branch codex/mp-10-admin-supervision. Supervisão/relatórios persistidos, calendário Fortaleza/BRL/CSV único, auditoria transacional de cancelamentos/respostas/resoluções; 1.319 testes, tipos/lint/build e cinco grupos de jornada autenticada aprovados. Ajuste de largura móvel validado; Miniflare direto contornou falha interna do proxy do Wrangler, sem alterar dependências. Relatório docs/qa/MP-10-supervisao-relatorios.md; CI/SHA/checkpoint final registrados na PR. Sem merge, deploy ou migração remota; MP-11 não autorizado. Em 08/11/2026, o usuário aprovou esta entrega e autorizou avançar ao MP-11."
     },
     {
       "id": "MP-11",
       "titulo": "Preparar operação, recuperação e configuração de produção",
       "fase": 1,
-      "status": "todo",
+      "status": "done",
       "ordem": 11,
       "prioridade": "P0",
       "dependencias": [
@@ -881,8 +881,8 @@
       "evidencias_exigidas": [
         "Relatório do ensaio de restauração, runbooks e configuração/alertas verificáveis; testes de claims e regras Firestore; evidência administrativa e negativa; revisão de migrações."
       ],
-      "aprovacao_usuario": "aguardando_aprovacao_para_iniciar",
-      "notas": "Planejado; implementação, validação e homologação ainda pendentes. Exige aprovação explícita do usuário para iniciar, além das dependências técnicas."
+      "aprovacao_usuario": "aguardando_aprovacao_da_entrega",
+      "notas": "Autorizado em 08/11/2026. Preparação local concluída sobre c3c8dbc. Restauração SQLite e D1 isolados, acesso por claims, emulador Firestore, assistente indisponível e harness com 1.318 testes aprovados. Runbook e evidências em docs/qa/MP-11-operacao-recuperacao.md. Adoção das metas RPO/RTO, alertas dedicados e execução remota seguem gates operacionais."
     },
     {
       "id": "MP-12",
@@ -985,9 +985,9 @@
     ],
     "regra_execucao": "Uma etapa por item MP, em ordem numerica; concluir, validar, registrar e parar. Dependencias satisfeitas nao autorizam avancar. Exigir aprovacao explicita do usuario para iniciar a proxima etapa.",
     "controle_execucao": {
-      "etapa_concluida": "MP-10",
+      "etapa_concluida": "MP-11",
       "aprovacao_entrega": "aguardando_usuario",
-      "proxima_etapa": "MP-11",
+      "proxima_etapa": "MP-12",
       "autorizada_proxima_etapa": false,
       "preparacao_concluida": "CTX-01",
       "aprovacao_preparacao": "aprovada_pelo_usuario"

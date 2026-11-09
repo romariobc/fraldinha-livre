@@ -30,7 +30,7 @@ describe('GET /products?scope=admin', () => {
 
   const createTestApp = () => {
     const fakeVerify = async (token: string) => {
-      if (token === 'token-admin') return { uid: env.ADMIN_UID }
+      if (token === 'token-admin') return { uid: 'qa-admin', claims: { role: 'admin' } }
       if (token === 'token-admin-role') return { uid: 'uid-role-admin', role: 'admin' }
       if (token === 'token-admin-claim') return { uid: 'uid-claim-admin', claims: { admin: true } }
       if (token === 'token-fornecedor-teste') return { uid: 'uid-fornecedor-teste' }

@@ -140,7 +140,7 @@ export function resolveEffectiveRole(claims?: Record<string, unknown> | null): s
 
 /**
  * Extrai e resolve o papel efetivo do usuário a partir do contexto Hono.
- * Avalia role injetada, Custom Claims e o fallback de ADMIN_UID legado.
+ * Avalia role injetada e Custom Claims.
  * Opera de forma fail-closed: claims contraditórios resultam em 'conflict' (acesso negado).
  */
 export function getUserRole(c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>): string | undefined {
@@ -158,7 +158,7 @@ export function getUserRole(c: Context<{ Bindings: Env; Variables: AppContext['V
     return 'conflict'
   }
 
-  if (resolved === 'admin' || role === 'admin' || (Boolean(c.env?.ADMIN_UID) && uid === c.env.ADMIN_UID)) {
+  if (resolved === 'admin' || role === 'admin') {
     if (resolved && resolved !== 'admin') {
       return 'conflict'
     }

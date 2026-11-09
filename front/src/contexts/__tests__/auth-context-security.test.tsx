@@ -200,7 +200,7 @@ describe('AuthContext — Segurança e Isolamento de Autoridade Administrativa',
     expect(screen.getByTestId('user-role')).toHaveTextContent('admin')
   })
 
-  it('FALLBACK TEMPORÁRIO: Usuário com UID correspondente ao NEXT_PUBLIC_ADMIN_UID é aceito', async () => {
+  it('UID legado e perfil administrativo não conferem privilégio', async () => {
     const mockLegacyUser = {
       uid: 'LEGACY_ADMIN_UID_123',
       email: 'romariobc@gmail.com',
@@ -232,8 +232,8 @@ describe('AuthContext — Segurança e Isolamento de Autoridade Administrativa',
       expect(screen.getByTestId('user-uid')).toHaveTextContent('LEGACY_ADMIN_UID_123')
     })
 
-    expect(screen.getByTestId('is-admin')).toHaveTextContent('true')
-    expect(screen.getByTestId('user-role')).toHaveTextContent('admin')
+    expect(screen.getByTestId('is-admin')).toHaveTextContent('false')
+    expect(screen.getByTestId('user-role')).toHaveTextContent('no-role')
   })
 
   it('COMPATIBILIDADE: Usuário comprador com role legítimo no Firestore recebe role comprador', async () => {

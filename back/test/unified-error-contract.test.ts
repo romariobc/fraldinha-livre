@@ -40,7 +40,7 @@ describe('OBS-002 — Contrato Unificado de Erros no Backend', () => {
 
   it('401 (token ausente ou malformado): retorna UNAUTHORIZED com requestId', async () => {
     const res = await app.fetch(
-      new Request('http://localhost/chat/message', {
+      new Request('http://localhost/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -57,6 +57,15 @@ describe('OBS-002 — Contrato Unificado de Erros no Backend', () => {
     const parsed = ApiErrorResponseSchema.parse(body)
     expect(parsed.error.code).toBe('UNAUTHORIZED')
     expect(parsed.error.requestId).toBe(headerId)
+  })
+
+  it('marketplace does not expose the assistant API even with a bearer token', async () => {
+    const response = await app.fetch(new Request('http://localhost/chat/message', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer candidate-token' },
+    }), env)
+    expect(response.status).toBe(404)
+    expect(ApiErrorResponseSchema.parse(await response.json()).error.code).toBe('RESOURCE_NOT_FOUND')
   })
 
   it('500 (app.onError): erros não tratados retornam INTERNAL_ERROR com requestId e sem vazar stack', async () => {

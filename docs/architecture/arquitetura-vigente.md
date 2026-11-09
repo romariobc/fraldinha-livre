@@ -99,3 +99,7 @@ GET /admin/reports/orders e GET /reports/orders retornam OrderReport (packages/c
 Totais e série diária derivados das mesmas linhas. Valor simulado soma preços válidos dos pedidos não cancelados com payment_mode=simulated; valor legado fica separado. Recebimento financeiro é null (não apurado). Preço ausente/inválido não é imputado como zero; registros sem data válida são contados como excluídos do período, sem atribuição temporal fictícia. OrderReportPanel pagina20 linhas e exporta TODAS as linhas desse snapshot, sem segunda requisição. CSV UTF8 BOM, ponto-e-vírgula, células entre aspas, escape de aspas e neutralização de fórmulas; preços em centavos e datas/calendário explícitos.
 
 Overview/relatórios ativos do fornecedor usam a API persistida, sem deltas, curvas, SLA, categorias ou motivos percentuais fixos. Helpers antigos de use-supplier-data permanecem apenas por compatibilidade com consumidores/testes legados; não alimentam os relatórios ativos. Novas consultas/mutações usam UID esperado; abas administrativas remontam na troca de conta. Nenhuma migração adicional ao esquema0017 e nenhuma ativação remota nesta etapa. Pacote seletivo admin-supervision.
+
+## Operação e acesso administrativo — MP-11
+
+O candidato exige claim administrativa no token Firebase para os escopos de administração. O Firestore autoriza listagem de perfis por claim e protege a edição por proprietário. A rota pública do assistente exibe indisponibilidade e o Worker deixa de registrar a rota de chat. [Runbook e limites de operação](../operations/marketplace.md).

@@ -42,7 +42,7 @@ Essas regras são o alvo aprovado. Não descrever aprovação de fornecedores, n
 5. Commit, push, publicação, migrações e alteração de segredos seguem o escopo autorizado; não são efeitos colaterais de QA ou de conclusão de etapa.
 6. Não delegar nem iniciar trabalho concorrente sem autorização. Não alterar o harness incidentalmente.
 
-**Ponto de controle atual (06/11/2026):** MP-09 aprovado; MP-10 concluído tecnicamente e aguardando aprovação humana. Base c3dd849, branch codex/mp-10-admin-supervision, retorno checkpoint/pre-mp10-2026-11-06. Relatórios e auditoria transacional validados com 1.319 testes, tipos/lint/build e jornada autenticada local. Sem nova migração e sem merge/migração remota/deploy. MP-11 não autorizado. Ver [relatório MP-10](qa/MP-10-supervisao-relatorios.md).
+**Ponto de controle atual (08/11/2026)** — MP-10 aprovado. MP-11 preparado e validado localmente, aguardando aprovação. O MP-12 é a próxima etapa. [Evidências MP-11](qa/MP-11-operacao-recuperacao.md).
 
 ### Preparação CTX-01, anterior à MP-04
 
@@ -64,8 +64,8 @@ P0 = fluxo obrigatório, integridade ou condição de liberação; P1 = conclus�
 | MP-07 | P0 | Completar operação de venda e cancelamento nas interfaces | MP-06 | done; entrega aprovada |
 | MP-08 | P0 | Implementar ocorrências com resposta | MP-06 | done; entrega aprovada para avançar |
 | MP-09 | P0 | Entregar notificações internas persistidas | MP-03, MP-07, MP-08 | done; entrega aprovada |
-| MP-10 | P1 | Concluir supervisão e relatórios confiáveis | MP-07, MP-08 | done; aguarda aprovação da entrega |
-| MP-11 | P0 | Preparar operação, recuperação e configuração de produção | MP-01, MP-10 | todo; início depende de aprovação |
+| MP-10 | P1 | Concluir supervisão e relatórios confiáveis | MP-07, MP-08 | done, entrega aprovada |
+| MP-11 | P0 | Preparar operação, recuperação e configuração de produção | MP-01, MP-10 | done, aguarda aprovação da entrega |
 | MP-12 | P0 | Homologar e liberar a versão completa | MP-00, MP-01, MP-02, MP-03, MP-04, MP-05, MP-06, MP-07, MP-08, MP-09, MP-10, MP-11 | todo; início depende de aprovação |
 
 ## Critérios e evidências por etapa

@@ -16,14 +16,14 @@ service cloud.firestore {
       return ['role', 'name', 'email', 'createdAt'];
     }
 
-    // Verifica privilégio administrativo via Custom Claims ou fallback temporário
+    // Acesso administrativo depende de claims do token autenticado.
     function isAdmin() {
-      return request.auth != null && (
-        request.auth.token.admin == true ||
-        request.auth.token.role == 'admin' ||
-        // Fallback temporário de transição (D-012)
-        request.auth.uid == 'KOQclmb5eshfkufioK03ayRh6Fi2'
-      );
+      return request.auth != null
+        && (request.auth.token.get('admin', false) == true
+          || request.auth.token.get('role', '') == 'admin')
+        && !(request.auth.token.get('role', '') in ['comprador', 'fornecedor'])
+        && request.auth.token.get('comprador', false) != true
+        && request.auth.token.get('fornecedor', false) != true;
     }
 
     // Validações de limites e tipos de campos de perfil

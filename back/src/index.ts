@@ -6,10 +6,8 @@ import { cors } from 'hono/cors'
 import { createAuthMiddleware, verifyFirebaseIdToken, requireAnyRole } from './middleware/auth'
 import { ordersGetHandler, ordersDetailHandler, ordersPostHandler, ordersCancelHandler, ordersReportHandler, ordersStatusPatchHandler } from './routes/orders'
 import { productsGetHandler, productsPostHandler, productsPutHandler, productsDeleteHandler } from './routes/products'
-import { createChatHandler } from './routes/chat'
 import { createAuthClaimHandler } from './routes/auth'
 import { adminAuditLogsGetHandler, adminProductStatusPatchHandler } from './routes/admin'
-import { createWorkersAiChatCompletion } from './lib/chat-completion'
 import { resolveRequestId, logger } from './lib/logger'
 import { AppError, respondError } from './lib/errors'
 import type { ApiErrorResponse } from '../../packages/contracts/src/error'
@@ -159,14 +157,7 @@ app.get('/orders/:id/occurrences', occurrencesGetHandler)
 app.post('/orders/:id/occurrences', occurrencesPostHandler)
 app.post('/orders/:id/occurrences/:reportId/messages', occurrencesReplyHandler)
 
-app.use('/chat/*', (c, next) => {
-  const authMiddleware = createAuthMiddleware((token) =>
-    verifyFirebaseIdToken(token, c.env.FIREBASE_PROJECT_ID),
-  )
-  return authMiddleware(c, next)
-})
-
-app.post('/chat/message', (c) => createChatHandler(createWorkersAiChatCompletion(c.env.AI))(c))
+// The assistant is outside the marketplace release. Its handler remains in routes/chat.ts.
 
 app.use('/auth/*', (c, next) => {
   const authMiddleware = createAuthMiddleware((token) =>

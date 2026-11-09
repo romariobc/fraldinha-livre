@@ -81,6 +81,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Cache em memória para evitar chamadas duplicadas de migração na mesma sessão
 const migratedUsersCache = new Set<string>();
 
+function hasAdminClaim(claims: Record<string, unknown> | null): boolean {
+  return (claims?.admin === true || claims?.role === 'admin')
+    && claims?.comprador !== true
+    && claims?.fornecedor !== true
+    && claims?.role !== 'comprador'
+    && claims?.role !== 'fornecedor';
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -115,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const tokenResult = await fbUser.getIdTokenResult();
             tokenClaims = (tokenResult.claims as Record<string, unknown>) || null;
             if (tokenClaims) {
-              if (tokenClaims.role === 'admin' || tokenClaims.admin === true) {
+              if (hasAdminClaim(tokenClaims)) {
                 tokenRole = 'admin';
               } else if (tokenClaims.role === 'fornecedor' || tokenClaims.fornecedor === true) {
                 tokenRole = 'fornecedor';
@@ -172,17 +180,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             // Fallback de role do Firestore é restrito exclusivamente a papéis legítimos não-administrativos
             // ('comprador' | 'fornecedor'). Jamais atribui autoridade de 'admin' a partir de data.role do Firestore.
-            const isVerifiedAdmin = Boolean(
-              tokenRole === 'admin' ||
-              tokenClaims?.admin === true ||
-              tokenClaims?.role === 'admin' ||
-              (process.env.NEXT_PUBLIC_ADMIN_UID && fbUser.uid === process.env.NEXT_PUBLIC_ADMIN_UID)
-            );
-
             const fallbackRole: UserRole | null =
               data.role === 'comprador' || data.role === 'fornecedor' ? data.role : null;
 
-            setRole(tokenRole || (isVerifiedAdmin ? 'admin' : fallbackRole));
+            setRole(tokenRole || fallbackRole);
           } else {
             setProfile(null);
             setRole(tokenRole || null);
@@ -293,7 +294,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const tokenClaims = (tokenResult.claims as Record<string, unknown>) || null;
         let tokenRole: UserRole | null = null;
         if (tokenClaims) {
-          if (tokenClaims.role === 'admin' || tokenClaims.admin === true) {
+          if (hasAdminClaim(tokenClaims)) {
             tokenRole = 'admin';
           } else if (tokenClaims.role === 'fornecedor' || tokenClaims.fornecedor === true) {
             tokenRole = 'fornecedor';
@@ -311,13 +312,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Apenas Custom Claims verificadas no token (ou o fallback temporário explícito NEXT_PUBLIC_ADMIN_UID)
-  // conferem autoridade de admin na interface. Nunca confiar exclusivamente em profile.role ou role vinda do Firestore.
-  const isClaimAdmin = Boolean(claims?.admin === true || claims?.role === 'admin');
-  const isLegacyAdminFallback = Boolean(
-    process.env.NEXT_PUBLIC_ADMIN_UID && user?.uid === process.env.NEXT_PUBLIC_ADMIN_UID
-  );
-  const isAdmin = isClaimAdmin || isLegacyAdminFallback;
+  const isAdmin = hasAdminClaim(claims);
 
   const value: AuthContextType = {
     user,

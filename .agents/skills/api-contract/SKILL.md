@@ -13,7 +13,7 @@ A fonte compartilhada de tipos e schemas Zod é `packages/contracts/src/`. Confi
 - Produtos: `front/src/lib/ports/product-repository.ts`, `front/src/lib/adapters/http-product-repository.ts`, `front/src/contexts/products-context.tsx` e catálogo do fornecedor. Já existe backend real; não trate catálogo e fornecedor como 100% mock.
 - HTTP: `front/src/lib/api-client.ts` centraliza token Firebase, identificação da requisição e erros. Reutilize-o.
 - API: `back/src/routes/`; persistência em `back/src/schema/` e `back/migrations/`.
-- Auth: `back/src/middleware/auth.ts` valida ID Token via JWKS e resolve Custom Claims. Há compatibilidade com ADMIN_UID; claims conflitantes negam acesso. Não implemente autorização apenas na interface.
+- Auth: `back/src/middleware/auth.ts` valida ID Token via JWKS e resolve Custom Claims. A autorização administrativa exige claim do token verificado. Claims conflitantes negam acesso. Não implemente autorização apenas na interface.
 
 Rotas já implementadas incluem GET/POST /orders, PATCH /orders/:id/cancel, GET /products (incluindo scope=fornecedor), POST /products e PUT/DELETE /products/:id. Confira métodos, payloads e permissões nas rotas antes de alterar consumidores.
 

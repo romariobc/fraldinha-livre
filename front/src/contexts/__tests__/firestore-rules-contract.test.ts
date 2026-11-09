@@ -36,9 +36,7 @@ interface FirestoreContext {
 function evaluateIsAdmin(ctx: FirestoreContext): boolean {
   if (!ctx.auth) return false
   return Boolean(
-    ctx.auth.token?.admin === true ||
-    ctx.auth.token?.role === 'admin' ||
-    ctx.auth.uid === 'KOQclmb5eshfkufioK03ayRh6Fi2'
+    ctx.auth.token?.admin === true || ctx.auth.token?.role === 'admin'
   )
 }
 
@@ -116,6 +114,7 @@ describe('Firestore Rules — Invariantes de Segurança e Contrato (SEC-003)', (
     expect(content).toContain('data.keys().hasOnly(allowedProfileKeys())')
     expect(content).toContain('data.role == resource.data.role')
     expect(content).toContain('request.auth.uid == uid')
+    expect(content).not.toMatch(/request\.auth\.uid\s*==\s*['"]/)
   })
 
   describe('Criação de Documento (allow create)', () => {
@@ -264,13 +263,13 @@ describe('Firestore Rules — Invariantes de Segurança e Contrato (SEC-003)', (
       expect(evaluateRead(ctx, uid)).toBe(true)
     })
 
-    it('administrador com fallback temporário de UID pode ler perfil de qualquer usuário', () => {
+    it('UID administrativo legado sem claim não lê perfil alheio', () => {
       const ctx: FirestoreContext = {
         auth: {
           uid: 'KOQclmb5eshfkufioK03ayRh6Fi2',
         },
       }
-      expect(evaluateRead(ctx, uid)).toBe(true)
+      expect(evaluateRead(ctx, uid)).toBe(false)
     })
   })
 })

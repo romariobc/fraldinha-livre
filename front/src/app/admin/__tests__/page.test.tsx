@@ -24,9 +24,7 @@ import { useAuth } from '@/contexts/auth-context'
 
 function authValue(overrides: Partial<ReturnType<typeof useAuth>> = {}): ReturnType<typeof useAuth> {
   const isAdminCalculated = overrides.isAdmin ?? (
-    overrides.role === 'admin' ||
-    Boolean(overrides.claims?.admin) ||
-    Boolean(overrides.user?.uid && overrides.user.uid === process.env.NEXT_PUBLIC_ADMIN_UID)
+    overrides.claims?.role === 'admin' || overrides.claims?.admin === true
   )
 
   return {
@@ -63,18 +61,12 @@ describe('AdminPage — gate de acesso', () => {
     expect(mockPush).toHaveBeenCalledWith('/')
   })
 
-  it('usuario logado com UID admin legado → renderiza as 4 abas, sem redirecionar', () => {
+  it('UID legado sem claim redireciona para a página inicial', () => {
     vi.mocked(useAuth).mockReturnValue(authValue({
-      loading: false,
-      user: { uid: process.env.NEXT_PUBLIC_ADMIN_UID!, email: 'admin@a.com', displayName: 'Admin' },
-      isAdmin: true,
+      user: { uid: 'legacy-admin', email: 'admin@example.test', displayName: 'Admin' },
     }))
     render(<AdminPage />)
-    expect(mockPush).not.toHaveBeenCalled()
-    expect(screen.getByText('Usuários')).toBeInTheDocument()
-    expect(screen.getByText('Pedidos')).toBeInTheDocument()
-    expect(screen.getByText('Produtos')).toBeInTheDocument()
-    expect(screen.getByText('Auditoria')).toBeInTheDocument()
+    expect(mockPush).toHaveBeenCalledWith('/')
   })
 
   it('usuario logado com Custom Claim role: admin → renderiza as 4 abas, sem redirecionar (RBAC)', () => {
